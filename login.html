@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login / Signup - 4astore</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .auth-container { max-width:420px; margin:40px auto; padding:0 20px; }
+    .auth-card { background:white; border-radius:16px; box-shadow:var(--shadow-lg); padding:32px 28px; text-align:center; }
+    .auth-tabs { display:flex; margin-bottom:24px; border-radius:8px; overflow:hidden; border:2px solid var(--primary); }
+    .auth-tabs button { flex:1; padding:12px; border:none; font-size:14px; font-weight:700; cursor:pointer; transition:var(--transition); }
+    .auth-tabs button.active { background:var(--primary); color:white; }
+    .auth-tabs button:not(.active) { background:white; color:var(--primary); }
+    .auth-form { text-align:left; }
+    .auth-form .form-group { margin-bottom:14px; }
+    .password-toggle { position:relative; }
+    .password-toggle .toggle-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:16px; }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <div class="location-text">📍 Delivering in Chandargarh – 824301 | ☎️ 8210874123</div>
+  </div>
+
+  <header class="main-header">
+    <div class="header-content">
+      <a href="index.html" class="logo">4a<span>store</span></a>
+      <form class="search-box" onsubmit="handleSearch(event)">
+        <input type="text" placeholder="Search for groceries..." id="searchInput">
+        <button type="submit">🔍</button>
+      </form>
+      <div class="header-actions">
+        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span>
+          <span class="badge cart-count" style="display:none">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="auth-container">
+    <div class="auth-card">
+      <div style="font-size:2.5rem; margin-bottom:8px;">🛒</div>
+      <h2 style="color:var(--primary); margin-bottom:4px;">Welcome to 4astore</h2>
+      <p style="color:var(--gray); font-size:13px; margin-bottom:20px;">Login or create account to start shopping</p>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="active" id="tabLogin" onclick="showAuthTab('login')">🔑 Login</button>
+        <button id="tabSignup" onclick="showAuthTab('signup')">📝 Sign Up</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <div class="auth-form" id="loginForm">
+        <div class="form-group">
+          <label>Username / Mobile *</label>
+          <input type="text" id="loginUsername" placeholder="Enter username or mobile number">
+          <div class="error-msg">Please enter username or mobile</div>
+        </div>
+        <div class="form-group">
+          <label>Password *</label>
+          <div class="password-toggle">
+            <input type="password" id="loginPassword" placeholder="Enter your password">
+            <button type="button" class="toggle-btn" onclick="togglePassword('loginPassword', this)">👁️</button>
+          </div>
+          <div class="error-msg">Please enter your password</div>
+        </div>
+        <button class="btn-checkout" onclick="handleLogin()" style="margin-top:8px;">🔓 Login</button>
+        <p style="margin-top:14px; font-size:12px; color:var(--gray); text-align:center;">
+          Don't have an account? <a href="#" onclick="showAuthTab('signup')" style="color:var(--primary); font-weight:600;">Sign Up</a>
+        </p>
+      </div>
+
+      <!-- SIGNUP FORM -->
+      <div class="auth-form hidden" id="signupForm">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="signupName" placeholder="Enter your full name">
+          <div class="error-msg">Please enter your name</div>
+        </div>
+        <div class="form-group">
+          <label>Mobile Number *</label>
+          <input type="tel" id="signupMobile" placeholder="10-digit mobile number" maxlength="10">
+          <div class="error-msg">Enter valid 10-digit mobile number</div>
+        </div>
+        <div class="form-group">
+          <label>Username *</label>
+          <input type="text" id="signupUsername" placeholder="Choose a username">
+          <div class="error-msg">Username already taken or invalid</div>
+        </div>
+        <div class="form-group">
+          <label>Password *</label>
+          <div class="password-toggle">
+            <input type="password" id="signupPassword" placeholder="Create password (min 4 chars)">
+            <button type="button" class="toggle-btn" onclick="togglePassword('signupPassword', this)">👁️</button>
+          </div>
+          <div class="error-msg">Password must be at least 4 characters</div>
+        </div>
+        <div class="form-group">
+          <label>Confirm Password *</label>
+          <div class="password-toggle">
+            <input type="password" id="signupConfirm" placeholder="Re-enter password">
+            <button type="button" class="toggle-btn" onclick="togglePassword('signupConfirm', this)">👁️</button>
+          </div>
+          <div class="error-msg">Passwords do not match</div>
+        </div>
+        <button class="btn-checkout" onclick="handleSignup()" style="margin-top:8px;">📝 Create Account</button>
+        <p style="margin-top:14px; font-size:12px; color:var(--gray); text-align:center;">
+          Already have an account? <a href="#" onclick="showAuthTab('login')" style="color:var(--primary); font-weight:600;">Login</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-col"><h4>About 4astore</h4><p>Your local online grocery store serving Chandargarh and nearby areas.</p></div>
+      <div class="footer-col"><h4>Contact</h4><p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p></div>
+    </div>
+    <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
+  </footer>
+
+  <nav class="bottom-nav">
+    <div class="nav-items">
+      <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+      <a href="products.html" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart</a>
+      <a href="login.html" class="nav-item active"><span class="nav-icon">👤</span>Account</a>
+    </div>
+  </nav>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // If already logged in, go to profile
+      if (getLoggedInUser()) {
+        window.location.href = 'profile.html';
+      }
+      // Check if redirected from signup
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'signup') showAuthTab('signup');
+    });
+
+    function showAuthTab(tab) {
+      document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+      document.getElementById('signupForm').classList.toggle('hidden', tab !== 'signup');
+      document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+      document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
+      // Clear errors
+      document.querySelectorAll('.form-group').forEach(fg => fg.classList.remove('error'));
+    }
+
+    function togglePassword(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+      else { input.type = 'password'; btn.textContent = '👁️'; }
+    }
+
+    function handleLogin() {
+      document.querySelectorAll('#loginForm .form-group').forEach(fg => fg.classList.remove('error'));
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      let valid = true;
+
+      if (!username) { document.getElementById('loginUsername').parentElement.classList.add('error'); valid = false; }
+      if (!password) { document.getElementById('loginPassword').parentElement.parentElement.classList.add('error'); valid = false; }
+      if (!valid) return;
+
+      // Find user
+      const users = JSON.parse(localStorage.getItem('4astore_users')) || [];
+      const user = users.find(u => (u.username === username || u.mobile === username) && u.password === password);
+
+      if (!user) {
+        showToast('❌ Invalid username/mobile or password', 'error');
+        return;
+      }
+
+      // Login
+      user.lastLogin = new Date().toISOString();
+      localStorage.setItem('4astore_users', JSON.stringify(users));
+      loginUser(user.name, user.mobile, user.username);
+
+      const returnUrl = new URLSearchParams(window.location.search).get('return') || 'index.html';
+      setTimeout(() => { window.location.href = returnUrl; }, 500);
+    }
+
+    function handleSignup() {
+      document.querySelectorAll('#signupForm .form-group').forEach(fg => fg.classList.remove('error'));
+      const name = document.getElementById('signupName').value.trim();
+      const mobile = document.getElementById('signupMobile').value.trim();
+      const username = document.getElementById('signupUsername').value.trim().toLowerCase();
+      const password = document.getElementById('signupPassword').value;
+      const confirm = document.getElementById('signupConfirm').value;
+      let valid = true;
+
+      if (!name) { document.getElementById('signupName').parentElement.classList.add('error'); valid = false; }
+      if (!mobile || !/^[6-9]\d{9}$/.test(mobile)) { document.getElementById('signupMobile').parentElement.classList.add('error'); valid = false; }
+      if (!username || username.length < 3) { document.getElementById('signupUsername').parentElement.classList.add('error'); valid = false; }
+      if (!password || password.length < 4) { document.getElementById('signupPassword').parentElement.parentElement.classList.add('error'); valid = false; }
+      if (password !== confirm) { document.getElementById('signupConfirm').parentElement.parentElement.classList.add('error'); valid = false; }
+
+      if (!valid) return;
+
+      // Check if username/mobile already exists
+      let users = JSON.parse(localStorage.getItem('4astore_users')) || [];
+      if (users.find(u => u.username === username)) {
+        document.getElementById('signupUsername').parentElement.classList.add('error');
+        showToast('❌ Username already taken', 'error');
+        return;
+      }
+      if (users.find(u => u.mobile === mobile)) {
+        document.getElementById('signupMobile').parentElement.classList.add('error');
+        showToast('❌ Mobile number already registered. Please login.', 'error');
+        return;
+      }
+
+      // Create user
+      const newUser = {
+        name, mobile, username, password,
+        registeredAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString()
+      };
+      users.push(newUser);
+      localStorage.setItem('4astore_users', JSON.stringify(users));
+
+      // Auto login
+      loginUser(name, mobile, username);
+      showToast('🎉 Account created successfully!', 'success');
+
+      const returnUrl = new URLSearchParams(window.location.search).get('return') || 'index.html';
+      setTimeout(() => { window.location.href = returnUrl; }, 800);
+    }
+
+    // Enter key support
+    document.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        if (!document.getElementById('loginForm').classList.contains('hidden')) handleLogin();
+        else handleSignup();
+      }
+    });
+  </script>
+</body>
+</html>

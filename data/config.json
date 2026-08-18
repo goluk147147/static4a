@@ -1,0 +1,94 @@
+{
+  "banners": [
+    {"id":1,"title":"🥬 Fresh Groceries at Your Doorstep","subtitle":"Quality products from your trusted local store in Chandargarh","btnText":"Shop Now →","btnLink":"products.html","gradient":["#ff6600","#ff9800"],"active":true,"festival":""},
+    {"id":2,"title":"🍎 Fresh Fruits & Vegetables","subtitle":"Farm fresh produce delivered daily to your home","btnText":"Explore →","btnLink":"products.html?category=fruits-vegetables","gradient":["#e55b00","#ffb74d"],"active":true,"festival":""},
+    {"id":3,"title":"🏷️ Daily Essentials at Best Prices","subtitle":"Up to 25% OFF on rice, oil, dal and more","btnText":"View Offers →","btnLink":"products.html","gradient":["#bf360c","#ff7043"],"active":true,"festival":""},
+    {"id":4,"title":"🪔 Diwali Special Offers!","subtitle":"Sweets, dry fruits, pooja samagri at best prices. Happy Diwali!","btnText":"Diwali Store →","btnLink":"products.html?festival=diwali","gradient":["#ff6f00","#ffd54f"],"active":true,"festival":"diwali"},
+    {"id":5,"title":"🎄 Christmas & New Year Sale","subtitle":"Celebrate with discounts on cakes, chocolates & beverages","btnText":"Celebrate →","btnLink":"products.html?festival=christmas","gradient":["#c62828","#ef5350"],"active":true,"festival":"christmas"},
+    {"id":6,"title":"🕉️ Navratri Special","subtitle":"Fasting essentials – Kuttu atta, Sabudana, fruits & more","btnText":"Shop Navratri →","btnLink":"products.html?festival=navratri","gradient":["#ff6600","#ff8f00"],"active":true,"festival":"navratri"},
+    {"id":7,"title":"🏏 IPL Season Snack Fest","subtitle":"Chips, Kurkure, Cold drinks – Match time snacks!","btnText":"Snack Up →","btnLink":"products.html?festival=ipl","gradient":["#1565c0","#42a5f5"],"active":true,"festival":"ipl"},
+    {"id":8,"title":"☪️ Eid Mubarak – Special Offers","subtitle":"Biryani rice, ghee, dry fruits & sweets","btnText":"Eid Store →","btnLink":"products.html?festival=eid","gradient":["#1b5e20","#4caf50"],"active":true,"festival":"eid"},
+    {"id":9,"title":"🪢 Raksha Bandhan Special!","subtitle":"Sweets, chocolates & snacks for your sibling! 🎁","btnText":"Rakhi Gifts →","btnLink":"products.html?festival=rakhi","gradient":["#d81b60","#f06292"],"active":true,"festival":"rakhi"},
+    {"id":10,"title":"🪢 Bhai-Behen ka Pyaar!","subtitle":"Dry fruits, namkeen, chocolates – best gifts for your sister","btnText":"Shop Rakhi →","btnLink":"products.html?festival=rakhi","gradient":["#ad1457","#ec407a"],"active":true,"festival":"rakhi"},
+    {"id":11,"title":"🎨 Holi Dhamaka Sale!","subtitle":"Cold drinks, sweets, snacks – rangon ka tyohar!","btnText":"Holi Shopping →","btnLink":"products.html?festival=holi","gradient":["#6a1b9a","#ab47bc"],"active":true,"festival":"holi"},
+    {"id":12,"title":"🇮🇳 Independence Day – Desh Ka Store!","subtitle":"Special discounts on all Indian brands 🇮🇳","btnText":"Shop Desi →","btnLink":"products.html?festival=independence","gradient":["#e65100","#ff6600"],"active":true,"festival":"independence"},
+    {"id":13,"title":"🛕 Chhath Puja Special","subtitle":"Thekua, fruits, puja samagri & more for Chhath","btnText":"Chhath Store →","btnLink":"products.html?festival=chhath","gradient":["#e65100","#ffb300"],"active":true,"festival":"chhath"},
+    {"id":14,"title":"🚀 Fast Delivery in Chandargarh","subtitle":"Order now, get delivered quick – only for 824301","btnText":"Order Now →","btnLink":"products.html","gradient":["#e65100","#fb8c00"],"active":true,"festival":""}
+  ],
+  "festivalAds": {
+    "rakhi": {
+      "leftAd": {"title":"🪢 Rakhi Offers","text":"Sweets & Gifts at ₹99 onwards!","bgGradient":["#d81b60","#f48fb1"],"link":"products.html?festival=rakhi","emoji":"🎁"},
+      "rightAd": {"title":"💝 Gift Hampers","text":"Chocolates, Namkeen, Dry Fruits – Perfect Rakhi Gift!","bgGradient":["#ad1457","#f06292"],"link":"products.html?festival=rakhi","emoji":"🍫"},
+      "midBanner": {"title":"🪢 Happy Raksha Bandhan!","text":"Special combos for Bhai-Behen. Free delivery above ₹500!","bgGradient":["#880e4f","#ec407a"],"link":"products.html?festival=rakhi","emoji":"🎀"}
+    },
+    "diwali": {
+      "leftAd": {"title":"🪔 Diwali Dhamaka","text":"Pooja items, Sweets, Dry fruits from ₹49","bgGradient":["#ff6f00","#ffd54f"],"link":"products.html?festival=diwali","emoji":"🪔"},
+      "rightAd": {"title":"🎆 Diwali Gift Packs","text":"Premium Dry fruits, Ghee, Sweets for gifting","bgGradient":["#e65100","#ffcc02"],"link":"products.html?festival=diwali","emoji":"🎁"},
+      "midBanner": {"title":"🎇 Diwali Mega Sale!","text":"Up to 30% OFF on all essentials. Light up savings!","bgGradient":["#bf360c","#ffa000"],"link":"products.html?festival=diwali","emoji":"✨"}
+    },
+    "holi": {
+      "leftAd": {"title":"🎨 Holi Special","text":"Thandai, Sweets, Colors – sab milega!","bgGradient":["#6a1b9a","#ce93d8"],"link":"products.html?festival=holi","emoji":"💜"},
+      "rightAd": {"title":"🥤 Party Pack","text":"Cold drinks, Chips, Namkeen for Holi party!","bgGradient":["#4a148c","#ba68c8"],"link":"products.html?festival=holi","emoji":"🥳"},
+      "midBanner": {"title":"🎨 Rang Barse! Holi Offer","text":"Buy 3 Get 1 Free on snacks & beverages","bgGradient":["#7b1fa2","#e040fb"],"link":"products.html?festival=holi","emoji":"🌈"}
+    },
+    "navratri": {
+      "leftAd": {"title":"🕉️ Navratri Vrat","text":"Kuttu, Sabudana, Fruits, Milk & more","bgGradient":["#e65100","#ff8f00"],"link":"products.html?festival=navratri","emoji":"🙏"},
+      "rightAd": {"title":"🌺 Pooja Essentials","text":"Fresh flowers, Agarbatti, Ghee, Camphor","bgGradient":["#bf360c","#ff6e40"],"link":"products.html?festival=navratri","emoji":"🛕"},
+      "midBanner": {"title":"🕉️ Jai Mata Di! Navratri Sale","text":"Fasting food at lowest prices. Deliver in 824301","bgGradient":["#d84315","#ff9100"],"link":"products.html?festival=navratri","emoji":"🔱"}
+    },
+    "christmas": {
+      "leftAd": {"title":"🎄 Merry Christmas","text":"Cakes, Chocolates, Cold drinks & more!","bgGradient":["#b71c1c","#ef5350"],"link":"products.html?festival=christmas","emoji":"🎅"},
+      "rightAd": {"title":"🎁 New Year Gifts","text":"Gift hampers, Dry fruits, Premium packs","bgGradient":["#c62828","#ff5252"],"link":"products.html?festival=christmas","emoji":"🥂"},
+      "midBanner": {"title":"🎄 Christmas & New Year Offer!","text":"Flat 15% OFF on beverages & bakery items","bgGradient":["#880e4f","#e53935"],"link":"products.html?festival=christmas","emoji":"⭐"}
+    },
+    "eid": {
+      "leftAd": {"title":"☪️ Eid Mubarak","text":"Biryani Rice, Ghee, Sheer Khurma items","bgGradient":["#1b5e20","#66bb6a"],"link":"products.html?festival=eid","emoji":"🌙"},
+      "rightAd": {"title":"🍗 Eid Feast","text":"Premium Basmati, Oil, Spices for celebration","bgGradient":["#2e7d32","#81c784"],"link":"products.html?festival=eid","emoji":"🥘"},
+      "midBanner": {"title":"☪️ Eid Special Combo Offers!","text":"Rice + Oil + Spices combo at best price","bgGradient":["#1b5e20","#4caf50"],"link":"products.html?festival=eid","emoji":"⭐"}
+    },
+    "ipl": {
+      "leftAd": {"title":"🏏 IPL Snacks","text":"Chips, Kurkure, Cold drinks – match ready!","bgGradient":["#0d47a1","#42a5f5"],"link":"products.html?festival=ipl","emoji":"🏆"},
+      "rightAd": {"title":"🍿 Party Pack","text":"Popcorn, Lays, Pepsi, Sprite – full party!","bgGradient":["#1565c0","#64b5f6"],"link":"products.html?festival=ipl","emoji":"📺"},
+      "midBanner": {"title":"🏏 IPL Season! Snack Up!","text":"Buy snacks + drink combo. Cricket + Munch = Fun","bgGradient":["#0d47a1","#2196f3"],"link":"products.html?festival=ipl","emoji":"⚡"}
+    },
+    "independence": {
+      "leftAd": {"title":"🇮🇳 Jai Hind!","text":"Proud Indian brands at best prices","bgGradient":["#e65100","#ff6600"],"link":"products.html?festival=independence","emoji":"🦚"},
+      "rightAd": {"title":"🪷 Swadeshi Products","text":"Tata, Amul, Parle – Made in India!","bgGradient":["#1a237e","#5c6bc0"],"link":"products.html?festival=independence","emoji":"🇮🇳"},
+      "midBanner": {"title":"🇮🇳 Independence Day Sale!","text":"15% OFF on Indian brand products. Jai Hind!","bgGradient":["#004d40","#ff6f00"],"link":"products.html?festival=independence","emoji":"⭐"}
+    },
+    "chhath": {
+      "leftAd": {"title":"🛕 Chhath Puja","text":"Thekua, Fruits, Coconut, Sugarcane & more","bgGradient":["#e65100","#ffb300"],"link":"products.html?festival=chhath","emoji":"🌅"},
+      "rightAd": {"title":"🍌 Puja Samagri","text":"Banana, Naariyal, Supari, Sindoor, Diyas","bgGradient":["#bf360c","#ffc107"],"link":"products.html?festival=chhath","emoji":"🙏"},
+      "midBanner": {"title":"🛕 Chhath Puja Special!","text":"All puja & vrat items at one place. Jai Chhathi Maiya!","bgGradient":["#e65100","#ff8f00"],"link":"products.html?festival=chhath","emoji":"🌅"}
+    }
+  },
+  "festivalCategories": {
+    "rakhi": ["biscuits-snacks","dairy-bakery","cold-drinks-beverages"],
+    "diwali": ["biscuits-snacks","dairy-bakery","daily-essentials","oil-ghee"],
+    "navratri": ["fruits-vegetables","dairy-bakery","daily-essentials"],
+    "holi": ["cold-drinks-beverages","biscuits-snacks","dairy-bakery"],
+    "christmas": ["cold-drinks-beverages","biscuits-snacks","dairy-bakery"],
+    "eid": ["rice-atta-dal","oil-ghee","daily-essentials","biscuits-snacks"],
+    "ipl": ["biscuits-snacks","cold-drinks-beverages"],
+    "independence": ["biscuits-snacks","cold-drinks-beverages","daily-essentials","tea-coffee"],
+    "chhath": ["fruits-vegetables","daily-essentials","oil-ghee"]
+  },
+  "ads": [
+    {"id":1,"title":"🎉 Flat 10% OFF on First Order!","description":"Limited time offer for new customers!","bgColor":"#fff3e0","borderColor":"#ff6600","icon":"🎁","link":"products.html","active":true},
+    {"id":2,"title":"🥛 Fresh Dairy Daily","description":"Amul Milk, Butter, Curd – fresh every morning","bgColor":"#f3e5f5","borderColor":"#9c27b0","icon":"🐄","link":"products.html?category=dairy-bakery","active":true},
+    {"id":3,"title":"📱 Pay Easy with UPI","description":"Scan & pay instantly. 100% secure.","bgColor":"#e3f2fd","borderColor":"#1565c0","icon":"💳","link":"checkout.html","active":true},
+    {"id":4,"title":"🚚 Free Delivery above ₹500","description":"Order ₹500+ for FREE home delivery","bgColor":"#e8f5e9","borderColor":"#2e7d32","icon":"🆓","link":"products.html","active":true}
+  ],
+  "socialProofMessages": [
+    "{name} from Chandargarh just ordered {product}",
+    "{name} purchased {product} just now!",
+    "🔥 {name} added {product} to cart",
+    "{name} just placed an order worth ₹{amount}",
+    "New order from {name} – {product}"
+  ],
+  "socialProofNames": [
+    "Rahul","Priya","Amit","Sunita","Ravi","Pooja","Vijay","Anita",
+    "Suresh","Meena","Deepak","Kavita","Rajesh","Neha","Manoj"
+  ],
+  "currentFestival": ""
+}

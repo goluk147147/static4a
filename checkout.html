@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout - 4astore</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    .screenshot-upload { border:2px dashed var(--primary); border-radius:12px; padding:24px; text-align:center; cursor:pointer; transition:var(--transition); margin:16px 0; position:relative; }
+    .screenshot-upload:hover { background:var(--primary-light); }
+    .screenshot-upload input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .screenshot-upload .preview-img { max-width:200px; max-height:200px; border-radius:8px; margin-top:12px; }
+    .screenshot-upload.has-image { border-color:var(--primary); background:var(--primary-light); }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <div class="location-text">📍 Delivering in Chandargarh – 824301 | ☎️ 8210874123</div>
+  </div>
+
+  <header class="main-header">
+    <div class="header-content">
+      <a href="index.html" class="logo">4a<span>store</span></a>
+      <form class="search-box" onsubmit="handleSearch(event)">
+        <input type="text" placeholder="Search for groceries..." id="searchInput">
+        <button type="submit">🔍</button>
+      </form>
+      <div class="header-actions">
+        <div class="login-btn-area"></div>
+        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span>
+          <span class="badge cart-count" style="display:none">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Step 1: Checkout Form -->
+  <div class="checkout-page" id="checkoutPage">
+    <h2 style="margin-bottom:20px;">📝 Checkout</h2>
+    <div class="checkout-form">
+      <h3>🏠 Delivery Details</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="custName" placeholder="Enter your full name">
+          <div class="error-msg">Please enter your name</div>
+        </div>
+        <div class="form-group">
+          <label>Mobile Number *</label>
+          <input type="tel" id="custMobile" placeholder="10-digit mobile number" maxlength="10">
+          <div class="error-msg">Enter valid 10-digit mobile number</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="custEmail" placeholder="your@email.com (optional)">
+      </div>
+      <div class="form-group">
+        <label>Complete Address *</label>
+        <textarea id="custAddress" rows="3" placeholder="House/Shop number, Street, Area"></textarea>
+        <div class="error-msg">Please enter your address</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Landmark</label>
+          <input type="text" id="custLandmark" placeholder="Near temple, school, etc.">
+        </div>
+        <div class="form-group">
+          <label>City *</label>
+          <input type="text" id="custCity" placeholder="City" value="Chandargarh">
+          <div class="error-msg">Please enter city</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>PIN Code *</label>
+        <input type="text" id="custPincode" placeholder="6-digit PIN Code" maxlength="6" value="824301">
+        <div class="error-msg">Delivery available only for PIN Code 824301</div>
+      </div>
+
+      <h3 style="margin-top:24px;">💳 Payment – UPI Only</h3>
+      <div style="background:var(--primary-light); border:2px solid var(--primary); border-radius:12px; padding:20px; text-align:center; margin-top:12px;">
+        <p style="font-size:14px; color:var(--primary-dark); font-weight:600; margin-bottom:8px;">📱 Pay via UPI to complete your order</p>
+        <p style="font-size:13px; color:#666; margin-bottom:4px;">UPI ID: <strong style="color:var(--primary);">goluk147147@ybl</strong></p>
+        <p style="font-size:13px; color:#666;">Name: <strong>4astore</strong></p>
+      </div>
+
+      <div class="order-summary-checkout" id="orderSummaryCheckout" style="margin-top:20px;"></div>
+      <button class="btn-checkout" onclick="proceedToPayment()" style="margin-top:20px;">📱 Proceed to UPI Payment →</button>
+    </div>
+  </div>
+
+  <!-- Step 2: UPI Payment + Screenshot Upload Modal -->
+  <div class="hidden" id="upiPaymentModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:white; border-radius:16px; padding:24px; max-width:420px; width:100%; text-align:center; max-height:95vh; overflow-y:auto;">
+      <h2 style="color:var(--primary); margin-bottom:6px;">📱 Pay via UPI</h2>
+      <p style="color:#666; font-size:13px; margin-bottom:14px;">Scan QR code below & pay the amount</p>
+      
+      <div style="background:#f8f8f8; border-radius:12px; padding:16px; margin-bottom:14px;">
+        <div id="qrCode" style="display:flex; justify-content:center; margin-bottom:10px;"></div>
+        <p style="font-size:12px; color:#666;">Scan with Google Pay, PhonePe, Paytm etc.</p>
+      </div>
+      
+      <div style="background:var(--primary-light); padding:10px; border-radius:8px; margin-bottom:10px;">
+        <p style="font-size:11px; color:#666;">UPI ID</p>
+        <p style="font-size:15px; font-weight:700; color:var(--primary-dark);">goluk147147@ybl</p>
+        <p style="font-size:11px; color:#666; margin-top:2px;">Name: <strong>4astore</strong></p>
+      </div>
+      
+      <div style="background:#fff3e0; padding:12px; border-radius:8px; margin-bottom:14px;">
+        <p style="font-size:16px; font-weight:700; color:var(--primary-dark);">💰 Pay: ₹<span id="payAmount">0</span></p>
+      </div>
+
+      <!-- Mobile: Open UPI App directly -->
+      <a id="upiDeepLink" href="#" style="display:inline-block; padding:10px 24px; background:var(--primary); color:white; border-radius:30px; font-size:14px; font-weight:600; margin-bottom:14px; text-decoration:none;">
+        📲 Open UPI App & Pay
+      </a>
+
+      <!-- Screenshot Upload Section -->
+      <div style="border-top:2px solid var(--border); padding-top:16px; margin-top:8px;">
+        <h4 style="color:var(--primary-dark); margin-bottom:8px;">📸 Upload Payment Screenshot</h4>
+        <p style="font-size:12px; color:#666; margin-bottom:10px;">After paying, take a screenshot and upload it below for confirmation</p>
+        
+        <div class="screenshot-upload" id="screenshotUpload">
+          <input type="file" accept="image/*" id="screenshotInput" onchange="handleScreenshot(this)">
+          <div id="screenshotPlaceholder">
+            <span style="font-size:2.5rem;">📷</span>
+            <p style="font-size:13px; color:var(--primary); font-weight:600; margin-top:8px;">Tap to upload payment screenshot</p>
+            <p style="font-size:11px; color:#999;">JPG, PNG supported</p>
+          </div>
+          <img id="screenshotPreview" class="preview-img" style="display:none;">
+        </div>
+      </div>
+      
+      <button class="btn-checkout" id="confirmBtn" onclick="confirmPayment()" style="background:var(--gray); cursor:not-allowed;" disabled>
+        ⬆️ Upload Screenshot to Confirm
+      </button>
+      
+      <button onclick="closePaymentModal()" style="margin-top:10px; background:none; border:none; color:var(--gray); cursor:pointer; font-size:13px;">← Cancel</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Order Success -->
+  <div class="order-success hidden" id="orderSuccess">
+    <div class="success-icon">🎉</div>
+    <h2>Order Successfully Placed!</h2>
+    <p class="order-id" id="successOrderId"></p>
+    <p>Thank you for shopping with 4astore.</p>
+    <p>We will verify your payment and confirm shortly.</p>
+    <p style="margin-top:12px; font-size:13px; color:var(--primary);">✅ WhatsApp notification sent to store</p>
+    <div style="margin-top:20px;">
+      <a href="order-history.html" class="btn-primary" style="margin-right:10px;">View My Orders</a>
+      <a href="index.html" class="btn-primary" style="background:var(--secondary);">Continue Shopping</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-col"><h4>About 4astore</h4><p>Your local online grocery store serving Chandargarh and nearby areas.</p></div>
+      <div class="footer-col"><h4>Store Address</h4><p>Gajana Road, Chandargarh, Nabinagar, Bihar – 824301</p><p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p></div>
+      <div class="footer-col"><h4>Payment</h4><p>UPI Only: <strong>goluk147147@ybl</strong></p><span class="delivery-info-badge">📍 PIN Code – 824301</span></div>
+    </div>
+    <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
+  </footer>
+
+  <nav class="bottom-nav">
+    <div class="nav-items">
+      <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+      <a href="products.html" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
+      <a href="#" class="nav-item"><span class="nav-icon">🔍</span>Search</a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="order-history.html" class="nav-item"><span class="nav-icon">📋</span>Orders</a>
+    </div>
+  </nav>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    let orderData = null;
+    let customerInfo = null;
+    let paymentScreenshot = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!requireLogin()) return;
+      const cart = getCart();
+      if (cart.length === 0) {
+        document.getElementById('checkoutPage').innerHTML = `
+          <div class="empty-cart"><div class="empty-icon">🛒</div><h3>Your cart is empty</h3>
+          <p>Add items to your cart before checkout.</p><a href="products.html" class="btn-primary">Browse Products →</a></div>`;
+        return;
+      }
+      renderOrderSummary();
+      loadSavedCustomer();
+    });
+
+    function loadSavedCustomer() {
+      const user = getLoggedInUser();
+      if (user) {
+        document.getElementById('custName').value = user.name;
+        document.getElementById('custMobile').value = user.mobile;
+      }
+      const saved = JSON.parse(localStorage.getItem('4astore_customer'));
+      if (saved) {
+        if (saved.email) document.getElementById('custEmail').value = saved.email;
+        if (saved.address) document.getElementById('custAddress').value = saved.address;
+        if (saved.landmark) document.getElementById('custLandmark').value = saved.landmark;
+        if (saved.city) document.getElementById('custCity').value = saved.city;
+      }
+    }
+
+    function renderOrderSummary() {
+      const cart = getCart();
+      const totals = getCartTotal();
+      document.getElementById('orderSummaryCheckout').innerHTML = `
+        <h4 style="margin-bottom:12px;">📦 Order Summary</h4>
+        ${cart.map(item => `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;border-bottom:1px solid var(--border);"><span>${item.name} × ${item.quantity}</span><span>₹${item.price * item.quantity}</span></div>`).join('')}
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:var(--gray);"><span>Subtotal</span><span>₹${totals.subtotal}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:var(--primary);"><span>Discount</span><span>-₹${totals.discount}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span>Delivery</span><span>${totals.deliveryCharge===0?'FREE':'₹'+totals.deliveryCharge}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:12px 0 0;font-size:18px;font-weight:700;border-top:2px solid var(--border);margin-top:8px;color:var(--primary-dark);"><span>Total</span><span>₹${totals.total}</span></div>`;
+    }
+
+    function proceedToPayment() {
+      let valid = true;
+      document.querySelectorAll('.form-group').forEach(fg => fg.classList.remove('error'));
+      const name = document.getElementById('custName').value.trim();
+      const mobile = document.getElementById('custMobile').value.trim();
+      const email = document.getElementById('custEmail').value.trim();
+      const address = document.getElementById('custAddress').value.trim();
+      const landmark = document.getElementById('custLandmark').value.trim();
+      const city = document.getElementById('custCity').value.trim();
+      const pincode = document.getElementById('custPincode').value.trim();
+
+      if (!name) { document.getElementById('custName').parentElement.classList.add('error'); valid = false; }
+      if (!mobile || !/^[6-9]\d{9}$/.test(mobile)) { document.getElementById('custMobile').parentElement.classList.add('error'); valid = false; }
+      if (!address) { document.getElementById('custAddress').parentElement.classList.add('error'); valid = false; }
+      if (!city) { document.getElementById('custCity').parentElement.classList.add('error'); valid = false; }
+      if (pincode !== '824301') { document.getElementById('custPincode').parentElement.classList.add('error'); showToast('🚀 Delivery only in PIN 824301', 'error'); valid = false; }
+      if (!valid) { showToast('Please fill all required fields', 'error'); return; }
+
+      customerInfo = { name, mobile, email, address, landmark, city, pincode };
+      const totals = getCartTotal();
+      
+      // Show payment modal
+      document.getElementById('payAmount').textContent = totals.total;
+      document.getElementById('upiPaymentModal').classList.remove('hidden');
+      document.getElementById('upiPaymentModal').style.display = 'flex';
+      
+      // UPI deep link for mobile
+      const upiLink = `upi://pay?pa=goluk147147@ybl&pn=4astore&am=${totals.total}&cu=INR&tn=4astore_Order`;
+      document.getElementById('upiDeepLink').href = upiLink;
+      
+      // Generate QR
+      const qrDiv = document.getElementById('qrCode');
+      qrDiv.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(qrDiv, { text: upiLink, width: 160, height: 160, colorDark: "#ff6600", colorLight: "#ffffff" });
+      } else {
+        qrDiv.innerHTML = `<div style="width:160px;height:160px;border:3px solid var(--primary);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;">
+          <span style="font-size:2rem;">📱</span><span style="font-size:11px;color:var(--primary);font-weight:600;">goluk147147@ybl</span></div>`;
+      }
+    }
+
+    function handleScreenshot(input) {
+      const file = input.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        paymentScreenshot = e.target.result;
+        document.getElementById('screenshotPreview').src = paymentScreenshot;
+        document.getElementById('screenshotPreview').style.display = 'block';
+        document.getElementById('screenshotPlaceholder').style.display = 'none';
+        document.getElementById('screenshotUpload').classList.add('has-image');
+        
+        // Enable confirm button
+        const btn = document.getElementById('confirmBtn');
+        btn.disabled = false;
+        btn.style.background = 'var(--primary)';
+        btn.style.cursor = 'pointer';
+        btn.textContent = '✅ Confirm Order & Send on WhatsApp';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function closePaymentModal() {
+      document.getElementById('upiPaymentModal').classList.add('hidden');
+      document.getElementById('upiPaymentModal').style.display = 'none';
+    }
+
+    function confirmPayment() {
+      if (!paymentScreenshot) {
+        showToast('📸 Please upload payment screenshot first', 'error');
+        return;
+      }
+      
+      // Place order with screenshot reference
+      orderData = placeOrder(customerInfo);
+      
+      // Save screenshot reference (base64 stored in localStorage for admin verification)
+      let screenshots = JSON.parse(localStorage.getItem('4astore_screenshots')) || {};
+      screenshots[orderData.orderId] = paymentScreenshot;
+      localStorage.setItem('4astore_screenshots', JSON.stringify(screenshots));
+      
+      closePaymentModal();
+      
+      // Show success
+      document.getElementById('checkoutPage').classList.add('hidden');
+      document.getElementById('orderSuccess').classList.remove('hidden');
+      document.getElementById('successOrderId').textContent = `Your Order ID: #${orderData.orderId}`;
+      showToast('🎉 Order placed successfully!', 'success');
+      
+      // Force WhatsApp notification (using intent for in-app handling on mobile)
+      setTimeout(() => {
+        forceWhatsApp(orderData);
+      }, 1000);
+    }
+
+    function forceWhatsApp(order) {
+      const itemsList = order.items.map((item, i) => `${i+1}. ${item.name} × ${item.quantity}`).join('\n');
+      const msg = `*🛒 New Order – 4astore*\n\n` +
+        `*Order ID:* #${order.orderId}\n` +
+        `*Customer:* ${order.customer.name}\n` +
+        `*Mobile:* ${order.customer.mobile}\n\n` +
+        `*Address:* ${order.customer.address}, ${order.customer.city} – ${order.customer.pincode}\n\n` +
+        `*Items:*\n${itemsList}\n\n` +
+        `*Total: ₹${order.totalAmount}*\n` +
+        `*Payment:* UPI ✅ (Screenshot attached)\n\n` +
+        `---\n4astore | Chandargarh`;
+      
+      const encoded = encodeURIComponent(msg);
+      const storeNumber = '918210874123';
+      
+      // Try WhatsApp intent (works in-app on mobile)
+      const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+      if (isMobile) {
+        // intent:// scheme opens WhatsApp app directly
+        window.location.href = `https://api.whatsapp.com/send?phone=${storeNumber}&text=${encoded}`;
+      } else {
+        window.open(`https://web.whatsapp.com/send?phone=${storeNumber}&text=${encoded}`, '_blank');
+      }
+    }
+  </script>
+</body>
+</html>

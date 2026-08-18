@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Orders - 4astore</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="location-text">
+      📍 Delivering in Chandargarh – 824301 | ☎️ 8210874123
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="main-header">
+    <div class="header-content">
+      <a href="index.html" class="logo">4a<span>store</span></a>
+      <form class="search-box" onsubmit="handleSearch(event)">
+        <input type="text" placeholder="Search for groceries, fruits, snacks..." id="searchInput">
+        <button type="submit">🔍</button>
+      </form>
+      <div class="header-actions">
+        <div class="login-btn-area"></div>
+        <a href="order-history.html">📋 <span class="action-text">Orders</span></a>
+        <a href="cart.html" class="cart-badge">
+          🛒 <span class="action-text">Cart</span>
+          <span class="badge cart-count" style="display:none">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Orders Page -->
+  <div class="orders-page">
+    <h2 style="margin-bottom:20px;">📋 My Orders</h2>
+    <div id="ordersContent">
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>About 4astore</h4>
+        <p>4astore is your local online grocery and daily essentials store serving Chandargarh and nearby areas.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Store Address</h4>
+        <p>Gajana Road, Chandargarh<br>Nabinagar, Aurangabad<br>Bihar – 824301, India</p>
+        <p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p>
+      </div>
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <a href="index.html">Home</a>
+        <a href="products.html">Products</a>
+        <a href="cart.html">My Cart</a>
+        <a href="order-history.html">My Orders</a>
+      </div>
+      <div class="footer-col">
+        <h4>Delivery Information</h4>
+        <span class="delivery-info-badge">📍 PIN Code – 824301</span>
+        <p style="margin-top:8px; font-size:12px; color:#aaa;">More locations coming soon 🚀</p>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
+  </footer>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="bottom-nav">
+    <div class="nav-items">
+      <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+      <a href="products.html" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="order-history.html" class="nav-item active"><span class="nav-icon">📦</span>Orders</a>
+      <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
+    </div>
+  </nav>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!requireLogin()) return;
+      renderOrders();
+    });
+
+    function renderOrders() {
+      const orders = getOrders();
+      const container = document.getElementById('ordersContent');
+
+      if (orders.length === 0) {
+        container.innerHTML = `
+          <div class="empty-cart">
+            <div class="empty-icon">📋</div>
+            <h3>No orders yet</h3>
+            <p>You haven't placed any orders yet. Start shopping!</p>
+            <a href="products.html" class="btn-primary">Browse Products →</a>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = orders.map(order => `
+        <div class="order-card">
+          <div class="order-header">
+            <div>
+              <span class="order-id-text">#${order.orderId}</span>
+              <span class="order-date"> · ${formatDate(order.orderDate)}</span>
+            </div>
+            <span class="order-status ${getStatusClass(order.orderStatus)}">${order.orderStatus}</span>
+          </div>
+          <div class="order-items-list">
+            ${order.items.map(item => `
+              <div class="o-item">
+                <span>${item.name} × ${item.quantity}</span>
+                <span>₹${item.price * item.quantity}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+            <div style="font-size:13px; color:var(--gray);">
+              📍 ${order.customer.address}, ${order.customer.city} – ${order.customer.pincode}<br>
+              💳 ${order.paymentMethod}
+            </div>
+            <div class="order-total">Total: ₹${order.totalAmount}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

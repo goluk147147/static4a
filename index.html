@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ff6600">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/images/icon-192.png">
+  <title>4astore - Local Grocery & Daily Needs Store</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    /* Social Proof Popup */
+    .social-proof { position:fixed; bottom:80px; left:20px; background:white; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.15); padding:12px 16px; max-width:320px; z-index:900; display:flex; align-items:center; gap:10px; animation:popIn 0.4s ease; border-left:4px solid var(--primary); }
+    .social-proof .sp-icon { font-size:1.5rem; }
+    .social-proof .sp-text { font-size:12px; color:#333; line-height:1.4; }
+    .social-proof .sp-text strong { color:var(--primary-dark); }
+    .social-proof .sp-close { position:absolute; top:4px; right:8px; background:none; border:none; font-size:14px; cursor:pointer; color:#999; }
+    @keyframes popIn { from { transform:translateY(20px) scale(0.9); opacity:0; } to { transform:translateY(0) scale(1); opacity:1; } }
+    @keyframes popOut { from { opacity:1; } to { opacity:0; transform:translateY(10px); } }
+
+    /* Ads Section */
+    .ads-section { padding:0 20px 30px; max-width:1400px; margin:0 auto; }
+    .ads-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
+    .ad-card { border-radius:12px; padding:20px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:var(--transition); border:2px solid transparent; }
+    .ad-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+    .ad-card .ad-icon { font-size:2.2rem; }
+    .ad-card .ad-content h4 { font-size:14px; font-weight:700; margin-bottom:4px; }
+    .ad-card .ad-content p { font-size:12px; color:#555; line-height:1.4; }
+
+    /* Festive falling particles */
+    .festive-particle { position:fixed; pointer-events:none; z-index:800; animation:fall linear forwards; font-size:1.2rem; }
+    @keyframes fall { 0%{transform:translateY(-20px) rotate(0deg); opacity:1;} 100%{transform:translateY(100vh) rotate(720deg); opacity:0;} }
+
+    @media (max-width:768px) {
+      .social-proof { left:10px; right:10px; max-width:none; bottom:75px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="location-text">📍 Delivering in Chandargarh – 824301 | ☎️ 8210874123</div>
+  </div>
+
+  <!-- Header -->
+  <header class="main-header">
+    <div class="header-content">
+      <a href="index.html" class="logo">4a<span>store</span></a>
+      <form class="search-box" onsubmit="handleSearch(event)">
+        <input type="text" placeholder="Search for groceries, fruits, snacks..." id="searchInput">
+        <button type="submit">🔍</button>
+      </form>
+      <div class="header-actions">
+        <div class="login-btn-area"></div>
+        <a href="order-history.html">📋 <span class="action-text">Orders</span></a>
+        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span>
+          <span class="badge cart-count" style="display:none">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Slider (Dynamic from config.json) -->
+  <section class="hero-slider">
+    <div class="slider-track" id="sliderTrack">
+      <!-- Populated by JS from config.json -->
+    </div>
+    <button class="slider-btn prev">‹</button>
+    <button class="slider-btn next">›</button>
+    <div class="slider-dots" id="sliderDots"></div>
+  </section>
+
+  <!-- Ads / Offers Section -->
+  <section class="ads-section">
+    <div class="ads-grid" id="adsGrid">
+      <!-- Populated by JS from config.json -->
+    </div>
+  </section>
+
+  <!-- Categories -->
+  <section class="categories-section">
+    <h2 class="section-title">🛍️ Shop by Category</h2>
+    <div class="categories-grid" id="categoriesGrid"></div>
+  </section>
+
+  <!-- Popular Products -->
+  <section class="products-section">
+    <h2 class="section-title">🔥 Popular Products</h2>
+    <div class="products-grid" id="popularProducts"></div>
+    <div class="text-center mt-20">
+      <a href="products.html" class="btn-primary">View All Products →</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>About 4astore</h4>
+        <p>4astore is your local online grocery and daily essentials store serving Chandargarh and nearby areas. We bring quality products at best prices to your doorstep.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Store Address</h4>
+        <p>4astore<br>Gajana Road, Chandargarh<br>Nabinagar, Aurangabad<br>Bihar – 824301, India</p>
+        <p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p>
+      </div>
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <a href="index.html">Home</a>
+        <a href="products.html">Products</a>
+        <a href="cart.html">My Cart</a>
+        <a href="order-history.html">My Orders</a>
+        <a href="admin.html" style="color:var(--primary);">🔐 Admin Panel</a>
+      </div>
+      <div class="footer-col">
+        <h4>Delivery & Payment</h4>
+        <p>📍 Delivering in PIN 824301 only</p>
+        <p style="margin-top:4px;">💳 UPI: <strong>goluk147147@ybl</strong></p>
+        <p style="margin-top:8px; font-size:12px; color:#aaa;">More locations coming soon 🚀</p>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
+  </footer>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="bottom-nav">
+    <div class="nav-items">
+      <a href="index.html" class="nav-item active"><span class="nav-icon">🏠</span>Home</a>
+      <a href="products.html" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="order-history.html" class="nav-item"><span class="nav-icon">📦</span>Orders</a>
+      <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
+    </div>
+  </nav>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(() => console.log('SW registered'));
+    }
+    let siteConfig = null;
+
+    window.addEventListener('dataLoaded', async () => {
+      // Load config
+      try {
+        const res = await fetch('data/config.json');
+        siteConfig = await res.json();
+      } catch(e) { siteConfig = { banners: [], ads: [], socialProofMessages: [], socialProofNames: [] }; }
+
+      renderBanners();
+      renderAds();
+      renderCategories();
+      renderPopularProducts();
+      initSlider();
+      startSocialProof();
+      startFestiveAnimation();
+    });
+
+    // ============================================
+    // DYNAMIC BANNERS (Festival-based)
+    // ============================================
+    function renderBanners() {
+      const track = document.getElementById('sliderTrack');
+      const dotsDiv = document.getElementById('sliderDots');
+      // Read festival from localStorage (set by admin panel)
+      const festival = localStorage.getItem('4astore_festival') || siteConfig.currentFestival || '';
+      
+      // Filter: show general banners + current festival banners
+      let banners = siteConfig.banners.filter(b => b.active && (b.festival === '' || b.festival === festival));
+      if (banners.length === 0) banners = siteConfig.banners.filter(b => b.active && b.festival === '');
+      
+      track.innerHTML = banners.map((b, i) => `
+        <div class="slide" style="background:linear-gradient(135deg, ${b.gradient[0]}, ${b.gradient[1]});">
+          <div class="slide-content">
+            <h1>${b.title}</h1>
+            <p>${b.subtitle}</p>
+            <a href="${b.btnLink}" class="btn-shop">${b.btnText}</a>
+          </div>
+        </div>
+      `).join('');
+      
+      dotsDiv.innerHTML = banners.map((_, i) => `<span class="dot ${i===0?'active':''}"></span>`).join('');
+    }
+
+    // ============================================
+    // ADS SECTION
+    // ============================================
+    function renderAds() {
+      const grid = document.getElementById('adsGrid');
+      const ads = siteConfig.ads.filter(a => a.active);
+      
+      grid.innerHTML = ads.map(ad => `
+        <a href="${ad.link}" class="ad-card" style="background:${ad.bgColor}; border-color:${ad.borderColor};">
+          <div class="ad-icon">${ad.icon}</div>
+          <div class="ad-content">
+            <h4 style="color:${ad.borderColor};">${ad.title}</h4>
+            <p>${ad.description}</p>
+          </div>
+        </a>
+      `).join('');
+    }
+
+    // ============================================
+    // SOCIAL PROOF POPUP ("Someone just ordered...")
+    // ============================================
+    function startSocialProof() {
+      const messages = siteConfig.socialProofMessages || [];
+      const names = siteConfig.socialProofNames || [];
+      if (messages.length === 0 || names.length === 0) return;
+      
+      // Show first after 5 seconds, then every 15-25 seconds
+      setTimeout(showSocialProof, 5000);
+    }
+
+    function showSocialProof() {
+      const messages = siteConfig.socialProofMessages;
+      const names = siteConfig.socialProofNames;
+      
+      // Pick random values
+      const name = names[Math.floor(Math.random() * names.length)];
+      const productNames = products.length > 0 ? products.map(p => p.name) : ['groceries'];
+      const product = productNames[Math.floor(Math.random() * productNames.length)];
+      const amount = (Math.floor(Math.random() * 8) + 2) * 100; // 200-1000
+      
+      let msg = messages[Math.floor(Math.random() * messages.length)];
+      msg = msg.replace('{name}', name).replace('{product}', product).replace('{amount}', amount);
+      
+      // Remove existing
+      const existing = document.querySelector('.social-proof');
+      if (existing) existing.remove();
+      
+      const popup = document.createElement('div');
+      popup.className = 'social-proof';
+      popup.innerHTML = `
+        <div class="sp-icon">🛒</div>
+        <div class="sp-text"><strong>${msg}</strong><br><span style="font-size:11px;color:#999;">just now</span></div>
+        <button class="sp-close" onclick="this.parentElement.remove()">×</button>
+      `;
+      document.body.appendChild(popup);
+      
+      // Auto remove after 5 seconds
+      setTimeout(() => {
+        if (popup.parentElement) {
+          popup.style.animation = 'popOut 0.3s ease forwards';
+          setTimeout(() => popup.remove(), 300);
+        }
+      }, 5000);
+      
+      // Schedule next
+      const nextDelay = 15000 + Math.random() * 15000; // 15-30 seconds
+      setTimeout(showSocialProof, nextDelay);
+    }
+
+    // ============================================
+    // CATEGORIES & PRODUCTS
+    // ============================================
+    function renderCategories() {
+      const grid = document.getElementById('categoriesGrid');
+      grid.innerHTML = categories.map(cat => `
+        <a href="products.html?category=${cat.slug}" class="category-card">
+          <div class="cat-icon">${cat.icon}</div>
+          <div class="cat-name">${cat.name}</div>
+        </a>
+      `).join('');
+    }
+
+    function renderPopularProducts() {
+      const grid = document.getElementById('popularProducts');
+      const popular = products.slice(0, 12);
+      grid.innerHTML = popular.map(p => createProductCard(p)).join('');
+    }
+
+    // ============================================
+    // FESTIVE FALLING ANIMATION
+    // ============================================
+    function startFestiveAnimation() {
+      const festival = localStorage.getItem('4astore_festival') || '';
+      if (!festival) return;
+
+      const emojiMap = {
+        'diwali': ['🪔', '✨', '🎆', '🎇', '💫'],
+        'navratri': ['🕉️', '🔱', '🙏', '🌺', '✨'],
+        'rakhi': ['🪢', '🎁', '💝', '🌸', '✨'],
+        'holi': ['🎨', '💜', '💚', '💛', '❤️'],
+        'christmas': ['🎄', '⭐', '❄️', '🎅', '🎁'],
+        'eid': ['☪️', '🌙', '⭐', '✨', '🕌'],
+        'ipl': ['🏏', '🏆', '⚡', '🎯', '🔥'],
+        'independence': ['🇮🇳', '🦚', '⭐', '🪷', '✨']
+      };
+      const emojis = emojiMap[festival] || ['✨', '🎉', '⭐'];
+
+      // Drop particles periodically
+      let count = 0;
+      const interval = setInterval(() => {
+        const particle = document.createElement('div');
+        particle.className = 'festive-particle';
+        particle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        particle.style.left = Math.random() * 100 + 'vw';
+        particle.style.animationDuration = (4 + Math.random() * 4) + 's';
+        document.body.appendChild(particle);
+        setTimeout(() => particle.remove(), 8000);
+        count++;
+        // Stop after 20 particles to not overwhelm
+        if (count > 20) clearInterval(interval);
+      }, 1500);
+    }
+  </script>
+</body>
+</html>

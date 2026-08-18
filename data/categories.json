@@ -1,0 +1,14 @@
+[
+  { "id": 1, "name": "Fruits & Vegetables", "slug": "fruits-vegetables", "icon": "🥬", "image": "https://cdn-icons-png.flaticon.com/512/2329/2329865.png" },
+  { "id": 2, "name": "Rice, Atta & Dal", "slug": "rice-atta-dal", "icon": "🌾", "image": "https://cdn-icons-png.flaticon.com/512/3174/3174880.png" },
+  { "id": 3, "name": "Oil & Ghee", "slug": "oil-ghee", "icon": "🫒", "image": "https://cdn-icons-png.flaticon.com/512/5787/5787016.png" },
+  { "id": 4, "name": "Biscuits & Snacks", "slug": "biscuits-snacks", "icon": "🍪", "image": "https://cdn-icons-png.flaticon.com/512/2454/2454253.png" },
+  { "id": 5, "name": "Tea & Coffee", "slug": "tea-coffee", "icon": "☕", "image": "https://cdn-icons-png.flaticon.com/512/924/924514.png" },
+  { "id": 6, "name": "Cold Drinks & Beverages", "slug": "cold-drinks-beverages", "icon": "🥤", "image": "https://cdn-icons-png.flaticon.com/512/3050/3050153.png" },
+  { "id": 7, "name": "Dairy & Bakery", "slug": "dairy-bakery", "icon": "🥛", "image": "https://cdn-icons-png.flaticon.com/512/3500/3500170.png" },
+  { "id": 8, "name": "Personal Care", "slug": "personal-care", "icon": "🧴", "image": "https://cdn-icons-png.flaticon.com/512/2553/2553691.png" },
+  { "id": 9, "name": "Home Cleaning", "slug": "home-cleaning", "icon": "🧹", "image": "https://cdn-icons-png.flaticon.com/512/995/995016.png" },
+  { "id": 10, "name": "Baby Care", "slug": "baby-care", "icon": "👶", "image": "https://cdn-icons-png.flaticon.com/512/3373/3373060.png" },
+  { "id": 11, "name": "Stationery", "slug": "stationery", "icon": "📝", "image": "https://cdn-icons-png.flaticon.com/512/2541/2541988.png" },
+  { "id": 12, "name": "Daily Essentials", "slug": "daily-essentials", "icon": "🛒", "image": "https://cdn-icons-png.flaticon.com/512/3724/3724788.png" }
+]

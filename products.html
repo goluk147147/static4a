@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products - 4astore</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    /* Page wrapper with side ads */
+    .page-outer { display:grid; grid-template-columns:1fr; max-width:1600px; margin:0 auto; padding:0 10px; }
+    .page-outer.has-ads { grid-template-columns:160px minmax(0, 1fr) 160px; gap:12px; }
+    .page-outer .side-ad { position:relative; }
+    .side-ad-inner { position:sticky; top:70px; height:calc(100vh - 90px); border-radius:14px; padding:20px 12px; text-align:center; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; text-decoration:none; transition:all .3s ease; }
+    .side-ad-inner:hover { transform:scale(1.02); box-shadow:0 6px 24px rgba(0,0,0,0.2); }
+    .side-ad-inner .ad-emoji { font-size:2.5rem; }
+    .side-ad-inner h4 { font-size:13px; line-height:1.3; }
+    .side-ad-inner p { font-size:10px; opacity:0.9; }
+    .side-ad-inner .ad-btn { padding:6px 14px; background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.5); border-radius:16px; font-size:10px; font-weight:700; margin-top:6px; }
+
+    /* Festival Header */
+    .fest-header { text-align:center; padding:16px 20px; color:white; position:relative; overflow:hidden; }
+    .fest-header h1 { font-size:1.3rem; text-shadow:0 2px 6px rgba(0,0,0,0.2); }
+    .fest-header p { font-size:12px; opacity:0.9; }
+    .fest-header .deco { position:absolute; font-size:1.1rem; animation:float 3s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+    /* Top Filter Bar */
+    .filter-bar { background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); padding:14px 16px; margin-bottom:16px; }
+    .filter-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .filter-row label { font-size:13px; font-weight:600; color:#555; white-space:nowrap; }
+    .filter-row select { padding:7px 12px; border:1.5px solid #e0e0e0; border-radius:8px; font-size:13px; background:white; cursor:pointer; }
+    .filter-row select:focus { border-color:var(--primary); outline:none; }
+
+    /* Category Pills with Arrow Buttons */
+    .cat-pills-wrapper { display:flex; align-items:center; gap:6px; }
+    .cat-pills-wrapper .arrow-btn { flex-shrink:0; width:28px; height:28px; min-width:28px; border-radius:50%; background:var(--primary); color:white; border:none; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
+    .cat-pills-wrapper .arrow-btn:hover { background:var(--primary-dark); }
+    .cat-pills { display:flex; gap:8px; overflow-x:auto; padding:4px 2px; -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-behavior:smooth; flex:1; min-width:0; }
+    .cat-pills::-webkit-scrollbar { display:none; }
+    .cat-pill { padding:8px 14px; border-radius:20px; font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; border:1.5px solid #e0e0e0; background:white; color:#555; transition:all .2s ease; user-select:none; }
+    .cat-pill:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-light); }
+    .cat-pill.active { background:var(--primary); color:white; border-color:var(--primary); }
+
+    /* Mid Banner */
+    .mid-banner { grid-column:1/-1; border-radius:12px; padding:18px 24px; color:white; cursor:pointer; margin:10px 0; display:flex; align-items:center; justify-content:center; gap:14px; text-decoration:none; transition:all .3s ease; text-align:center; }
+    .mid-banner:hover { transform:scale(1.01); box-shadow:0 4px 16px rgba(0,0,0,0.15); }
+    .mid-banner h3 { font-size:16px; font-weight:700; }
+    .mid-banner p { font-size:12px; opacity:0.9; margin-top:2px; }
+
+    /* Particles */
+    .festive-particle { position:fixed; pointer-events:none; z-index:800; animation:festfall linear forwards; font-size:1rem; }
+    @keyframes festfall { 0%{transform:translateY(-20px) rotate(0);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
+
+    /* Products grid fix for this page */
+    .prod-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:16px; }
+    .prod-grid .mid-banner { grid-column:1/-1; }
+
+    @media(max-width:992px) {
+      .page-outer.has-ads { grid-template-columns:1fr; }
+      .page-outer .side-ad { display:none; }
+      .prod-grid { grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:10px; }
+    }
+    @media(max-width:480px) {
+      .prod-grid { grid-template-columns:repeat(2, 1fr); gap:8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar"><div class="location-text">📍 Delivering in Chandargarh – 824301 | ☎️ 8210874123</div></div>
+
+  <header class="main-header">
+    <div class="header-content">
+      <a href="index.html" class="logo">4a<span>store</span></a>
+      <form class="search-box" onsubmit="doSearch(event)">
+        <input type="text" placeholder="Search groceries, fruits, snacks..." id="searchInput">
+        <button type="submit">🔍</button>
+      </form>
+      <div class="header-actions">
+        <div class="login-btn-area"></div>
+        <a href="order-history.html">📋 <span class="action-text">Orders</span></a>
+        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span><span class="badge cart-count" style="display:none">0</span></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Festival Header -->
+  <div id="festHeader"></div>
+
+  <!-- Page: Side Ads + Center Content -->
+  <div class="page-outer" id="pageOuter">
+    <div class="side-ad" id="leftAd"></div>
+
+    <div style="padding:16px 4px; min-width:0; overflow:hidden;">
+      <!-- Filter Bar (top card) -->
+      <div class="filter-bar">
+        <div class="cat-pills-wrapper">
+          <button class="arrow-btn" onclick="scrollPills(-200)">‹</button>
+          <div class="cat-pills" id="catPills"></div>
+          <button class="arrow-btn" onclick="scrollPills(200)">›</button>
+        </div>
+        <div class="filter-row" style="margin-top:10px;">
+          <label>Sort:</label>
+          <select id="sortFilter" onchange="applyFilters()">
+            <option value="">Default</option>
+            <option value="price-low">Price Low→High</option>
+            <option value="price-high">Price High→Low</option>
+            <option value="discount">Best Discount</option>
+            <option value="name">Name A→Z</option>
+          </select>
+          <label>Brand:</label>
+          <select id="brandFilter" onchange="applyFilters()">
+            <option value="">All Brands</option>
+          </select>
+          <label style="margin-left:auto;"><input type="checkbox" id="inStockFilter" onchange="applyFilters()" checked style="accent-color:var(--primary);"> In Stock</label>
+        </div>
+      </div>
+
+      <!-- Results count -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px;">
+        <span id="resultsCount" style="font-size:13px;color:var(--gray);">Loading...</span>
+        <span id="activeFilter" style="font-size:12px;color:var(--primary);font-weight:600;cursor:pointer;" onclick="resetFilters()"></span>
+      </div>
+
+      <!-- Product Grid -->
+      <div class="prod-grid" id="productsGrid"><div class="loading-spinner"></div></div>
+    </div>
+
+    <div class="side-ad" id="rightAd"></div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-col"><h4>About 4astore</h4><p>Local grocery store, Chandargarh.</p></div>
+      <div class="footer-col"><h4>Store</h4><p>Gajana Road, Chandargarh, Bihar–824301</p><p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p></div>
+      <div class="footer-col"><h4>Links</h4><a href="index.html">Home</a><a href="products.html">Products</a><a href="cart.html">Cart</a><a href="order-history.html">Orders</a></div>
+      <div class="footer-col"><h4>Payment</h4><p>UPI: <strong>goluk147147@ybl</strong></p><span class="delivery-info-badge">📍 824301</span></div>
+    </div>
+    <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
+  </footer>
+
+  <nav class="bottom-nav">
+    <div class="nav-items">
+      <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+      <a href="products.html" class="nav-item active"><span class="nav-icon">📂</span>Categories</a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="order-history.html" class="nav-item"><span class="nav-icon">📦</span>Orders</a>
+      <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
+    </div>
+  </nav>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    let siteConfig = null;
+    let currentSearch = '';
+    let currentCategory = '';
+    let midBannerHTML = '';
+
+    window.addEventListener('dataLoaded', async () => {
+      try { siteConfig = await (await fetch('data/config.json')).json(); } catch(e) { siteConfig = {festivalAds:{}}; }
+
+      const params = new URLSearchParams(window.location.search);
+      currentSearch = params.get('search') || '';
+      currentCategory = params.get('category') || '';
+      const festival = params.get('festival') || localStorage.getItem('4astore_festival') || '';
+
+      if (currentSearch) document.getElementById('searchInput').value = currentSearch;
+
+      setupFestival(festival);
+      setupFilters();
+      applyFilters();
+    });
+
+    // ==========================================
+    // FESTIVAL SETUP
+    // ==========================================
+    function setupFestival(festival) {
+      if (!festival || !siteConfig.festivalAds || !siteConfig.festivalAds[festival]) return;
+
+      const ads = siteConfig.festivalAds[festival];
+      const infoMap = {
+        'rakhi':{name:'🪢 Raksha Bandhan Special',colors:['#d81b60','#f06292'],emojis:['🪢','🎁','💝','🌸']},
+        'diwali':{name:'🪔 Diwali Dhamaka',colors:['#ff6f00','#ffd54f'],emojis:['🪔','✨','🎆','💫']},
+        'navratri':{name:'🕉️ Navratri Special',colors:['#ff6600','#ff8f00'],emojis:['🕉️','🔱','🙏']},
+        'holi':{name:'🎨 Holi Dhamaka',colors:['#6a1b9a','#ab47bc'],emojis:['🎨','💜','💚','❤️']},
+        'christmas':{name:'🎄 Christmas & New Year',colors:['#c62828','#ef5350'],emojis:['🎄','⭐','❄️']},
+        'eid':{name:'☪️ Eid Special',colors:['#1b5e20','#4caf50'],emojis:['☪️','🌙','⭐']},
+        'ipl':{name:'🏏 IPL Snack Fest',colors:['#1565c0','#42a5f5'],emojis:['🏏','🏆','⚡']},
+        'independence':{name:'🇮🇳 Independence Day',colors:['#e65100','#ff6600'],emojis:['🇮🇳','🦚','⭐']},
+        'chhath':{name:'🛕 Chhath Puja',colors:['#e65100','#ffb300'],emojis:['🛕','🌅','🙏']}
+      };
+      const info = infoMap[festival] || {name:'🎉 Festival',colors:['#ff6600','#ff9800'],emojis:['✨']};
+
+      // 3-column layout
+      document.getElementById('pageOuter').classList.add('has-ads');
+
+      // Header
+      document.getElementById('festHeader').innerHTML = `
+        <div class="fest-header" style="background:linear-gradient(135deg,${info.colors[0]},${info.colors[1]});">
+          <span class="deco" style="top:5px;left:5%;">${info.emojis[0]}</span>
+          <span class="deco" style="top:5px;right:7%;animation-delay:.4s;">${info.emojis[1]}</span>
+          <span class="deco" style="bottom:5px;left:12%;animation-delay:.8s;">${info.emojis[2%info.emojis.length]}</span>
+          <span class="deco" style="bottom:5px;right:5%;animation-delay:1.2s;">${info.emojis[0]}</span>
+          <h1>${info.name}</h1>
+          <p>Shop festive deals at 4astore, Chandargarh!</p>
+        </div>`;
+
+      // Left Ad
+      if (ads.leftAd) {
+        const la = ads.leftAd;
+        document.getElementById('leftAd').innerHTML = `<a href="${la.link}" class="side-ad-inner" style="background:linear-gradient(180deg,${la.bgGradient[0]},${la.bgGradient[1]});"><span class="ad-emoji">${la.emoji}</span><h4>${la.title}</h4><p>${la.text}</p><span class="ad-btn">Shop →</span></a>`;
+      }
+      // Right Ad
+      if (ads.rightAd) {
+        const ra = ads.rightAd;
+        document.getElementById('rightAd').innerHTML = `<a href="${ra.link}" class="side-ad-inner" style="background:linear-gradient(180deg,${ra.bgGradient[0]},${ra.bgGradient[1]});"><span class="ad-emoji">${ra.emoji}</span><h4>${ra.title}</h4><p>${ra.text}</p><span class="ad-btn">Offers →</span></a>`;
+      }
+      // Mid Banner
+      if (ads.midBanner) {
+        const mb = ads.midBanner;
+        midBannerHTML = `<a href="${mb.link}" class="mid-banner" style="grid-column:1/-1; background:linear-gradient(90deg,${mb.bgGradient[0]},${mb.bgGradient[1]});"><span style="font-size:1.8rem;">${mb.emoji}</span><div style="text-align:center; flex:1;"><h3>${mb.title}</h3><p>${mb.text}</p></div><span style="font-size:1.8rem;">${mb.emoji}</span></a>`;
+      }
+      // Particles
+      let c=0; const em=info.emojis;
+      const iv=setInterval(()=>{const el=document.createElement('div');el.className='festive-particle';el.textContent=em[Math.floor(Math.random()*em.length)];el.style.left=Math.random()*100+'vw';el.style.animationDuration=(4+Math.random()*4)+'s';document.body.appendChild(el);setTimeout(()=>el.remove(),8000);if(++c>10)clearInterval(iv);},3000);
+    }
+
+    // ==========================================
+    // FILTERS
+    // ==========================================
+    function setupFilters() {
+      // Category pills
+      const pillsDiv = document.getElementById('catPills');
+      let pillsHTML = `<span class="cat-pill ${!currentCategory?'active':''}" onclick="selectCategory('')">🛒 All</span>`;
+      categories.forEach(c => {
+        pillsHTML += `<span class="cat-pill ${currentCategory===c.slug?'active':''}" onclick="selectCategory('${c.slug}')">${c.icon} ${c.name}</span>`;
+      });
+      pillsDiv.innerHTML = pillsHTML;
+
+      // Brand dropdown
+      const brands = [...new Set(products.map(p => p.brand))].sort();
+      const brandSelect = document.getElementById('brandFilter');
+      brandSelect.innerHTML = `<option value="">All Brands</option>` + brands.map(b => `<option value="${b}">${b}</option>`).join('');
+    }
+
+    function selectCategory(slug) {
+      currentCategory = slug;
+      // Update pill active state
+      document.querySelectorAll('.cat-pill').forEach(pill => pill.classList.remove('active'));
+      event.target.classList.add('active');
+      applyFilters();
+    }
+
+    function resetFilters() {
+      currentCategory = '';
+      currentSearch = '';
+      document.getElementById('searchInput').value = '';
+      document.getElementById('sortFilter').value = '';
+      document.getElementById('brandFilter').value = '';
+      document.querySelectorAll('.cat-pill').forEach((p,i) => p.classList.toggle('active', i===0));
+      applyFilters();
+    }
+
+    function doSearch(e) {
+      e.preventDefault();
+      currentSearch = document.getElementById('searchInput').value.trim();
+      applyFilters();
+    }
+
+    function scrollPills(amount) {
+      const pills = document.getElementById('catPills');
+      pills.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+
+    // Touch drag support for pills
+    (function() {
+      let isDown = false, startX, scrollLeft;
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          const el = document.getElementById('catPills');
+          if (!el) return;
+          el.addEventListener('mousedown', e => { isDown=true; startX=e.pageX-el.offsetLeft; scrollLeft=el.scrollLeft; el.style.cursor='grabbing'; });
+          el.addEventListener('mouseleave', () => { isDown=false; el.style.cursor='grab'; });
+          el.addEventListener('mouseup', () => { isDown=false; el.style.cursor='grab'; });
+          el.addEventListener('mousemove', e => { if(!isDown) return; e.preventDefault(); const x=e.pageX-el.offsetLeft; el.scrollLeft=scrollLeft-(x-startX); });
+        }, 500);
+      });
+    })();
+
+    // ==========================================
+    // APPLY FILTERS
+    // ==========================================
+    function applyFilters() {
+      let result = [...products];
+
+      // Search
+      if (currentSearch) {
+        const q = currentSearch.toLowerCase();
+        result = result.filter(p =>
+          p.name.toLowerCase().includes(q) ||
+          p.brand.toLowerCase().includes(q) ||
+          p.category.replace(/-/g,' ').includes(q) ||
+          p.description.toLowerCase().includes(q)
+        );
+      }
+
+      // Category
+      if (currentCategory) {
+        result = result.filter(p => p.category === currentCategory);
+      }
+
+      // Brand
+      const brand = document.getElementById('brandFilter').value;
+      if (brand) result = result.filter(p => p.brand === brand);
+
+      // Stock
+      if (document.getElementById('inStockFilter').checked) {
+        result = result.filter(p => p.inStock);
+      }
+
+      // Sort
+      const sort = document.getElementById('sortFilter').value;
+      if (sort === 'price-low') result.sort((a,b) => a.price - b.price);
+      else if (sort === 'price-high') result.sort((a,b) => b.price - a.price);
+      else if (sort === 'discount') result.sort((a,b) => b.discount - a.discount);
+      else if (sort === 'name') result.sort((a,b) => a.name.localeCompare(b.name));
+
+      // Render
+      const grid = document.getElementById('productsGrid');
+      const countEl = document.getElementById('resultsCount');
+      const activeEl = document.getElementById('activeFilter');
+
+      if (result.length === 0) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:50px 20px;"><div style="font-size:3rem;margin-bottom:12px;">🔍</div><h3>No products found</h3><p style="color:var(--gray);">Try different filter</p></div>`;
+      } else {
+        let html = '';
+        result.forEach((p, i) => {
+          html += createProductCard(p);
+          if (i === 7 && midBannerHTML) html += midBannerHTML;
+        });
+        grid.innerHTML = html;
+      }
+
+      countEl.textContent = `Showing ${result.length} product${result.length!==1?'s':''}`;
+      activeEl.textContent = (currentCategory || currentSearch || brand) ? '✕ Reset Filters' : '';
+    }
+  </script>
+</body>
+</html>

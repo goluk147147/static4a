@@ -1,0 +1,49 @@
+[
+  {
+    "orderId": "4A100001",
+    "customer": {
+      "name": "Akash Kumar",
+      "mobile": "9876543210",
+      "email": "akash@example.com",
+      "address": "Near Hanuman Mandir, Chandargarh, Nabinagar",
+      "landmark": "Opposite Panchayat Bhawan",
+      "city": "Chandargarh",
+      "pincode": "824301"
+    },
+    "items": [
+      { "id": 1, "name": "Aashirvaad Atta", "weight": "5 Kg", "price": 255, "quantity": 1 },
+      { "id": 3, "name": "Fortune Mustard Oil", "weight": "1 Litre", "price": 165, "quantity": 2 },
+      { "id": 5, "name": "Tata Salt", "weight": "1 Kg", "price": 25, "quantity": 2 }
+    ],
+    "subtotal": 635,
+    "discount": 35,
+    "deliveryCharge": 30,
+    "totalAmount": 630,
+    "paymentMethod": "COD",
+    "orderStatus": "Delivered",
+    "orderDate": "2026-08-10T10:30:00"
+  },
+  {
+    "orderId": "4A100002",
+    "customer": {
+      "name": "Priya Devi",
+      "mobile": "8765432109",
+      "email": "priya@example.com",
+      "address": "Main Road, Chandargarh",
+      "landmark": "Near SBI ATM",
+      "city": "Chandargarh",
+      "pincode": "824301"
+    },
+    "items": [
+      { "id": 6, "name": "Tata Tea Gold", "weight": "500 g", "price": 270, "quantity": 1 },
+      { "id": 26, "name": "Amul Taaza Milk", "weight": "500 ml", "price": 28, "quantity": 4 }
+    ],
+    "subtotal": 382,
+    "discount": 20,
+    "deliveryCharge": 30,
+    "totalAmount": 392,
+    "paymentMethod": "UPI",
+    "orderStatus": "Out for Delivery",
+    "orderDate": "2026-08-17T14:15:00"
+  }
+]

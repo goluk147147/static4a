@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile - 4astore</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .profile-container { max-width:500px; margin:30px auto; padding:0 20px; }
+    .profile-card { background:white; border-radius:16px; box-shadow:var(--shadow-lg); overflow:hidden; }
+    .profile-header { background:linear-gradient(135deg, var(--primary), var(--secondary)); padding:30px 24px; text-align:center; color:white; }
+    .profile-header .avatar { width:80px; height:80px; background:rgba(255,255,255,0.2); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.5rem; margin:0 auto 12px; border:3px solid rgba(255,255,255,0.5); }
+    .profile-header h2 { font-size:1.3rem; margin-bottom:4px; }
+    .profile-header p { font-size:13px; opacity:0.9; }
+    .profile-body { padding:24px; }
+    .profile-info { margin-bottom:20px; }
+    .profile-info .info-row { display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); font-size:14px; }
+    .profile-info .info-row .label { color:var(--gray); }
+    .profile-info .info-row .value { font-weight:600; color:#333; }
+    .profile-actions { display:flex; flex-direction:column; gap:10px; }
+    .profile-actions a, .profile-actions button { display:flex; align-items:center; gap:10px; padding:14px 18px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; transition:var(--transition); text-decoration:none; border:none; width:100%; text-align:left; }
+    .profile-actions .action-orders { background:var(--primary-light); color:var(--primary-dark); }
+    .profile-actions .action-orders:hover { background:var(--primary); color:white; }
+    .profile-actions .action-cart { background:#e3f2fd; color:#1565c0; }
+    .profile-actions .action-cart:hover { background:#1565c0; color:white; }
+    .profile-actions .action-address { background:#f3e5f5; color:#6a1b9a; }
+    .profile-actions .action-address:hover { background:#6a1b9a; color:white; }
+    .profile-actions .action-logout { background:#ffebee; color:#c62828; }
+    .profile-actions .action-logout:hover { background:#c62828; color:white; }
+    .profile-stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:20px; }
+    .profile-stats .stat { text-align:center; padding:12px; background:var(--light-gray); border-radius:10px; }
+    .profile-stats .stat .num { font-size:1.3rem; font-weight:800; color:var(--primary-dark); }
+    .profile-stats .stat .lbl { font-size:11px; color:var(--gray); margin-top:2px; }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <div class="location-text">📍 Delivering in Chandargarh – 824301 | ☎️ 8210874123</div>
+  </div>
+
+  <header class="main-header">
+    <div class="header-content">
+      <a href="index.html" class="logo">4a<span>store</span></a>
+      <form class="search-box" onsubmit="handleSearch(event)">
+        <input type="text" placeholder="Search for groceries..." id="searchInput">
+        <button type="submit">🔍</button>
+      </form>
+      <div class="header-actions">
+        <div class="login-btn-area"></div>
+        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span>
+          <span class="badge cart-count" style="display:none">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="profile-container">
+    <div class="profile-card" id="profileCard">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-col"><h4>About 4astore</h4><p>Your local online grocery store serving Chandargarh and nearby areas.</p></div>
+      <div class="footer-col"><h4>Contact</h4><p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p></div>
+    </div>
+    <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
+  </footer>
+
+  <nav class="bottom-nav">
+    <div class="nav-items">
+      <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+      <a href="products.html" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="profile.html" class="nav-item active"><span class="nav-icon">👤</span>Profile</a>
+    </div>
+  </nav>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const user = getLoggedInUser();
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      renderProfile(user);
+    });
+
+    function renderProfile(user) {
+      const orders = getOrders();
+      const userOrders = orders.filter(o => o.customer.mobile === user.mobile);
+      const totalSpent = userOrders.reduce((s, o) => s + o.totalAmount, 0);
+      const cartCount = getCartCount();
+
+      document.getElementById('profileCard').innerHTML = `
+        <div class="profile-header">
+          <div class="avatar">👤</div>
+          <h2>${user.name}</h2>
+          <p>@${user.username || user.mobile}</p>
+        </div>
+        <div class="profile-body">
+          <!-- Stats -->
+          <div class="profile-stats">
+            <div class="stat">
+              <div class="num">${userOrders.length}</div>
+              <div class="lbl">Orders</div>
+            </div>
+            <div class="stat">
+              <div class="num">₹${totalSpent}</div>
+              <div class="lbl">Total Spent</div>
+            </div>
+            <div class="stat">
+              <div class="num">${cartCount}</div>
+              <div class="lbl">In Cart</div>
+            </div>
+          </div>
+
+          <!-- Info -->
+          <div class="profile-info">
+            <div class="info-row">
+              <span class="label">👤 Name</span>
+              <span class="value">${user.name}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">📱 Mobile</span>
+              <span class="value">${user.mobile}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">🆔 Username</span>
+              <span class="value">${user.username || '-'}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">📅 Member Since</span>
+              <span class="value">${user.loggedInAt ? new Date(user.loggedInAt).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : '-'}</span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="profile-actions">
+            <a href="order-history.html" class="action-orders">📦 My Orders <span style="margin-left:auto; font-size:12px;">${userOrders.length} orders →</span></a>
+            <a href="cart.html" class="action-cart">🛒 My Cart <span style="margin-left:auto; font-size:12px;">${cartCount} items →</span></a>
+            <a href="checkout.html" class="action-address">🏠 Delivery Address</a>
+            <button class="action-logout" onclick="handleLogout()">🚪 Logout</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function handleLogout() {
+      if (confirm('Are you sure you want to logout?')) {
+        logoutUser();
+      }
+    }
+  </script>
+</body>
+</html>
