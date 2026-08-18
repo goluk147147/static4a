@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - 4astore</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .admin-container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .admin-header h1 { color: var(--primary-dark); font-size: 1.5rem; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 30px; }
+    .stat-card { background: white; border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); text-align: center; border-top: 4px solid var(--primary); }
+    .stat-card .stat-icon { font-size: 2rem; margin-bottom: 8px; }
+    .stat-card .stat-value { font-size: 1.8rem; font-weight: 800; color: var(--primary-dark); }
+    .stat-card .stat-label { font-size: 13px; color: var(--gray); margin-top: 4px; }
+    .admin-tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+    .admin-tabs button { padding: 10px 20px; border: none; background: white; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--gray); transition: var(--transition); }
+    .admin-tabs button.active { background: var(--primary); color: white; }
+    .admin-tabs button:hover:not(.active) { background: var(--primary-light); }
+    .tab-content { background: white; border-radius: 0 12px 12px 12px; box-shadow: var(--shadow); padding: 20px; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .admin-table th { background: var(--primary-light); color: var(--primary-dark); padding: 12px 10px; text-align: left; font-weight: 700; white-space: nowrap; }
+    .admin-table td { padding: 10px; border-bottom: 1px solid var(--border); }
+    .admin-table tr:hover { background: #fffaf5; }
+    .status-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .admin-login { max-width: 400px; margin: 80px auto; text-align: center; }
+    .admin-login .checkout-form { padding: 40px 30px; }
+    .logout-btn { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .order-detail-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .order-detail-modal .modal-body { background: white; border-radius: 16px; padding: 24px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; }
+    @media (max-width: 768px) {
+      .admin-table { font-size: 11px; }
+      .admin-table th, .admin-table td { padding: 8px 6px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="location-text">🔒 Admin Panel - 4astore</div>
+  </div>
+
+  <!-- Header -->
+  <header class="main-header">
+    <div class="header-content">
+      <a href="index.html" class="logo">4a<span>store</span></a>
+      <div style="flex:1"></div>
+      <div class="header-actions">
+        <a href="index.html">🏠 <span class="action-text">Store</span></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Admin Login -->
+  <div id="adminLogin" class="admin-login">
+    <div class="checkout-form">
+      <div style="font-size:3rem; margin-bottom:12px;">🔐</div>
+      <h2 style="color:var(--primary); margin-bottom:16px;">Admin Login</h2>
+      <div class="form-group">
+        <label>Admin Password</label>
+        <input type="password" id="adminPass" placeholder="Enter admin password">
+        <div class="error-msg">Incorrect password</div>
+      </div>
+      <button class="btn-checkout" onclick="adminLogin()">🔓 Login</button>
+      <p style="margin-top:12px; font-size:11px; color:var(--gray);">Default: 4astore@admin</p>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard (hidden until login) -->
+  <div id="adminDashboard" class="admin-container hidden">
+    <div class="admin-header">
+      <h1>📊 4astore Admin Panel</h1>
+      <button class="logout-btn" onclick="adminLogout()">🚪 Logout</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div class="stat-value" id="statTotalOrders">0</div>
+        <div class="stat-label">Total Orders</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-value" id="statTodayEarning">₹0</div>
+        <div class="stat-label">Today's Earning</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📅</div>
+        <div class="stat-value" id="statMonthEarning">₹0</div>
+        <div class="stat-label">This Month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value" id="statTotalUsers">0</div>
+        <div class="stat-label">Registered Users</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="admin-tabs">
+      <button class="active" onclick="showTab('orders')">📦 Orders</button>
+      <button onclick="showTab('users')">👥 Users</button>
+      <button onclick="showTab('earnings')">💰 Earnings</button>
+      <button onclick="showTab('settings')">⚙️ Settings</button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="tabContent">
+      <!-- Dynamic content -->
+    </div>
+  </div>
+
+  <!-- Order Detail Modal -->
+  <div id="orderDetailModal" class="order-detail-modal hidden" onclick="if(event.target===this)closeOrderDetail()">
+    <div class="modal-body" id="orderDetailBody"></div>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    const ADMIN_KEY = '4astore_admin_logged';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (sessionStorage.getItem(ADMIN_KEY) === 'true') {
+        showDashboard();
+      }
+    });
+
+    document.getElementById('adminPass').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') adminLogin();
+    });
+
+    function adminLogin() {
+      const pass = document.getElementById('adminPass').value;
+      if (pass === STORE_CONFIG.adminPassword) {
+        sessionStorage.setItem(ADMIN_KEY, 'true');
+        showDashboard();
+      } else {
+        document.getElementById('adminPass').parentElement.classList.add('error');
+        showToast('Incorrect password', 'error');
+      }
+    }
+
+    function adminLogout() {
+      sessionStorage.removeItem(ADMIN_KEY);
+      document.getElementById('adminDashboard').classList.add('hidden');
+      document.getElementById('adminLogin').style.display = 'block';
+      document.getElementById('adminPass').value = '';
+    }
+
+    function showDashboard() {
+      document.getElementById('adminLogin').style.display = 'none';
+      document.getElementById('adminDashboard').classList.remove('hidden');
+      loadStats();
+      showTab('orders');
+    }
+
+    function loadStats() {
+      const orders = getOrders();
+      const users = JSON.parse(localStorage.getItem('4astore_users')) || [];
+      const today = new Date().toDateString();
+      const thisMonth = new Date().getMonth();
+      const thisYear = new Date().getFullYear();
+
+      const todayOrders = orders.filter(o => new Date(o.orderDate).toDateString() === today);
+      const monthOrders = orders.filter(o => {
+        const d = new Date(o.orderDate);
+        return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+      });
+
+      const todayEarning = todayOrders.reduce((s, o) => s + o.totalAmount, 0);
+      const monthEarning = monthOrders.reduce((s, o) => s + o.totalAmount, 0);
+
+      document.getElementById('statTotalOrders').textContent = orders.length;
+      document.getElementById('statTodayEarning').textContent = '₹' + todayEarning;
+      document.getElementById('statMonthEarning').textContent = '₹' + monthEarning;
+      document.getElementById('statTotalUsers').textContent = users.length;
+    }
+
+    function showTab(tab) {
+      document.querySelectorAll('.admin-tabs button').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      if (tab === 'orders') renderOrdersTab();
+      else if (tab === 'users') renderUsersTab();
+      else if (tab === 'earnings') renderEarningsTab();
+      else if (tab === 'settings') renderSettingsTab();
+    }
+
+    function renderOrdersTab() {
+      const orders = getOrders();
+      if (orders.length === 0) {
+        document.getElementById('tabContent').innerHTML = '<p style="text-align:center;padding:40px;color:var(--gray);">No orders yet</p>';
+        return;
+      }
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Mobile</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orders.map(o => `
+                <tr>
+                  <td><strong>#${o.orderId}</strong></td>
+                  <td>${formatDate(o.orderDate)}</td>
+                  <td>${o.customer.name}</td>
+                  <td><a href="tel:${o.customer.mobile}">${o.customer.mobile}</a></td>
+                  <td>${o.items.length} items</td>
+                  <td><strong>₹${o.totalAmount}</strong></td>
+                  <td>
+                    <select class="status-select" onchange="changeStatus('${o.orderId}', this.value)">
+                      <option value="Order Placed" ${o.orderStatus==='Order Placed'?'selected':''}>📋 Order Placed</option>
+                      <option value="Confirmed" ${o.orderStatus==='Confirmed'?'selected':''}>✅ Confirmed</option>
+                      <option value="Processing" ${o.orderStatus==='Processing'?'selected':''}>⚙️ Processing</option>
+                      <option value="Out for Delivery" ${o.orderStatus==='Out for Delivery'?'selected':''}>🚴 Out for Delivery</option>
+                      <option value="Delivered" ${o.orderStatus==='Delivered'?'selected':''}>✅ Delivered</option>
+                    </select>
+                  </td>
+                  <td><button onclick="viewOrder('${o.orderId}')" style="padding:6px 12px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">👁️ View</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    function renderUsersTab() {
+      const users = JSON.parse(localStorage.getItem('4astore_users')) || [];
+      if (users.length === 0) {
+        document.getElementById('tabContent').innerHTML = '<p style="text-align:center;padding:40px;color:var(--gray);">No registered users</p>';
+        return;
+      }
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Mobile</th>
+                <th>Password</th>
+                <th>Registered</th>
+                <th>Orders</th>
+                <th>Spent</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${users.map((u, i) => {
+                const orders = getOrders().filter(o => o.customer.mobile === u.mobile);
+                const totalSpent = orders.reduce((s, o) => s + o.totalAmount, 0);
+                return `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td><strong>${u.name}</strong></td>
+                  <td>${u.username || '-'}</td>
+                  <td><a href="tel:${u.mobile}">${u.mobile}</a></td>
+                  <td style="font-family:monospace; font-size:11px;">${u.password || '-'}</td>
+                  <td>${u.registeredAt ? formatDate(u.registeredAt) : '-'}</td>
+                  <td>${orders.length}</td>
+                  <td><strong>₹${totalSpent}</strong></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    function renderEarningsTab() {
+      const orders = getOrders();
+      const today = new Date();
+      
+      // Group by date
+      const dailyMap = {};
+      orders.forEach(o => {
+        const dateKey = new Date(o.orderDate).toLocaleDateString('en-IN');
+        if (!dailyMap[dateKey]) dailyMap[dateKey] = { count: 0, total: 0 };
+        dailyMap[dateKey].count++;
+        dailyMap[dateKey].total += o.totalAmount;
+      });
+
+      const dailyEntries = Object.entries(dailyMap).slice(0, 30); // Last 30 days max
+      
+      // Monthly totals
+      const monthlyMap = {};
+      orders.forEach(o => {
+        const d = new Date(o.orderDate);
+        const key = d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+        if (!monthlyMap[key]) monthlyMap[key] = { count: 0, total: 0 };
+        monthlyMap[key].count++;
+        monthlyMap[key].total += o.totalAmount;
+      });
+
+      const totalEarning = orders.reduce((s, o) => s + o.totalAmount, 0);
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="margin-bottom:20px; padding:16px; background:var(--primary-light); border-radius:12px; text-align:center;">
+          <p style="font-size:14px; color:var(--gray);">Total All-Time Earning</p>
+          <p style="font-size:2rem; font-weight:800; color:var(--primary-dark);">₹${totalEarning}</p>
+        </div>
+        
+        <h4 style="margin-bottom:12px;">📅 Monthly Earnings</h4>
+        <div style="overflow-x:auto; margin-bottom:24px;">
+          <table class="admin-table">
+            <thead><tr><th>Month</th><th>Orders</th><th>Earning</th></tr></thead>
+            <tbody>
+              ${Object.entries(monthlyMap).map(([month, data]) => `
+                <tr><td>${month}</td><td>${data.count}</td><td><strong>₹${data.total}</strong></td></tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <h4 style="margin-bottom:12px;">📊 Daily Breakdown</h4>
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead><tr><th>Date</th><th>Orders</th><th>Earning</th></tr></thead>
+            <tbody>
+              ${dailyEntries.map(([date, data]) => `
+                <tr><td>${date}</td><td>${data.count}</td><td><strong>₹${data.total}</strong></td></tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    function changeStatus(orderId, newStatus) {
+      updateOrderStatus(orderId, newStatus);
+      showToast(`Order #${orderId} → ${newStatus}`, 'success');
+      loadStats();
+    }
+
+    function viewOrder(orderId) {
+      const orders = getOrders();
+      const o = orders.find(ord => ord.orderId === orderId);
+      if (!o) return;
+
+      // Check for payment screenshot
+      const screenshots = JSON.parse(localStorage.getItem('4astore_screenshots')) || {};
+      const screenshot = screenshots[orderId];
+      const screenshotHTML = screenshot 
+        ? `<h4 style="margin-top:16px; margin-bottom:8px;">📸 Payment Screenshot</h4>
+           <img src="${screenshot}" style="max-width:100%; border-radius:8px; border:2px solid var(--primary);" alt="Payment Screenshot">`
+        : `<p style="margin-top:12px; font-size:13px; color:var(--gray);">⚠️ No payment screenshot uploaded</p>`;
+
+      document.getElementById('orderDetailBody').innerHTML = `
+        <h3 style="color:var(--primary); margin-bottom:12px;">Order #${o.orderId}</h3>
+        <p style="font-size:13px; color:var(--gray); margin-bottom:16px;">${formatDate(o.orderDate)}</p>
+        
+        <h4 style="margin-bottom:8px;">👤 Customer</h4>
+        <p><strong>${o.customer.name}</strong></p>
+        <p>📱 <a href="tel:${o.customer.mobile}">${o.customer.mobile}</a></p>
+        <p>📍 ${o.customer.address}, ${o.customer.city} – ${o.customer.pincode}</p>
+        ${o.customer.landmark ? `<p>🏷️ ${o.customer.landmark}</p>` : ''}
+        
+        <h4 style="margin-top:16px; margin-bottom:8px;">📦 Items</h4>
+        ${o.items.map(item => `
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:14px;">
+            <span>${item.name} × ${item.quantity}</span>
+            <span>₹${item.price * item.quantity}</span>
+          </div>
+        `).join('')}
+        
+        <div style="margin-top:12px; padding-top:12px; border-top:2px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;font-size:14px;"><span>Subtotal</span><span>₹${o.subtotal}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--primary);"><span>Discount</span><span>-₹${o.discount}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14px;"><span>Delivery</span><span>₹${o.deliveryCharge}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;color:var(--primary-dark);margin-top:8px;padding-top:8px;border-top:2px solid var(--border);">
+            <span>Total</span><span>₹${o.totalAmount}</span>
+          </div>
+        </div>
+        
+        <div style="margin-top:16px; padding:12px; background:var(--primary-light); border-radius:8px;">
+          <p><strong>Payment:</strong> ${o.paymentMethod}</p>
+          <p><strong>Status:</strong> <span class="order-status ${getStatusClass(o.orderStatus)}">${o.orderStatus}</span></p>
+        </div>
+        
+        ${screenshotHTML}
+        
+        <button onclick="closeOrderDetail()" style="margin-top:16px; width:100%; padding:10px; background:var(--gray); color:white; border:none; border-radius:8px; cursor:pointer;">Close</button>
+      `;
+      
+      document.getElementById('orderDetailModal').classList.remove('hidden');
+    }
+
+    function closeOrderDetail() {
+      document.getElementById('orderDetailModal').classList.add('hidden');
+    }
+
+    function renderSettingsTab() {
+      const savedFestival = localStorage.getItem('4astore_festival') || '';
+      document.getElementById('tabContent').innerHTML = `
+        <h4 style="margin-bottom:16px;">🎉 Festival / Theme Settings</h4>
+        <p style="font-size:13px; color:var(--gray); margin-bottom:16px;">Change the current festival to show relevant banners on the homepage. Leave empty for default banners.</p>
+        
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+          <select id="festivalSelect" style="padding:10px 16px; border:2px solid var(--border); border-radius:8px; font-size:14px; flex:1; min-width:200px;">
+            <option value="" ${savedFestival===''?'selected':''}>🏪 Default (No Festival)</option>
+            <option value="diwali" ${savedFestival==='diwali'?'selected':''}>🪔 Diwali</option>
+            <option value="navratri" ${savedFestival==='navratri'?'selected':''}>🕉️ Navratri</option>
+            <option value="eid" ${savedFestival==='eid'?'selected':''}>☪️ Eid</option>
+            <option value="christmas" ${savedFestival==='christmas'?'selected':''}>🎄 Christmas / New Year</option>
+            <option value="holi" ${savedFestival==='holi'?'selected':''}>🎨 Holi</option>
+            <option value="ipl" ${savedFestival==='ipl'?'selected':''}>🏏 IPL Season</option>
+            <option value="rakhi" ${savedFestival==='rakhi'?'selected':''}>🪢 Raksha Bandhan</option>
+            <option value="independence" ${savedFestival==='independence'?'selected':''}>🇮🇳 Independence Day</option>
+          </select>
+          <button onclick="saveFestival()" style="padding:10px 24px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
+            💾 Save Festival
+          </button>
+        </div>
+        
+        <div style="background:var(--primary-light); padding:16px; border-radius:8px;">
+          <p style="font-size:12px; color:var(--primary-dark); font-weight:600;">ℹ️ How it works:</p>
+          <p style="font-size:12px; color:#666; margin-top:4px;">When you select a festival, the homepage will show festival-specific banners along with the default ones. Banners are configured in <code>data/config.json</code>.</p>
+        </div>
+
+        <h4 style="margin-top:24px; margin-bottom:12px;">🗑️ Data Management</h4>
+        <button onclick="if(confirm('Clear all orders? This cannot be undone!')){localStorage.removeItem('4astore_orders');localStorage.removeItem('4astore_screenshots');showToast('Orders cleared','info');loadStats();renderOrdersTab();}" style="padding:10px 20px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; margin-right:8px;">
+          🗑️ Clear All Orders
+        </button>
+        <button onclick="if(confirm('Clear all users? This cannot be undone!')){localStorage.removeItem('4astore_users');showToast('Users cleared','info');loadStats();}" style="padding:10px 20px; background:#666; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
+          🗑️ Clear All Users
+        </button>
+      `;
+    }
+
+    function saveFestival() {
+      const val = document.getElementById('festivalSelect').value;
+      localStorage.setItem('4astore_festival', val);
+      showToast(`Festival updated to: ${val || 'Default'}`, 'success');
+    }
+  </script>
+</body>
+</html>

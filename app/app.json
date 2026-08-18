@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "4astore",
+    "slug": "4astore-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ff6600"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ff6600"
+      },
+      "package": "com.store4a.app"
+    },
+    "ios": {
+      "bundleIdentifier": "com.store4a.app"
+    }
+  }
+}
