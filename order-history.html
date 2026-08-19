@@ -17,15 +17,15 @@
   <!-- Header -->
   <header class="main-header">
     <div class="header-content">
-      <a href="index.html" class="logo">4a<span>store</span></a>
+      <a href="/" class="logo">4a<span>store</span></a>
       <form class="search-box" onsubmit="handleSearch(event)">
         <input type="text" placeholder="Search for groceries, fruits, snacks..." id="searchInput">
         <button type="submit">🔍</button>
       </form>
       <div class="header-actions">
         <div class="login-btn-area"></div>
-        <a href="order-history.html">📋 <span class="action-text">Orders</span></a>
-        <a href="cart.html" class="cart-badge">
+        <a href="order-history">📋 <span class="action-text">Orders</span></a>
+        <a href="cart" class="cart-badge">
           🛒 <span class="action-text">Cart</span>
           <span class="badge cart-count" style="display:none">0</span>
         </a>
@@ -55,10 +55,10 @@
       </div>
       <div class="footer-col">
         <h4>Quick Links</h4>
-        <a href="index.html">Home</a>
-        <a href="products.html">Products</a>
-        <a href="cart.html">My Cart</a>
-        <a href="order-history.html">My Orders</a>
+        <a href="/">Home</a>
+        <a href="products">Products</a>
+        <a href="cart">My Cart</a>
+        <a href="order-history">My Orders</a>
       </div>
       <div class="footer-col">
         <h4>Delivery Information</h4>
@@ -72,11 +72,11 @@
   <!-- Mobile Bottom Nav -->
   <nav class="bottom-nav">
     <div class="nav-items">
-      <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
-      <a href="products.html" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
-      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
-      <a href="order-history.html" class="nav-item active"><span class="nav-icon">📦</span>Orders</a>
-      <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
+      <a href="/" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+      <a href="products" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
+      <a href="cart" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="order-history" class="nav-item active"><span class="nav-icon">📦</span>Orders</a>
+      <a href="profile" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
     </div>
   </nav>
 
@@ -97,7 +97,7 @@
             <div class="empty-icon">📋</div>
             <h3>No orders yet</h3>
             <p>You haven't placed any orders yet. Start shopping!</p>
-            <a href="products.html" class="btn-primary">Browse Products →</a>
+            <a href="products" class="btn-primary">Browse Products →</a>
           </div>
         `;
         return;

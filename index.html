@@ -47,15 +47,15 @@
   <!-- Header -->
   <header class="main-header">
     <div class="header-content">
-      <a href="index.html" class="logo">4a<span>store</span></a>
+      <a href="/" class="logo">4a<span>store</span></a>
       <form class="search-box" onsubmit="handleSearch(event)">
         <input type="text" placeholder="Search for groceries, fruits, snacks..." id="searchInput">
         <button type="submit">🔍</button>
       </form>
       <div class="header-actions">
         <div class="login-btn-area"></div>
-        <a href="order-history.html">📋 <span class="action-text">Orders</span></a>
-        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span>
+        <a href="order-history">📋 <span class="action-text">Orders</span></a>
+        <a href="cart" class="cart-badge">🛒 <span class="action-text">Cart</span>
           <span class="badge cart-count" style="display:none">0</span>
         </a>
       </div>
@@ -90,7 +90,7 @@
     <h2 class="section-title">🔥 Popular Products</h2>
     <div class="products-grid" id="popularProducts"></div>
     <div class="text-center mt-20">
-      <a href="products.html" class="btn-primary">View All Products →</a>
+      <a href="products" class="btn-primary">View All Products →</a>
     </div>
   </section>
 
@@ -108,11 +108,11 @@
       </div>
       <div class="footer-col">
         <h4>Quick Links</h4>
-        <a href="index.html">Home</a>
-        <a href="products.html">Products</a>
-        <a href="cart.html">My Cart</a>
-        <a href="order-history.html">My Orders</a>
-        <a href="admin.html" style="color:var(--primary);">🔐 Admin Panel</a>
+        <a href="/">Home</a>
+        <a href="products">Products</a>
+        <a href="cart">My Cart</a>
+        <a href="order-history">My Orders</a>
+        <a href="admin" style="color:var(--primary);">🔐 Admin Panel</a>
       </div>
       <div class="footer-col">
         <h4>Delivery & Payment</h4>
@@ -127,11 +127,11 @@
   <!-- Mobile Bottom Nav -->
   <nav class="bottom-nav">
     <div class="nav-items">
-      <a href="index.html" class="nav-item active"><span class="nav-icon">🏠</span>Home</a>
-      <a href="products.html" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
-      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
-      <a href="order-history.html" class="nav-item"><span class="nav-icon">📦</span>Orders</a>
-      <a href="profile.html" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
+      <a href="/" class="nav-item active"><span class="nav-icon">🏠</span>Home</a>
+      <a href="products" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
+      <a href="cart" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="order-history" class="nav-item"><span class="nav-icon">📦</span>Orders</a>
+      <a href="profile" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
     </div>
   </nav>
 
@@ -260,7 +260,7 @@
     function renderCategories() {
       const grid = document.getElementById('categoriesGrid');
       grid.innerHTML = categories.map(cat => `
-        <a href="products.html?category=${cat.slug}" class="category-card">
+        <a href="products?category=${cat.slug}" class="category-card">
           <div class="cat-icon">${cat.icon}</div>
           <div class="cat-name">${cat.name}</div>
         </a>

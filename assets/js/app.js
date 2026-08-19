@@ -64,19 +64,19 @@ function logoutUser() {
   localStorage.removeItem('4astore_user');
   updateLoginUI();
   showToast('Logged out successfully', 'info');
-  window.location.href = 'login.html';
+  window.location.href = 'login';
 }
 
 function updateLoginUI() {
   const user = getLoggedInUser();
   document.querySelectorAll('.login-btn-area').forEach(el => {
     if (user) {
-      el.innerHTML = `<a href="profile.html" title="${user.name}" style="display:flex;align-items:center;gap:4px;">
+      el.innerHTML = `<a href="profile" title="${user.name}" style="display:flex;align-items:center;gap:4px;">
         <span style="background:var(--primary);color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">${user.name.charAt(0).toUpperCase()}</span>
         <span class="action-text">${user.name.split(' ')[0]}</span>
       </a>`;
     } else {
-      el.innerHTML = `<a href="login.html">👤 <span class="action-text">Login</span></a>`;
+      el.innerHTML = `<a href="login">👤 <span class="action-text">Login</span></a>`;
     }
   });
 }
@@ -86,7 +86,7 @@ function requireLogin() {
   if (!user) {
     showToast('Please login first to continue', 'error');
     const currentPage = window.location.pathname.split('/').pop();
-    setTimeout(() => { window.location.href = `login.html?return=${currentPage}`; }, 1000);
+    setTimeout(() => { window.location.href = `login?return=${currentPage}`; }, 1000);
     return false;
   }
   return true;
@@ -228,7 +228,7 @@ function handleSearch(e) {
   const input = document.querySelector('.search-box input');
   const query = input ? input.value : '';
   if (query.trim()) {
-    window.location.href = `products.html?search=${encodeURIComponent(query.trim())}`;
+    window.location.href = `products?search=${encodeURIComponent(query.trim())}`;
   }
 }
 
@@ -487,7 +487,7 @@ function createProductCard(product) {
 }
 
 function goToProduct(id) {
-  window.location.href = `product-details.html?id=${id}`;
+  window.location.href = `product-details?id=${id}`;
 }
 
 // ============================================
