@@ -134,7 +134,8 @@
 
     function adminLogin() {
       const pass = document.getElementById('adminPass').value;
-      if (pass === STORE_CONFIG.adminPassword) {
+      const adminCreds = getAdminCredentials();
+      if (pass === adminCreds.password) {
         sessionStorage.setItem(ADMIN_KEY, 'true');
         showDashboard();
       } else {
@@ -159,7 +160,7 @@
 
     function loadStats() {
       const orders = getOrders();
-      const users = JSON.parse(localStorage.getItem('4astore_users')) || [];
+      const users = getUsers();
       const today = new Date().toDateString();
       const thisMonth = new Date().getMonth();
       const thisYear = new Date().getFullYear();
@@ -238,7 +239,7 @@
     }
 
     function renderUsersTab() {
-      const users = JSON.parse(localStorage.getItem('4astore_users')) || [];
+      const users = getUsers();
       if (users.length === 0) {
         document.getElementById('tabContent').innerHTML = '<p style="text-align:center;padding:40px;color:var(--gray);">No registered users</p>';
         return;
@@ -261,17 +262,17 @@
             </thead>
             <tbody>
               ${users.map((u, i) => {
-                const orders = getOrders().filter(o => o.customer.mobile === u.mobile);
-                const totalSpent = orders.reduce((s, o) => s + o.totalAmount, 0);
+                const userOrders = getOrdersByUser(u.mobile);
+                const totalSpent = userOrders.reduce((s, o) => s + o.totalAmount, 0);
                 return `
                 <tr>
-                  <td>${i + 1}</td>
+                  <td>${u.id || i + 1}</td>
                   <td><strong>${u.name}</strong></td>
                   <td>${u.username || '-'}</td>
                   <td><a href="tel:${u.mobile}">${u.mobile}</a></td>
                   <td style="font-family:monospace; font-size:11px;">${u.password || '-'}</td>
                   <td>${u.registeredAt ? formatDate(u.registeredAt) : '-'}</td>
-                  <td>${orders.length}</td>
+                  <td>${userOrders.length}</td>
                   <td><strong>₹${totalSpent}</strong></td>
                 </tr>`;
               }).join('')}
@@ -430,12 +431,39 @@
         </div>
 
         <h4 style="margin-top:24px; margin-bottom:12px;">🗑️ Data Management</h4>
-        <button onclick="if(confirm('Clear all orders? This cannot be undone!')){localStorage.removeItem('4astore_orders');localStorage.removeItem('4astore_screenshots');showToast('Orders cleared','info');loadStats();renderOrdersTab();}" style="padding:10px 20px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; margin-right:8px;">
-          🗑️ Clear All Orders
+        <button onclick="if(confirm('Clear all orders? This cannot be undone!')){localStorage.removeItem('4astore_orders');localStorage.removeItem('4astore_screenshots');loadData().then(()=>{showToast('Orders reset to JSON defaults','info');loadStats();renderOrdersTab();})}" style="padding:10px 20px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; margin-right:8px;">
+          🗑️ Reset Orders (from JSON)
         </button>
-        <button onclick="if(confirm('Clear all users? This cannot be undone!')){localStorage.removeItem('4astore_users');showToast('Users cleared','info');loadStats();}" style="padding:10px 20px; background:#666; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
-          🗑️ Clear All Users
+        <button onclick="if(confirm('Clear all users? This cannot be undone!')){localStorage.removeItem('4astore_users');loadData().then(()=>{showToast('Users reset to JSON defaults','info');loadStats();})}" style="padding:10px 20px; background:#666; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
+          🗑️ Reset Users (from JSON)
         </button>
+
+        <h4 style="margin-top:24px; margin-bottom:12px;">💾 Export Data (Download as JSON)</h4>
+        <p style="font-size:13px; color:var(--gray); margin-bottom:12px;">Download current data to update your <code>data/</code> folder JSON files. This keeps your database in sync.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button onclick="exportData('users')" style="padding:10px 16px; background:#1565c0; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
+            📥 Export Users
+          </button>
+          <button onclick="exportData('orders')" style="padding:10px 16px; background:#2e7d32; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
+            📥 Export Orders
+          </button>
+          <button onclick="exportData('all')" style="padding:10px 16px; background:var(--primary); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
+            📥 Export All Data
+          </button>
+        </div>
+
+        <h4 style="margin-top:24px; margin-bottom:12px;">📤 Import Data (Load JSON File)</h4>
+        <p style="font-size:13px; color:var(--gray); margin-bottom:12px;">Import a previously exported JSON file to restore users or orders.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <select id="importType" style="padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:13px;">
+            <option value="users">Users</option>
+            <option value="orders">Orders</option>
+          </select>
+          <label style="padding:10px 16px; background:#6a1b9a; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; display:inline-block;">
+            📤 Choose File
+            <input type="file" accept=".json" onchange="importData(this)" style="display:none;">
+          </label>
+        </div>
       `;
     }
 
@@ -443,6 +471,87 @@
       const val = document.getElementById('festivalSelect').value;
       localStorage.setItem('4astore_festival', val);
       showToast(`Festival updated to: ${val || 'Default'}`, 'success');
+    }
+
+    // ==========================================
+    // EXPORT / IMPORT (JSON DB Sync)
+    // ==========================================
+    function exportData(type) {
+      let data, filename;
+      
+      if (type === 'users') {
+        data = getUsers();
+        filename = 'users.json';
+      } else if (type === 'orders') {
+        data = getOrders();
+        filename = 'orders.json';
+      } else {
+        // Export all
+        data = {
+          users: getUsers(),
+          orders: getOrders(),
+          admin: getAdminCredentials(),
+          exportDate: new Date().toISOString()
+        };
+        filename = '4astore_backup_' + new Date().toISOString().split('T')[0] + '.json';
+      }
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`📥 ${filename} downloaded successfully`, 'success');
+    }
+
+    function importData(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const type = document.getElementById('importType').value;
+      const reader = new FileReader();
+      
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          
+          if (!Array.isArray(data)) {
+            showToast('Invalid file format. Expected a JSON array.', 'error');
+            return;
+          }
+
+          if (type === 'users') {
+            // Validate user structure
+            if (data.length > 0 && !data[0].mobile) {
+              showToast('Invalid users file format', 'error');
+              return;
+            }
+            localStorage.setItem('4astore_users', JSON.stringify(data));
+            dbUsers = data;
+            showToast(`✅ ${data.length} users imported successfully`, 'success');
+          } else if (type === 'orders') {
+            // Validate orders structure
+            if (data.length > 0 && !data[0].orderId) {
+              showToast('Invalid orders file format', 'error');
+              return;
+            }
+            localStorage.setItem('4astore_orders', JSON.stringify(data));
+            dbOrders = data;
+            showToast(`✅ ${data.length} orders imported successfully`, 'success');
+          }
+
+          loadStats();
+        } catch (err) {
+          showToast('Error reading file: ' + err.message, 'error');
+        }
+      };
+      
+      reader.readAsText(file);
+      input.value = ''; // Reset file input
     }
   </script>
 </body>

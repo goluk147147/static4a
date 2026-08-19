@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "name": "Akash Kumar",
+    "mobile": "9876543210",
+    "username": "akash",
+    "password": "akash123",
+    "registeredAt": "2026-07-15T10:30:00",
+    "lastLogin": "2026-08-18T09:15:00"
+  },
+  {
+    "id": 2,
+    "name": "Priya Devi",
+    "mobile": "8765432109",
+    "username": "priya",
+    "password": "priya123",
+    "registeredAt": "2026-07-20T14:00:00",
+    "lastLogin": "2026-08-17T16:45:00"
+  },
+  {
+    "id": 3,
+    "name": "Rahul Singh",
+    "mobile": "7654321098",
+    "username": "rahul",
+    "password": "rahul123",
+    "registeredAt": "2026-08-01T11:20:00",
+    "lastLogin": "2026-08-16T20:30:00"
+  }
+]

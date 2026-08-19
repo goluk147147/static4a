@@ -166,18 +166,16 @@
       if (!password) { document.getElementById('loginPassword').parentElement.parentElement.classList.add('error'); valid = false; }
       if (!valid) return;
 
-      // Find user
-      const users = JSON.parse(localStorage.getItem('4astore_users')) || [];
-      const user = users.find(u => (u.username === username || u.mobile === username) && u.password === password);
+      // Find user from JSON-synced database
+      const user = findUser(username, password);
 
       if (!user) {
         showToast('❌ Invalid username/mobile or password', 'error');
         return;
       }
 
-      // Login
-      user.lastLogin = new Date().toISOString();
-      localStorage.setItem('4astore_users', JSON.stringify(users));
+      // Update last login in DB
+      updateUserLogin(username);
       loginUser(user.name, user.mobile, user.username);
 
       const returnUrl = new URLSearchParams(window.location.search).get('return') || '/';
@@ -201,27 +199,18 @@
 
       if (!valid) return;
 
-      // Check if username/mobile already exists
-      let users = JSON.parse(localStorage.getItem('4astore_users')) || [];
-      if (users.find(u => u.username === username)) {
-        document.getElementById('signupUsername').parentElement.classList.add('error');
-        showToast('❌ Username already taken', 'error');
-        return;
-      }
-      if (users.find(u => u.mobile === mobile)) {
-        document.getElementById('signupMobile').parentElement.classList.add('error');
-        showToast('❌ Mobile number already registered. Please login.', 'error');
-        return;
-      }
+      // Register user using JSON DB system
+      const result = registerUser({ name, mobile, username, password });
 
-      // Create user
-      const newUser = {
-        name, mobile, username, password,
-        registeredAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      };
-      users.push(newUser);
-      localStorage.setItem('4astore_users', JSON.stringify(users));
+      if (!result.success) {
+        if (result.message.includes('Username')) {
+          document.getElementById('signupUsername').parentElement.classList.add('error');
+        } else {
+          document.getElementById('signupMobile').parentElement.classList.add('error');
+        }
+        showToast('❌ ' + result.message, 'error');
+        return;
+      }
 
       // Auto login
       loginUser(name, mobile, username);

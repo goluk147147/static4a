@@ -1,6 +1,7 @@
 [
   {
     "orderId": "4A100001",
+    "userId": 1,
     "customer": {
       "name": "Akash Kumar",
       "mobile": "9876543210",
@@ -25,6 +26,7 @@
   },
   {
     "orderId": "4A100002",
+    "userId": 2,
     "customer": {
       "name": "Priya Devi",
       "mobile": "8765432109",
@@ -45,5 +47,29 @@
     "paymentMethod": "UPI",
     "orderStatus": "Out for Delivery",
     "orderDate": "2026-08-17T14:15:00"
+  },
+  {
+    "orderId": "4A100003",
+    "userId": 3,
+    "customer": {
+      "name": "Rahul Singh",
+      "mobile": "7654321098",
+      "email": "",
+      "address": "Gajana Road, Chandargarh",
+      "landmark": "Near School",
+      "city": "Chandargarh",
+      "pincode": "824301"
+    },
+    "items": [
+      { "id": 10, "name": "Maggi Noodles", "weight": "420 g (6 Pack)", "price": 84, "quantity": 2 },
+      { "id": 15, "name": "Parle-G Biscuit", "weight": "800 g", "price": 75, "quantity": 1 }
+    ],
+    "subtotal": 243,
+    "discount": 15,
+    "deliveryCharge": 30,
+    "totalAmount": 258,
+    "paymentMethod": "UPI",
+    "orderStatus": "Order Placed",
+    "orderDate": "2026-08-19T08:45:00"
   }
 ]

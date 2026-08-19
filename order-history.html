@@ -37,7 +37,22 @@
   <div class="orders-page">
     <h2 style="margin-bottom:20px;">📋 My Orders</h2>
     <div id="ordersContent">
-      <div class="loading-spinner"></div>
+      <!-- Shimmer placeholder -->
+      <div class="skeleton-order">
+        <div class="skeleton-order-header"><div class="skeleton-text shimmer" style="width:120px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+        <div class="skeleton-order-items"><div class="skeleton-text shimmer" style="width:90%"></div><div class="skeleton-text shimmer" style="width:75%"></div><div class="skeleton-text shimmer" style="width:60%"></div></div>
+        <div class="skeleton-order-footer"><div class="skeleton-text shimmer" style="width:150px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+      </div>
+      <div class="skeleton-order">
+        <div class="skeleton-order-header"><div class="skeleton-text shimmer" style="width:120px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+        <div class="skeleton-order-items"><div class="skeleton-text shimmer" style="width:85%"></div><div class="skeleton-text shimmer" style="width:70%"></div></div>
+        <div class="skeleton-order-footer"><div class="skeleton-text shimmer" style="width:150px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+      </div>
+      <div class="skeleton-order">
+        <div class="skeleton-order-header"><div class="skeleton-text shimmer" style="width:120px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+        <div class="skeleton-order-items"><div class="skeleton-text shimmer" style="width:80%"></div><div class="skeleton-text shimmer" style="width:65%"></div><div class="skeleton-text shimmer" style="width:50%"></div></div>
+        <div class="skeleton-order-footer"><div class="skeleton-text shimmer" style="width:150px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+      </div>
     </div>
   </div>
 
@@ -84,11 +99,18 @@
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       if (!requireLogin()) return;
+    });
+
+    // Wait for data to load from JSON files before rendering orders
+    window.addEventListener('dataLoaded', () => {
+      if (!getLoggedInUser()) return;
       renderOrders();
     });
 
     function renderOrders() {
-      const orders = getOrders();
+      const user = getLoggedInUser();
+      // Show only logged-in user's orders (filtered by mobile)
+      const orders = getOrdersByUser(user.mobile);
       const container = document.getElementById('ordersContent');
 
       if (orders.length === 0) {

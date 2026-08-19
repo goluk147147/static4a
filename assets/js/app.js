@@ -20,6 +20,9 @@ const STORE_CONFIG = {
 // State
 let products = [];
 let categories = [];
+let dbUsers = [];
+let dbOrders = [];
+let dbAdmin = null;
 
 // ============================================
 // INITIALIZATION
@@ -32,16 +35,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadData() {
   try {
-    const [prodRes, catRes] = await Promise.all([
+    const [prodRes, catRes, usersRes, ordersRes, adminRes] = await Promise.all([
       fetch('data/products.json'),
-      fetch('data/categories.json')
+      fetch('data/categories.json'),
+      fetch('data/users.json'),
+      fetch('data/orders.json'),
+      fetch('data/admin.json')
     ]);
     products = await prodRes.json();
     categories = await catRes.json();
     
-    window.dispatchEvent(new CustomEvent('dataLoaded', { detail: { products, categories } }));
+    // Load users from JSON and sync with localStorage
+    const jsonUsers = await usersRes.json();
+    const localUsers = JSON.parse(localStorage.getItem('4astore_users')) || [];
+    // Merge: JSON users as base, local users added on top (by mobile uniqueness)
+    const mergedUsers = [...jsonUsers];
+    localUsers.forEach(lu => {
+      if (!mergedUsers.find(u => u.mobile === lu.mobile || u.username === lu.username)) {
+        mergedUsers.push(lu);
+      }
+    });
+    dbUsers = mergedUsers;
+    localStorage.setItem('4astore_users', JSON.stringify(dbUsers));
+
+    // Load orders from JSON and sync with localStorage
+    const jsonOrders = await ordersRes.json();
+    const localOrders = JSON.parse(localStorage.getItem('4astore_orders')) || [];
+    // Merge: JSON orders as base, local orders added on top (by orderId uniqueness)
+    const mergedOrders = [...jsonOrders];
+    localOrders.forEach(lo => {
+      if (!mergedOrders.find(o => o.orderId === lo.orderId)) {
+        mergedOrders.push(lo);
+      }
+    });
+    dbOrders = mergedOrders;
+    localStorage.setItem('4astore_orders', JSON.stringify(dbOrders));
+
+    // Load admin credentials from JSON
+    dbAdmin = await adminRes.json();
+    localStorage.setItem('4astore_admin', JSON.stringify(dbAdmin));
+    
+    window.dispatchEvent(new CustomEvent('dataLoaded', { detail: { products, categories, users: dbUsers, orders: dbOrders, admin: dbAdmin } }));
   } catch (e) {
     console.error('Error loading data:', e);
+    // Remove shimmer placeholders on error and show fallback
+    document.querySelectorAll('.skeleton-card, .skeleton-category, .skeleton-banner, .skeleton-detail, .skeleton-cart-item, .skeleton-order, .skeleton-pills, .skeleton-ad, .skeleton-container').forEach(el => el.remove());
+    document.querySelectorAll('.products-grid, .categories-grid, .prod-grid, #productDetail, #cartContent, #ordersContent').forEach(el => {
+      if (!el.querySelector('.product-card, .category-card, .cart-item, .order-card')) {
+        el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray);"><p>Unable to load data. Please refresh the page.</p></div>';
+      }
+    });
   }
 }
 
@@ -295,9 +338,11 @@ function generateOrderId() {
 function placeOrder(customerData) {
   const cart = getCart();
   const totals = getCartTotal();
+  const user = getLoggedInUser();
   
   const order = {
     orderId: generateOrderId(),
+    userId: user ? getUserId(user.mobile) : null,
     customer: customerData,
     items: cart.map(item => ({
       id: item.id,
@@ -315,10 +360,11 @@ function placeOrder(customerData) {
     orderDate: new Date().toISOString()
   };
   
-  // Save to order history
+  // Save to order history (synced with JSON db)
   let orders = JSON.parse(localStorage.getItem('4astore_orders')) || [];
   orders.unshift(order);
   localStorage.setItem('4astore_orders', JSON.stringify(orders));
+  dbOrders = orders;
   
   // Save customer info
   localStorage.setItem('4astore_customer', JSON.stringify(customerData));
@@ -333,14 +379,85 @@ function getOrders() {
   return JSON.parse(localStorage.getItem('4astore_orders')) || [];
 }
 
+function getOrdersByUser(mobile) {
+  const orders = getOrders();
+  return orders.filter(o => o.customer.mobile === mobile);
+}
+
 function updateOrderStatus(orderId, newStatus) {
   let orders = JSON.parse(localStorage.getItem('4astore_orders')) || [];
   const order = orders.find(o => o.orderId === orderId);
   if (order) {
     order.orderStatus = newStatus;
     localStorage.setItem('4astore_orders', JSON.stringify(orders));
+    dbOrders = orders;
   }
   return order;
+}
+
+// ============================================
+// USER MANAGEMENT (JSON DB based)
+// ============================================
+function getUsers() {
+  return JSON.parse(localStorage.getItem('4astore_users')) || [];
+}
+
+function getUserId(mobile) {
+  const users = getUsers();
+  const user = users.find(u => u.mobile === mobile);
+  return user ? (user.id || null) : null;
+}
+
+function findUser(usernameOrMobile, password) {
+  const users = getUsers();
+  return users.find(u => 
+    (u.username === usernameOrMobile || u.mobile === usernameOrMobile) && u.password === password
+  );
+}
+
+function registerUser(userData) {
+  const users = getUsers();
+  
+  // Check duplicates
+  if (users.find(u => u.username === userData.username)) {
+    return { success: false, message: 'Username already taken' };
+  }
+  if (users.find(u => u.mobile === userData.mobile)) {
+    return { success: false, message: 'Mobile number already registered' };
+  }
+  
+  // Assign new ID
+  const maxId = users.reduce((max, u) => Math.max(max, u.id || 0), 0);
+  const newUser = {
+    id: maxId + 1,
+    name: userData.name,
+    mobile: userData.mobile,
+    username: userData.username,
+    password: userData.password,
+    registeredAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString()
+  };
+  
+  users.push(newUser);
+  localStorage.setItem('4astore_users', JSON.stringify(users));
+  dbUsers = users;
+  
+  return { success: true, user: newUser };
+}
+
+function updateUserLogin(usernameOrMobile) {
+  const users = getUsers();
+  const user = users.find(u => u.username === usernameOrMobile || u.mobile === usernameOrMobile);
+  if (user) {
+    user.lastLogin = new Date().toISOString();
+    localStorage.setItem('4astore_users', JSON.stringify(users));
+    dbUsers = users;
+  }
+  return user;
+}
+
+function getAdminCredentials() {
+  return JSON.parse(localStorage.getItem('4astore_admin')) || { username: 'admin', password: STORE_CONFIG.adminPassword };
 }
 
 // ============================================
