@@ -1138,9 +1138,17 @@ a {
 .toast .toast-close {
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   color: var(--gray);
+  opacity: 0.6;
+  padding: 0 4px;
+  line-height: 1;
+  font-weight: 300;
+}
+
+.toast .toast-close:hover {
+  opacity: 1;
 }
 
 @keyframes slideIn {

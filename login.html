@@ -131,6 +131,8 @@
 
   <script src="assets/js/app.js"></script>
   <script>
+    let dataReady = false;
+
     document.addEventListener('DOMContentLoaded', () => {
       // If already logged in, go to profile
       if (getLoggedInUser()) {
@@ -139,6 +141,11 @@
       // Check if redirected from signup
       const params = new URLSearchParams(window.location.search);
       if (params.get('tab') === 'signup') showAuthTab('signup');
+    });
+
+    // Wait for JSON data (users.json) to be loaded before allowing login
+    window.addEventListener('dataLoaded', () => {
+      dataReady = true;
     });
 
     function showAuthTab(tab) {
@@ -166,11 +173,24 @@
       if (!password) { document.getElementById('loginPassword').parentElement.parentElement.classList.add('error'); valid = false; }
       if (!valid) return;
 
+      // Wait for data if not ready yet
+      if (!dataReady) {
+        showToast('Loading data, please try again...', 'info');
+        return;
+      }
+
       // Find user from JSON-synced database
       const user = findUser(username, password);
 
       if (!user) {
-        showToast('❌ Invalid username/mobile or password', 'error');
+        // Check if username exists but password is wrong
+        const users = getUsers();
+        const exists = users.find(u => u.username === username || u.mobile === username);
+        if (exists) {
+          showToast('Incorrect password. Please try again.', 'error');
+        } else {
+          showToast('Account not found. Please sign up first.', 'error');
+        }
         return;
       }
 
@@ -199,6 +219,12 @@
 
       if (!valid) return;
 
+      // Wait for data if not ready yet
+      if (!dataReady) {
+        showToast('Loading data, please try again...', 'info');
+        return;
+      }
+
       // Register user using JSON DB system
       const result = registerUser({ name, mobile, username, password });
 
@@ -208,7 +234,7 @@
         } else {
           document.getElementById('signupMobile').parentElement.classList.add('error');
         }
-        showToast('❌ ' + result.message, 'error');
+        showToast(result.message, 'error');
         return;
       }
 

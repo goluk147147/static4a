@@ -297,7 +297,7 @@ function showToast(message, type = 'success') {
     document.body.appendChild(container);
   }
   
-  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  const icons = { success: '✅', error: '⚠️', info: 'ℹ️' };
   
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
