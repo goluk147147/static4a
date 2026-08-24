@@ -11,8 +11,8 @@
     </style>
 
     <style name="Theme.Store4A.Splash" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="android:statusBarColor">@color/splash_background</item>
-        <item name="android:navigationBarColor">@color/splash_background</item>
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:navigationBarColor">@color/white</item>
         <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
 

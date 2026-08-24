@@ -1,17 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
-        <color android:color="@color/splash_background" />
+        <color android:color="@color/white" />
     </item>
     <item
         android:gravity="center"
-        android:width="150dp"
-        android:height="150dp">
-        <shape android:shape="oval">
-            <solid android:color="#FFFFFF" />
-            <size
-                android:width="150dp"
-                android:height="150dp" />
-        </shape>
+        android:width="200dp"
+        android:height="200dp">
+        <bitmap
+            android:gravity="fill"
+            android:src="@drawable/splash_logo" />
     </item>
 </layer-list>
