@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#F5F9FD"/>
+  
+  <!-- Top accent bar -->
+  <rect width="1200" height="8" fill="#2C6FAD"/>
+  
+  <!-- Left side - Logo and text -->
+  <g transform="translate(80, 160)">
+    <!-- Bag icon large -->
+    <rect x="0" y="30" width="120" height="140" rx="16" ry="16" fill="url(#ogBagGrad)"/>
+    <path d="M30 34 C30 10, 90 10, 90 34" fill="none" stroke="#F5A623" stroke-width="8" stroke-linecap="round"/>
+    <text x="15" y="120" font-family="Arial Black, sans-serif" font-size="55" font-weight="900" fill="#F5A623">4</text>
+    <text x="62" y="120" font-family="Arial Black, sans-serif" font-size="55" font-weight="900" fill="#4CAF50">A</text>
+    <!-- Apple -->
+    <circle cx="20" cy="25" r="10" fill="#E53935"/>
+    <path d="M20 15 C20 11, 24 9, 24 13" fill="#4CAF50"/>
+    <!-- Leaf -->
+    <ellipse cx="105" cy="22" rx="10" ry="5" fill="#388E3C" transform="rotate(-20 105 22)"/>
+    
+    <!-- Store text -->
+    <text x="145" y="90" font-family="Arial Black, sans-serif" font-size="64" font-weight="900" fill="#2C6FAD" letter-spacing="2">STORE</text>
+    <text x="145" y="140" font-family="Arial, sans-serif" font-size="24" fill="#5BA3D9" letter-spacing="1">GROCERY IN MINUTES</text>
+  </g>
+  
+  <!-- Tagline -->
+  <text x="80" y="380" font-family="Segoe UI, sans-serif" font-size="28" fill="#333" font-weight="600">Fresh Fruits, Vegetables &amp; Daily Needs</text>
+  <text x="80" y="420" font-family="Segoe UI, sans-serif" font-size="20" fill="#6c757d">Delivering in Chandargarh, Nabinagar, Bihar – 824301</text>
+  
+  <!-- Delivery badge -->
+  <rect x="80" y="450" width="220" height="44" rx="22" fill="#2C6FAD"/>
+  <text x="120" y="478" font-family="Segoe UI, sans-serif" font-size="16" fill="white" font-weight="600">🚚 Free Delivery ₹500+</text>
+  
+  <!-- Right side - Grocery items illustration -->
+  <g transform="translate(700, 80)">
+    <!-- Basket/circle background -->
+    <circle cx="200" cy="250" r="220" fill="#EBF4FC" opacity="0.8"/>
+    
+    <!-- Apple -->
+    <circle cx="120" cy="150" r="45" fill="#E53935"/>
+    <ellipse cx="120" cy="110" rx="8" ry="5" fill="#388E3C" transform="rotate(-15 120 110)"/>
+    <path d="M120 108 C120 95, 125 90, 125 100" fill="#6D4C41" stroke="none"/>
+    
+    <!-- Orange -->
+    <circle cx="250" cy="180" r="40" fill="#F5A623"/>
+    <circle cx="250" cy="180" r="36" fill="#FFB74D" opacity="0.4"/>
+    
+    <!-- Banana -->
+    <path d="M160 280 C180 250, 230 240, 260 260" fill="none" stroke="#FFEB3B" stroke-width="22" stroke-linecap="round"/>
+    <path d="M160 280 C180 250, 230 240, 260 260" fill="none" stroke="#FDD835" stroke-width="18" stroke-linecap="round"/>
+    
+    <!-- Milk carton -->
+    <rect x="290" y="250" width="50" height="80" rx="4" fill="#BBDEFB"/>
+    <rect x="295" y="255" width="40" height="25" fill="#2C6FAD"/>
+    <text x="300" y="273" font-family="Arial" font-size="11" fill="white" font-weight="bold">MILK</text>
+    
+    <!-- Tomato -->
+    <circle cx="100" cy="320" r="30" fill="#E53935"/>
+    <path d="M90 292 C95 285, 105 285, 110 292" fill="#4CAF50"/>
+    
+    <!-- Green vegetable / Cucumber -->
+    <ellipse cx="300" cy="380" rx="50" ry="18" fill="#388E3C" transform="rotate(-25 300 380)"/>
+    <ellipse cx="300" cy="380" rx="45" ry="14" fill="#4CAF50" transform="rotate(-25 300 380)"/>
+    
+    <!-- Rice/Grain bag -->
+    <rect x="50" cy="360" y="380" width="60" height="70" rx="6" fill="#FFF8E1" stroke="#F5A623" stroke-width="2"/>
+    <text x="62" y="420" font-family="Arial" font-size="11" fill="#F5A623" font-weight="bold">ATTA</text>
+    
+    <!-- Oil bottle -->
+    <rect x="200" y="330" width="35" height="65" rx="4" fill="#FFECB3"/>
+    <rect x="208" y="320" width="20" height="15" rx="3" fill="#F5A623"/>
+    <text x="205" y="370" font-family="Arial" font-size="9" fill="#E09000" font-weight="bold">OIL</text>
+  </g>
+  
+  <!-- Bottom bar -->
+  <rect y="610" width="1200" height="20" fill="#2C6FAD"/>
+  
+  <!-- Definitions -->
+  <defs>
+    <linearGradient id="ogBagGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#A8D4F5;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#5BA3D9;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Checkout - 4astore</title>
+  <title>Checkout - 4A Store</title>
+  <meta name="description" content="4A Store - Secure checkout with UPI payment. Quick and easy grocery ordering.">
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
@@ -21,7 +23,7 @@
 
   <header class="main-header">
     <div class="header-content">
-      <a href="./" class="logo">4a<span>store</span></a>
+      <a href="./" class="logo"><img src="assets/images/logo.svg" alt="4A Store" height="52"></a>
       <form class="search-box" onsubmit="handleSearch(event)">
         <input type="text" placeholder="Search for groceries..." id="searchInput">
         <button type="submit">🔍</button>
@@ -254,7 +256,7 @@
       const qrDiv = document.getElementById('qrCode');
       qrDiv.innerHTML = '';
       if (typeof QRCode !== 'undefined') {
-        new QRCode(qrDiv, { text: upiLink, width: 160, height: 160, colorDark: "#ff6600", colorLight: "#ffffff" });
+        new QRCode(qrDiv, { text: upiLink, width: 160, height: 160, colorDark: "#2C6FAD", colorLight: "#ffffff" });
       } else {
         qrDiv.innerHTML = `<div style="width:160px;height:160px;border:3px solid var(--primary);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;">
           <span style="font-size:2rem;">📱</span><span style="font-size:11px;color:var(--primary);font-weight:600;">goluk147147@ybl</span></div>`;

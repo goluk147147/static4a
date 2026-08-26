@@ -3,19 +3,21 @@
    ============================================ */
 
 :root {
-  --primary: #ff6600;
-  --primary-dark: #e55b00;
-  --primary-light: #fff3e0;
-  --secondary: #ff9800;
-  --secondary-light: #fff8e1;
-  --accent: #d32f2f;
+  --primary: #2C6FAD;
+  --primary-dark: #1E5A8F;
+  --primary-light: #EBF4FC;
+  --secondary: #F5A623;
+  --secondary-light: #FFF8E8;
+  --accent: #E53935;
+  --accent-red: #E53935;
+  --accent-green: #4CAF50;
   --dark: #1a1a2e;
   --gray: #6c757d;
-  --light-gray: #fffaf5;
-  --border: #ffe0b2;
+  --light-gray: #F5F9FD;
+  --border: #D4E8F7;
   --white: #ffffff;
-  --shadow: 0 2px 8px rgba(255,102,0,0.08);
-  --shadow-lg: 0 4px 16px rgba(255,102,0,0.12);
+  --shadow: 0 2px 8px rgba(44,111,173,0.08);
+  --shadow-lg: 0 4px 16px rgba(44,111,173,0.14);
   --radius: 12px;
   --radius-sm: 8px;
   --transition: all 0.3s ease;
@@ -45,7 +47,7 @@ a {
    HEADER
    ============================================ */
 .top-bar {
-  background: linear-gradient(90deg, #ff6600, #ff8c00);
+  background: linear-gradient(90deg, #2C6FAD, #5BA3D9);
   color: white;
   padding: 6px 0;
   font-size: 13px;
@@ -77,10 +79,14 @@ a {
 }
 
 .logo {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--primary);
+  display: flex;
+  align-items: center;
   white-space: nowrap;
+}
+
+.logo img {
+  height: 52px;
+  width: auto;
 }
 
 .logo span {
@@ -196,11 +202,11 @@ a {
   border-radius: 0;
 }
 
-.slide-1 { background: linear-gradient(135deg, #ff6600, #ff9800); }
-.slide-2 { background: linear-gradient(135deg, #e55b00, #ffb74d); }
-.slide-3 { background: linear-gradient(135deg, #bf360c, #ff7043); }
-.slide-4 { background: linear-gradient(135deg, #ff8f00, #ffc107); }
-.slide-5 { background: linear-gradient(135deg, #e65100, #fb8c00); }
+.slide-1 { background: linear-gradient(135deg, #2C6FAD, #5BA3D9); }
+.slide-2 { background: linear-gradient(135deg, #F5A623, #FFCA28); }
+.slide-3 { background: linear-gradient(135deg, #388E3C, #66BB6A); }
+.slide-4 { background: linear-gradient(135deg, #1E5A8F, #42A5F5); }
+.slide-5 { background: linear-gradient(135deg, #E53935, #EF5350); }
 
 .slide-content {
   color: white;
@@ -229,12 +235,12 @@ a {
   font-size: 15px;
   display: inline-block;
   transition: var(--transition);
-  box-shadow: 0 4px 12px rgba(255,102,0,0.25);
+  box-shadow: 0 4px 12px rgba(44,111,173,0.25);
 }
 
 .slide-content .btn-shop:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255,102,0,0.3);
+  box-shadow: 0 6px 20px rgba(44,111,173,0.3);
 }
 
 .slider-btn {
@@ -441,7 +447,7 @@ a {
 .btn-add-cart {
   width: 100%;
   padding: 10px;
-  background: var(--primary);
+  background: var(--secondary);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -452,7 +458,7 @@ a {
 }
 
 .btn-add-cart:hover {
-  background: var(--primary-dark);
+  background: #E09000;
 }
 
 .qty-controls {

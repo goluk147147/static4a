@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Products - 4astore</title>
+  <title>Products - 4A Store | Shop Groceries Online</title>
+  <meta name="description" content="4A Store - Browse all products. Fresh groceries, fruits, vegetables, snacks, oil, ghee & daily essentials at best prices.">
+  <meta property="og:title" content="Products - 4A Store">
+  <meta property="og:description" content="Shop fresh groceries, fruits, vegetables, snacks & daily essentials at best prices. Fast delivery in Chandargarh.">
+  <meta property="og:image" content="assets/images/og-image.svg">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
   <link rel="stylesheet" href="assets/css/style.css">
   <style>
     /* Page wrapper with side ads */
@@ -70,7 +76,7 @@
 
   <header class="main-header">
     <div class="header-content">
-      <a href="./" class="logo">4a<span>store</span></a>
+      <a href="./" class="logo"><img src="assets/images/logo.svg" alt="4A Store" height="52"></a>
       <form class="search-box" onsubmit="doSearch(event)">
         <input type="text" placeholder="Search groceries, fruits, snacks..." id="searchInput">
         <button type="submit">🔍</button>
@@ -200,15 +206,15 @@
       const infoMap = {
         'rakhi':{name:'🪢 Raksha Bandhan Special',colors:['#d81b60','#f06292'],emojis:['🪢','🎁','💝','🌸']},
         'diwali':{name:'🪔 Diwali Dhamaka',colors:['#ff6f00','#ffd54f'],emojis:['🪔','✨','🎆','💫']},
-        'navratri':{name:'🕉️ Navratri Special',colors:['#ff6600','#ff8f00'],emojis:['🕉️','🔱','🙏']},
+        'navratri':{name:'🕉️ Navratri Special',colors:['#F5A623','#ff8f00'],emojis:['🕉️','🔱','🙏']},
         'holi':{name:'🎨 Holi Dhamaka',colors:['#6a1b9a','#ab47bc'],emojis:['🎨','💜','💚','❤️']},
         'christmas':{name:'🎄 Christmas & New Year',colors:['#c62828','#ef5350'],emojis:['🎄','⭐','❄️']},
         'eid':{name:'☪️ Eid Special',colors:['#1b5e20','#4caf50'],emojis:['☪️','🌙','⭐']},
         'ipl':{name:'🏏 IPL Snack Fest',colors:['#1565c0','#42a5f5'],emojis:['🏏','🏆','⚡']},
-        'independence':{name:'🇮🇳 Independence Day',colors:['#e65100','#ff6600'],emojis:['🇮🇳','🦚','⭐']},
+        'independence':{name:'🇮🇳 Independence Day',colors:['#e65100','#F5A623'],emojis:['🇮🇳','🦚','⭐']},
         'chhath':{name:'🛕 Chhath Puja',colors:['#e65100','#ffb300'],emojis:['🛕','🌅','🙏']}
       };
-      const info = infoMap[festival] || {name:'🎉 Festival',colors:['#ff6600','#ff9800'],emojis:['✨']};
+      const info = infoMap[festival] || {name:'🎉 Festival',colors:['#2C6FAD','#5BA3D9'],emojis:['✨']};
 
       // 3-column layout
       document.getElementById('pageOuter').classList.add('has-ads');
