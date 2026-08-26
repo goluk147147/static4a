@@ -25,7 +25,7 @@
 
   <header class="main-header">
     <div class="header-content">
-      <a href="/" class="logo">4a<span>store</span></a>
+      <a href="./" class="logo">4a<span>store</span></a>
       <form class="search-box" onsubmit="handleSearch(event)">
         <input type="text" placeholder="Search for groceries..." id="searchInput">
         <button type="submit">🔍</button>
@@ -122,7 +122,7 @@
 
   <nav class="bottom-nav">
     <div class="nav-items">
-      <a href="/" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+      <a href="./" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
       <a href="products" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
       <a href="cart" class="nav-item"><span class="nav-icon">🛒</span>Cart</a>
       <a href="login" class="nav-item active"><span class="nav-icon">👤</span>Account</a>
@@ -197,8 +197,9 @@
         updateUserLogin(username);
         loginUser(user.name, user.mobile, user.username);
 
-        const returnUrl = new URLSearchParams(window.location.search).get('return') || '/';
-        setTimeout(() => { window.location.href = returnUrl; }, 500);
+        const returnUrl = new URLSearchParams(window.location.search).get('return');
+        const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+        setTimeout(() => { window.location.href = returnUrl ? basePath + returnUrl : basePath; }, 500);
       } catch(e) {
         // Fallback to local
         const user = findUser(username, password);
@@ -214,8 +215,9 @@
         }
         updateUserLogin(username);
         loginUser(user.name, user.mobile, user.username);
-        const returnUrl = new URLSearchParams(window.location.search).get('return') || '/';
-        setTimeout(() => { window.location.href = returnUrl; }, 500);
+        const returnUrl2 = new URLSearchParams(window.location.search).get('return');
+        const basePath2 = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+        setTimeout(() => { window.location.href = returnUrl2 ? basePath2 + returnUrl2 : basePath2; }, 500);
       }
     }
 
@@ -259,8 +261,9 @@
       loginUser(name, mobile, username);
       showToast('🎉 Account created successfully!', 'success');
 
-      const returnUrl = new URLSearchParams(window.location.search).get('return') || '/';
-      setTimeout(() => { window.location.href = returnUrl; }, 800);
+      const returnUrl = new URLSearchParams(window.location.search).get('return');
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+      setTimeout(() => { window.location.href = returnUrl ? basePath + returnUrl : basePath; }, 800);
     }
 
     // Enter key support

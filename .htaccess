@@ -1,10 +1,5 @@
 RewriteEngine On
 
-# Block direct access to data folder (protect JSON files)
-<IfModule mod_rewrite.c>
-  RewriteRule ^data/ - [F,L]
-</IfModule>
-
 # Allow PHP files to execute directly (don't add .html)
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]

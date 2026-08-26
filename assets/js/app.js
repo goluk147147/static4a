@@ -35,17 +35,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadData() {
   try {
-    const [prodRes, catRes, adminRes] = await Promise.all([
-      fetch('api/data.php?type=products'),
-      fetch('api/data.php?type=categories'),
-      fetch('api/data.php?type=admin')
-    ]);
-    products = await prodRes.json();
-    categories = await catRes.json();
+    // Try PHP API first, fallback to direct JSON files (for local dev without PHP)
+    let prodData, catData, adminData;
     
-    // Load users from PHP API (server-side JSON)
+    try {
+      const [prodRes, catRes, adminRes] = await Promise.all([
+        fetch('api/data.php?type=products'),
+        fetch('api/data.php?type=categories'),
+        fetch('api/data.php?type=admin')
+      ]);
+      if (!prodRes.ok || !catRes.ok || !adminRes.ok) throw new Error('API not available');
+      prodData = await prodRes.json();
+      catData = await catRes.json();
+      adminData = await adminRes.json();
+    } catch(apiErr) {
+      // Fallback to direct JSON files (local development)
+      const [prodRes2, catRes2, adminRes2] = await Promise.all([
+        fetch('data/products.json'),
+        fetch('data/categories.json'),
+        fetch('data/admin.json')
+      ]);
+      prodData = await prodRes2.json();
+      catData = await catRes2.json();
+      adminData = await adminRes2.json();
+    }
+    
+    products = prodData;
+    categories = catData;
+    
+    // Load users from PHP API
     try {
       const usersApiRes = await fetch('api/users.php?action=list');
+      if (!usersApiRes.ok) throw new Error('API not available');
       const usersApiData = await usersApiRes.json();
       if (usersApiData.success) {
         dbUsers = usersApiData.users;
@@ -59,9 +80,10 @@ async function loadData() {
     }
     localStorage.setItem('4astore_users', JSON.stringify(dbUsers));
 
-    // Load orders from PHP API (server-side JSON)
+    // Load orders from PHP API
     try {
       const ordersApiRes = await fetch('api/orders.php');
+      if (!ordersApiRes.ok) throw new Error('API not available');
       const ordersApiData = await ordersApiRes.json();
       if (ordersApiData.success) {
         dbOrders = ordersApiData.orders;
@@ -76,7 +98,7 @@ async function loadData() {
     localStorage.setItem('4astore_orders', JSON.stringify(dbOrders));
 
     // Load admin credentials
-    dbAdmin = await adminRes.json();
+    dbAdmin = adminData;
     localStorage.setItem('4astore_admin', JSON.stringify(dbAdmin));
     
     window.dispatchEvent(new CustomEvent('dataLoaded', { detail: { products, categories, users: dbUsers, orders: dbOrders, admin: dbAdmin } }));
