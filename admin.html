@@ -125,6 +125,19 @@
     const ADMIN_KEY = '4astore_admin_logged';
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Check if logged-in user is authorized for admin access
+      const user = getLoggedInUser();
+      const adminData = JSON.parse(localStorage.getItem('4astore_admin'));
+      const authorizedMobiles = adminData ? (adminData.authorizedMobiles || []) : [];
+      const adminMobile = adminData ? adminData.mobile : '';
+      
+      if (!user || (!authorizedMobiles.includes(user.mobile) && user.mobile !== adminMobile)) {
+        // Not authorized - redirect to home
+        showToast('Access denied. Admin only.', 'error');
+        setTimeout(() => { window.location.href = './'; }, 1000);
+        return;
+      }
+
       if (sessionStorage.getItem(ADMIN_KEY) === 'true') {
         showDashboard();
       }

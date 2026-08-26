@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>4A Store - Coming Soon | 9 September 2026</title>
+  <meta name="description" content="4A Store - Your local grocery store is launching on 9 September 2026. Fresh fruits, vegetables & daily needs delivered in minutes!">
+  <meta property="og:title" content="4A Store - Coming Soon!">
+  <meta property="og:description" content="Your local grocery store launching 9 September 2026. Fresh fruits, vegetables & daily needs!">
+  <meta property="og:image" content="https://4astore.webtoolsz.com/assets/images/og-image.jpg">
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a5276 0%, #2C6FAD 40%, #148f77 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Animated background circles */
+    .bg-circle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.08;
+      background: white;
+      animation: float 6s ease-in-out infinite;
+    }
+    .bg-circle:nth-child(1) { width:300px; height:300px; top:-50px; left:-50px; animation-delay:0s; }
+    .bg-circle:nth-child(2) { width:200px; height:200px; bottom:50px; right:50px; animation-delay:2s; }
+    .bg-circle:nth-child(3) { width:150px; height:150px; top:40%; left:70%; animation-delay:4s; }
+    .bg-circle:nth-child(4) { width:100px; height:100px; bottom:30%; left:10%; animation-delay:1s; }
+    .bg-circle:nth-child(5) { width:250px; height:250px; top:60%; right:-80px; animation-delay:3s; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-20px) scale(1.05); }
+    }
+
+    /* Floating grocery emojis */
+    .floating-item {
+      position: absolute;
+      font-size: 2rem;
+      opacity: 0.15;
+      animation: floatItem 8s ease-in-out infinite;
+    }
+    .floating-item:nth-child(6) { top:10%; left:5%; animation-delay:0s; }
+    .floating-item:nth-child(7) { top:20%; right:8%; animation-delay:1.5s; }
+    .floating-item:nth-child(8) { bottom:15%; left:12%; animation-delay:3s; }
+    .floating-item:nth-child(9) { bottom:25%; right:15%; animation-delay:2s; }
+    .floating-item:nth-child(10) { top:50%; left:3%; animation-delay:4s; }
+    .floating-item:nth-child(11) { top:70%; right:5%; animation-delay:5s; }
+
+    @keyframes floatItem {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-15px) rotate(10deg); }
+    }
+
+    .container {
+      text-align: center;
+      padding: 40px 24px;
+      max-width: 600px;
+      z-index: 10;
+      position: relative;
+    }
+
+    .logo-area {
+      margin-bottom: 30px;
+    }
+    .logo-area img {
+      height: 70px;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(245,166,35,0.9);
+      color: white;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: 1px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    h1 {
+      color: white;
+      font-size: 2.8rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+      text-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.85);
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+
+    /* Countdown */
+    .countdown {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+    .countdown-box {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 16px;
+      padding: 20px 16px;
+      min-width: 90px;
+      transition: transform 0.3s;
+    }
+    .countdown-box:hover {
+      transform: translateY(-4px);
+      background: rgba(255,255,255,0.2);
+    }
+    .countdown-box .number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: white;
+      line-height: 1;
+    }
+    .countdown-box .label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Launch date */
+    .launch-date {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 16px 28px;
+      display: inline-block;
+      margin-bottom: 30px;
+    }
+    .launch-date .date-icon { font-size: 1.3rem; margin-right: 8px; }
+    .launch-date .date-text {
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* Contact */
+    .contact {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    .contact a {
+      color: #F5A623;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .contact a:hover { text-decoration: underline; }
+
+    /* Footer */
+    .footer {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+    }
+
+    /* Secret dev access */
+    .dev-access {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      opacity: 0;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 2rem; }
+      .countdown-box { min-width: 70px; padding: 14px 10px; }
+      .countdown-box .number { font-size: 1.8rem; }
+      .container { padding: 30px 16px; }
+      .logo-area img { height: 55px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Background elements -->
+  <div class="bg-circle"></div>
+  <div class="bg-circle"></div>
+  <div class="bg-circle"></div>
+  <div class="bg-circle"></div>
+  <div class="bg-circle"></div>
+  <div class="floating-item">🍎</div>
+  <div class="floating-item">🥦</div>
+  <div class="floating-item">🍌</div>
+  <div class="floating-item">🥕</div>
+  <div class="floating-item">🛒</div>
+  <div class="floating-item">🧅</div>
+
+  <div class="container">
+    <div class="logo-area">
+      <img src="assets/images/logo.svg" alt="4A Store">
+    </div>
+
+    <div class="badge">LAUNCHING SOON</div>
+
+    <h1>We're Coming Soon!</h1>
+    <p class="subtitle">
+      Aapka apna local grocery store ab online aa raha hai!<br>
+      Fresh fruits, vegetables & daily needs — delivered in minutes.
+    </p>
+
+    <!-- Countdown Timer -->
+    <div class="countdown">
+      <div class="countdown-box">
+        <div class="number" id="days">00</div>
+        <div class="label">Days</div>
+      </div>
+      <div class="countdown-box">
+        <div class="number" id="hours">00</div>
+        <div class="label">Hours</div>
+      </div>
+      <div class="countdown-box">
+        <div class="number" id="mins">00</div>
+        <div class="label">Minutes</div>
+      </div>
+      <div class="countdown-box">
+        <div class="number" id="secs">00</div>
+        <div class="label">Seconds</div>
+      </div>
+    </div>
+
+    <!-- Launch date -->
+    <div class="launch-date">
+      <span class="date-icon">📅</span>
+      <span class="date-text">9 September 2026</span>
+    </div>
+
+    <!-- Contact -->
+    <div class="contact">
+      <p>📍 Gajana Road, Chandargarh, Nabinagar, Bihar - 824301</p>
+      <p style="margin-top:8px;">📞 <a href="tel:8210874123">8210874123</a> &nbsp;|&nbsp; WhatsApp: <a href="https://wa.me/918210874123">8210874123</a></p>
+    </div>
+  </div>
+
+  <div class="footer">© 2026 4A Store. All Rights Reserved.</div>
+
+  <!-- Secret Dev Access: Triple click bottom-right corner to go to main site -->
+  <div class="dev-access" id="devAccess" title=""></div>
+
+  <script>
+    // Countdown to 9 September 2026
+    const launchDate = new Date('2026-09-09T00:00:00+05:30').getTime();
+
+    function updateCountdown() {
+      const now = new Date().getTime();
+      const diff = launchDate - now;
+
+      if (diff <= 0) {
+        // Launch time! Redirect to main site
+        window.location.href = './index.html';
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+      document.getElementById('days').textContent = String(days).padStart(2, '0');
+      document.getElementById('hours').textContent = String(hours).padStart(2, '0');
+      document.getElementById('mins').textContent = String(mins).padStart(2, '0');
+      document.getElementById('secs').textContent = String(secs).padStart(2, '0');
+    }
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+
+    // Secret dev access: Triple click bottom-right corner
+    let clickCount = 0;
+    let clickTimer = null;
+    document.getElementById('devAccess').addEventListener('click', function() {
+      clickCount++;
+      if (clickCount === 3) {
+        // Show password prompt
+        const pass = prompt('Dev Access Password:');
+        if (pass === '4adev') {
+          window.location.href = './index.html';
+        }
+        clickCount = 0;
+      }
+      clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => { clickCount = 0; }, 1000);
+    });
+  </script>
+</body>
+</html>

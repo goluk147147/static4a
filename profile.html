@@ -144,6 +144,7 @@
             <a href="order-history" class="action-orders">📦 My Orders <span style="margin-left:auto; font-size:12px;">${userOrders.length} orders →</span></a>
             <a href="cart" class="action-cart">🛒 My Cart <span style="margin-left:auto; font-size:12px;">${cartCount} items →</span></a>
             <a href="checkout" class="action-address">🏠 Delivery Address</a>
+            ${isAdminUser(user) ? '<a href="admin" class="action-admin" style="background:#2C6FAD;color:white;">🔐 Admin Panel →</a>' : ''}
             <button class="action-logout" onclick="handleLogout()">🚪 Logout</button>
           </div>
         </div>
@@ -154,6 +155,15 @@
       if (confirm('Are you sure you want to logout?')) {
         logoutUser();
       }
+    }
+
+    function isAdminUser(user) {
+      // Check if user mobile is in admin authorized list
+      const adminData = JSON.parse(localStorage.getItem('4astore_admin'));
+      if (!adminData) return false;
+      const authorizedMobiles = adminData.authorizedMobiles || [];
+      // Super admin mobile + authorized list
+      return user.mobile === adminData.mobile || authorizedMobiles.includes(user.mobile);
     }
   </script>
 </body>

@@ -3,5 +3,6 @@
   "password": "4astore@admin",
   "name": "4astore Admin",
   "mobile": "8210874123",
-  "role": "superadmin"
+  "role": "superadmin",
+  "authorizedMobiles": ["8002116652"]
 }

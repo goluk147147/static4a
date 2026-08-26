@@ -1,5 +1,24 @@
 RewriteEngine On
 
+# ===== COMING SOON MODE =====
+# Redirect all visitors to coming-soon page EXCEPT:
+# - Requests with ?devmode=4adev parameter
+# - Already on coming-soon page
+# - Asset files (css, js, images, etc.)
+# - API requests
+# - Localhost / local testing (127.0.0.1 / localhost)
+# Comment out these 5 lines below to DISABLE coming soon mode after launch
+
+RewriteCond %{REMOTE_ADDR} !^127\.0\.0\.1$
+RewriteCond %{REMOTE_ADDR} !^::1$
+RewriteCond %{QUERY_STRING} !devmode=4adev
+RewriteCond %{REQUEST_URI} !coming-soon
+RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|svg|gif|ico|woff|woff2|json|php|apk)$
+# Coming soon - internal rewrite (URL won't change in browser)
+RewriteRule ^(index\.html?)?$ coming-soon.html [L]
+
+# ===== END COMING SOON =====
+
 # Allow PHP files to execute directly (don't add .html)
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
