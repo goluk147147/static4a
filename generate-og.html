@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Generate OG Image</title></head>
+<body>
+<canvas id="c" width="1200" height="630"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// Vibrant gradient background
+const bgGrad = ctx.createLinearGradient(0, 0, 1200, 630);
+bgGrad.addColorStop(0, '#1a5276');
+bgGrad.addColorStop(0.5, '#2C6FAD');
+bgGrad.addColorStop(1, '#148f77');
+ctx.fillStyle = bgGrad;
+ctx.fillRect(0, 0, 1200, 630);
+
+// Decorative circles (background pattern)
+ctx.globalAlpha = 0.08;
+ctx.fillStyle = '#fff';
+ctx.beginPath(); ctx.arc(100, 80, 120, 0, Math.PI*2); ctx.fill();
+ctx.beginPath(); ctx.arc(1100, 550, 150, 0, Math.PI*2); ctx.fill();
+ctx.beginPath(); ctx.arc(600, 600, 80, 0, Math.PI*2); ctx.fill();
+ctx.beginPath(); ctx.arc(1050, 100, 60, 0, Math.PI*2); ctx.fill();
+ctx.globalAlpha = 0.05;
+ctx.beginPath(); ctx.arc(300, 500, 200, 0, Math.PI*2); ctx.fill();
+ctx.beginPath(); ctx.arc(900, 300, 250, 0, Math.PI*2); ctx.fill();
+ctx.globalAlpha = 1;
+
+// White card on left
+roundRect(ctx, 50, 140, 520, 380, 24, 'rgba(255,255,255,0.95)');
+
+// Logo bag inside card
+const bagGrd = ctx.createLinearGradient(80, 200, 200, 330);
+bagGrd.addColorStop(0, '#A8D4F5');
+bagGrd.addColorStop(1, '#5BA3D9');
+roundRect(ctx, 85, 195, 100, 115, 14, bagGrd);
+
+// Bag handle
+ctx.beginPath();
+ctx.arc(135, 198, 25, Math.PI, 0, false);
+ctx.strokeStyle = '#F5A623';
+ctx.lineWidth = 7;
+ctx.lineCap = 'round';
+ctx.stroke();
+
+// 4 text on bag
+ctx.font = '900 46px Arial Black, sans-serif';
+ctx.fillStyle = '#F5A623';
+ctx.fillText('4', 97, 275);
+
+// A text on bag
+ctx.fillStyle = '#4CAF50';
+ctx.fillText('A', 134, 275);
+
+// Apple dot
+ctx.beginPath(); ctx.arc(95, 190, 8, 0, Math.PI*2);
+ctx.fillStyle = '#E53935'; ctx.fill();
+
+// STORE text
+ctx.font = '900 52px Arial Black, sans-serif';
+ctx.fillStyle = '#2C6FAD';
+ctx.fillText('STORE', 200, 260);
+
+// Tagline
+ctx.font = '600 20px Segoe UI, sans-serif';
+ctx.fillStyle = '#5BA3D9';
+ctx.fillText('GROCERY IN MINUTES', 200, 295);
+
+// Divider line
+ctx.beginPath();
+ctx.moveTo(85, 330);
+ctx.lineTo(530, 330);
+ctx.strokeStyle = '#E0E0E0';
+ctx.lineWidth = 1.5;
+ctx.stroke();
+
+// Main tagline
+ctx.font = '700 26px Segoe UI, sans-serif';
+ctx.fillStyle = '#333';
+ctx.fillText('Fresh Fruits, Vegetables', 85, 370);
+ctx.fillText('& Daily Essentials', 85, 403);
+
+// Location
+ctx.font = '400 17px Segoe UI, sans-serif';
+ctx.fillStyle = '#666';
+ctx.fillText('Chandargarh, Nabinagar, Bihar - 824301', 85, 440);
+
+// Badges row
+// Free delivery badge
+roundRect(ctx, 85, 460, 200, 38, 19, '#F5A623');
+ctx.font = '700 14px Segoe UI, sans-serif';
+ctx.fillStyle = '#fff';
+ctx.fillText('FREE DELIVERY Rs.500+', 108, 484);
+
+// Fast delivery badge
+roundRect(ctx, 300, 460, 180, 38, 19, '#4CAF50');
+ctx.fillStyle = '#fff';
+ctx.fillText('FAST DELIVERY', 345, 484);
+
+// Right side - Colorful grocery items on floating circles
+// Big circle bg
+ctx.beginPath(); ctx.arc(880, 315, 230, 0, Math.PI*2);
+ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
+
+// Apple - big
+ctx.beginPath(); ctx.arc(760, 180, 52, 0, Math.PI*2);
+ctx.fillStyle = '#E53935'; ctx.fill();
+// apple shine
+ctx.beginPath(); ctx.arc(747, 165, 12, 0, Math.PI*2);
+ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fill();
+// apple leaf
+ctx.beginPath(); ctx.ellipse(760, 130, 10, 6, -0.3, 0, Math.PI*2);
+ctx.fillStyle = '#4CAF50'; ctx.fill();
+// stem
+ctx.beginPath(); ctx.moveTo(760, 130); ctx.lineTo(762, 145);
+ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 2.5; ctx.stroke();
+
+// Orange
+ctx.beginPath(); ctx.arc(920, 160, 44, 0, Math.PI*2);
+ctx.fillStyle = '#FF9800'; ctx.fill();
+ctx.beginPath(); ctx.arc(920, 160, 38, 0, Math.PI*2);
+ctx.fillStyle = 'rgba(255,193,7,0.3)'; ctx.fill();
+// orange dot
+ctx.beginPath(); ctx.arc(920, 122, 4, 0, Math.PI*2);
+ctx.fillStyle = '#4CAF50'; ctx.fill();
+
+// Banana bunch
+ctx.lineWidth = 18; ctx.lineCap = 'round';
+ctx.beginPath(); ctx.moveTo(790, 350); ctx.quadraticCurveTo(840, 310, 900, 320);
+ctx.strokeStyle = '#FDD835'; ctx.stroke();
+ctx.lineWidth = 14;
+ctx.beginPath(); ctx.moveTo(800, 365); ctx.quadraticCurveTo(845, 335, 890, 340);
+ctx.strokeStyle = '#FFEE58'; ctx.stroke();
+
+// Tomato
+ctx.beginPath(); ctx.arc(1020, 260, 38, 0, Math.PI*2);
+ctx.fillStyle = '#F44336'; ctx.fill();
+ctx.beginPath(); ctx.arc(1008, 248, 10, 0, Math.PI*2);
+ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fill();
+// tomato top
+ctx.beginPath();
+ctx.moveTo(1008, 224); ctx.lineTo(1020, 228); ctx.lineTo(1032, 224);
+ctx.strokeStyle = '#388E3C'; ctx.lineWidth = 3; ctx.stroke();
+
+// Milk carton
+roundRect(ctx, 680, 380, 55, 85, 6, '#E3F2FD');
+ctx.fillStyle = '#1976D2';
+ctx.fillRect(685, 385, 45, 30);
+ctx.font = 'bold 13px Arial';
+ctx.fillStyle = '#fff';
+ctx.fillText('MILK', 691, 405);
+// milk cap
+roundRect(ctx, 698, 372, 20, 12, 3, '#1976D2');
+
+// Green capsicum/bell pepper
+ctx.beginPath(); ctx.ellipse(1050, 400, 35, 42, 0, 0, Math.PI*2);
+ctx.fillStyle = '#4CAF50'; ctx.fill();
+ctx.beginPath(); ctx.ellipse(1050, 400, 28, 35, 0, 0, Math.PI*2);
+ctx.fillStyle = 'rgba(76,175,80,0.6)'; ctx.fill();
+// stem
+roundRect(ctx, 1044, 358, 12, 14, 3, '#2E7D32');
+
+// Rice/Atta bag
+roundRect(ctx, 870, 390, 60, 75, 8, '#FFF8E1');
+ctx.strokeStyle = '#F5A623'; ctx.lineWidth = 2.5;
+ctx.strokeRect(870, 390, 60, 75);
+ctx.font = 'bold 14px Arial';
+ctx.fillStyle = '#E65100';
+ctx.fillText('ATTA', 880, 435);
+ctx.font = '11px Arial';
+ctx.fillStyle = '#999';
+ctx.fillText('5 Kg', 888, 452);
+
+// Carrot
+ctx.beginPath();
+ctx.moveTo(770, 450);
+ctx.lineTo(730, 530);
+ctx.lineTo(740, 530);
+ctx.lineTo(780, 450);
+ctx.fillStyle = '#FF7043'; ctx.fill();
+// carrot leaves
+ctx.beginPath(); ctx.ellipse(775, 445, 8, 4, -0.5, 0, Math.PI*2);
+ctx.fillStyle = '#66BB6A'; ctx.fill();
+ctx.beginPath(); ctx.ellipse(770, 442, 7, 4, 0.3, 0, Math.PI*2);
+ctx.fillStyle = '#81C784'; ctx.fill();
+
+// Oil bottle
+roundRect(ctx, 950, 400, 38, 60, 5, '#FFF9C4');
+roundRect(ctx, 957, 388, 24, 16, 4, '#F5A623');
+ctx.font = 'bold 10px Arial';
+ctx.fillStyle = '#E65100';
+ctx.fillText('OIL', 960, 438);
+
+// Floating small dots for decoration
+ctx.globalAlpha = 0.5;
+const dots = [[650,150,'#F5A623'],[1100,180,'#4CAF50'],[650,500,'#E53935'],[1100,480,'#5BA3D9'],[750,550,'#FF9800'],[980,530,'#7BB8E8']];
+dots.forEach(([x,y,c]) => {
+  ctx.beginPath(); ctx.arc(x,y,6,0,Math.PI*2);
+  ctx.fillStyle = c; ctx.fill();
+});
+ctx.globalAlpha = 1;
+
+// Top-left corner accent
+ctx.beginPath();
+ctx.moveTo(0, 0); ctx.lineTo(80, 0); ctx.lineTo(0, 80); ctx.closePath();
+ctx.fillStyle = '#F5A623'; ctx.fill();
+
+// Bottom-right corner accent
+ctx.beginPath();
+ctx.moveTo(1200, 630); ctx.lineTo(1120, 630); ctx.lineTo(1200, 550); ctx.closePath();
+ctx.fillStyle = '#4CAF50'; ctx.fill();
+
+function roundRect(ctx, x, y, w, h, r, fill) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+}
+
+// Download as PNG
+canvas.toBlob(function(blob) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'og-image.png';
+  a.click();
+  document.body.innerHTML = '<h1 style="font-family:sans-serif;text-align:center;margin-top:50px;color:#2C6FAD;">Done! og-image.png downloaded<br><br><span style="font-size:16px;color:#666;">Move to: assets/images/og-image.png</span></h1>';
+}, 'image/png', 0.92);
+</script>
+</body>
+</html>
