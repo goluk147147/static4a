@@ -35,40 +35,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadData() {
   try {
-    const [prodRes, catRes, usersRes, ordersRes, adminRes] = await Promise.all([
+    const [prodRes, catRes, adminRes] = await Promise.all([
       fetch('data/products.json'),
       fetch('data/categories.json'),
-      fetch('data/users.json'),
-      fetch('data/orders.json'),
       fetch('data/admin.json')
     ]);
     products = await prodRes.json();
     categories = await catRes.json();
     
-    // Load users from JSON and sync with localStorage
-    const jsonUsers = await usersRes.json();
-    const localUsers = JSON.parse(localStorage.getItem('4astore_users')) || [];
-    // Merge: JSON users as base, local users added on top (by mobile uniqueness)
-    const mergedUsers = [...jsonUsers];
-    localUsers.forEach(lu => {
-      if (!mergedUsers.find(u => u.mobile === lu.mobile || u.username === lu.username)) {
-        mergedUsers.push(lu);
+    // Load users from PHP API (server-side JSON)
+    try {
+      const usersApiRes = await fetch('api/users.php?action=list');
+      const usersApiData = await usersApiRes.json();
+      if (usersApiData.success) {
+        dbUsers = usersApiData.users;
+      } else {
+        dbUsers = [];
       }
-    });
-    dbUsers = mergedUsers;
+    } catch(e) {
+      // Fallback to direct JSON file
+      const usersRes = await fetch('data/users.json');
+      dbUsers = await usersRes.json();
+    }
     localStorage.setItem('4astore_users', JSON.stringify(dbUsers));
 
-    // Load orders from JSON and sync with localStorage
-    const jsonOrders = await ordersRes.json();
-    const localOrders = JSON.parse(localStorage.getItem('4astore_orders')) || [];
-    // Merge: JSON orders as base, local orders added on top (by orderId uniqueness)
-    const mergedOrders = [...jsonOrders];
-    localOrders.forEach(lo => {
-      if (!mergedOrders.find(o => o.orderId === lo.orderId)) {
-        mergedOrders.push(lo);
+    // Load orders from PHP API (server-side JSON)
+    try {
+      const ordersApiRes = await fetch('api/orders.php');
+      const ordersApiData = await ordersApiRes.json();
+      if (ordersApiData.success) {
+        dbOrders = ordersApiData.orders;
+      } else {
+        dbOrders = [];
       }
-    });
-    dbOrders = mergedOrders;
+    } catch(e) {
+      // Fallback to direct JSON file
+      const ordersRes = await fetch('data/orders.json');
+      dbOrders = await ordersRes.json();
+    }
     localStorage.setItem('4astore_orders', JSON.stringify(dbOrders));
 
     // Load admin credentials from JSON
@@ -360,7 +364,17 @@ function placeOrder(customerData) {
     orderDate: new Date().toISOString()
   };
   
-  // Save to order history (synced with JSON db)
+  // Save to PHP API (server-side JSON)
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/orders.php', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({ action: 'save', order: order }));
+  } catch(e) {
+    console.error('Failed to save order to server:', e);
+  }
+
+  // Also save to localStorage as cache
   let orders = JSON.parse(localStorage.getItem('4astore_orders')) || [];
   orders.unshift(order);
   localStorage.setItem('4astore_orders', JSON.stringify(orders));
@@ -385,6 +399,17 @@ function getOrdersByUser(mobile) {
 }
 
 function updateOrderStatus(orderId, newStatus) {
+  // Update on server via PHP API
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/orders.php', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({ action: 'updateStatus', orderId: orderId, status: newStatus }));
+  } catch(e) {
+    console.error('Failed to update order status on server:', e);
+  }
+
+  // Also update localStorage
   let orders = JSON.parse(localStorage.getItem('4astore_orders')) || [];
   const order = orders.find(o => o.orderId === orderId);
   if (order) {
@@ -409,43 +434,68 @@ function getUserId(mobile) {
 }
 
 function findUser(usernameOrMobile, password) {
-  const users = getUsers();
-  return users.find(u => 
-    (u.username === usernameOrMobile || u.mobile === usernameOrMobile) && u.password === password
-  );
+  // Try PHP API first
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/users.php', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({ action: 'login', username: usernameOrMobile, password: password }));
+    const res = JSON.parse(xhr.responseText);
+    if (res.success) return res.user;
+    return null;
+  } catch(e) {
+    // Fallback to localStorage
+    const users = getUsers();
+    return users.find(u => 
+      (u.username === usernameOrMobile || u.mobile === usernameOrMobile) && u.password === password
+    );
+  }
 }
 
 function registerUser(userData) {
-  const users = getUsers();
-  
-  // Check duplicates
-  if (users.find(u => u.username === userData.username)) {
-    return { success: false, message: 'Username already taken' };
-  }
-  if (users.find(u => u.mobile === userData.mobile)) {
-    return { success: false, message: 'Mobile number already registered' };
-  }
-  
-  // Assign new ID
-  const maxId = users.reduce((max, u) => Math.max(max, u.id || 0), 0);
-  const newUser = {
-    id: maxId + 1,
+  // Sync call to PHP API
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', 'api/users.php', false); // synchronous
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.send(JSON.stringify({
+    action: 'register',
     name: userData.name,
     mobile: userData.mobile,
     username: userData.username,
-    password: userData.password,
-    registeredAt: new Date().toISOString(),
-    lastLogin: new Date().toISOString()
-  };
+    password: userData.password
+  }));
   
-  users.push(newUser);
-  localStorage.setItem('4astore_users', JSON.stringify(users));
-  dbUsers = users;
-  
-  return { success: true, user: newUser };
+  try {
+    const res = JSON.parse(xhr.responseText);
+    if (res.success) {
+      // Also update local cache
+      const users = getUsers();
+      users.push(res.user);
+      localStorage.setItem('4astore_users', JSON.stringify(users));
+      dbUsers = users;
+    }
+    return res;
+  } catch(e) {
+    // Fallback to local-only
+    const users = getUsers();
+    if (users.find(u => u.username === userData.username)) {
+      return { success: false, message: 'Username already taken' };
+    }
+    if (users.find(u => u.mobile === userData.mobile)) {
+      return { success: false, message: 'Mobile number already registered' };
+    }
+    const maxId = users.reduce((max, u) => Math.max(max, u.id || 0), 0);
+    const newUser = { id: maxId + 1, ...userData, registeredAt: new Date().toISOString(), lastLogin: new Date().toISOString() };
+    users.push(newUser);
+    localStorage.setItem('4astore_users', JSON.stringify(users));
+    dbUsers = users;
+    return { success: true, user: newUser };
+  }
 }
 
 function updateUserLogin(usernameOrMobile) {
+  // PHP API handles lastLogin update during login action already
+  // Just update local cache
   const users = getUsers();
   const user = users.find(u => u.username === usernameOrMobile || u.mobile === usernameOrMobile);
   if (user) {

@@ -179,27 +179,44 @@
         return;
       }
 
-      // Find user from JSON-synced database
-      const user = findUser(username, password);
-
-      if (!user) {
-        // Check if username exists but password is wrong
-        const users = getUsers();
-        const exists = users.find(u => u.username === username || u.mobile === username);
-        if (exists) {
-          showToast('Incorrect password. Please try again.', 'error');
-        } else {
-          showToast('Account not found. Please sign up first.', 'error');
+      // Find user via PHP API
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'api/users.php', false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ action: 'login', username: username, password: password }));
+        const res = JSON.parse(xhr.responseText);
+        
+        if (!res.success) {
+          showToast(res.message, 'error');
+          return;
         }
-        return;
+
+        // Login successful
+        const user = res.user;
+        updateUserLogin(username);
+        loginUser(user.name, user.mobile, user.username);
+
+        const returnUrl = new URLSearchParams(window.location.search).get('return') || '/';
+        setTimeout(() => { window.location.href = returnUrl; }, 500);
+      } catch(e) {
+        // Fallback to local
+        const user = findUser(username, password);
+        if (!user) {
+          const users = getUsers();
+          const exists = users.find(u => u.username === username || u.mobile === username);
+          if (exists) {
+            showToast('Incorrect password. Please try again.', 'error');
+          } else {
+            showToast('Account not found. Please sign up first.', 'error');
+          }
+          return;
+        }
+        updateUserLogin(username);
+        loginUser(user.name, user.mobile, user.username);
+        const returnUrl = new URLSearchParams(window.location.search).get('return') || '/';
+        setTimeout(() => { window.location.href = returnUrl; }, 500);
       }
-
-      // Update last login in DB
-      updateUserLogin(username);
-      loginUser(user.name, user.mobile, user.username);
-
-      const returnUrl = new URLSearchParams(window.location.search).get('return') || '/';
-      setTimeout(() => { window.location.href = returnUrl; }, 500);
     }
 
     function handleSignup() {

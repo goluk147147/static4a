@@ -245,7 +245,13 @@
         return;
       }
 
+      const now = new Date();
+
       document.getElementById('tabContent').innerHTML = `
+        <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <p style="font-size:13px; color:var(--gray);">Total: <strong>${users.length}</strong> users</p>
+          <button onclick="deleteInactiveUsers()" style="padding:8px 16px; background:#e53935; color:white; border:none; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">🗑️ Delete 30+ Days Inactive</button>
+        </div>
         <div style="overflow-x:auto;">
           <table class="admin-table">
             <thead>
@@ -256,14 +262,20 @@
                 <th>Mobile</th>
                 <th>Password</th>
                 <th>Registered</th>
+                <th>Last Login</th>
+                <th>Inactive</th>
                 <th>Orders</th>
                 <th>Spent</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               ${users.map((u, i) => {
                 const userOrders = getOrdersByUser(u.mobile);
                 const totalSpent = userOrders.reduce((s, o) => s + o.totalAmount, 0);
+                const lastLogin = u.lastLogin ? new Date(u.lastLogin) : null;
+                const daysSinceLogin = lastLogin ? Math.floor((now - lastLogin) / (1000 * 60 * 60 * 24)) : 999;
+                const inactiveClass = daysSinceLogin >= 30 ? 'color:#e53935; font-weight:700;' : 'color:#2e7d32;';
                 return `
                 <tr>
                   <td>${u.id || i + 1}</td>
@@ -272,13 +284,16 @@
                   <td><a href="tel:${u.mobile}">${u.mobile}</a></td>
                   <td style="font-family:monospace; font-size:11px;">${u.password || '-'}</td>
                   <td>${u.registeredAt ? formatDate(u.registeredAt) : '-'}</td>
+                  <td>${lastLogin ? formatDate(u.lastLogin) : 'Never'}</td>
+                  <td style="${inactiveClass}">${daysSinceLogin >= 999 ? 'Never' : daysSinceLogin + ' days'}</td>
                   <td>${userOrders.length}</td>
                   <td><strong>₹${totalSpent}</strong></td>
+                  <td><button onclick="deleteUser('${u.mobile}', '${u.name}')" style="padding:5px 10px; background:#e53935; color:white; border:none; border-radius:6px; cursor:pointer; font-size:11px;">🗑️</button></td>
                 </tr>`;
               }).join('')}
             </tbody>
           </table>
-        </div>`;
+        </div>`; 
     }
 
     function renderEarningsTab() {
@@ -343,6 +358,78 @@
       updateOrderStatus(orderId, newStatus);
       showToast(`Order #${orderId} → ${newStatus}`, 'success');
       loadStats();
+    }
+
+    // Delete single user
+    function deleteUser(mobile, name) {
+      if (!confirm(`Delete user "${name}" (${mobile})? This cannot be undone!`)) return;
+      
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'api/users.php', false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ action: 'delete', mobile: mobile }));
+        const res = JSON.parse(xhr.responseText);
+        if (res.success) {
+          showToast(`User "${name}" deleted`, 'success');
+        } else {
+          // Fallback: delete from localStorage
+          let users = getUsers();
+          users = users.filter(u => u.mobile !== mobile);
+          localStorage.setItem('4astore_users', JSON.stringify(users));
+          showToast(`User "${name}" deleted (local)`, 'success');
+        }
+      } catch(e) {
+        // Fallback: delete from localStorage
+        let users = getUsers();
+        users = users.filter(u => u.mobile !== mobile);
+        localStorage.setItem('4astore_users', JSON.stringify(users));
+        showToast(`User "${name}" deleted (local)`, 'success');
+      }
+      
+      loadStats();
+      renderUsersTab();
+    }
+
+    // Delete all users inactive for 30+ days
+    function deleteInactiveUsers() {
+      const users = getUsers();
+      const now = new Date();
+      const inactiveUsers = users.filter(u => {
+        const lastLogin = u.lastLogin ? new Date(u.lastLogin) : null;
+        const daysSinceLogin = lastLogin ? Math.floor((now - lastLogin) / (1000 * 60 * 60 * 24)) : 999;
+        return daysSinceLogin >= 30;
+      });
+
+      if (inactiveUsers.length === 0) {
+        showToast('No inactive users to delete', 'info');
+        return;
+      }
+
+      if (!confirm(`Delete ${inactiveUsers.length} users who haven't logged in for 30+ days? This cannot be undone!`)) return;
+
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'api/users.php', false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ action: 'deleteInactive', days: 30 }));
+        const res = JSON.parse(xhr.responseText);
+        if (res.success) {
+          showToast(`${res.deleted} inactive users deleted`, 'success');
+        }
+      } catch(e) {
+        // Fallback: delete locally
+        const activeUsers = users.filter(u => {
+          const lastLogin = u.lastLogin ? new Date(u.lastLogin) : null;
+          const daysSinceLogin = lastLogin ? Math.floor((now - lastLogin) / (1000 * 60 * 60 * 24)) : 999;
+          return daysSinceLogin < 30;
+        });
+        localStorage.setItem('4astore_users', JSON.stringify(activeUsers));
+        showToast(`${inactiveUsers.length} inactive users deleted (local)`, 'success');
+      }
+
+      loadStats();
+      renderUsersTab();
     }
 
     function viewOrder(orderId) {
