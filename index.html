@@ -171,7 +171,7 @@
     window.addEventListener('dataLoaded', async () => {
       // Load config
       try {
-        const res = await fetch('data/config.json');
+        const res = await fetch('api/data.php?type=config');
         siteConfig = await res.json();
       } catch(e) { siteConfig = { banners: [], ads: [], socialProofMessages: [], socialProofNames: [] }; }
 

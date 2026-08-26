@@ -36,9 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadData() {
   try {
     const [prodRes, catRes, adminRes] = await Promise.all([
-      fetch('data/products.json'),
-      fetch('data/categories.json'),
-      fetch('data/admin.json')
+      fetch('api/data.php?type=products'),
+      fetch('api/data.php?type=categories'),
+      fetch('api/data.php?type=admin')
     ]);
     products = await prodRes.json();
     categories = await catRes.json();
@@ -75,7 +75,7 @@ async function loadData() {
     }
     localStorage.setItem('4astore_orders', JSON.stringify(dbOrders));
 
-    // Load admin credentials from JSON
+    // Load admin credentials
     dbAdmin = await adminRes.json();
     localStorage.setItem('4astore_admin', JSON.stringify(dbAdmin));
     
