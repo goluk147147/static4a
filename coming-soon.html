@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>4A Store - Coming Soon | 9 September 2026</title>
-  <meta name="description" content="4A Store - Your local grocery store is launching on 9 September 2026. Fresh fruits, vegetables & daily needs delivered in minutes!">
+  <title>4A Store - Coming Soon | 1 October 2026</title>
+  <meta name="description" content="4A Store - Your local grocery store is launching on 1 October 2026. Fresh fruits, vegetables & daily needs delivered in minutes!">
   <meta property="og:title" content="4A Store - Coming Soon!">
-  <meta property="og:description" content="Your local grocery store launching 9 September 2026. Fresh fruits, vegetables & daily needs!">
+  <meta property="og:description" content="Your local grocery store launching 1 October 2026. Fresh fruits, vegetables & daily needs!">
   <meta property="og:image" content="https://4astore.webtoolsz.com/assets/images/og-image.jpg">
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
   <style>
@@ -15,11 +15,14 @@
       font-family: 'Segoe UI', sans-serif;
       min-height: 100vh;
       background: linear-gradient(135deg, #1a5276 0%, #2C6FAD 40%, #148f77 100%);
+      background-attachment: fixed;
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
       position: relative;
+      padding: 24px 0;
     }
 
     /* Animated background circles */
@@ -62,17 +65,18 @@
 
     .container {
       text-align: center;
-      padding: 40px 24px;
+      padding: 20px 24px;
       max-width: 600px;
       z-index: 10;
       position: relative;
     }
 
     .logo-area {
-      margin-bottom: 30px;
+      margin-bottom: 24px;
     }
     .logo-area img {
-      height: 70px;
+      height: 60px;
+      display: inline-block;
       filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
     }
 
@@ -105,7 +109,7 @@
       color: rgba(255,255,255,0.85);
       font-size: 1.1rem;
       line-height: 1.6;
-      margin-bottom: 40px;
+      margin-bottom: 30px;
     }
 
     /* Countdown */
@@ -113,7 +117,7 @@
       display: flex;
       justify-content: center;
       gap: 16px;
-      margin-bottom: 40px;
+      margin-bottom: 28px;
       flex-wrap: wrap;
     }
     .countdown-box {
@@ -200,7 +204,8 @@
       .countdown-box { min-width: 65px; padding: 12px 8px; }
       .countdown-box .number { font-size: 1.6rem; }
       .container { padding: 24px 16px; }
-      .logo-area img { height: 50px; }
+      .logo-area .logo-card { padding: 10px 20px; }
+      .logo-area .logo-card img { height: 38px; }
       .subtitle { font-size: 0.95rem; margin-bottom: 28px; }
       .launch-date { padding: 12px 20px; }
       .launch-date .date-text { font-size: 14px; }
@@ -226,7 +231,7 @@
 
   <div class="container">
     <div class="logo-area">
-      <img src="assets/images/logo.png" alt="4A Store">
+      <img src="assets/images/logo.svg?v=2" alt="4A Store">
     </div>
 
     <div class="badge">LAUNCHING SOON</div>
@@ -263,7 +268,7 @@
     <!-- Launch date -->
     <div class="launch-date">
       <span class="date-icon">📅</span>
-      <span class="date-text">9 September 2026</span>
+      <span class="date-text">1 October 2026</span>
     </div>
 
     <!-- Contact -->
@@ -280,8 +285,8 @@
   <div class="dev-access" id="devAccess" title=""></div>
 
   <script>
-    // Countdown to 9 September 2026
-    const launchDate = new Date('2026-09-09T00:00:00+05:30').getTime();
+    // Countdown to 1 October 2026
+    const launchDate = new Date('2026-10-01T00:00:00+05:30').getTime();
 
     function updateCountdown() {
       const now = new Date().getTime();
