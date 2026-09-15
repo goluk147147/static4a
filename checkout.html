@@ -114,9 +114,10 @@
       </div>
 
       <!-- Mobile: Open UPI App directly -->
-      <a id="upiDeepLink" href="#" style="display:inline-block; padding:10px 24px; background:var(--primary); color:white; border-radius:30px; font-size:14px; font-weight:600; margin-bottom:14px; text-decoration:none;">
+      <a id="upiDeepLink" href="#" onclick="return openUpiApp(event)" style="display:inline-block; padding:10px 24px; background:var(--primary); color:white; border-radius:30px; font-size:14px; font-weight:600; margin-bottom:8px; text-decoration:none;">
         📲 Open UPI App & Pay
       </a>
+      <p id="upiHint" style="font-size:11px; color:#888; margin-bottom:14px;"></p>
 
       <!-- Screenshot Upload Section -->
       <div style="border-top:2px solid var(--border); padding-top:16px; margin-top:8px;">
@@ -248,19 +249,76 @@
       document.getElementById('upiPaymentModal').classList.remove('hidden');
       document.getElementById('upiPaymentModal').style.display = 'flex';
       
-      // UPI deep link for mobile
-      const upiLink = `upi://pay?pa=goluk147147@ybl&pn=4astore&am=${totals.total}&cu=INR&tn=4astore_Order`;
-      document.getElementById('upiDeepLink').href = upiLink;
-      
-      // Generate QR
-      const qrDiv = document.getElementById('qrCode');
-      qrDiv.innerHTML = '';
-      if (typeof QRCode !== 'undefined') {
-        new QRCode(qrDiv, { text: upiLink, width: 160, height: 160, colorDark: "#2C6FAD", colorLight: "#ffffff" });
-      } else {
-        qrDiv.innerHTML = `<div style="width:160px;height:160px;border:3px solid var(--primary);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;">
-          <span style="font-size:2rem;">📱</span><span style="font-size:11px;color:var(--primary);font-weight:600;">goluk147147@ybl</span></div>`;
+      // UPI deep link (works on mobile devices with a UPI app installed)
+      const payee = 'goluk147147@ybl';
+      const payeeName = encodeURIComponent('4astore');
+      const note = encodeURIComponent('4astore Order');
+      const amount = Number(totals.total).toFixed(2);
+      window.currentUpiLink = `upi://pay?pa=${payee}&pn=${payeeName}&am=${amount}&cu=INR&tn=${note}`;
+      document.getElementById('upiDeepLink').href = window.currentUpiLink;
+
+      // Show device-appropriate hint
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const hintEl = document.getElementById('upiHint');
+      if (hintEl) {
+        hintEl.textContent = isMobile
+          ? 'Tap to open GPay / PhonePe / Paytm'
+          : '💻 On computer, scan the QR above with your phone';
       }
+      
+      // Generate QR (library if available, else image-API fallback so it always shows)
+      renderUpiQr(window.currentUpiLink);
+    }
+
+    // Render the UPI QR. Uses the qrcodejs library when loaded, otherwise
+    // falls back to a QR image API so the code is always visible.
+    function renderUpiQr(upiLink) {
+      const qrDiv = document.getElementById('qrCode');
+      if (!qrDiv) return;
+      qrDiv.innerHTML = '';
+
+      if (typeof QRCode !== 'undefined') {
+        try {
+          new QRCode(qrDiv, { text: upiLink, width: 180, height: 180, colorDark: "#1a1a2e", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+          return;
+        } catch (e) { /* fall through to image fallback */ }
+      }
+
+      // Fallback: generate QR as an image via a public QR API
+      const img = document.createElement('img');
+      img.width = 180;
+      img.height = 180;
+      img.alt = 'UPI QR Code';
+      img.style.borderRadius = '8px';
+      img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(upiLink);
+      img.onerror = function () {
+        qrDiv.innerHTML = '<div style="width:180px;height:180px;border:3px solid var(--primary);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;margin:0 auto;">'
+          + '<span style="font-size:2rem;">📱</span>'
+          + '<span style="font-size:11px;color:var(--primary);font-weight:600;">goluk147147@ybl</span></div>';
+      };
+      qrDiv.appendChild(img);
+    }
+
+    // Handle "Open UPI App & Pay" click
+    function openUpiApp(event) {
+      if (event) event.preventDefault();
+      const link = window.currentUpiLink;
+      if (!link) return false;
+
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (!isMobile) {
+        // Desktop has no UPI app — guide the user to scan the QR instead
+        if (typeof showToast === 'function') {
+          showToast('UPI apps open only on mobile. Please scan the QR code with your phone.', 'info');
+        } else {
+          alert('UPI apps open only on mobile.\nPlease scan the QR code above using GPay / PhonePe / Paytm on your phone.');
+        }
+        return false;
+      }
+
+      // On mobile: try to launch the UPI app
+      window.location.href = link;
+      return false;
     }
 
     function handleScreenshot(input) {

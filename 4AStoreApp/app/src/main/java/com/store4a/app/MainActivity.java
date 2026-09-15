@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
     private SwipeRefreshLayout swipeRefresh;
     private LinearLayout noInternetLayout;
 
-    private static final String WEBSITE_URL = "https://4astore.webtoolsz.com/";
+    private static final String WEBSITE_URL = "https://4astore.com/";
     private static final int FILE_CHOOSER_REQUEST_CODE = 100;
     private static final int PERMISSION_REQUEST_CODE = 200;
 
@@ -197,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // Keep same domain navigation in WebView
-                if (url.contains("4astore.webtoolsz.com")) {
+                if (url.contains("4astore.com")) {
                     return false;
                 }
 
