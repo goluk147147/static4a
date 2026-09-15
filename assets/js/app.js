@@ -62,6 +62,7 @@ async function loadData() {
     
     products = prodData;
     categories = catData;
+    localStorage.setItem('4astore_products', JSON.stringify(products));
     
     // Load users from PHP API
     try {
@@ -533,6 +534,145 @@ function getAdminCredentials() {
 }
 
 // ============================================
+// PRODUCT MANAGEMENT (Admin) — add / edit price & features
+// ============================================
+function getProducts() {
+  // Prefer in-memory list loaded by loadData(); fall back to localStorage cache.
+  if (Array.isArray(products) && products.length) return products;
+  const cached = JSON.parse(localStorage.getItem('4astore_products'));
+  return Array.isArray(cached) ? cached : (Array.isArray(products) ? products : []);
+}
+
+function cacheProducts(list) {
+  products = list;
+  localStorage.setItem('4astore_products', JSON.stringify(list));
+}
+
+// Calculate discount % from mrp/price
+function calcDiscount(mrp, price) {
+  mrp = parseFloat(mrp) || 0;
+  price = parseFloat(price) || 0;
+  if (mrp > 0 && price >= 0 && price <= mrp) {
+    return Math.round(((mrp - price) / mrp) * 100);
+  }
+  return 0;
+}
+
+// Normalize the features field into an array of trimmed strings
+function normalizeFeatures(features) {
+  if (Array.isArray(features)) {
+    return features.map(f => String(f).trim()).filter(Boolean);
+  }
+  if (typeof features === 'string' && features.trim()) {
+    return features.split(/[\r\n,]+/).map(f => f.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+// Add a new product. Returns { success, message, product }.
+function addProduct(data) {
+  const product = {
+    name: (data.name || '').trim(),
+    brand: (data.brand || '').trim(),
+    category: (data.category || '').trim(),
+    weight: (data.weight || '').trim(),
+    mrp: parseFloat(data.mrp) || 0,
+    price: parseFloat(data.price) || 0,
+    discount: data.discount !== undefined && data.discount !== '' ? parseInt(data.discount, 10) : calcDiscount(data.mrp, data.price),
+    image: (data.image || '').trim(),
+    description: (data.description || '').trim(),
+    features: normalizeFeatures(data.features),
+    inStock: data.inStock !== undefined ? !!data.inStock : true
+  };
+
+  if (!product.name) return { success: false, message: 'Product name is required' };
+
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/products.php', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({ action: 'add', product }));
+    const res = JSON.parse(xhr.responseText);
+    if (res.success && res.product) {
+      const list = getProducts().slice();
+      list.push(res.product);
+      cacheProducts(list);
+      return res;
+    }
+    throw new Error(res.message || 'API failed');
+  } catch (e) {
+    // Local fallback
+    const list = getProducts().slice();
+    const maxId = list.reduce((m, p) => Math.max(m, p.id || 0), 0);
+    product.id = maxId + 1;
+    list.push(product);
+    cacheProducts(list);
+    return { success: true, message: 'Product added (local)', product };
+  }
+}
+
+// Update an existing product by id. Returns { success, message }.
+function updateProduct(id, data) {
+  id = parseInt(id, 10);
+  const list = getProducts().slice();
+  const idx = list.findIndex(p => parseInt(p.id, 10) === id);
+  if (idx === -1) return { success: false, message: 'Product not found' };
+
+  const existing = list[idx];
+  const mrp = data.mrp !== undefined && data.mrp !== '' ? parseFloat(data.mrp) : existing.mrp;
+  const price = data.price !== undefined && data.price !== '' ? parseFloat(data.price) : existing.price;
+  const updated = {
+    ...existing,
+    id,
+    name: data.name !== undefined ? String(data.name).trim() : existing.name,
+    brand: data.brand !== undefined ? String(data.brand).trim() : existing.brand,
+    category: data.category !== undefined ? String(data.category).trim() : existing.category,
+    weight: data.weight !== undefined ? String(data.weight).trim() : existing.weight,
+    mrp,
+    price,
+    discount: data.discount !== undefined && data.discount !== '' ? parseInt(data.discount, 10) : calcDiscount(mrp, price),
+    image: data.image !== undefined ? String(data.image).trim() : existing.image,
+    description: data.description !== undefined ? String(data.description).trim() : existing.description,
+    features: data.features !== undefined ? normalizeFeatures(data.features) : (existing.features || []),
+    inStock: data.inStock !== undefined ? !!data.inStock : (existing.inStock !== undefined ? existing.inStock : true)
+  };
+
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/products.php', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({ action: 'update', product: updated }));
+    const res = JSON.parse(xhr.responseText);
+    list[idx] = updated;
+    cacheProducts(list);
+    return res.success ? res : { success: true, message: 'Product updated (local)' };
+  } catch (e) {
+    list[idx] = updated;
+    cacheProducts(list);
+    return { success: true, message: 'Product updated (local)' };
+  }
+}
+
+// Delete a product by id. Returns { success, message }.
+function deleteProduct(id) {
+  id = parseInt(id, 10);
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/products.php', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({ action: 'delete', id }));
+    const res = JSON.parse(xhr.responseText);
+    const list = getProducts().filter(p => parseInt(p.id, 10) !== id);
+    cacheProducts(list);
+    return res.success ? res : { success: true, message: 'Product deleted (local)' };
+  } catch (e) {
+    const list = getProducts().filter(p => parseInt(p.id, 10) !== id);
+    cacheProducts(list);
+    return { success: true, message: 'Product deleted (local)' };
+  }
+}
+
+// ============================================
 // WHATSAPP NOTIFICATION (Auto-send on order)
 // ============================================
 function sendWhatsAppNotification(order) {
@@ -618,6 +758,21 @@ function getProductImage(product) {
   return 'data:image/svg+xml,' + encodeURIComponent(svg);
 }
 
+// Returns the real product image URL when provided, otherwise the generated
+// SVG placeholder. Real URLs are preferred so admin-set images show on the store.
+function getProductImageSrc(product) {
+  const url = (product && product.image ? String(product.image).trim() : '');
+  if (url && /^(https?:)?\/\//i.test(url)) return url;
+  if (url && !/^https?:/i.test(url) && url.length > 0 && url.indexOf('data:') !== 0) return url; // relative path
+  if (url.indexOf('data:') === 0) return url;
+  return getProductImage(product);
+}
+
+// Escapes a string for safe use inside an HTML attribute (e.g. onerror data URI).
+function escapeAttr(str) {
+  return String(str == null ? '' : str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // ============================================
 // UTILITY
 // ============================================
@@ -656,11 +811,12 @@ function createProductCard(product) {
     : `<button class="btn-add-cart" onclick="addToCart(${product.id})">Add to Cart</button>`;
   
   const fallbackImg = getProductImage(product);
+  const imgSrc = getProductImageSrc(product);
   
   return `
     <div class="product-card" data-product-id="${product.id}">
       ${discountBadge}
-      <img src="${fallbackImg}" alt="${product.name}" class="product-img" onclick="goToProduct(${product.id})">
+      <img src="${imgSrc}" alt="${product.name}" class="product-img" onclick="goToProduct(${product.id})" onerror="this.onerror=null;this.src='${escapeAttr(fallbackImg)}'">
       <div class="product-brand">${product.brand}</div>
       <div class="product-name" onclick="goToProduct(${product.id})">${product.name}</div>
       <div class="product-weight">${product.weight}</div>

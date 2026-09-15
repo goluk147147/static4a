@@ -114,10 +114,11 @@
           const found = window.products.find(p => p.id === item.id);
           if (found) product.category = found.category;
         }
-        const imgSrc = getProductImage(product);
+        const imgSrc = getProductImageSrc(product);
+        const fallbackImg = getProductImage(product);
         return `
         <div class="cart-item">
-          <img src="${imgSrc}" alt="${item.name}">
+          <img src="${imgSrc}" alt="${item.name}" onerror="this.onerror=null;this.src='${escapeAttr(fallbackImg)}'">
           <div class="item-info">
             <h4>${item.name}</h4>
             <p>${item.brand || ''} · ${item.weight}</p>

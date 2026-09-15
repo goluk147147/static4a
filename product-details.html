@@ -138,7 +138,7 @@
       document.getElementById('productDetail').innerHTML = `
         <div class="product-detail-card">
           <div>
-            <img src="${getProductImage(p)}" alt="${p.name}" class="detail-img">
+            <img src="${getProductImageSrc(p)}" alt="${p.name}" class="detail-img" onerror="this.onerror=null;this.src='${escapeAttr(getProductImage(p))}'">
           </div>
           <div class="detail-info">
             <h1>${p.name}</h1>

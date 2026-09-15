@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>4A Store - Coming Soon | 1 October 2026</title>
-  <meta name="description" content="4A Store - Your local grocery store is launching on 1 October 2026. Fresh fruits, vegetables & daily needs delivered in minutes!">
+  <title>4A Store - Coming Soon | 16 September 2026</title>
+  <meta name="description" content="4A Store - Your local grocery store is launching on 16 September 2026. Fresh fruits, vegetables & daily needs delivered in minutes!">
   <meta property="og:title" content="4A Store - Coming Soon!">
-  <meta property="og:description" content="Your local grocery store launching 1 October 2026. Fresh fruits, vegetables & daily needs!">
+  <meta property="og:description" content="Your local grocery store launching 16 September 2026. Fresh fruits, vegetables & daily needs!">
   <meta property="og:image" content="https://4astore.webtoolsz.com/assets/images/og-image.jpg">
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
   <style>
@@ -268,7 +268,7 @@
     <!-- Launch date -->
     <div class="launch-date">
       <span class="date-icon">📅</span>
-      <span class="date-text">1 October 2026</span>
+      <span class="date-text">16 September 2026</span>
     </div>
 
     <!-- Contact -->
@@ -285,8 +285,8 @@
   <div class="dev-access" id="devAccess" title=""></div>
 
   <script>
-    // Countdown to 1 October 2026
-    const launchDate = new Date('2026-10-01T00:00:00+05:30').getTime();
+    // Countdown to 16 September 2026
+    const launchDate = new Date('2026-09-16T00:00:00+05:30').getTime();
 
     function updateCountdown() {
       const now = new Date().getTime();
@@ -321,7 +321,7 @@
         // Show password prompt
         const pass = prompt('Dev Access Password:');
         if (pass === '4adev') {
-          window.location.href = './index.html';
+          window.location.href = './index.html?devmode=4adev';
         }
         clickCount = 0;
       }

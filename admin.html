@@ -31,6 +31,17 @@
     .logout-btn { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
     .order-detail-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
     .order-detail-modal .modal-body { background: white; border-radius: 16px; padding: 24px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; }
+    .prod-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .prod-form-grid .full { grid-column: 1 / -1; }
+    .prod-form-grid label { display: block; font-size: 12px; font-weight: 600; color: var(--primary-dark); margin-bottom: 4px; }
+    .prod-form-grid input, .prod-form-grid select, .prod-form-grid textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; }
+    .prod-form-grid textarea { resize: vertical; min-height: 60px; }
+    .btn-add-product { padding: 10px 18px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .prod-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); background:#f5f5f5; }
+    .stock-badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .stock-in { background:#e8f5e9; color:#2e7d32; }
+    .stock-out { background:#ffebee; color:#c62828; }
+    @media (max-width: 600px) { .prod-form-grid { grid-template-columns: 1fr; } }
     @media (max-width: 768px) {
       .admin-table { font-size: 11px; }
       .admin-table th, .admin-table td { padding: 8px 6px; }
@@ -99,11 +110,17 @@
         <div class="stat-value" id="statTotalUsers">0</div>
         <div class="stat-label">Registered Users</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-icon">🛍️</div>
+        <div class="stat-value" id="statTotalProducts">0</div>
+        <div class="stat-label">Total Products</div>
+      </div>
     </div>
 
     <!-- Tabs -->
     <div class="admin-tabs">
       <button class="active" onclick="showTab('orders')">📦 Orders</button>
+      <button onclick="showTab('products')">🛍️ Products</button>
       <button onclick="showTab('users')">👥 Users</button>
       <button onclick="showTab('earnings')">💰 Earnings</button>
       <button onclick="showTab('settings')">⚙️ Settings</button>
@@ -118,6 +135,11 @@
   <!-- Order Detail Modal -->
   <div id="orderDetailModal" class="order-detail-modal hidden" onclick="if(event.target===this)closeOrderDetail()">
     <div class="modal-body" id="orderDetailBody"></div>
+  </div>
+
+  <!-- Product Edit Modal -->
+  <div id="productModal" class="order-detail-modal hidden" onclick="if(event.target===this)closeProductModal()">
+    <div class="modal-body" id="productModalBody"></div>
   </div>
 
   <script src="assets/js/app.js"></script>
@@ -193,6 +215,7 @@
       document.getElementById('statTodayEarning').textContent = '₹' + todayEarning;
       document.getElementById('statMonthEarning').textContent = '₹' + monthEarning;
       document.getElementById('statTotalUsers').textContent = users.length;
+      document.getElementById('statTotalProducts').textContent = getProducts().length;
     }
 
     function showTab(tab) {
@@ -200,6 +223,7 @@
       event.target.classList.add('active');
 
       if (tab === 'orders') renderOrdersTab();
+      else if (tab === 'products') renderProductsTab();
       else if (tab === 'users') renderUsersTab();
       else if (tab === 'earnings') renderEarningsTab();
       else if (tab === 'settings') renderSettingsTab();
@@ -504,6 +528,190 @@
       document.getElementById('orderDetailModal').classList.add('hidden');
     }
 
+    // ==========================================
+    // PRODUCTS TAB — add / edit price & features
+    // ==========================================
+    function renderProductsTab() {
+      const prods = getProducts();
+      const cats = (typeof categories !== 'undefined' && categories.length) ? categories : [];
+
+      const rows = prods.length ? prods.map(p => {
+        const featCount = Array.isArray(p.features) ? p.features.length : 0;
+        return `
+          <tr>
+            <td>${p.id}</td>
+            <td><img class="prod-thumb" src="${p.image || ''}" alt="" onerror="this.style.visibility='hidden'"></td>
+            <td><strong>${escapeHtml(p.name)}</strong><div style="font-size:11px;color:var(--gray);">${escapeHtml(p.brand || '')} · ${escapeHtml(p.weight || '')}</div></td>
+            <td>${escapeHtml(p.category || '')}</td>
+            <td>₹${p.mrp}</td>
+            <td><strong style="color:var(--primary-dark);">₹${p.price}</strong></td>
+            <td>${p.discount || 0}%</td>
+            <td>${featCount ? featCount + ' ✨' : '-'}</td>
+            <td><span class="stock-badge ${p.inStock ? 'stock-in' : 'stock-out'}">${p.inStock ? 'In Stock' : 'Out'}</span></td>
+            <td style="white-space:nowrap;">
+              <button onclick="openProductModal(${p.id})" style="padding:5px 10px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;margin-right:4px;">✏️ Edit</button>
+              <button onclick="removeProduct(${p.id})" style="padding:5px 10px;background:#e53935;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🗑️</button>
+            </td>
+          </tr>`;
+      }).join('') : `<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--gray);">No products yet. Click "Add Product".</td></tr>`;
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <p style="font-size:13px; color:var(--gray);">Total: <strong>${prods.length}</strong> products</p>
+          <button class="btn-add-product" onclick="openProductModal()">➕ Add Product</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th><th>Image</th><th>Name</th><th>Category</th>
+                <th>MRP</th><th>Price</th><th>Disc</th><th>Features</th><th>Stock</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    function escapeHtml(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function openProductModal(id) {
+      const isEdit = id !== undefined && id !== null;
+      const prods = getProducts();
+      const p = isEdit ? prods.find(pr => parseInt(pr.id, 10) === parseInt(id, 10)) : {};
+      if (isEdit && !p) { showToast('Product not found', 'error'); return; }
+
+      const cats = (typeof categories !== 'undefined' && categories.length) ? categories : [];
+      const catOptions = cats.map(c =>
+        `<option value="${c.slug}" ${p.category === c.slug ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+      ).join('');
+
+      const featuresText = Array.isArray(p.features) ? p.features.join('\n') : '';
+
+      document.getElementById('productModalBody').innerHTML = `
+        <h3 style="color:var(--primary); margin-bottom:16px;">${isEdit ? '✏️ Edit Product' : '➕ Add Product'}</h3>
+        <input type="hidden" id="pf_id" value="${isEdit ? p.id : ''}">
+        <div class="prod-form-grid">
+          <div class="full">
+            <label>Product Name *</label>
+            <input type="text" id="pf_name" value="${escapeHtml(p.name || '')}" placeholder="e.g. Aashirvaad Atta">
+          </div>
+          <div>
+            <label>Brand</label>
+            <input type="text" id="pf_brand" value="${escapeHtml(p.brand || '')}" placeholder="e.g. Aashirvaad">
+          </div>
+          <div>
+            <label>Weight / Size</label>
+            <input type="text" id="pf_weight" value="${escapeHtml(p.weight || '')}" placeholder="e.g. 5 Kg">
+          </div>
+          <div class="full">
+            <label>Category</label>
+            <select id="pf_category">
+              <option value="">— Select category —</option>
+              ${catOptions}
+            </select>
+          </div>
+          <div>
+            <label>MRP (₹)</label>
+            <input type="number" id="pf_mrp" min="0" step="0.01" value="${p.mrp != null ? p.mrp : ''}" oninput="autoDiscount()" placeholder="0">
+          </div>
+          <div>
+            <label>Selling Price (₹) *</label>
+            <input type="number" id="pf_price" min="0" step="0.01" value="${p.price != null ? p.price : ''}" oninput="autoDiscount()" placeholder="0">
+          </div>
+          <div>
+            <label>Discount (%)</label>
+            <input type="number" id="pf_discount" min="0" max="100" value="${p.discount != null ? p.discount : ''}" placeholder="auto">
+          </div>
+          <div>
+            <label>In Stock?</label>
+            <select id="pf_instock">
+              <option value="1" ${p.inStock !== false ? 'selected' : ''}>✅ In Stock</option>
+              <option value="0" ${p.inStock === false ? 'selected' : ''}>❌ Out of Stock</option>
+            </select>
+          </div>
+          <div class="full">
+            <label>Image URL</label>
+            <input type="text" id="pf_image" value="${escapeHtml(p.image || '')}" placeholder="https://...">
+          </div>
+          <div class="full">
+            <label>Description</label>
+            <textarea id="pf_description" placeholder="Short product description">${escapeHtml(p.description || '')}</textarea>
+          </div>
+          <div class="full">
+            <label>Features (one per line, or comma separated)</label>
+            <textarea id="pf_features" placeholder="100% whole wheat&#10;Soft rotis every time&#10;No added maida">${escapeHtml(featuresText)}</textarea>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:18px;">
+          <button onclick="saveProduct()" style="flex:1; padding:11px; background:var(--primary); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">💾 ${isEdit ? 'Update' : 'Add'} Product</button>
+          <button onclick="closeProductModal()" style="padding:11px 20px; background:var(--gray); color:white; border:none; border-radius:8px; cursor:pointer;">Cancel</button>
+        </div>`;
+
+      document.getElementById('productModal').classList.remove('hidden');
+    }
+
+    function autoDiscount() {
+      const mrp = parseFloat(document.getElementById('pf_mrp').value) || 0;
+      const price = parseFloat(document.getElementById('pf_price').value) || 0;
+      const discEl = document.getElementById('pf_discount');
+      if (mrp > 0 && price >= 0 && price <= mrp) {
+        discEl.value = Math.round(((mrp - price) / mrp) * 100);
+      }
+    }
+
+    function closeProductModal() {
+      document.getElementById('productModal').classList.add('hidden');
+    }
+
+    function saveProduct() {
+      const idVal = document.getElementById('pf_id').value;
+      const data = {
+        name: document.getElementById('pf_name').value,
+        brand: document.getElementById('pf_brand').value,
+        weight: document.getElementById('pf_weight').value,
+        category: document.getElementById('pf_category').value,
+        mrp: document.getElementById('pf_mrp').value,
+        price: document.getElementById('pf_price').value,
+        discount: document.getElementById('pf_discount').value,
+        image: document.getElementById('pf_image').value,
+        description: document.getElementById('pf_description').value,
+        features: document.getElementById('pf_features').value,
+        inStock: document.getElementById('pf_instock').value === '1'
+      };
+
+      if (!data.name.trim()) { showToast('Product name is required', 'error'); return; }
+      if (data.price === '' || isNaN(parseFloat(data.price))) { showToast('Valid selling price is required', 'error'); return; }
+
+      const res = idVal ? updateProduct(idVal, data) : addProduct(data);
+      if (res.success) {
+        showToast(idVal ? 'Product updated' : 'Product added', 'success');
+        closeProductModal();
+        loadStats();
+        renderProductsTab();
+      } else {
+        showToast(res.message || 'Failed to save product', 'error');
+      }
+    }
+
+    function removeProduct(id) {
+      const p = getProducts().find(pr => parseInt(pr.id, 10) === parseInt(id, 10));
+      if (!p) return;
+      if (!confirm(`Delete product "${p.name}"? This cannot be undone!`)) return;
+      const res = deleteProduct(id);
+      if (res.success) {
+        showToast('Product deleted', 'success');
+        loadStats();
+        renderProductsTab();
+      } else {
+        showToast(res.message || 'Failed to delete', 'error');
+      }
+    }
+
     function renderSettingsTab() {
       const savedFestival = localStorage.getItem('4astore_festival') || '';
       document.getElementById('tabContent').innerHTML = `
@@ -549,6 +757,9 @@
           <button onclick="exportData('orders')" style="padding:10px 16px; background:#2e7d32; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
             📥 Export Orders
           </button>
+          <button onclick="exportData('products')" style="padding:10px 16px; background:#ef6c00; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
+            📥 Export Products
+          </button>
           <button onclick="exportData('all')" style="padding:10px 16px; background:var(--primary); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
             📥 Export All Data
           </button>
@@ -587,6 +798,9 @@
       } else if (type === 'orders') {
         data = getOrders();
         filename = 'orders.json';
+      } else if (type === 'products') {
+        data = getProducts();
+        filename = 'products.json';
       } else {
         // Export all
         data = {
