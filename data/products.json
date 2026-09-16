@@ -14,19 +14,6 @@
         "inStock": true
     },
     {
-        "id": 2,
-        "name": "India Gate Basmati Rice",
-        "brand": "India Gate",
-        "category": "rice-atta-dal",
-        "weight": "5 Kg",
-        "mrp": 450,
-        "price": 399,
-        "discount": 11,
-        "image": "https://www.bigbasket.com/media/uploads/p/l/264420_8-india-gate-basmati-rice-super.jpg",
-        "description": "Premium quality long grain basmati rice. Perfect for biryani and pulao.",
-        "inStock": true
-    },
-    {
         "id": 3,
         "name": "Fortune Mustard Oil",
         "brand": "Fortune",
@@ -42,15 +29,15 @@
     },
     {
         "id": 4,
-        "name": "Fortune Sunflower Oil",
+        "name": "Soya Health Refined Soyabean Oil",
         "brand": "Fortune",
         "category": "oil-ghee",
         "weight": "1 Litre",
         "mrp": 160,
         "price": 145,
         "discount": 9,
-        "image": "https://www.bbassets.com/media/uploads/p/m/276756_16-fortune-fortune-premium-kachi-ghani-pure-mustard-oil.jpg?tr=w-154,q-80",
-        "description": "Fortune Sunlite Refined Sunflower Oil. Light and healthy cooking oil.",
+        "image": "https://www.bbassets.com/media/uploads/p/m/40361379_2-fortune-sunlite-refined-sunflower-oil.jpg?tr=w-154,q-80",
+        "description": "Soya Health Refined Soyabean Oil.Light and healthy cooking oil.",
         "features": [],
         "inStock": true
     },
@@ -94,7 +81,7 @@
         "image": "https://www.bbassets.com/media/uploads/p/m/266112_30-maggi-2-minute-instant-noodles-masala.jpg?tr=w-154,q-80",
         "description": "Maggi 2-Minute Instant Noodles - Masala flavour. Quick and tasty.",
         "features": [],
-        "inStock": true
+        "inStock": false
     },
     {
         "id": 8,
@@ -181,32 +168,6 @@
         "inStock": false
     },
     {
-        "id": 14,
-        "name": "Orange (Nagpur)",
-        "brand": "Fresh",
-        "category": "fruits-vegetables",
-        "weight": "1 Kg",
-        "mrp": 120,
-        "price": 100,
-        "discount": 17,
-        "image": "https://www.bigbasket.com/media/uploads/p/l/10000036_12-fresho-orange-nagpur.jpg",
-        "description": "Fresh Nagpur oranges. Rich in Vitamin C.",
-        "inStock": true
-    },
-    {
-        "id": 15,
-        "name": "Papaya",
-        "brand": "Fresh",
-        "category": "fruits-vegetables",
-        "weight": "1 Kg",
-        "mrp": 50,
-        "price": 40,
-        "discount": 20,
-        "image": "https://www.bigbasket.com/media/uploads/p/l/10000159_12-fresho-papaya-medium.jpg",
-        "description": "Fresh ripe papaya. Good for digestion and immunity.",
-        "inStock": true
-    },
-    {
         "id": 16,
         "name": "Potato (Aloo)",
         "brand": "Fresh",
@@ -215,8 +176,9 @@
         "mrp": 30,
         "price": 25,
         "discount": 17,
-        "image": "https://www.bigbasket.com/media/uploads/p/l/10000159_15-fresho-potato.jpg",
+        "image": "https://www.bbassets.com/media/uploads/p/l/40048457_20-fresho-potato-new-crop.jpg",
         "description": "Fresh potatoes. A kitchen essential for everyday cooking.",
+        "features": [],
         "inStock": true
     },
     {
@@ -228,8 +190,9 @@
         "mrp": 40,
         "price": 35,
         "discount": 13,
-        "image": "https://www.bigbasket.com/media/uploads/p/l/10000156_14-fresho-onion.jpg",
+        "image": "https://www.bbassets.com/media/uploads/p/l/40050957_6-fresho-onion-organically-grown.jpg",
         "description": "Fresh onions. Essential for Indian cooking.",
+        "features": [],
         "inStock": true
     },
     {
@@ -241,8 +204,9 @@
         "mrp": 40,
         "price": 30,
         "discount": 25,
-        "image": "https://www.bigbasket.com/media/uploads/p/l/10000201_11-fresho-tomato-local.jpg",
+        "image": "https://www.bbassets.com/media/uploads/p/m/40183216_3-fresho-tomato-local.jpg?tr=w-154,q-80",
         "description": "Fresh red tomatoes. Perfect for curries and salads.",
+        "features": [],
         "inStock": true
     },
     {
@@ -250,12 +214,13 @@
         "name": "Cauliflower (Gobhi)",
         "brand": "Fresh",
         "category": "fruits-vegetables",
-        "weight": "1 Piece",
-        "mrp": 40,
-        "price": 30,
-        "discount": 25,
-        "image": "https://www.bigbasket.com/media/uploads/p/l/10000069_10-fresho-cauliflower.jpg",
+        "weight": "1kg",
+        "mrp": 100,
+        "price": 60,
+        "discount": 40,
+        "image": "https://www.bbassets.com/media/uploads/p/l/10000074_22-fresho-cauliflower.jpg",
         "description": "Fresh cauliflower. Great for gobi paratha and sabzi.",
+        "features": [],
         "inStock": true
     },
     {
@@ -267,8 +232,9 @@
         "mrp": 20,
         "price": 15,
         "discount": 25,
-        "image": "https://www.bigbasket.com/media/uploads/p/l/10000209_14-fresho-green-chilli.jpg",
+        "image": "https://www.bbassets.com/media/uploads/p/l/40346927-3_2-fresho-chilli-green-small.jpg",
         "description": "Fresh green chillies. Adds spice to every dish.",
+        "features": [],
         "inStock": true
     },
     {
@@ -725,5 +691,41 @@
         "image": "https://www.bigbasket.com/media/uploads/p/l/40015120_2-bb-popular-mustard-seeds-rai-big.jpg",
         "description": "Whole mustard seeds for tempering and pickle making.",
         "inStock": true
-    }
+    },
+{"id":56,"name":"Safed Dal / Chana Dal","brand":"Local","category":"rice-atta-dal","weight":"1 Kg","mrp":130,"price":130,"discount":0,"image":"","description":"Safed / Chana dal. Rich in protein.","features":[],"inStock":true},
+  {"id":57,"name":"Pila Sarson","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":100,"price":100,"discount":0,"image":"","description":"Yellow mustard seeds (pila sarson) for tempering and pickles.","features":[],"inStock":true},
+  {"id":58,"name":"Ajwain","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":250,"price":250,"discount":0,"image":"","description":"Carom seeds (ajwain). Aromatic spice for cooking.","features":[],"inStock":true},
+  {"id":59,"name":"Makhana","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":300,"price":300,"discount":0,"image":"","description":"Fox nuts (makhana). Healthy roasted snack.","features":[],"inStock":true},
+  {"id":60,"name":"Jeera","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":200,"price":200,"discount":0,"image":"","description":"Cumin seeds (jeera). Essential Indian spice.","features":[],"inStock":true},
+  {"id":61,"name":"Badam","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":160,"price":160,"discount":0,"image":"","description":"Almonds (badam). Rich in nutrients.","features":[],"inStock":true},
+  {"id":62,"name":"Fortune Mustard Oil (Bottle)","brand":"Fortune","category":"oil-ghee","weight":"1 L","mrp":200,"price":200,"discount":0,"image":"","description":"Fortune mustard oil bottle. Rich aroma and authentic taste.","features":[],"inStock":true},
+  {"id":63,"name":"Fortune Mustard Oil","brand":"Fortune","category":"oil-ghee","weight":"500 ml","mrp":105,"price":105,"discount":0,"image":"","description":"Fortune mustard oil. Rich aroma and authentic taste.","features":[],"inStock":true},
+  {"id":64,"name":"Refined Oil Pouch","brand":"Local","category":"oil-ghee","weight":"1 L","mrp":160,"price":160,"discount":0,"image":"","description":"Refined cooking oil pouch. Light and healthy.","features":[],"inStock":true},
+  {"id":65,"name":"Refined Oil Pouch","brand":"Local","category":"oil-ghee","weight":"500 ml","mrp":85,"price":85,"discount":0,"image":"","description":"Refined cooking oil pouch. Light and healthy.","features":[],"inStock":true},
+  {"id":66,"name":"Jhumer Mustard Oil","brand":"Jhumer","category":"oil-ghee","weight":"1 L","mrp":170,"price":170,"discount":0,"image":"","description":"Jhumer mustard oil. For everyday cooking.","features":[],"inStock":true},
+  {"id":67,"name":"Best Choice Palm Oil","brand":"Best Choice","category":"oil-ghee","weight":"1 L","mrp":130,"price":130,"discount":0,"image":"","description":"Best Choice palm oil. Economical cooking oil.","features":[],"inStock":true},
+  {"id":68,"name":"Best Choice Palm Oil","brand":"Best Choice","category":"oil-ghee","weight":"500 ml","mrp":65,"price":65,"discount":0,"image":"","description":"Best Choice palm oil. Economical cooking oil.","features":[],"inStock":true},
+  {"id":71,"name":"Rahar Dal","brand":"Local","category":"rice-atta-dal","weight":"1 Kg","mrp":140,"price":130,"discount":7,"image":"","description":"Rahar (toor) dal. For daily dal preparation.","features":["Price range ₹130–140"],"inStock":true},
+  {"id":72,"name":"Aata (Loose)","brand":"Local","category":"rice-atta-dal","weight":"1 Kg","mrp":35,"price":34,"discount":3,"image":"","description":"Loose wheat atta. Soft rotis every time.","features":["Price range ₹34–35 per kg"],"inStock":true},
+  {"id":73,"name":"Aata","brand":"Local","category":"rice-atta-dal","weight":"10 Kg","mrp":360,"price":360,"discount":0,"image":"","description":"Wheat atta 10 kg pack. Soft rotis every time.","features":[],"inStock":true},
+  {"id":74,"name":"Aata","brand":"Local","category":"rice-atta-dal","weight":"5 Kg","mrp":190,"price":190,"discount":0,"image":"","description":"Wheat atta 5 kg pack. Soft rotis every time.","features":[],"inStock":true},
+  {"id":75,"name":"Aata","brand":"Local","category":"rice-atta-dal","weight":"30 Kg","mrp":1000,"price":1000,"discount":0,"image":"","description":"Wheat atta 30 kg bag. Bulk pack.","features":[],"inStock":true},
+  {"id":76,"name":"Maida","brand":"Local","category":"rice-atta-dal","weight":"1 Kg","mrp":35,"price":35,"discount":0,"image":"","description":"Refined flour (maida). For baking and snacks.","features":[],"inStock":true},
+  {"id":77,"name":"Chini (Sugar)","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":65,"price":60,"discount":8,"image":"","description":"White sugar. Essential for tea and sweets.","features":["Price range ₹60–65"],"inStock":true},
+  {"id":78,"name":"Pankshi Oil","brand":"Pankshi","category":"oil-ghee","weight":"1 L","mrp":100,"price":100,"discount":0,"image":"","description":"Pankshi cooking oil.","features":[],"inStock":true},
+  {"id":79,"name":"Sarso Tel (Mustard Oil)","brand":"Local","category":"oil-ghee","weight":"1 L","mrp":195,"price":190,"discount":3,"image":"","description":"Mustard oil (sarso tel). Rich aroma for Indian cooking.","features":["Price range ₹190–195"],"inStock":true},
+  {"id":80,"name":"Wheel Detergent","brand":"Wheel","category":"home-cleaning","weight":"1 Kg","mrp":85,"price":80,"discount":6,"image":"","description":"Wheel detergent powder for bright, clean clothes.","features":["Price range ₹80–85"],"inStock":true},
+  {"id":81,"name":"Wheel Detergent","brand":"Wheel","category":"home-cleaning","weight":"500 g","mrp":43,"price":40,"discount":7,"image":"","description":"Wheel detergent powder for bright, clean clothes.","features":["Price range ₹40–43"],"inStock":true},
+  {"id":82,"name":"Surf Excel","brand":"Surf Excel","category":"home-cleaning","weight":"70 g","mrp":10,"price":10,"discount":0,"image":"","description":"Surf Excel detergent for tough stain removal.","features":[],"inStock":true},
+  {"id":83,"name":"Vim Bar","brand":"Vim","category":"home-cleaning","weight":"1 pack","mrp":100,"price":95,"discount":5,"image":"","description":"Vim dishwash bar. Sparkling clean dishes.","features":["Approx ₹95–100 for 26 pcs"],"inStock":true},
+  {"id":84,"name":"Lux Soap (Bar)","brand":"Lux","category":"personal-care","weight":"104 g","mrp":110,"price":110,"discount":0,"image":"","description":"Lux beauty bathing bar. Approx ₹25 per piece.","features":["₹25 per piece"],"inStock":true},
+  {"id":85,"name":"Lifebuoy Soap (Bar)","brand":"Lifebuoy","category":"personal-care","weight":"115 g","mrp":110,"price":110,"discount":0,"image":"","description":"Lifebuoy bathing bar. Germ protection.","features":[],"inStock":true},
+  {"id":87,"name":"Patanjali Coffee","brand":"Patanjali","category":"tea-coffee","weight":"200 g","mrp":175,"price":175,"discount":0,"image":"","description":"Patanjali instant coffee.","features":[],"inStock":true},
+  {"id":88,"name":"Patanjali Coffee","brand":"Patanjali","category":"tea-coffee","weight":"500 g","mrp":380,"price":380,"discount":0,"image":"","description":"Patanjali instant coffee, large pack.","features":[],"inStock":true},
+  {"id":89,"name":"Laung (Cloves)","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":1200,"price":1200,"discount":0,"image":"","description":"Whole cloves (laung). Aromatic spice.","features":[],"inStock":true},
+  {"id":90,"name":"Kishmish (Raisins)","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":400,"price":400,"discount":0,"image":"","description":"Raisins (kishmish). Sweet dried grapes.","features":[],"inStock":true},
+  {"id":91,"name":"Gola Nariyal (Dry Coconut)","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":450,"price":450,"discount":0,"image":"","description":"Dry coconut (sukha nariyal / gola).","features":[],"inStock":true},
+  {"id":92,"name":"Haldi (Turmeric)","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":250,"price":220,"discount":12,"image":"","description":"Turmeric powder (haldi). Pure and natural.","features":["Price range ₹220–250"],"inStock":true},
+  {"id":93,"name":"Kat Masala","brand":"Local","category":"daily-essentials","weight":"1 pc","mrp":80,"price":80,"discount":0,"image":"","description":"Kat mithi / kat masala spice blend.","features":[],"inStock":true},
+  {"id":94,"name":"Golki (Black Pepper)","brand":"Local","category":"daily-essentials","weight":"1 Kg","mrp":800,"price":800,"discount":0,"image":"","description":"Whole black pepper (golki). Aromatic spice.","features":[],"inStock":true}
 ]

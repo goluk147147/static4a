@@ -87,12 +87,39 @@
 
   <script src="assets/js/app.js"></script>
   <script>
-    // Render immediately since cart is in localStorage
-    document.addEventListener('DOMContentLoaded', renderCart);
+    // Render immediately since cart is in localStorage.
+    // Handle the case where the script runs after DOMContentLoaded has already fired.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', renderCart);
+    } else {
+      renderCart();
+    }
 
     function renderCart() {
-      const cart = getCart();
       const container = document.getElementById('cartContent');
+      if (!container) return;
+      try {
+        renderCartInner(container);
+      } catch (err) {
+        console.error('Cart render error:', err);
+        container.innerHTML = `
+          <div class="empty-cart">
+            <div class="empty-icon">⚠️</div>
+            <h3>Couldn't load your cart</h3>
+            <p>Please refresh the page. If it keeps happening, clear the cart and try again.</p>
+            <a href="products" class="btn-primary">Go to Products →</a>
+          </div>`;
+      }
+    }
+
+    function renderCartInner(container) {
+      // app.js provides these. If it hasn't finished loading yet, retry shortly
+      // (prevents the skeleton from getting stuck on slow mobile connections).
+      if (typeof getCart !== 'function' || typeof getCartTotal !== 'function') {
+        setTimeout(() => renderCart(), 150);
+        return;
+      }
+      const cart = getCart();
 
       if (cart.length === 0) {
         container.innerHTML = `
@@ -114,11 +141,12 @@
           const found = window.products.find(p => p.id === item.id);
           if (found) product.category = found.category;
         }
-        const imgSrc = getProductImageSrc(product);
-        const fallbackImg = getProductImage(product);
+        const imgSrc = (typeof getProductImageSrc === 'function') ? getProductImageSrc(product) : (product.image || '');
+        const fallbackImg = (typeof getProductImage === 'function') ? getProductImage(product) : '';
+        const safeFallback = (typeof escapeAttr === 'function') ? escapeAttr(fallbackImg) : fallbackImg;
         return `
         <div class="cart-item">
-          <img src="${imgSrc}" alt="${item.name}" onerror="this.onerror=null;this.src='${escapeAttr(fallbackImg)}'">
+          <img src="${imgSrc}" alt="${item.name}" onerror="this.onerror=null;this.src='${safeFallback}'">
           <div class="item-info">
             <h4>${item.name}</h4>
             <p>${item.brand || ''} · ${item.weight}</p>
@@ -148,7 +176,7 @@
             <span>Delivery Charge</span>
             <span>${totals.deliveryCharge === 0 ? '<span style="color:var(--primary)">FREE</span>' : '₹' + totals.deliveryCharge}</span>
           </div>
-          ${totals.subtotal < STORE_CONFIG.freeDeliveryAbove ? `<div class="summary-row"><span style="font-size:12px;color:var(--gray)">Free delivery above ₹${STORE_CONFIG.freeDeliveryAbove}</span><span></span></div>` : ''}
+          ${(typeof STORE_CONFIG !== 'undefined' && totals.subtotal < STORE_CONFIG.freeDeliveryAbove) ? `<div class="summary-row"><span style="font-size:12px;color:var(--gray)">Free delivery above ₹${STORE_CONFIG.freeDeliveryAbove}</span><span></span></div>` : ''}
           <div class="summary-row total">
             <span class="mb-3">Total Amount</span>
             <span>₹${totals.total}</span>

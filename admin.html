@@ -714,7 +714,45 @@
 
     function renderSettingsTab() {
       const savedFestival = localStorage.getItem('4astore_festival') || '';
+      const s = getSettings();
       document.getElementById('tabContent').innerHTML = `
+        <h4 style="margin-bottom:16px;">🏪 Store Settings</h4>
+        <p style="font-size:13px; color:var(--gray); margin-bottom:16px;">Order notification email and delivery charges. These apply across the store.</p>
+
+        <div style="max-width:520px; display:grid; gap:14px; margin-bottom:12px;">
+          <div>
+            <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">📧 Order Notification Email</label>
+            <input type="email" id="setEmail" value="${s.storeEmail || ''}" placeholder="you@example.com" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+            <p style="font-size:11px; color:var(--gray); margin-top:4px;">New orders are automatically emailed to this address.</p>
+          </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:150px;">
+              <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">🚚 Delivery Fee (₹)</label>
+              <input type="number" id="setDelivery" min="0" value="${s.deliveryCharge}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+            <div style="flex:1; min-width:150px;">
+              <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">🆓 Free Delivery Above (₹)</label>
+              <input type="number" id="setFreeAbove" min="0" value="${s.freeDeliveryAbove}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:180px;">
+              <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">💳 UPI ID</label>
+              <input type="text" id="setUpiId" value="${s.upiId || ''}" placeholder="yourname@bank" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+              <p style="font-size:11px; color:var(--gray); margin-top:4px;">Used for the payment QR code &amp; UPI app on checkout.</p>
+            </div>
+            <div style="flex:1; min-width:150px;">
+              <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">🏷️ UPI Name (Payee)</label>
+              <input type="text" id="setUpiName" value="${s.upiName || ''}" placeholder="4astore" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+          </div>
+          <button onclick="saveStoreSettings()" style="justify-self:start; padding:11px 26px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
+            💾 Save Store Settings
+          </button>
+        </div>
+
+        <hr style="border:none; border-top:1px solid var(--border); margin:24px 0;">
+
         <h4 style="margin-bottom:16px;">🎉 Festival / Theme Settings</h4>
         <p style="font-size:13px; color:var(--gray); margin-bottom:16px;">Change the current festival to show relevant banners on the homepage. Leave empty for default banners.</p>
         
@@ -784,6 +822,31 @@
       const val = document.getElementById('festivalSelect').value;
       localStorage.setItem('4astore_festival', val);
       showToast(`Festival updated to: ${val || 'Default'}`, 'success');
+    }
+
+    function saveStoreSettings() {
+      const email = document.getElementById('setEmail').value.trim();
+      const delivery = document.getElementById('setDelivery').value;
+      const freeAbove = document.getElementById('setFreeAbove').value;
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('Please enter a valid email address', 'error');
+        return;
+      }
+
+      const res = saveSettings({
+        storeEmail: email,
+        deliveryCharge: delivery,
+        freeDeliveryAbove: freeAbove,
+        upiId: document.getElementById('setUpiId').value.trim(),
+        upiName: document.getElementById('setUpiName').value.trim()
+      });
+
+      if (res.success) {
+        showToast('✅ Store settings saved', 'success');
+      } else {
+        showToast(res.message || 'Failed to save settings', 'error');
+      }
     }
 
     // ==========================================

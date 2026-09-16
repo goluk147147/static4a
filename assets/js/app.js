@@ -14,7 +14,8 @@ const STORE_CONFIG = {
   whatsappNumber: "918210874123",
   upiId: "goluk147147@ybl",
   upiName: "4astore",
-  adminPassword: "4astore@admin"
+  adminPassword: "4astore@admin",
+  storeEmail: "4astorewale@gmail.com"
 };
 
 // State
@@ -63,6 +64,28 @@ async function loadData() {
     products = prodData;
     categories = catData;
     localStorage.setItem('4astore_products', JSON.stringify(products));
+
+    // Load store settings (delivery fee, free-delivery threshold, store email)
+    try {
+      let settings;
+      try {
+        const sRes = await fetch('api/settings.php');
+        if (!sRes.ok) throw new Error('API not available');
+        const sData = await sRes.json();
+        settings = sData.success ? sData.settings : null;
+      } catch (sErr) {
+        const sRes2 = await fetch('data/settings.json');
+        settings = await sRes2.json();
+      }
+      if (settings) {
+        if (settings.deliveryCharge !== undefined) STORE_CONFIG.deliveryCharge = Number(settings.deliveryCharge);
+        if (settings.freeDeliveryAbove !== undefined) STORE_CONFIG.freeDeliveryAbove = Number(settings.freeDeliveryAbove);
+        if (settings.storeEmail) STORE_CONFIG.storeEmail = settings.storeEmail;
+        if (settings.upiId) STORE_CONFIG.upiId = settings.upiId;
+        if (settings.upiName) STORE_CONFIG.upiName = settings.upiName;
+        localStorage.setItem('4astore_settings', JSON.stringify(settings));
+      }
+    } catch (e) { /* keep defaults in STORE_CONFIG */ }
     
     // Load users from PHP API
     try {
@@ -531,6 +554,57 @@ function updateUserLogin(usernameOrMobile) {
 
 function getAdminCredentials() {
   return JSON.parse(localStorage.getItem('4astore_admin')) || { username: 'admin', password: STORE_CONFIG.adminPassword };
+}
+
+// ============================================
+// STORE SETTINGS (email, delivery fee) — admin configurable
+// ============================================
+function getSettings() {
+  const cached = JSON.parse(localStorage.getItem('4astore_settings')) || {};
+  return {
+    storeEmail: cached.storeEmail || STORE_CONFIG.storeEmail,
+    deliveryCharge: cached.deliveryCharge !== undefined ? Number(cached.deliveryCharge) : STORE_CONFIG.deliveryCharge,
+    freeDeliveryAbove: cached.freeDeliveryAbove !== undefined ? Number(cached.freeDeliveryAbove) : STORE_CONFIG.freeDeliveryAbove,
+    upiId: cached.upiId || STORE_CONFIG.upiId,
+    upiName: cached.upiName || STORE_CONFIG.upiName
+  };
+}
+
+// Save settings to the server (with localStorage fallback). Returns { success, message }.
+function saveSettings(data) {
+  const payload = {
+    storeEmail: (data.storeEmail || '').trim(),
+    deliveryCharge: parseInt(data.deliveryCharge, 10) || 0,
+    freeDeliveryAbove: parseInt(data.freeDeliveryAbove, 10) || 0,
+    upiId: (data.upiId || '').trim(),
+    upiName: (data.upiName || '').trim()
+  };
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/settings.php', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify(payload));
+    const res = JSON.parse(xhr.responseText);
+    if (res.success) {
+      localStorage.setItem('4astore_settings', JSON.stringify(res.settings));
+      STORE_CONFIG.deliveryCharge = res.settings.deliveryCharge;
+      STORE_CONFIG.freeDeliveryAbove = res.settings.freeDeliveryAbove;
+      STORE_CONFIG.storeEmail = res.settings.storeEmail;
+      if (res.settings.upiId) STORE_CONFIG.upiId = res.settings.upiId;
+      if (res.settings.upiName) STORE_CONFIG.upiName = res.settings.upiName;
+      return res;
+    }
+    return res;
+  } catch (e) {
+    // Local fallback
+    localStorage.setItem('4astore_settings', JSON.stringify(payload));
+    STORE_CONFIG.deliveryCharge = payload.deliveryCharge;
+    STORE_CONFIG.freeDeliveryAbove = payload.freeDeliveryAbove;
+    STORE_CONFIG.storeEmail = payload.storeEmail;
+    if (payload.upiId) STORE_CONFIG.upiId = payload.upiId;
+    if (payload.upiName) STORE_CONFIG.upiName = payload.upiName;
+    return { success: true, message: 'Settings saved (local)', settings: payload };
+  }
 }
 
 // ============================================
