@@ -85,7 +85,27 @@
   <div id="adminDashboard" class="admin-container hidden">
     <div class="admin-header">
       <h1>📊 4astore Admin Panel</h1>
-      <button class="logout-btn" onclick="adminLogout()">🚪 Logout</button>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="position:relative;">
+          <button id="notifBell" onclick="toggleNotifPanel(event)" title="Notifications" style="position:relative; background:white; border:1px solid var(--border); border-radius:50%; width:44px; height:44px; font-size:20px; cursor:pointer; box-shadow:var(--shadow);">
+            🔔
+            <span id="notifBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:#e53935; color:white; font-size:11px; font-weight:700; min-width:18px; height:18px; line-height:18px; border-radius:9px; padding:0 4px;">0</span>
+          </button>
+          <!-- Notification dropdown panel -->
+          <div id="notifPanel" style="display:none; position:absolute; right:0; top:52px; width:320px; max-width:88vw; background:white; border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.18); z-index:9998; overflow:hidden;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid var(--border); background:var(--primary-light);">
+              <strong style="color:var(--primary-dark); font-size:14px;">🔔 Notifications</strong>
+              <button onclick="markAllNotifRead()" style="background:none; border:none; color:var(--primary); font-size:12px; font-weight:600; cursor:pointer;">Mark all read</button>
+            </div>
+            <div id="notifList" style="max-height:340px; overflow-y:auto;"></div>
+          </div>
+        </div>
+        <label style="display:flex; align-items:center; gap:5px; font-size:12px; color:var(--gray); cursor:pointer;">
+          <input type="checkbox" id="notifSound" checked style="cursor:pointer;"> 🔊 Sound
+        </label>
+        <button onclick="testNotif()" title="Test notification" style="padding:8px 12px; background:var(--secondary); color:white; border:none; border-radius:6px; font-size:12px; cursor:pointer;">🔔 Test</button>
+        <button class="logout-btn" onclick="adminLogout()">🚪 Logout</button>
+      </div>
     </div>
 
     <!-- Stats -->
@@ -186,6 +206,7 @@
       document.getElementById('adminDashboard').classList.add('hidden');
       document.getElementById('adminLogin').style.display = 'block';
       document.getElementById('adminPass').value = '';
+      if (notifPollTimer) { clearInterval(notifPollTimer); notifPollTimer = null; }
     }
 
     function showDashboard() {
@@ -193,6 +214,241 @@
       document.getElementById('adminDashboard').classList.remove('hidden');
       loadStats();
       showTab('orders');
+      startOrderNotifications();
+    }
+
+    // ==========================================================
+    // NEW ORDER NOTIFICATIONS (polls the server for new orders)
+    // Each notification has read/unread state, saved in localStorage.
+    // ==========================================================
+    let notifPollTimer = null;
+    const NOTIF_SEEN_KEY = '4astore_admin_seen_orders';   // order ids we've already turned into notifications
+    const NOTIF_LIST_KEY = '4astore_admin_notifs';        // [{orderId, name, amount, time, read}]
+
+    function getNotifs() {
+      return JSON.parse(localStorage.getItem(NOTIF_LIST_KEY)) || [];
+    }
+    function setNotifs(list) {
+      localStorage.setItem(NOTIF_LIST_KEY, JSON.stringify(list));
+    }
+    function unreadCount() {
+      return getNotifs().filter(n => !n.read).length;
+    }
+
+    function playNotifSound() {
+      const soundOn = document.getElementById('notifSound');
+      if (soundOn && !soundOn.checked) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [880, 1175];
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          osc.connect(gain); gain.connect(ctx.destination);
+          const t = ctx.currentTime + i * 0.18;
+          gain.gain.setValueAtTime(0.001, t);
+          gain.gain.exponentialRampToValueAtTime(0.3, t + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+          osc.start(t); osc.stop(t + 0.18);
+        });
+      } catch (e) { /* audio not available */ }
+    }
+
+    // Speak the notification out loud (only when Sound is ON).
+    function speakNotif(text) {
+      const soundOn = document.getElementById('notifSound');
+      if (soundOn && !soundOn.checked) return;
+      if (!('speechSynthesis' in window)) return;
+      try {
+        // Cancel anything currently speaking so announcements don't pile up
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'hi-IN';
+        u.rate = 0.92;
+        u.pitch = 1;
+        u.volume = 1;
+        // Prefer a Hindi voice if the browser has one installed
+        const voices = window.speechSynthesis.getVoices();
+        const hindiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
+        if (hindiVoice) u.voice = hindiVoice;
+        // A short delay after the beep so the voice isn't cut off
+        setTimeout(() => window.speechSynthesis.speak(u), 450);
+      } catch (e) { /* speech not available */ }
+    }
+
+    // Fetch latest orders straight from the server (bypasses stale cache)
+    async function fetchServerOrders() {
+      try {
+        const res = await fetch('api/orders.php', { cache: 'no-store' });
+        if (!res.ok) throw new Error('api');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.orders)) return data.orders;
+      } catch (e) { /* fall back to local */ }
+      return getOrders();
+    }
+
+    function getSeenOrderIds() {
+      return JSON.parse(localStorage.getItem(NOTIF_SEEN_KEY)) || [];
+    }
+    function setSeenOrderIds(ids) {
+      localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(ids));
+    }
+
+    async function checkNewOrders(firstRun) {
+      const orders = await fetchServerOrders();
+      const allIds = orders.map(o => o.orderId);
+      const seen = getSeenOrderIds();
+      const newOrders = orders.filter(o => !seen.includes(o.orderId));
+
+      // Always keep cache fresh for stats/tables
+      localStorage.setItem('4astore_orders', JSON.stringify(orders));
+      dbOrders = orders;
+
+      if (firstRun) {
+        // On first login, don't spam: mark all existing orders as seen.
+        // (They won't create unread notifications.)
+        setSeenOrderIds(allIds);
+        updateNotifBadge();
+        renderNotifList();
+        return;
+      }
+
+      if (newOrders.length > 0) {
+        // Add each new order as an UNREAD notification
+        const notifs = getNotifs();
+        newOrders.forEach(o => {
+          notifs.unshift({
+            orderId: o.orderId,
+            name: (o.customer && o.customer.name) ? o.customer.name : 'Customer',
+            amount: o.totalAmount || 0,
+            time: new Date().toISOString(),
+            read: false
+          });
+        });
+        // keep only the latest 50 notifications
+        setNotifs(notifs.slice(0, 50));
+        setSeenOrderIds(allIds);
+
+        updateNotifBadge();
+        renderNotifList();
+        playNotifSound();
+        // Voice announcement (Hindi)
+        if (newOrders.length === 1) {
+          const o = newOrders[0];
+          const cust = (o.customer && o.customer.name) ? o.customer.name : 'ek grahak';
+          speakNotif(`Naya order aaya hai ${cust} se, kul ${o.totalAmount || 0} rupaye ka.`);
+        } else {
+          speakNotif(`${newOrders.length} naye order aaye hain.`);
+        }
+        showToast(`🛒 ${newOrders.length} new order${newOrders.length > 1 ? 's' : ''} received!`, 'success');
+        loadStats();
+
+        const activeTab = document.querySelector('.admin-tabs button.active');
+        if (activeTab && activeTab.textContent.includes('Orders')) renderOrdersTab();
+      }
+    }
+
+    function updateNotifBadge() {
+      const badge = document.getElementById('notifBadge');
+      if (!badge) return;
+      const n = unreadCount();
+      if (n > 0) {
+        badge.textContent = n > 99 ? '99+' : n;
+        badge.style.display = 'block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    function renderNotifList() {
+      const list = document.getElementById('notifList');
+      if (!list) return;
+      const notifs = getNotifs();
+      if (notifs.length === 0) {
+        list.innerHTML = '<div style="padding:26px 14px; text-align:center; color:var(--gray); font-size:13px;">No notifications yet</div>';
+        return;
+      }
+      list.innerHTML = notifs.map(n => {
+        const t = new Date(n.time);
+        const timeStr = t.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const bg = n.read ? 'white' : '#fff6ec';
+        const dot = n.read ? '' : '<span style="width:8px;height:8px;background:#e53935;border-radius:50%;display:inline-block;flex-shrink:0;"></span>';
+        return `
+          <div onclick="openNotif('${n.orderId}')" style="display:flex; gap:10px; align-items:flex-start; padding:11px 14px; border-bottom:1px solid #f0f0f0; cursor:pointer; background:${bg};">
+            ${dot || '<span style="width:8px;flex-shrink:0;"></span>'}
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:13px; color:var(--primary-dark); font-weight:${n.read ? '500' : '700'};">🛒 New order #${n.orderId}</div>
+              <div style="font-size:12px; color:#666;">${n.name} · ₹${n.amount}</div>
+              <div style="font-size:11px; color:#aaa; margin-top:2px;">${timeStr}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function toggleNotifPanel(event) {
+      if (event) event.stopPropagation();
+      const panel = document.getElementById('notifPanel');
+      if (!panel) return;
+      const showing = panel.style.display === 'block';
+      panel.style.display = showing ? 'none' : 'block';
+      if (!showing) renderNotifList();
+    }
+
+    // Click a notification -> mark it read and open that order
+    function openNotif(orderId) {
+      const notifs = getNotifs();
+      const n = notifs.find(x => x.orderId === orderId);
+      if (n) n.read = true;
+      setNotifs(notifs);
+      updateNotifBadge();
+      renderNotifList();
+      document.getElementById('notifPanel').style.display = 'none';
+
+      // Jump to Orders tab and open the order detail
+      document.querySelectorAll('.admin-tabs button').forEach(b => b.classList.remove('active'));
+      const ordersBtn = Array.from(document.querySelectorAll('.admin-tabs button')).find(b => b.textContent.includes('Orders'));
+      if (ordersBtn) ordersBtn.classList.add('active');
+      renderOrdersTab();
+      if (typeof viewOrder === 'function') viewOrder(orderId);
+    }
+
+    function markAllNotifRead() {
+      const notifs = getNotifs().map(n => { n.read = true; return n; });
+      setNotifs(notifs);
+      updateNotifBadge();
+      renderNotifList();
+    }
+
+    // Close the panel when clicking outside it
+    document.addEventListener('click', (e) => {
+      const panel = document.getElementById('notifPanel');
+      const bell = document.getElementById('notifBell');
+      if (panel && panel.style.display === 'block' && !panel.contains(e.target) && bell && !bell.contains(e.target)) {
+        panel.style.display = 'none';
+      }
+    });
+
+    // Test button: fires a sample notification so you can verify sound + voice + badge
+    function testNotif() {
+      const notifs = getNotifs();
+      const fakeId = 'TEST' + Math.floor(1000 + Math.random() * 9000);
+      notifs.unshift({ orderId: fakeId, name: 'Test Grahak', amount: 130, time: new Date().toISOString(), read: false });
+      setNotifs(notifs.slice(0, 50));
+      updateNotifBadge();
+      renderNotifList();
+      playNotifSound();
+      speakNotif('Naya order aaya hai Test Grahak se, kul ek sau tees rupaye ka.');
+      showToast('🔔 Test notification fired', 'success');
+    }
+
+    function startOrderNotifications() {
+      if (notifPollTimer) return;      // avoid duplicate timers
+      updateNotifBadge();              // restore unread count from previous session
+      renderNotifList();
+      checkNewOrders(true);            // baseline (no alert on existing orders)
+      notifPollTimer = setInterval(() => checkNewOrders(false), 7000); // poll every 7s
     }
 
     function loadStats() {
@@ -220,7 +476,16 @@
 
     function showTab(tab) {
       document.querySelectorAll('.admin-tabs button').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
+      // Activate the right tab button. Works both when called from a click
+      // (event.target) and programmatically (e.g. showTab('orders') on load).
+      if (typeof event !== 'undefined' && event && event.target && event.target.classList) {
+        event.target.classList.add('active');
+      } else {
+        const labels = { orders: 'Orders', products: 'Products', users: 'Users', earnings: 'Earnings', settings: 'Settings' };
+        const btn = Array.from(document.querySelectorAll('.admin-tabs button'))
+          .find(b => b.textContent.includes(labels[tab] || ''));
+        if (btn) btn.classList.add('active');
+      }
 
       if (tab === 'orders') renderOrdersTab();
       else if (tab === 'products') renderProductsTab();

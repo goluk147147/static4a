@@ -7,6 +7,7 @@
   <meta name="description" content="4A Store - Track your orders and delivery status.">
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
   <link rel="stylesheet" href="assets/css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <!-- Top Bar -->
@@ -151,8 +152,138 @@
             </div>
             <div class="order-total">Total: ₹${order.totalAmount}</div>
           </div>
+          <div style="margin-top:12px; text-align:right;">
+            <button onclick="downloadInvoice('${order.orderId}')" style="padding:9px 18px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">📄 Download Invoice</button>
+          </div>
         </div>
       `).join('');
+    }
+
+    // ==========================================================
+    // INVOICE PDF (generated in the browser with jsPDF)
+    // ==========================================================
+    function downloadInvoice(orderId) {
+      const user = getLoggedInUser();
+      const orders = getOrdersByUser(user.mobile);
+      const order = orders.find(o => o.orderId === orderId);
+      if (!order) { showToast('Order not found', 'error'); return; }
+
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        showToast('Invoice library not loaded. Check your connection.', 'error');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const left = 40;
+      const right = pageW - 40;
+      let y = 50;
+
+      const rupee = 'Rs. '; // jsPDF core fonts don't render the ₹ glyph reliably
+
+      // ---- Header ----
+      doc.setFillColor(44, 111, 173);
+      doc.rect(0, 0, pageW, 90, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text('4A Store', left, 45);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Grocery in Minutes', left, 64);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('INVOICE', right, 45, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('#' + order.orderId, right, 64, { align: 'right' });
+
+      y = 120;
+      doc.setTextColor(60, 60, 60);
+
+      // ---- Store & order meta ----
+      doc.setFontSize(9);
+      doc.text('Gajana Road, Chandargarh, Nabinagar, Bihar - 824301', left, y);
+      doc.text('Phone: 8210874123', left, y + 14);
+      const dateStr = new Date(order.orderDate).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      doc.text('Date: ' + dateStr, right, y, { align: 'right' });
+      doc.text('Status: ' + (order.orderStatus || 'Order Placed'), right, y + 14, { align: 'right' });
+
+      y += 44;
+
+      // ---- Bill To ----
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(44, 111, 173);
+      doc.text('Bill To', left, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      y += 16;
+      doc.text(order.customer.name || '', left, y);
+      y += 14;
+      doc.text('Mobile: ' + (order.customer.mobile || ''), left, y);
+      y += 14;
+      const addr = `${order.customer.address || ''}, ${order.customer.city || ''} - ${order.customer.pincode || ''}`;
+      doc.text(doc.splitTextToSize(addr, right - left), left, y);
+      y += 26;
+
+      // ---- Items table header ----
+      doc.setFillColor(240, 240, 240);
+      doc.rect(left, y, right - left, 22, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(40, 40, 40);
+      doc.text('Item', left + 8, y + 15);
+      doc.text('Qty', right - 200, y + 15, { align: 'right' });
+      doc.text('Price', right - 110, y + 15, { align: 'right' });
+      doc.text('Amount', right - 8, y + 15, { align: 'right' });
+      y += 22;
+
+      // ---- Items rows ----
+      doc.setFont('helvetica', 'normal');
+      order.items.forEach(item => {
+        const lineTotal = item.price * item.quantity;
+        const nameLines = doc.splitTextToSize(item.name, right - left - 230);
+        const rowH = Math.max(18, nameLines.length * 12 + 6);
+        doc.text(nameLines, left + 8, y + 13);
+        doc.text(String(item.quantity), right - 200, y + 13, { align: 'right' });
+        doc.text(rupee + item.price, right - 110, y + 13, { align: 'right' });
+        doc.text(rupee + lineTotal, right - 8, y + 13, { align: 'right' });
+        doc.setDrawColor(230, 230, 230);
+        doc.line(left, y + rowH, right, y + rowH);
+        y += rowH;
+      });
+
+      y += 12;
+
+      // ---- Totals ----
+      const totalsX = right - 200;
+      doc.setFontSize(10);
+      const addTotal = (label, value, bold) => {
+        doc.setFont('helvetica', bold ? 'bold' : 'normal');
+        doc.text(label, totalsX, y);
+        doc.text(value, right - 8, y, { align: 'right' });
+        y += 16;
+      };
+      addTotal('Subtotal', rupee + (order.subtotal ?? order.totalAmount));
+      if (order.discount) addTotal('Discount', '- ' + rupee + order.discount);
+      addTotal('Delivery', order.deliveryCharge ? rupee + order.deliveryCharge : 'FREE');
+      doc.setDrawColor(44, 111, 173);
+      doc.line(totalsX, y, right, y);
+      y += 16;
+      doc.setTextColor(44, 111, 173);
+      addTotal('Total', rupee + order.totalAmount, true);
+
+      // ---- Footer ----
+      doc.setTextColor(130, 130, 130);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('Payment: ' + (order.paymentMethod || 'UPI'), left, y + 20);
+      doc.text('Thank you for shopping with 4A Store!', left, y + 40);
+
+      doc.save('Invoice-' + order.orderId + '.pdf');
     }
   </script>
 </body>

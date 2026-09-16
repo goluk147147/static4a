@@ -293,8 +293,11 @@
       const diff = launchDate - now;
 
       if (diff <= 0) {
-        // Launch time! Redirect to main site
-        window.location.href = './index.html';
+        // Launch time! Go to the store. The ?devmode bypass prevents any
+        // redirect loop if the coming-soon rule is ever re-enabled.
+        if (!location.search.includes('mode=4adev')) {
+          window.location.replace('./index.html?devmode=4adev');
+        }
         return;
       }
 
