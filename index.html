@@ -176,7 +176,10 @@
   <script>
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then(() => console.log('SW registered'));
+      // Relative path works both at domain root (live) and in a subfolder (localhost/static4a)
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('SW registered'))
+        .catch(err => console.log('SW registration skipped:', err.message));
     }
     let siteConfig = null;
 

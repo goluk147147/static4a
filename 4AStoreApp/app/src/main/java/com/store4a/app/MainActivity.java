@@ -55,7 +55,9 @@ public class MainActivity extends AppCompatActivity {
     private SwipeRefreshLayout swipeRefresh;
     private LinearLayout noInternetLayout;
 
-    private static final String WEBSITE_URL = "https://4astore.com/";
+    // App loads the subdomain directly (no redirect). Both domains are treated
+    // as "our site" so navigation stays inside the app either way.
+    private static final String WEBSITE_URL = "https://4astore.webtoolsz.com/";
     private static final int FILE_CHOOSER_REQUEST_CODE = 100;
     private static final int PERMISSION_REQUEST_CODE = 200;
 
@@ -209,8 +211,8 @@ public class MainActivity extends AppCompatActivity {
                     return true;
                 }
 
-                // Keep same domain navigation in WebView
-                if (url.contains("4astore.com")) {
+                // Keep our site (subdomain or main domain) inside the WebView
+                if (url.contains("4astore.webtoolsz.com") || url.contains("4astore.com")) {
                     return false;
                 }
 
@@ -250,6 +252,30 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     progressBar.setVisibility(View.VISIBLE);
                 }
+            }
+
+            // Handle links opened with target="_blank" / window.open so they
+            // don't create a dead blank window. We grab the intended URL and
+            // route it through the normal navigation logic instead.
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog,
+                                          boolean isUserGesture, android.os.Message resultMsg) {
+                WebView.HitTestResult result = view.getHitTestResult();
+                String target = (result != null) ? result.getExtra() : null;
+                if (target != null && !target.isEmpty()) {
+                    if (target.contains("4astore.webtoolsz.com") || target.contains("4astore.com")) {
+                        // Same-site link — keep it inside the app
+                        view.loadUrl(target);
+                    } else {
+                        // External (WhatsApp/maps/etc.) — open with the right app/browser
+                        try {
+                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(target)));
+                        } catch (Exception e) {
+                            view.loadUrl(target);
+                        }
+                    }
+                }
+                return false; // we handled it ourselves; no new window needed
             }
 
             // File upload support
@@ -482,12 +508,21 @@ public class MainActivity extends AppCompatActivity {
         return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
     }
 
+    private long lastBackPress = 0;
+
     @Override
     public void onBackPressed() {
         if (webView.canGoBack()) {
             webView.goBack();
         } else {
-            super.onBackPressed();
+            // Require a double back-press to exit (prevents accidental exit)
+            long now = System.currentTimeMillis();
+            if (now - lastBackPress < 2000) {
+                super.onBackPressed();
+            } else {
+                lastBackPress = now;
+                Toast.makeText(this, "Press back again to exit", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
