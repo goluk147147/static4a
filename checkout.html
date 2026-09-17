@@ -202,6 +202,11 @@
       loadSavedCustomer();
     });
 
+    // Re-render the order summary once backend settings (delivery fee etc.) load
+    window.addEventListener('dataLoaded', () => {
+      if (getCart().length > 0) renderOrderSummary();
+    });
+
     function loadSavedCustomer() {
       const user = getLoggedInUser();
       if (user) {

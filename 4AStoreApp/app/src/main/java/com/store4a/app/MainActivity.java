@@ -12,7 +12,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.View;
+import android.webkit.JavascriptInterface;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.GeolocationPermissions;
@@ -35,7 +37,12 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import android.content.ContentValues;
+import android.content.ContentResolver;
+
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -105,8 +112,10 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        webSettings.setBuiltInZoomControls(false);
-        webSettings.setSupportZoom(false);
+        // Allow pinch-zoom for accessibility, but hide the on-screen zoom buttons
+        webSettings.setBuiltInZoomControls(true);
+        webSettings.setDisplayZoomControls(false);
+        webSettings.setSupportZoom(true);
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setUseWideViewPort(true);
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
@@ -128,6 +137,10 @@ public class MainActivity extends AppCompatActivity {
         // Cookie support
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+
+        // JS bridge so the web app can save generated files (e.g. invoice PDF)
+        // inside the WebView, where blob:/data: downloads normally fail.
+        webView.addJavascriptInterface(new AndroidBridge(), "AndroidApp");
 
         // WebViewClient - Handle URL loading including UPI intents
         webView.setWebViewClient(new WebViewClient() {
@@ -306,20 +319,90 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Download support
+        // Download support (real file URLs like the APK). blob:/data: downloads
+        // are handled by the JS bridge (AndroidApp.saveBase64File) instead.
         webView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent, String contentDisposition,
                                         String mimetype, long contentLength) {
+                if (url == null) return;
+                // These are handled in-page by jsPDF + the JS bridge
+                if (url.startsWith("blob:") || url.startsWith("data:")) {
+                    return;
+                }
                 try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(Uri.parse(url));
-                    startActivity(intent);
+                    android.app.DownloadManager.Request req =
+                            new android.app.DownloadManager.Request(Uri.parse(url));
+                    req.setMimeType(mimetype);
+                    String name = URLUtil.guessFileName(url, contentDisposition, mimetype);
+                    req.addRequestHeader("User-Agent", userAgent);
+                    req.setNotificationVisibility(
+                            android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name);
+                    android.app.DownloadManager dm =
+                            (android.app.DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                    if (dm != null) {
+                        dm.enqueue(req);
+                        Toast.makeText(MainActivity.this, "Downloading " + name, Toast.LENGTH_SHORT).show();
+                    }
                 } catch (Exception e) {
-                    Toast.makeText(MainActivity.this, "Cannot download file", Toast.LENGTH_SHORT).show();
+                    // Fallback: open in browser (e.g. APK that needs external installer)
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        startActivity(intent);
+                    } catch (Exception ex) {
+                        Toast.makeText(MainActivity.this, "Cannot download file", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
         });
+    }
+
+    // ==========================================================
+    // JS BRIDGE: lets the web app save a base64 file to the phone.
+    // Called from JS as: AndroidApp.saveBase64File(base64, filename, mime)
+    // ==========================================================
+    public class AndroidBridge {
+        @JavascriptInterface
+        public void saveBase64File(String base64Data, String fileName, String mimeType) {
+            try {
+                // Strip a data URI prefix if present ("data:application/pdf;base64,...")
+                String clean = base64Data;
+                int comma = clean.indexOf(',');
+                if (clean.startsWith("data:") && comma != -1) {
+                    clean = clean.substring(comma + 1);
+                }
+                final byte[] bytes = Base64.decode(clean, Base64.DEFAULT);
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Android 10+ : save via MediaStore Downloads (no permission needed)
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
+                    values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
+                    values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                    ContentResolver resolver = getContentResolver();
+                    Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (uri != null) {
+                        OutputStream os = resolver.openOutputStream(uri);
+                        if (os != null) { os.write(bytes); os.close(); }
+                    }
+                } else {
+                    // Older Android : write to the public Downloads folder
+                    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (!dir.exists()) dir.mkdirs();
+                    File outFile = new File(dir, fileName);
+                    FileOutputStream fos = new FileOutputStream(outFile);
+                    fos.write(bytes);
+                    fos.close();
+                }
+
+                runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                        "Saved to Downloads: " + fileName, Toast.LENGTH_LONG).show());
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                        "Could not save file", Toast.LENGTH_SHORT).show());
+            }
+        }
     }
 
     private File createImageFile() throws IOException {

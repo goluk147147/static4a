@@ -95,6 +95,11 @@
       renderCart();
     }
 
+    // Re-render once store settings (delivery fee, free-delivery threshold)
+    // finish loading from the backend, so the cart shows the live values
+    // instead of the built-in defaults.
+    window.addEventListener('dataLoaded', renderCart);
+
     function renderCart() {
       const container = document.getElementById('cartContent');
       if (!container) return;

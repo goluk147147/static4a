@@ -1778,3 +1778,59 @@ a {
 .overlay.show {
   display: block;
 }
+
+/* ============================================
+   RESPONSIVE SAFETY & MOBILE / WEBVIEW POLISH
+   ============================================ */
+
+/* Prevent any single element from causing full-page horizontal scroll */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Images never overflow their container */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Toast: fit small screens (was min-width:300px which overflowed <340px) */
+@media (max-width: 420px) {
+  .toast-container {
+    left: 10px;
+    right: 10px;
+    top: 70px;
+  }
+  .toast {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Slightly larger tap targets on touch devices */
+@media (max-width: 768px) {
+  .bottom-nav .nav-item {
+    padding: 6px 8px;
+    min-height: 48px;
+    justify-content: center;
+  }
+  .qty-controls button {
+    min-width: 38px;
+    min-height: 38px;
+  }
+  .btn-primary,
+  .btn-checkout,
+  .btn-add-cart {
+    min-height: 44px;
+  }
+}
+
+/* Product-detail spec table: allow horizontal scroll if content is wide */
+.product-detail-card .detail-specs {
+  overflow-x: auto;
+}

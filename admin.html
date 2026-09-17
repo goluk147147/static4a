@@ -85,7 +85,7 @@
   <div id="adminDashboard" class="admin-container hidden">
     <div class="admin-header">
       <h1>📊 4astore Admin Panel</h1>
-      <div style="display:flex; align-items:center; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end;">
         <div style="position:relative;">
           <button id="notifBell" onclick="toggleNotifPanel(event)" title="Notifications" style="position:relative; background:white; border:1px solid var(--border); border-radius:50%; width:44px; height:44px; font-size:20px; cursor:pointer; box-shadow:var(--shadow);">
             🔔
@@ -796,11 +796,13 @@
     // ==========================================
     // PRODUCTS TAB — add / edit price & features
     // ==========================================
-    function renderProductsTab() {
-      const prods = getProducts();
-      const cats = (typeof categories !== 'undefined' && categories.length) ? categories : [];
+    let productSearchTerm = '';
 
-      const rows = prods.length ? prods.map(p => {
+    function productRowsHtml(list) {
+      if (!list.length) {
+        return `<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--gray);">No matching products.</td></tr>`;
+      }
+      return list.map(p => {
         const featCount = Array.isArray(p.features) ? p.features.length : 0;
         return `
           <tr>
@@ -818,12 +820,44 @@
               <button onclick="removeProduct(${p.id})" style="padding:5px 10px;background:#e53935;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🗑️</button>
             </td>
           </tr>`;
-      }).join('') : `<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--gray);">No products yet. Click "Add Product".</td></tr>`;
+      }).join('');
+    }
+
+    function filterProducts() {
+      const term = productSearchTerm.trim().toLowerCase();
+      const prods = getProducts();
+      if (!term) return prods;
+      return prods.filter(p =>
+        (p.name || '').toLowerCase().includes(term) ||
+        (p.brand || '').toLowerCase().includes(term) ||
+        (p.category || '').toLowerCase().includes(term)
+      );
+    }
+
+    // Called on each keystroke — only re-renders the table body & count,
+    // so the search input keeps focus.
+    function onProductSearch(value) {
+      productSearchTerm = value;
+      const filtered = filterProducts();
+      const body = document.getElementById('productTableBody');
+      const count = document.getElementById('productCount');
+      if (body) body.innerHTML = productRowsHtml(filtered);
+      if (count) count.textContent = filtered.length;
+    }
+
+    function renderProductsTab() {
+      const prods = getProducts();
+      const filtered = filterProducts();
 
       document.getElementById('tabContent').innerHTML = `
         <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-          <p style="font-size:13px; color:var(--gray);">Total: <strong>${prods.length}</strong> products</p>
+          <p style="font-size:13px; color:var(--gray);">Showing <strong id="productCount">${filtered.length}</strong> of ${prods.length} products</p>
           <button class="btn-add-product" onclick="openProductModal()">➕ Add Product</button>
+        </div>
+        <div style="margin-bottom:14px;">
+          <input type="text" id="productSearchInput" value="${escapeHtml(productSearchTerm)}" oninput="onProductSearch(this.value)"
+                 placeholder="🔍 Search by name, brand or category..."
+                 style="width:100%; max-width:420px; padding:10px 14px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
         </div>
         <div style="overflow-x:auto;">
           <table class="admin-table">
@@ -833,9 +867,16 @@
                 <th>MRP</th><th>Price</th><th>Disc</th><th>Features</th><th>Stock</th><th>Action</th>
               </tr>
             </thead>
-            <tbody>${rows}</tbody>
+            <tbody id="productTableBody">${productRowsHtml(filtered)}</tbody>
           </table>
         </div>`;
+
+      // keep focus in the search box after a full re-render
+      const inp = document.getElementById('productSearchInput');
+      if (inp && productSearchTerm) {
+        inp.focus();
+        inp.setSelectionRange(inp.value.length, inp.value.length);
+      }
     }
 
     function escapeHtml(str) {

@@ -283,7 +283,23 @@
       doc.text('Payment: ' + (order.paymentMethod || 'UPI'), left, y + 20);
       doc.text('Thank you for shopping with 4A Store!', left, y + 40);
 
-      doc.save('Invoice-' + order.orderId + '.pdf');
+      const fileName = 'Invoice-' + order.orderId + '.pdf';
+
+      // Inside the Android app, blob/data downloads don't work — hand the
+      // base64 PDF to the native bridge so it saves to Downloads.
+      if (window.AndroidApp && typeof window.AndroidApp.saveBase64File === 'function') {
+        try {
+          const base64 = doc.output('datauristring'); // "data:application/pdf;base64,...."
+          window.AndroidApp.saveBase64File(base64, fileName, 'application/pdf');
+          showToast('📄 Invoice saved to Downloads', 'success');
+          return;
+        } catch (e) {
+          // fall through to normal browser save
+        }
+      }
+
+      // Normal browser download
+      doc.save(fileName);
     }
   </script>
 </body>
