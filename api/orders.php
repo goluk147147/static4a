@@ -92,6 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         foreach ($orders as &$order) {
             if ($order['orderId'] === $orderId) {
+                // The app uses "orderStatus" everywhere; keep "status" too for compatibility.
+                $order['orderStatus'] = $status;
                 $order['status'] = $status;
                 $found = true;
                 break;

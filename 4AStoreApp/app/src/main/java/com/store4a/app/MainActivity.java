@@ -504,6 +504,9 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void speak(String text) {
             if (text == null || text.isEmpty()) return;
+            // Diagnostic: confirm the bridge is actually being called from JS
+            runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                    ttsReady ? "🔊 Playing voice..." : "⏳ Voice engine loading...", Toast.LENGTH_SHORT).show());
             speakWithRetry(text, 0);
         }
 
@@ -567,9 +570,14 @@ public class MainActivity extends AppCompatActivity {
                 params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f);
                 params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, android.media.AudioManager.STREAM_MUSIC);
                 tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, "pay_guide");
-            } else if (attempt < 15) {
-                // TTS engine still initialising — retry shortly (up to ~4.5s)
+            } else if (attempt < 20) {
+                // TTS engine still initialising — retry shortly (up to ~6s)
                 webView.postDelayed(() -> speakWithRetry(text, attempt + 1), 300);
+            } else {
+                // Gave up: engine never became ready (no TTS engine / voice on device)
+                Toast.makeText(MainActivity.this,
+                        "Voice not available. Install a Text-to-Speech voice in phone Settings.",
+                        Toast.LENGTH_LONG).show();
             }
         });
     }
