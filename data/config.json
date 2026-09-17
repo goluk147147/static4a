@@ -77,7 +77,7 @@
     {"id":1,"title":"🎉 Flat 10% OFF on First Order!","description":"Limited time offer for new customers!","bgColor":"#fff3e0","borderColor":"#ff6600","icon":"🎁","link":"products.html","active":true},
     {"id":2,"title":"🥛 Fresh Dairy Daily","description":"Amul Milk, Butter, Curd – fresh every morning","bgColor":"#f3e5f5","borderColor":"#9c27b0","icon":"🐄","link":"products.html?category=dairy-bakery","active":true},
     {"id":3,"title":"📱 Pay Easy with UPI","description":"Scan & pay instantly. 100% secure.","bgColor":"#e3f2fd","borderColor":"#1565c0","icon":"💳","link":"checkout.html","active":true},
-    {"id":4,"title":"🚚 Free Delivery above ₹500","description":"Order ₹500+ for FREE home delivery","bgColor":"#e8f5e9","borderColor":"#2e7d32","icon":"🆓","link":"products.html","active":true}
+    {"id":4,"title":"🚚 Free Delivery above ₹{{freeDeliveryAbove}}","description":"Order ₹{{freeDeliveryAbove}}+ for FREE home delivery","bgColor":"#e8f5e9","borderColor":"#2e7d32","icon":"🆓","link":"products.html","active":true}
   ],
   "socialProofMessages": [
     "{name} from Chandargarh just ordered {product}",

@@ -228,13 +228,24 @@
     function renderAds() {
       const grid = document.getElementById('adsGrid');
       const ads = siteConfig.ads.filter(a => a.active);
-      
+
+      // Replace delivery placeholders with the live (backend-configured) values.
+      // Supports {{freeDeliveryAbove}} and {{deliveryCharge}}, and also rewrites
+      // any old hardcoded "₹500" free-delivery text to the current setting.
+      const fda = (typeof STORE_CONFIG !== 'undefined' && STORE_CONFIG.freeDeliveryAbove != null) ? STORE_CONFIG.freeDeliveryAbove : 500;
+      const dc = (typeof STORE_CONFIG !== 'undefined' && STORE_CONFIG.deliveryCharge != null) ? STORE_CONFIG.deliveryCharge : 0;
+      const dyn = (txt) => String(txt || '')
+        .replace(/\{\{\s*freeDeliveryAbove\s*\}\}/g, fda)
+        .replace(/\{\{\s*deliveryCharge\s*\}\}/g, dc)
+        .replace(/₹\s*500\+?/g, '₹' + fda)
+        .replace(/₹500\+/g, '₹' + fda);
+
       grid.innerHTML = ads.map(ad => `
         <a href="${ad.link}" class="ad-card" style="background:${ad.bgColor}; border-color:${ad.borderColor};">
           <div class="ad-icon">${ad.icon}</div>
           <div class="ad-content">
-            <h4 style="color:${ad.borderColor};">${ad.title}</h4>
-            <p>${ad.description}</p>
+            <h4 style="color:${ad.borderColor};">${dyn(ad.title)}</h4>
+            <p>${dyn(ad.description)}</p>
           </div>
         </a>
       `).join('');

@@ -176,8 +176,8 @@
     </style>
 </head>
 <body>
-    <!-- The entire card is clickable → directly downloads the APK -->
-    <a class="status-card" href="https://4astore.com/4AStore.apk" download>
+    <!-- The entire card is clickable → directly downloads the APK (relative path works on local + live) -->
+    <a id="downloadLink" class="status-card" href="4AStore.apk" download="4AStore.apk" onclick="return startDownload(event)">
         <div class="logo-badge">
             <img src="assets/images/logo.svg?v=2" alt="4A Store"
                  onerror="this.parentElement.innerHTML='<span style=&quot;font-size:26px;font-weight:800;color:#fff;&quot;>4A&nbsp;Store</span>'">
@@ -202,16 +202,46 @@
 
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script>
-        const downloadUrl = "https://4astore.com/4AStore.apk";
+        // Build the APK URL from the current site so it works on both
+        // localhost and the live domain. (QR needs an absolute URL to scan.)
+        const apkUrl = new URL('4AStore.apk', window.location.href).href;
 
-        new QRCode(document.getElementById("qrcode"), {
-            text: downloadUrl,
-            width: 200,
-            height: 200,
-            colorDark: "#1a1a2e",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-        });
+        // Make the tap/click download use the same URL
+        document.getElementById('downloadLink').setAttribute('href', apkUrl);
+
+        // Force a reliable download regardless of browser handling
+        function startDownload(e) {
+            if (e) e.preventDefault();
+            const a = document.createElement('a');
+            a.href = apkUrl;
+            a.setAttribute('download', '4AStore.apk');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            return false;
+        }
+
+        function renderQr() {
+            const box = document.getElementById('qrcode');
+            box.innerHTML = '';
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(box, {
+                    text: apkUrl,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#1a1a2e",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } else {
+                // Fallback: image-API QR so it always shows
+                const img = document.createElement('img');
+                img.width = 200; img.height = 200; img.alt = 'QR';
+                img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(apkUrl);
+                box.appendChild(img);
+            }
+        }
+        renderQr();
     </script>
 </body>
 </html>
