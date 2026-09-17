@@ -2,7 +2,9 @@ package com.store4a.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.pm.PackageInfo;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
@@ -13,6 +15,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.speech.tts.TextToSpeech;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.CookieManager;
@@ -44,6 +47,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import org.json.JSONObject;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -64,6 +72,9 @@ public class MainActivity extends AppCompatActivity {
     private ValueCallback<Uri[]> filePathCallback;
     private String cameraPhotoPath;
 
+    private TextToSpeech tts;
+    private boolean ttsReady = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,15 +85,94 @@ public class MainActivity extends AppCompatActivity {
         swipeRefresh = findViewById(R.id.swipeRefresh);
         noInternetLayout = findViewById(R.id.noInternetLayout);
 
+        // Initialise Hindi Text-to-Speech for the payment voice guide
+        tts = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS && tts != null) {
+                int r = tts.setLanguage(new Locale("hi", "IN"));
+                if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    tts.setLanguage(Locale.ENGLISH); // fallback if Hindi voice not installed
+                }
+                ttsReady = true;
+            }
+        });
+
         requestPermissions();
         setupWebView();
         setupSwipeRefresh();
 
         if (isNetworkAvailable()) {
             loadWebsite();
+            checkForUpdate();
         } else {
             showNoInternet();
         }
+    }
+
+    // ==========================================================
+    // AUTO UPDATE CHECK (self-hosted APK, not on Play Store)
+    // Reads version.json from the server; if a newer versionCode is
+    // available, shows a popup to download the new APK.
+    // ==========================================================
+    private static final String VERSION_URL = "https://4astore.webtoolsz.com/data/version.json";
+
+    private void checkForUpdate() {
+        new Thread(() -> {
+            try {
+                HttpURLConnection conn = (HttpURLConnection) new URL(VERSION_URL + "?t=" + System.currentTimeMillis()).openConnection();
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                conn.setRequestProperty("Cache-Control", "no-cache");
+                BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+                r.close();
+                conn.disconnect();
+
+                JSONObject json = new JSONObject(sb.toString());
+                int latest = json.optInt("versionCode", 0);
+                final String apkUrl = json.optString("url", "https://4astore.webtoolsz.com/4AStore.apk");
+                final String message = json.optString("message", "A new update is available.");
+                final boolean force = json.optBoolean("forceUpdate", false);
+
+                int current = getCurrentVersionCode();
+                if (latest > current) {
+                    runOnUiThread(() -> showUpdateDialog(apkUrl, message, force));
+                }
+            } catch (Exception e) {
+                // No network / version.json missing -> silently skip
+            }
+        }).start();
+    }
+
+    private int getCurrentVersionCode() {
+        try {
+            PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return (int) pInfo.getLongVersionCode();
+            }
+            return pInfo.versionCode;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private void showUpdateDialog(String apkUrl, String message, boolean force) {
+        AlertDialog.Builder b = new AlertDialog.Builder(this);
+        b.setTitle("🚀 Update Available");
+        b.setMessage(message);
+        b.setCancelable(!force);
+        b.setPositiveButton("Update Now", (dialog, which) -> {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl)));
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not open download link", Toast.LENGTH_SHORT).show();
+            }
+        });
+        if (!force) {
+            b.setNegativeButton("Later", (dialog, which) -> dialog.dismiss());
+        }
+        b.show();
     }
 
     private void requestPermissions() {
@@ -389,6 +479,17 @@ public class MainActivity extends AppCompatActivity {
     // Called from JS as: AndroidApp.saveBase64File(base64, filename, mime)
     // ==========================================================
     public class AndroidBridge {
+        // Speak Hindi text using the phone's native TTS (guaranteed in-app).
+        @JavascriptInterface
+        public void speak(String text) {
+            if (text == null || text.isEmpty()) return;
+            runOnUiThread(() -> {
+                if (tts != null && ttsReady) {
+                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "pay_guide");
+                }
+            });
+        }
+
         @JavascriptInterface
         public void saveBase64File(String base64Data, String fileName, String mimeType) {
             try {
@@ -506,6 +607,16 @@ public class MainActivity extends AppCompatActivity {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
         return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+            tts = null;
+        }
+        super.onDestroy();
     }
 
     private long lastBackPress = 0;

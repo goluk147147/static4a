@@ -113,11 +113,11 @@
         <p style="font-size:16px; font-weight:700; color:var(--primary-dark);">💰 Pay: ₹<span id="payAmount">0</span></p>
       </div>
 
-      <!-- Mobile: Open UPI App directly -->
-      <a id="upiDeepLink" href="#" onclick="return openUpiApp(event)" style="display:inline-block; padding:10px 24px; background:var(--primary); color:white; border-radius:30px; font-size:14px; font-weight:600; margin-bottom:8px; text-decoration:none;">
-        📲 Open UPI App & Pay
-      </a>
-      <p id="upiHint" style="font-size:11px; color:#888; margin-bottom:14px;"></p>
+      <!-- Merchant UPI: pay by scanning the QR or copying the UPI ID -->
+      <button type="button" onclick="copyUpiId()" style="display:inline-block; padding:10px 24px; background:var(--primary); color:white; border:none; border-radius:30px; font-size:14px; font-weight:600; margin-bottom:8px; cursor:pointer;">
+        📋 Copy UPI ID
+      </button>
+      <p id="upiHint" style="font-size:11px; color:#888; margin-bottom:14px;">Scan the QR, or copy the UPI ID and pay in your UPI app.</p>
 
       <!-- Screenshot Upload Section -->
       <div style="border-top:2px solid var(--border); padding-top:16px; margin-top:8px;">
@@ -267,24 +267,55 @@
       const payeeName = encodeURIComponent(upiName);
       const note = encodeURIComponent(upiName + ' Order');
       const amount = Number(totals.total).toFixed(2);
+      window.currentUpiId = payee;
       window.currentUpiLink = `upi://pay?pa=${payee}&pn=${payeeName}&am=${amount}&cu=INR&tn=${note}`;
-      document.getElementById('upiDeepLink').href = window.currentUpiLink;
 
       // Update the displayed UPI ID / Name on the payment modal
       document.querySelectorAll('[data-upi-id]').forEach(el => el.textContent = payee);
       document.querySelectorAll('[data-upi-name]').forEach(el => el.textContent = upiName);
 
-      // Show device-appropriate hint
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const hintEl = document.getElementById('upiHint');
-      if (hintEl) {
-        hintEl.textContent = isMobile
-          ? 'Tap to open GPay / PhonePe / Paytm'
-          : '💻 On computer, scan the QR above with your phone';
-      }
-      
       // Generate QR (library if available, else image-API fallback so it always shows)
       renderUpiQr(window.currentUpiLink);
+
+      // Play a dynamic Hindi voice guide for the payment step
+      speakPaymentGuide(name, totals.total);
+    }
+
+    // ==========================================================
+    // HINDI VOICE GUIDE on the payment screen (dynamic name + amount)
+    // ==========================================================
+    function speakPaymentGuide(name, amount) {
+      const firstName = (name || 'grahak').trim().split(' ')[0];
+      const msg = `Namaskar ${firstName} ji. Aapke order ki rashi ${amount} rupaye hai. `
+                + `Kripya scanner ko scan karke bhugtan karein, phir screenshot upload karke apna order confirm karein. `
+                + `4A Store me order karne ke liye dhanyavaad.`;
+
+      // Inside the Android app -> use the phone's native TTS (guaranteed).
+      if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
+        try { window.AndroidApp.speak(msg); return; } catch (e) { /* fall through */ }
+      }
+
+      // Web browsers -> Web Speech API
+      if (!('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const speak = () => {
+          const u = new SpeechSynthesisUtterance(msg);
+          u.lang = 'hi-IN';
+          u.rate = 0.9;
+          u.pitch = 1;
+          const voices = window.speechSynthesis.getVoices();
+          const hi = voices.find(v => v.lang === 'hi-IN' || (v.lang || '').toLowerCase().startsWith('hi'));
+          if (hi) u.voice = hi;
+          window.speechSynthesis.speak(u);
+        };
+        if (window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = () => { speak(); window.speechSynthesis.onvoiceschanged = null; };
+          setTimeout(speak, 400);
+        } else {
+          setTimeout(speak, 300);
+        }
+      } catch (e) { /* speech not available */ }
     }
 
     // Render the UPI QR. Uses the qrcodejs library when loaded, otherwise
@@ -316,53 +347,87 @@
       qrDiv.appendChild(img);
     }
 
-    // Handle "Open UPI App & Pay" click
-    function openUpiApp(event) {
-      if (event) event.preventDefault();
-      const link = window.currentUpiLink;
-      if (!link) return false;
-
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (!isMobile) {
-        // Desktop has no UPI app — guide the user to scan the QR instead
-        if (typeof showToast === 'function') {
-          showToast('UPI apps open only on mobile. Please scan the QR code with your phone.', 'info');
-        } else {
-          alert('UPI apps open only on mobile.\nPlease scan the QR code above using GPay / PhonePe / Paytm on your phone.');
-        }
-        return false;
+    // Copy the UPI ID so the user can paste it in their UPI app (merchant-safe)
+    function copyUpiId() {
+      const id = window.currentUpiId || (document.querySelector('[data-upi-id]') ? document.querySelector('[data-upi-id]').textContent : '');
+      if (!id) return;
+      const done = () => showToast('✅ UPI ID copied: ' + id, 'success');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(id).then(done).catch(() => fallbackCopyId(id, done));
+      } else {
+        fallbackCopyId(id, done);
       }
-
-      // On mobile: try to launch the UPI app
-      window.location.href = link;
-      return false;
+    }
+    function fallbackCopyId(text, cb) {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); cb && cb(); } catch (e) {}
+      document.body.removeChild(ta);
     }
 
     function handleScreenshot(input) {
       const file = input.files[0];
       if (!file) return;
-      
+
       const reader = new FileReader();
       reader.onload = function(e) {
-        paymentScreenshot = e.target.result;
-        document.getElementById('screenshotPreview').src = paymentScreenshot;
-        document.getElementById('screenshotPreview').style.display = 'block';
-        document.getElementById('screenshotPlaceholder').style.display = 'none';
-        document.getElementById('screenshotUpload').classList.add('has-image');
-        
-        // Enable confirm button
-        const btn = document.getElementById('confirmBtn');
-        btn.disabled = false;
-        btn.style.background = 'var(--primary)';
-        btn.style.cursor = 'pointer';
-        btn.textContent = '✅ Confirm Order & Send on WhatsApp';
+        // Downscale/compress the image so big phone photos (often >6MB) upload
+        // reliably to the server. Falls back to the original if anything fails.
+        compressImage(e.target.result, 1000, 0.7, function(compressed) {
+          paymentScreenshot = compressed || e.target.result;
+          document.getElementById('screenshotPreview').src = paymentScreenshot;
+          document.getElementById('screenshotPreview').style.display = 'block';
+          document.getElementById('screenshotPlaceholder').style.display = 'none';
+          document.getElementById('screenshotUpload').classList.add('has-image');
+
+          const btn = document.getElementById('confirmBtn');
+          btn.disabled = false;
+          btn.style.background = 'var(--primary)';
+          btn.style.cursor = 'pointer';
+          btn.textContent = '✅ Confirm Order & Send on WhatsApp';
+        });
       };
       reader.readAsDataURL(file);
+    }
+
+    // Resize an image data URI to max width/height and re-encode as JPEG.
+    function compressImage(dataUri, maxSize, quality, cb) {
+      try {
+        const img = new Image();
+        img.onload = function () {
+          let w = img.width, h = img.height;
+          if (w > h && w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          cb(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = function () { cb(null); };
+        img.src = dataUri;
+      } catch (e) { cb(null); }
     }
 
     function closePaymentModal() {
       document.getElementById('upiPaymentModal').classList.add('hidden');
       document.getElementById('upiPaymentModal').style.display = 'none';
+    }
+
+    // Upload the payment screenshot to the server (async, non-blocking)
+    function uploadScreenshot(orderId, imageDataUri) {
+      if (!orderId || !imageDataUri) return;
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'api/upload-screenshot.php', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4 && xhr.status !== 200) {
+            console.warn('Screenshot upload failed, kept local copy.');
+          }
+        };
+        xhr.send(JSON.stringify({ orderId: orderId, image: imageDataUri }));
+      } catch (e) { /* stored locally as fallback */ }
     }
 
     function confirmPayment() {
@@ -373,11 +438,15 @@
       
       // Place order with screenshot reference
       orderData = placeOrder(customerInfo);
-      
-      // Save screenshot reference (base64 stored in localStorage for admin verification)
+
+      // Upload the payment screenshot to the SERVER so the admin can see it
+      // from any device (not just this browser).
+      uploadScreenshot(orderData.orderId, paymentScreenshot);
+
+      // Also keep a local copy as a fallback
       let screenshots = JSON.parse(localStorage.getItem('4astore_screenshots')) || {};
       screenshots[orderData.orderId] = paymentScreenshot;
-      localStorage.setItem('4astore_screenshots', JSON.stringify(screenshots));
+      try { localStorage.setItem('4astore_screenshots', JSON.stringify(screenshots)); } catch (e) { /* quota */ }
       
       closePaymentModal();
       

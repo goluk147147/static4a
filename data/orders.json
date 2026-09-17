@@ -27,5 +27,34 @@
         "paymentMethod": "UPI",
         "orderStatus": "Order Placed",
         "orderDate": "2026-09-16T14:47:22.964Z"
+    },
+    {
+        "orderId": "4A383782",
+        "userId": 4,
+        "customer": {
+            "name": "akashh",
+            "mobile": "8002116652",
+            "email": "euehjjhe@gmail.com",
+            "address": "ner shiv mandir",
+            "landmark": "uhjhds",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 8,
+                "name": "Surf Excel Easy Wash",
+                "weight": "1.5 Kg",
+                "price": 175,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 175,
+        "discount": 24,
+        "deliveryCharge": 1,
+        "totalAmount": 176,
+        "paymentMethod": "UPI",
+        "orderStatus": "Order Placed",
+        "orderDate": "2026-09-17T10:42:48.935Z"
     }
 ]

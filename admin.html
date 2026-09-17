@@ -741,13 +741,21 @@
       const o = orders.find(ord => ord.orderId === orderId);
       if (!o) return;
 
-      // Check for payment screenshot
-      const screenshots = JSON.parse(localStorage.getItem('4astore_screenshots')) || {};
-      const screenshot = screenshots[orderId];
-      const screenshotHTML = screenshot 
-        ? `<h4 style="margin-top:16px; margin-bottom:8px;">📸 Payment Screenshot</h4>
-           <img src="${screenshot}" style="max-width:100%; border-radius:8px; border:2px solid var(--primary);" alt="Payment Screenshot">`
-        : `<p style="margin-top:12px; font-size:13px; color:var(--gray);">⚠️ No payment screenshot uploaded</p>`;
+      // Payment screenshot: prefer the SERVER copy (visible from any device),
+      // fall back to a local copy if the server one isn't there.
+      const localShots = JSON.parse(localStorage.getItem('4astore_screenshots')) || {};
+      const localShot = localShots[orderId] || '';
+      const serverShot = 'data/screenshots/' + orderId + '.jpg?t=' + Date.now();
+      // Try server .jpg first; onerror -> try .png; onerror -> local copy; else "no screenshot"
+      const noShotMsg = `<p style="margin-top:12px; font-size:13px; color:var(--gray);">⚠️ No payment screenshot uploaded</p>`;
+      const screenshotHTML = `
+        <h4 style="margin-top:16px; margin-bottom:8px;">📸 Payment Screenshot</h4>
+        <img src="${serverShot}"
+             data-order="${orderId}"
+             data-local="${localShot ? '1' : '0'}"
+             onerror="handleShotError(this)"
+             style="max-width:100%; border-radius:8px; border:2px solid var(--primary);" alt="Payment Screenshot">
+        <p id="noShot_${orderId}" style="display:none; margin-top:12px; font-size:13px; color:var(--gray);">⚠️ No payment screenshot found</p>`;
 
       document.getElementById('orderDetailBody').innerHTML = `
         <h3 style="color:var(--primary); margin-bottom:12px;">Order #${o.orderId}</h3>
@@ -791,6 +799,28 @@
 
     function closeOrderDetail() {
       document.getElementById('orderDetailModal').classList.add('hidden');
+    }
+
+    // Screenshot fallback chain: server .jpg -> server .png -> local copy -> "not found"
+    function handleShotError(img) {
+      const orderId = img.getAttribute('data-order');
+      const step = img.getAttribute('data-step') || '0';
+      if (step === '0') {
+        // try .png
+        img.setAttribute('data-step', '1');
+        img.src = 'data/screenshots/' + orderId + '.png?t=' + Date.now();
+        return;
+      }
+      if (step === '1') {
+        // try local copy
+        img.setAttribute('data-step', '2');
+        const local = (JSON.parse(localStorage.getItem('4astore_screenshots')) || {})[orderId];
+        if (local) { img.src = local; return; }
+      }
+      // give up -> hide image, show "not found"
+      img.style.display = 'none';
+      const msg = document.getElementById('noShot_' + orderId);
+      if (msg) msg.style.display = 'block';
     }
 
     // ==========================================

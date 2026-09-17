@@ -68,13 +68,16 @@ async function loadData() {
     // Load store settings (delivery fee, free-delivery threshold, store email)
     try {
       let settings;
+      const bust = 'nocache=' + Date.now();
       try {
-        const sRes = await fetch('api/settings.php');
+        // no-store + cache-bust so a stale service-worker/browser cache never
+        // returns an old UPI ID / delivery fee after the admin updates settings.
+        const sRes = await fetch('api/settings.php?' + bust, { cache: 'no-store' });
         if (!sRes.ok) throw new Error('API not available');
         const sData = await sRes.json();
         settings = sData.success ? sData.settings : null;
       } catch (sErr) {
-        const sRes2 = await fetch('data/settings.json');
+        const sRes2 = await fetch('data/settings.json?' + bust, { cache: 'no-store' });
         settings = await sRes2.json();
       }
       if (settings) {
