@@ -32,7 +32,25 @@ document.addEventListener('DOMContentLoaded', () => {
   loadData();
   updateCartBadge();
   updateLoginUI();
+  showAppVersion();
 });
+
+// Show the app/web version in the footer (helps confirm which build is running)
+function showAppVersion() {
+  try {
+    const el = document.querySelector('.footer-bottom');
+    if (!el) return;
+    let ver = 'Web';
+    if (window.AndroidApp && typeof window.AndroidApp.getAppVersion === 'function') {
+      const v = window.AndroidApp.getAppVersion();
+      if (v) ver = 'App v' + v;
+    }
+    if (!/v\d|Web/.test(el.dataset.verDone || '')) {
+      el.innerHTML += ` <span style="opacity:0.6; font-size:11px;">· ${ver}</span>`;
+      el.dataset.verDone = ver;
+    }
+  } catch (e) { /* ignore */ }
+}
 
 async function loadData() {
   try {

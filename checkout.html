@@ -287,7 +287,10 @@
     function speakPaymentGuide(name, amount) {
       const firstName = (name || 'grahak').trim().split(' ')[0];
       const msg = `Namaskar ${firstName} ji. Aapke order ki rashi ${amount} rupaye hai. `
-                + `Kripya scanner ko scan karke bhugtan karein, phir screenshot upload karke apna order confirm karein. `
+                + `Payment karne ke liye, niche diya gaya Q R code scan karein. `
+                + `Ya U P I ID copy karke, Google Pay, PhonePe ya Paytm se payment karein. `
+                + `Payment hone ke baad, uska screenshot niche upload karein. `
+                + `Uske baad, confirm button dabakar apna order confirm karein. `
                 + `4A Store me order karne ke liye dhanyavaad.`;
 
       // Inside the Android app -> use the phone's native TTS (guaranteed).

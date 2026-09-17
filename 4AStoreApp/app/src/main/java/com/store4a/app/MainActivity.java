@@ -86,11 +86,15 @@ public class MainActivity extends AppCompatActivity {
         noInternetLayout = findViewById(R.id.noInternetLayout);
 
         // Initialise Hindi Text-to-Speech for the payment voice guide
-        tts = new TextToSpeech(this, status -> {
+        tts = new TextToSpeech(getApplicationContext(), status -> {
             if (status == TextToSpeech.SUCCESS && tts != null) {
-                int r = tts.setLanguage(new Locale("hi", "IN"));
-                if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    tts.setLanguage(Locale.ENGLISH); // fallback if Hindi voice not installed
+                try {
+                    int r = tts.setLanguage(new Locale("hi", "IN"));
+                    if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        tts.setLanguage(Locale.US); // fallback if Hindi voice not installed
+                    }
+                } catch (Exception e) {
+                    try { tts.setLanguage(Locale.US); } catch (Exception ex) { /* ignore */ }
                 }
                 ttsReady = true;
             }
@@ -479,15 +483,28 @@ public class MainActivity extends AppCompatActivity {
     // Called from JS as: AndroidApp.saveBase64File(base64, filename, mime)
     // ==========================================================
     public class AndroidBridge {
+        // Returns the installed app version so the web page can display it.
+        @JavascriptInterface
+        public String getAppVersion() {
+            try {
+                PackageInfo p = getPackageManager().getPackageInfo(getPackageName(), 0);
+                return p.versionName + " (" + getCurrentVersionCode() + ")";
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
+        // Manually trigger an update check (e.g. from a button in the web UI).
+        @JavascriptInterface
+        public void checkUpdateNow() {
+            checkForUpdate();
+        }
+
         // Speak Hindi text using the phone's native TTS (guaranteed in-app).
         @JavascriptInterface
         public void speak(String text) {
             if (text == null || text.isEmpty()) return;
-            runOnUiThread(() -> {
-                if (tts != null && ttsReady) {
-                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "pay_guide");
-                }
-            });
+            speakWithRetry(text, 0);
         }
 
         @JavascriptInterface
@@ -530,6 +547,31 @@ public class MainActivity extends AppCompatActivity {
                         "Could not save file", Toast.LENGTH_SHORT).show());
             }
         }
+    }
+
+    // Speak text; if TTS isn't ready yet (init still running), retry a few times.
+    private void speakWithRetry(final String text, final int attempt) {
+        runOnUiThread(() -> {
+            if (tts != null && ttsReady) {
+                // Turn media volume up so the voice guide is clearly audible
+                try {
+                    android.media.AudioManager am =
+                            (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                    if (am != null) {
+                        int max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC);
+                        am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, max, 0);
+                    }
+                } catch (Exception e) { /* ignore */ }
+
+                android.os.Bundle params = new android.os.Bundle();
+                params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f);
+                params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, android.media.AudioManager.STREAM_MUSIC);
+                tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, "pay_guide");
+            } else if (attempt < 15) {
+                // TTS engine still initialising — retry shortly (up to ~4.5s)
+                webView.postDelayed(() -> speakWithRetry(text, attempt + 1), 300);
+            }
+        });
     }
 
     private File createImageFile() throws IOException {
