@@ -154,7 +154,7 @@
       <div class="footer-col">
         <h4>Delivery & Payment</h4>
         <p>📍 Delivering in PIN 824301 only</p>
-        <p style="margin-top:4px;">💳 UPI: <strong>goluk147147@ybl</strong></p>
+        <p style="margin-top:4px;">💳 UPI: <strong data-upi-id>goluk147147@ybl</strong></p>
         <p style="margin-top:8px; font-size:12px; color:#aaa;">More locations coming soon 🚀</p>
       </div>
     </div>
@@ -183,6 +183,75 @@
     }
     let siteConfig = null;
 
+    // Run the announcement independently too (in case dataLoaded doesn't fire)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => setTimeout(playAnnouncement, 500));
+    } else {
+      setTimeout(playAnnouncement, 500);
+    }
+
+    // ==========================================================
+    // HOME PAGE VOICE ANNOUNCEMENT (set by admin, plays once per message)
+    // ==========================================================
+    function playAnnouncement() {
+      fetch('api/announcement.php?t=' + Date.now(), { cache: 'no-store' })
+        .then(r => r.json())
+        .then(res => {
+          if (!res.success) return;
+          const ann = res.announcement;
+          if (!ann || !ann.enabled || !ann.text) return;
+
+          // Speak only if THIS message id hasn't already been spoken on this device
+          if (String(localStorage.getItem('4astore_ann_spoken')) === String(ann.id)) return;
+
+          let done = false;
+          const speakNow = () => {
+            if (done) return;
+            done = true;
+            localStorage.setItem('4astore_ann_spoken', String(ann.id));
+            speakText(ann.text);
+            document.removeEventListener('click', onTap);
+            document.removeEventListener('touchstart', onTap);
+          };
+          const onTap = () => speakNow();
+
+          // In the app (native TTS) it can play immediately. In web browsers,
+          // autoplay is blocked until a user gesture — so also play on first tap.
+          if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
+            speakNow();
+          } else {
+            document.addEventListener('click', onTap, { once: true });
+            document.addEventListener('touchstart', onTap, { once: true });
+            // Try immediately too (works if the user already interacted with the page)
+            setTimeout(speakNow, 600);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Speak text: native TTS inside the app, Web Speech in browsers
+    function speakText(msg) {
+      if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
+        try { window.AndroidApp.speak(msg); return; } catch (e) { /* fall through */ }
+      }
+      if (!('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const speak = () => {
+          const u = new SpeechSynthesisUtterance(msg);
+          u.lang = 'hi-IN'; u.rate = 0.9; u.pitch = 1; u.volume = 1;
+          const voices = window.speechSynthesis.getVoices();
+          const hi = voices.find(v => v.lang === 'hi-IN' || (v.lang || '').toLowerCase().startsWith('hi'));
+          if (hi) u.voice = hi;
+          window.speechSynthesis.speak(u);
+        };
+        if (window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = () => { speak(); window.speechSynthesis.onvoiceschanged = null; };
+          setTimeout(speak, 400);
+        } else { setTimeout(speak, 300); }
+      } catch (e) { /* ignore */ }
+    }
+
     window.addEventListener('dataLoaded', async () => {
       // Load config
       try {
@@ -194,6 +263,9 @@
       renderAds();
       renderCategories();
       renderPopularProducts();
+
+      // Play the admin's home-page voice announcement (once per message)
+      playAnnouncement();
       initSlider();
       startSocialProof();
       startFestiveAnimation();

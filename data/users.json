@@ -33,6 +33,7 @@
         "username": "sssss",
         "password": "123456789",
         "registeredAt": "2026-08-26T08:44:16+02:00",
-        "lastLogin": "2026-09-17T12:44:10+02:00"
+        "lastLogin": "2026-09-17T12:44:10+02:00",
+        "customDelivery": 0
     }
 ]

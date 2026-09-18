@@ -1,4 +1,4 @@
-const CACHE_NAME = '4astore-v5';
+const CACHE_NAME = '4astore-v6';
 // Relative paths (no leading "/") so the SW works both at the domain root
 // (live) and inside a subfolder (e.g. localhost/static4a/).
 // NOTE: dynamic JSON (products/settings/orders/users) is intentionally NOT
@@ -22,29 +22,33 @@ self.addEventListener('install', e => {
   );
 });
 
+// Only cache small, static assets. Everything else goes straight to network.
+function shouldCache(url, method) {
+  if (method !== 'GET') return false;                  // never cache POST/PUT
+  if (url.includes('/api/')) return false;             // dynamic APIs
+  if (url.includes('/data/')) return false;            // live JSON (settings/orders/users/products/announcement)
+  if (url.includes('nocache=')) return false;
+  // Cache only CSS / JS / HTML pages, not images/apk/pdf (those fill up storage)
+  return /\.(css|js)(\?|$)/.test(url) || /\/$/.test(url) || /\.html?(\?|$)/.test(url);
+}
+
 self.addEventListener('fetch', e => {
   const url = e.request.url;
 
-  // Never cache dynamic content (APIs, live JSON data). Always go to network
-  // so settings (UPI ID, delivery fee), orders, users, products stay fresh.
-  const isDynamic = url.includes('/api/') ||
-                    url.includes('settings.json') ||
-                    url.includes('orders.json') ||
-                    url.includes('users.json') ||
-                    url.includes('products.json') ||
-                    url.includes('nocache=');
-
-  if (isDynamic) {
+  if (!shouldCache(url, e.request.method)) {
+    // Network-only (with cache as offline fallback for GET)
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
   }
 
-  // Static assets: network-first, fall back to cache when offline
+  // Small static assets: network-first, update cache (ignore quota errors)
   e.respondWith(
     fetch(e.request)
       .then(response => {
         const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+        caches.open(CACHE_NAME)
+          .then(cache => cache.put(e.request, clone).catch(() => {}))  // ignore QuotaExceededError
+          .catch(() => {});
         return response;
       })
       .catch(() => caches.match(e.request))

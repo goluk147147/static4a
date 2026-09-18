@@ -33,7 +33,23 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCartBadge();
   updateLoginUI();
   showAppVersion();
+  updateUpiDisplays();
 });
+
+// Update every UPI ID / Name shown on the page with the admin's global setting.
+// Elements marked with [data-upi-id] / [data-upi-name] get filled automatically.
+function updateUpiDisplays() {
+  const apply = () => {
+    const cfg = (typeof getSettings === 'function') ? getSettings() : null;
+    const id = (cfg && cfg.upiId) ? cfg.upiId : STORE_CONFIG.upiId;
+    const name = (cfg && cfg.upiName) ? cfg.upiName : STORE_CONFIG.upiName;
+    document.querySelectorAll('[data-upi-id]').forEach(el => el.textContent = id);
+    document.querySelectorAll('[data-upi-name]').forEach(el => el.textContent = name);
+  };
+  apply();
+  // Re-apply once settings finish loading from the server
+  window.addEventListener('dataLoaded', apply);
+}
 
 // Show the app/web version in the footer (helps confirm which build is running)
 function showAppVersion() {
@@ -281,10 +297,51 @@ function getCartTotal() {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const mrpTotal = cart.reduce((sum, item) => sum + (item.mrp * item.quantity), 0);
   const discount = mrpTotal - subtotal;
-  const deliveryCharge = subtotal >= STORE_CONFIG.freeDeliveryAbove ? 0 : STORE_CONFIG.deliveryCharge;
+
+  // Per-user delivery fee overrides the global setting (if the admin set one).
+  // customDelivery: a number (e.g. 0 = free, 5 = ₹5). If not set, use global rule.
+  let deliveryCharge;
+  const user = getLoggedInUser();
+  const custom = getUserCustomDelivery(user ? user.mobile : null);
+  if (custom !== null) {
+    deliveryCharge = custom;                          // fixed per-user fee (no free-above rule)
+  } else {
+    deliveryCharge = subtotal >= STORE_CONFIG.freeDeliveryAbove ? 0 : STORE_CONFIG.deliveryCharge;
+  }
+
   const total = subtotal + deliveryCharge;
-  
+
   return { subtotal, mrpTotal, discount, deliveryCharge, total, itemCount: getCartCount() };
+}
+
+// Returns a user's custom delivery fee (number) or null if none set.
+// Reads from the freshest users list available (server-synced cache).
+function getUserCustomDelivery(mobile) {
+  if (!mobile) return null;
+  // Prefer the in-memory dbUsers (refreshed from server in loadData), then localStorage.
+  let users = (Array.isArray(dbUsers) && dbUsers.length) ? dbUsers : getUsers();
+  let u = users.find(x => x.mobile === mobile);
+
+  // If this user's record is missing customDelivery, do a quick fresh fetch once.
+  if (!u || u.customDelivery === undefined) {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', 'api/users.php?action=list&t=' + Date.now(), false);
+      xhr.send();
+      const res = JSON.parse(xhr.responseText);
+      if (res.success && Array.isArray(res.users)) {
+        dbUsers = res.users;
+        localStorage.setItem('4astore_users', JSON.stringify(res.users));
+        u = res.users.find(x => x.mobile === mobile);
+      }
+    } catch (e) { /* use whatever we have */ }
+  }
+
+  if (u && u.customDelivery !== undefined && u.customDelivery !== null && u.customDelivery !== '') {
+    const n = Number(u.customDelivery);
+    if (!isNaN(n)) return n;   // 0 is a valid value (free delivery)
+  }
+  return null;
 }
 
 function updateCartBadge() {

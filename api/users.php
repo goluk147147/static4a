@@ -124,6 +124,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
+    if ($action === 'setDelivery') {
+        $mobile = trim($input['mobile'] ?? '');
+        // customDelivery: number for a fixed fee, or null/'' to clear (use global)
+        $hasVal = array_key_exists('customDelivery', $input) && $input['customDelivery'] !== '' && $input['customDelivery'] !== null;
+        $val = $hasVal ? (int)$input['customDelivery'] : null;
+
+        if (!$mobile) {
+            echo json_encode(['success' => false, 'message' => 'Mobile required']);
+            exit;
+        }
+        $users = getUsers();
+        $found = false;
+        foreach ($users as &$u) {
+            if ($u['mobile'] === $mobile) {
+                if ($val === null) { unset($u['customDelivery']); }
+                else { $u['customDelivery'] = $val; }
+                $found = true;
+                break;
+            }
+        }
+        unset($u);
+        if ($found) {
+            saveUsers($users);
+            echo json_encode(['success' => true, 'message' => 'Delivery updated']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'User not found']);
+        }
+        exit;
+    }
+
     if ($action === 'delete') {
         $mobile = trim($input['mobile'] ?? '');
         if (!$mobile) {

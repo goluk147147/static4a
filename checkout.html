@@ -168,7 +168,7 @@
     <div class="footer-grid">
       <div class="footer-col"><h4>About 4astore</h4><p>Your local online grocery store serving Chandargarh and nearby areas.</p></div>
       <div class="footer-col"><h4>Store Address</h4><p>Gajana Road, Chandargarh, Nabinagar, Bihar – 824301</p><p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p></div>
-      <div class="footer-col"><h4>Payment</h4><p>UPI Only: <strong>goluk147147@ybl</strong></p><span class="delivery-info-badge">📍 PIN Code – 824301</span></div>
+      <div class="footer-col"><h4>Payment</h4><p>UPI Only: <strong data-upi-id>goluk147147@ybl</strong></p><span class="delivery-info-badge">📍 PIN Code – 824301</span></div>
     </div>
     <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
   </footer>
@@ -343,9 +343,10 @@
       img.style.borderRadius = '8px';
       img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(upiLink);
       img.onerror = function () {
+        const idText = (window.currentUpiId || 'goluk147147@ybl');
         qrDiv.innerHTML = '<div style="width:180px;height:180px;border:3px solid var(--primary);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;margin:0 auto;">'
           + '<span style="font-size:2rem;">📱</span>'
-          + '<span style="font-size:11px;color:var(--primary);font-weight:600;">goluk147147@ybl</span></div>';
+          + '<span style="font-size:11px;color:var(--primary);font-weight:600;">' + idText + '</span></div>';
       };
       qrDiv.appendChild(img);
     }
