@@ -84,6 +84,13 @@
         "image": "https://cdn-icons-png.flaticon.com/512/3724/3724788.png"
     },
     {
+        "id": 14,
+        "name": "Dry Fruits",
+        "slug": "dry-fruits",
+        "icon": "🥜",
+        "image": "https://cdn-icons-png.flaticon.com/512/2224/2224152.png"
+    },
+    {
         "id": 13,
         "name": "Mouth Freshener",
         "slug": "mouth-freshener",
