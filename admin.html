@@ -25,20 +25,31 @@
       margin: 0 !important;
       padding: 0 !important;      /* kill storefront mobile bottom-nav padding */
     }
-    /* When the sidebar dashboard is active, drop the page to full-bleed.
-       Lock the page so ONLY the content area scrolls (sidebar stays put). */
-    body:has(#adminDashboard:not(.hidden)) { background: #f4f5f7; overflow: hidden; }
+    /* Full-bleed background when the dashboard is on screen. A body class
+       (added by JS in showDashboard) is used instead of :has() so it works
+       in every browser, including older WebViews on the server. */
+    body.admin-active { background: #f4f5f7 !important; overflow: hidden !important; }
 
-    /* ===== Modern sidebar dashboard layout ===== */
-    #adminDashboard.admin-shell { max-width: none; margin: 0; padding: 0; display: flex; align-items: stretch; height: 100vh; width: 100%; background: #f4f5f7; overflow: hidden; }
+    /* ===== Modern sidebar dashboard layout =====
+       Shell is FIXED to the viewport so it never inherits stray width/margins
+       from storefront wrappers on the server. */
+    #adminDashboard.admin-shell {
+      position: fixed; inset: 0;               /* top:0 right:0 bottom:0 left:0 */
+      max-width: none; margin: 0; padding: 0;
+      display: flex; align-items: stretch;
+      width: 100vw; height: 100vh;
+      background: #f4f5f7; overflow: hidden; z-index: 1;
+    }
 
-    /* Sidebar — fixed full-height column, never scrolls with content */
-    .admin-sidebar { width: 240px; flex-shrink: 0; background: linear-gradient(180deg, var(--adm-saffron-deep), var(--adm-saffron)); color: #fff; display: flex; flex-direction: column; height: 100vh; }
+    /* Sidebar — fixed-width full-height column, never scrolls with content */
+    .admin-sidebar { width: 240px; min-width: 240px; max-width: 240px; flex: 0 0 240px; background: linear-gradient(180deg, var(--adm-saffron-deep), var(--adm-saffron)); color: #fff; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
     .admin-sidebar .side-brand { display: flex; align-items: center; gap: 10px; padding: 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.15); }
     .admin-sidebar .side-brand img { height: 34px; background:#fff; padding:4px 6px; border-radius:8px; }
     .admin-sidebar .side-brand .brand-tag { font-size: 10px; font-weight: 700; letter-spacing: .5px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 20px; }
-    .admin-sidebar nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
-    .side-link { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: none; color: rgba(255,255,255,0.85); padding: 12px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transition); margin-bottom: 2px; }
+    /* Nav scrolls only if it truly overflows; scrollbar hidden for a clean look */
+    .admin-sidebar nav { flex: 1 1 auto; min-height: 0; padding: 10px 10px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+    .admin-sidebar nav::-webkit-scrollbar { width: 0; height: 0; display: none; }
+    .side-link { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: none; color: rgba(255,255,255,0.85); padding: 10px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transition); margin-bottom: 1px; }
     .side-link .side-ic { font-size: 18px; width: 22px; text-align: center; }
     .side-link:hover { background: rgba(255,255,255,0.12); color: #fff; }
     .side-link.active { background: #fff; color: var(--primary-dark); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
@@ -258,6 +269,7 @@
 
     function adminLogout() {
       sessionStorage.removeItem(ADMIN_KEY);
+      document.body.classList.remove('admin-active');
       document.getElementById('adminDashboard').classList.add('hidden');
       document.getElementById('adminLogin').style.display = 'block';
       document.getElementById('adminPass').value = '';
@@ -267,6 +279,7 @@
     function showDashboard() {
       document.getElementById('adminLogin').style.display = 'none';
       document.getElementById('adminDashboard').classList.remove('hidden');
+      document.body.classList.add('admin-active');
       loadStats();
       showTab('dashboard');
       startOrderNotifications();
