@@ -1834,3 +1834,49 @@ img {
 .product-detail-card .detail-specs {
   overflow-x: auto;
 }
+
+/* Keep the header logo a consistent size (override the global img height:auto) */
+.logo img {
+  height: 48px !important;
+  width: auto !important;
+  max-width: none !important;
+}
+@media (max-width: 600px) {
+  .logo img {
+    height: 42px !important;
+  }
+}
+/* Download-app header button: match other action links, and give the icon good size */
+#getAppBtn {
+  font-size: 20px;
+}
+
+/* ===== MOBILE HEADER FIT (stop icons getting cut off on the right) ===== */
+@media (max-width: 600px) {
+  .header-content {
+    padding: 8px 10px !important;
+    gap: 8px !important;
+    flex-wrap: nowrap;
+  }
+  /* Search shouldn't eat all the space; let icons stay visible */
+  .header-content .search-box {
+    flex: 1 1 auto;
+    min-width: 0;          /* allow it to shrink */
+  }
+  .header-actions {
+    flex-shrink: 0;
+    gap: 6px !important;
+  }
+  .header-actions a {
+    padding: 4px !important;
+    font-size: 20px !important;   /* icon size */
+  }
+  #getAppBtn { font-size: 20px !important; }
+  .logo img { height: 40px !important; }
+  /* keep the cart count badge tidy */
+  .header-actions .badge { font-size: 9px; }
+}
+/* Very small phones: hide the search box, show a search icon flow instead */
+@media (max-width: 380px) {
+  .header-content .search-box { display: none; }
+}

@@ -51,9 +51,11 @@ function injectDownloadAppButton() {
     a.id = 'getAppBtn';
     a.href = apkUrl;
     a.setAttribute('download', '4AStore.apk');
-    a.title = 'Download our App';
-    a.innerHTML = '📥 <span class="action-text">Get App</span>';
-    // place it as the first action (before Orders)
+    a.title = 'Download App';                 // native tooltip
+    a.setAttribute('aria-label', 'Download App');
+    // Match the other header action links (📋 Orders / 🛒 Cart): icon + label text
+    a.innerHTML = '⬇️ <span class="action-text">Get App</span>';
+    // place it as the first action (before Orders) so it matches their style
     const loginArea = actions.querySelector('.login-btn-area');
     if (loginArea && loginArea.nextSibling) actions.insertBefore(a, loginArea.nextSibling);
     else actions.appendChild(a);
