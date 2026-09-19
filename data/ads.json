@@ -1,0 +1,53 @@
+[
+    {
+        "id": 2,
+        "name": "New Ad (Copy)",
+        "campaign": "",
+        "offerTitle": "चंद्रगढ़ वालों, ध्यान दीजिए! ❤️",
+        "productId": "3",
+        "productName": "Fortune Mustard Oil",
+        "format": "4:5",
+        "platform": "all",
+        "status": "draft",
+        "template": "flash-sale",
+        "creative": {
+            "id": null,
+            "name": "New Ad",
+            "campaign": "",
+            "offerTitle": "चंद्रगढ़ वालों, ध्यान दीजिए! ❤️",
+            "productId": "3",
+            "productName": "Fortune Mustard Oil",
+            "price": 165,
+            "mrp": 180,
+            "discount": 8,
+            "format": "4:5",
+            "platform": "all",
+            "template": "flash-sale",
+            "cta": "Shop Now",
+            "localMode": true,
+            "lang": "hinglish",
+            "img": {
+                "zoom": 1,
+                "x": 0,
+                "y": 0,
+                "rot": 0,
+                "flipH": false,
+                "flipV": false,
+                "src": "https://www.bbassets.com/media/uploads/p/m/276756_16-fortune-fortune-premium-kachi-ghani-pure-mustard-oil.jpg?tr=w-154,q-80"
+            },
+            "lines": [
+                {
+                    "text": ""
+                }
+            ],
+            "caption": "चंद्रगढ़ walo dhyaan do! 😄\n4A STORE par Fortune Mustard Oil par 8% छूट!\nGhar baithe order karo, free home delivery. 🛵\n📞 7543888698",
+            "hashtags": "#4AStore #चंद्रगढ़ #Nabinagar #Aurangabad #GroceryStore #HomeDelivery #KiranaStore #Offer",
+            "status": "draft"
+        },
+        "caption": "चंद्रगढ़ walo dhyaan do! 😄\n4A STORE par Fortune Mustard Oil par 8% छूट!\nGhar baithe order karo, free home delivery. 🛵\n📞 7543888698",
+        "hashtags": "#4AStore #चंद्रगढ़ #Nabinagar #Aurangabad #GroceryStore #HomeDelivery #KiranaStore #Offer",
+        "image": "",
+        "createdAt": "2026-09-19T14:01:43+02:00",
+        "updatedAt": "2026-09-19T14:01:43+02:00"
+    }
+]

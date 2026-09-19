@@ -97,6 +97,30 @@
     .stock-badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
     .stock-in { background:#e8f5e9; color:#2e7d32; }
     .stock-out { background:#ffebee; color:#c62828; }
+
+    /* ===== Ads & Social Media module ===== */
+    .ad-editor-wrap { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,420px); gap: 18px; align-items: start; }
+    .ad-controls { display: flex; flex-direction: column; gap: 14px; }
+    .ad-panel { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .ad-panel h5 { margin: 0 0 10px; font-size: 14px; color: var(--primary-dark); }
+    .ad-panel label { display: block; font-size: 12px; font-weight: 600; color: var(--primary-dark); margin: 8px 0 3px; }
+    .ad-panel input[type=text], .ad-panel input[type=number], .ad-panel select, .ad-panel textarea {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; box-sizing: border-box;
+    }
+    .ad-mini { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; background: #eef1f4; color: #333; }
+    .ad-preview-col { min-width: 0; }
+    .ad-preview-sticky { position: sticky; top: 14px; background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+    .ad-actions-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+    .ad-act { flex: 1; min-width: 70px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--primary-dark); }
+    .ad-act-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .ad-share-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .ad-share { flex: 1; min-width: 90px; padding: 9px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: #fff; }
+    @media (max-width: 860px) {
+      .ad-editor-wrap { grid-template-columns: 1fr; }
+      .ad-preview-col { order: -1; }   /* preview on top on mobile */
+      .ad-preview-sticky { position: static; }
+    }
+
     @media (max-width: 600px) { .prod-form-grid { grid-template-columns: 1fr; } }
     @media (max-width: 768px) {
       .admin-table { font-size: 11px; }
@@ -142,6 +166,7 @@
         <button class="side-link" data-tab="products" onclick="showTab('products')"><span class="side-ic">🛍️</span> Products</button>
         <button class="side-link" data-tab="categories" onclick="showTab('categories')"><span class="side-ic">🗂️</span> Categories</button>
         <button class="side-link" data-tab="banners" onclick="showTab('banners')"><span class="side-ic">🖼️</span> Banners</button>
+        <button class="side-link" data-tab="ads" onclick="showTab('ads')"><span class="side-ic">📢</span> Ads &amp; Social</button>
         <button class="side-link" data-tab="users" onclick="showTab('users')"><span class="side-ic">👥</span> Users</button>
         <button class="side-link" data-tab="earnings" onclick="showTab('earnings')"><span class="side-ic">💰</span> Earnings</button>
         <button class="side-link" data-tab="settings" onclick="showTab('settings')"><span class="side-ic">⚙️</span> Settings</button>
@@ -200,6 +225,7 @@
           <button onclick="showTab('products')">🛍️ Products</button>
           <button onclick="showTab('categories')">🗂️ Categories</button>
           <button onclick="showTab('banners')">🖼️ Banners</button>
+          <button onclick="showTab('ads')">📢 Ads &amp; Social</button>
           <button onclick="showTab('users')">👥 Users</button>
           <button onclick="showTab('earnings')">💰 Earnings</button>
           <button onclick="showTab('settings')">⚙️ Settings</button>
@@ -545,14 +571,14 @@
       document.getElementById('statTotalProducts').textContent = getProducts().length;
     }
 
-    const TAB_TITLES = { dashboard: '📊 Dashboard', orders: '📦 Orders', products: '🛍️ Products', categories: '🗂️ Categories', banners: '🖼️ Banners', users: '👥 Users', earnings: '💰 Earnings', settings: '⚙️ Settings' };
+    const TAB_TITLES = { dashboard: '📊 Dashboard', orders: '📦 Orders', products: '🛍️ Products', categories: '🗂️ Categories', banners: '🖼️ Banners', ads: '📢 Ads & Social Media', users: '👥 Users', earnings: '💰 Earnings', settings: '⚙️ Settings' };
 
     function showTab(tab) {
       // Sync sidebar nav highlight
       document.querySelectorAll('.side-link').forEach(l => l.classList.toggle('active', l.getAttribute('data-tab') === tab));
 
       // Sync the (hidden) legacy tab bar so any code reading .admin-tabs .active keeps working
-      const labels = { dashboard: 'Dashboard', orders: 'Orders', products: 'Products', categories: 'Categories', banners: 'Banners', users: 'Users', earnings: 'Earnings', settings: 'Settings' };
+      const labels = { dashboard: 'Dashboard', orders: 'Orders', products: 'Products', categories: 'Categories', banners: 'Banners', ads: 'Ads', users: 'Users', earnings: 'Earnings', settings: 'Settings' };
       document.querySelectorAll('.admin-tabs button').forEach(btn => {
         btn.classList.toggle('active', btn.textContent.includes(labels[tab] || '\0'));
       });
@@ -569,6 +595,7 @@
       else if (tab === 'products') renderProductsTab();
       else if (tab === 'categories') renderCategoriesTab();
       else if (tab === 'banners') renderBannersTab();
+      else if (tab === 'ads') renderAdsTab();
       else if (tab === 'users') renderUsersTab();
       else if (tab === 'earnings') renderEarningsTab();
       else if (tab === 'settings') renderSettingsTab();
@@ -1868,6 +1895,370 @@
       if (typeof after === 'function') after();
     }
 
+    // ==========================================================
+    // 📢 ADS & SOCIAL MEDIA MODULE (Phase 1)
+    // ==========================================================
+    let adsList = [];                 // all saved ads (from server)
+    let adsView = 'dashboard';        // dashboard | editor | library
+    let adEditor = null;              // current editing creative state
+    let adAutoSaveTimer = null;
+    const AD_DRAFT_KEY = '4astore_ad_draft';
+
+    const AD_FORMATS = {
+      '1:1':  { w: 1080, h: 1080, label: 'Post 1:1' },
+      '4:5':  { w: 1080, h: 1350, label: 'Feed 4:5' },
+      '9:16': { w: 1080, h: 1920, label: 'Reel/Story 9:16' },
+      '16:9': { w: 1080, h: 608,  label: 'FB 16:9' }
+    };
+
+    const AD_CTAS = ['Order Now', 'Shop Now', 'Visit Store', 'Call Now', 'WhatsApp Now', 'Free Home Delivery'];
+
+    // Grocery-store templates: background + accent colors + default offer style
+    const AD_TEMPLATES = {
+      'todays-offer':  { name: "Today's Offer",   emoji: '🔥', bg: ['#FF7A00','#E85D00'], accent: '#FFD54F', text: '#ffffff' },
+      'discount':      { name: 'Discount Offer',  emoji: '💥', bg: ['#E53935','#B71C1C'], accent: '#FFEB3B', text: '#ffffff' },
+      'fresh-veg':     { name: 'Fresh Vegetables',emoji: '🥬', bg: ['#2E7D32','#1B5E20'], accent: '#FFEB3B', text: '#ffffff' },
+      'festival':      { name: 'Festival Offer',  emoji: '🪔', bg: ['#6A1B9A','#4A148C'], accent: '#FFD54F', text: '#ffffff' },
+      'home-delivery': { name: 'Home Delivery',   emoji: '🛵', bg: ['#0277BD','#01579B'], accent: '#FFD54F', text: '#ffffff' },
+      'flash-sale':    { name: 'Flash Sale',      emoji: '⚡', bg: ['#F57C00','#E65100'], accent: '#FFFFFF', text: '#ffffff' },
+      'new-arrival':   { name: 'New Arrival',     emoji: '✨', bg: ['#00838F','#006064'], accent: '#FFD54F', text: '#ffffff' },
+      'weekend':       { name: 'Weekend Offer',   emoji: '🎉', bg: ['#AD1457','#880E4F'], accent: '#FFEB3B', text: '#ffffff' }
+    };
+
+    // ---- Data loading ----
+    function adsApi(body, cb) {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'api/ads.php', false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify(body));
+        cb(JSON.parse(xhr.responseText));
+      } catch (e) { cb({ success: false, message: 'Server error: ' + e.message }); }
+    }
+
+    function reloadAds(after) {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/ads.php?_=' + Date.now(), false);
+        xhr.send();
+        const res = JSON.parse(xhr.responseText);
+        if (res && res.success && Array.isArray(res.ads)) adsList = res.ads;
+      } catch (e) { /* keep existing */ }
+      if (typeof after === 'function') after();
+    }
+
+    // ---- Router: main tab entry ----
+    function renderAdsTab() {
+      reloadAds(() => {
+        if (adsView === 'editor') renderAdEditor();
+        else if (adsView === 'library') renderAdLibrary();
+        else renderAdsDashboard();
+      });
+    }
+
+    function adsGoto(view) { adsView = view; renderAdsTab(); }
+
+    // ---- 3. DASHBOARD ----
+    function renderAdsDashboard() {
+      const total = adsList.length;
+      const drafts = adsList.filter(a => a.status === 'draft').length;
+      const published = adsList.filter(a => a.status === 'published').length;
+      const scheduled = adsList.filter(a => a.status === 'scheduled').length;
+      const ready = adsList.filter(a => a.status === 'ready').length;
+
+      const card = (icon, val, label, accent) => `
+        <div class="stat-card" style="border-left-color:${accent};">
+          <div class="stat-icon">${icon}</div><div class="stat-value">${val}</div><div class="stat-label">${label}</div>
+        </div>`;
+
+      const statusBadge = st => {
+        const c = { draft:'#f59e0b', ready:'#0891b2', scheduled:'#8b5cf6', published:'#059669', failed:'#dc2626' }[st] || '#6b7280';
+        return `<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:12px;color:#fff;background:${c};">${escapeHtml(st||'draft')}</span>`;
+      };
+
+      const rows = adsList.length ? adsList.slice().reverse().map(a => `
+        <tr>
+          <td><strong>${escapeHtml(a.name||'')}</strong></td>
+          <td>${escapeHtml(a.campaign||'-')}</td>
+          <td>${escapeHtml(a.productName||'-')}</td>
+          <td>${escapeHtml(a.format||'1:1')}</td>
+          <td>${a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN') : '-'}</td>
+          <td>${statusBadge(a.status)}</td>
+          <td style="white-space:nowrap;">
+            <button onclick="openAdEditor(${a.id})" title="Edit" style="padding:5px 9px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;margin-right:3px;">✏️</button>
+            <button onclick="duplicateAd(${a.id})" title="Duplicate" style="padding:5px 9px;background:#0891b2;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;margin-right:3px;">📋</button>
+            <button onclick="removeAd(${a.id})" title="Delete" style="padding:5px 9px;background:#e53935;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🗑️</button>
+          </td>
+        </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--gray);">Abhi koi ad nahi. "+ Create New Ad" se banao.</td></tr>';
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="adsGoto('dashboard')" style="padding:9px 16px;border:none;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;background:var(--primary);color:#fff;">📊 Dashboard</button>
+            <button onclick="adsGoto('library')" style="padding:9px 16px;border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:var(--primary-dark);">📚 Ad Library</button>
+          </div>
+          <button onclick="openAdEditor()" style="padding:11px 22px;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;box-shadow:0 3px 10px rgba(255,122,0,.3);">+ Create New Ad</button>
+        </div>
+
+        <div class="stats-grid" style="margin-bottom:22px;">
+          ${card('📢', total, 'Total Ads', 'var(--primary)')}
+          ${card('📝', drafts, 'Drafts', '#f59e0b')}
+          ${card('✅', published, 'Published', '#059669')}
+          ${card('⏰', scheduled, 'Scheduled', '#8b5cf6')}
+          ${card('🖼️', total, 'Images', '#0891b2')}
+        </div>
+
+        <div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px;">
+          <h4 style="margin:0 0 14px;color:var(--primary-dark);">🕒 Recent Ads</h4>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead><tr><th>Ad Name</th><th>Campaign</th><th>Product</th><th>Format</th><th>Created</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    function duplicateAd(id) {
+      adsApi({ action: 'duplicate', id: id }, res => {
+        if (res && res.success) { showToast('Ad duplicated', 'success'); reloadAds(renderAdsDashboard); }
+        else showToast((res && res.message) || 'Failed', 'error');
+      });
+    }
+
+    function removeAd(id) {
+      const a = adsList.find(x => x.id === id);
+      if (!confirm('Delete ad "' + (a ? a.name : '') + '"?')) return;
+      adsApi({ action: 'delete', id: id }, res => {
+        if (res && res.success) { showToast('Ad deleted', 'success'); reloadAds(renderAdsTab); }
+        else showToast((res && res.message) || 'Failed', 'error');
+      });
+    }
+
+    // ---- 4. EDITOR ----
+    // Build a fresh creative state
+    function newAdState() {
+      const s = getSettings();
+      return {
+        id: null,
+        name: 'New Ad',
+        campaign: '',
+        offerTitle: 'आज का खास ऑफर',
+        productId: null,
+        productName: '',
+        price: '', mrp: '', discount: '',
+        format: '1:1',
+        platform: 'all',
+        template: 'todays-offer',
+        cta: 'Order Now',
+        localMode: true,
+        lang: 'hindi',
+        img: null,          // {src, zoom, x, y, rot, flipH, flipV}
+        lines: [],          // extra custom text lines [{text}]
+        caption: '',
+        hashtags: '',
+        status: 'draft'
+      };
+    }
+
+    function openAdEditor(id) {
+      if (id != null) {
+        // Load existing ad
+        let ad = null;
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', 'api/ads.php?id=' + id + '&_=' + Date.now(), false);
+          xhr.send();
+          const res = JSON.parse(xhr.responseText);
+          if (res.success) ad = res.ad;
+        } catch (e) {}
+        if (!ad) { showToast('Ad not found', 'error'); return; }
+        adEditor = Object.assign(newAdState(), ad.creative || {}, {
+          id: ad.id, name: ad.name, campaign: ad.campaign, offerTitle: ad.offerTitle,
+          productId: ad.productId, productName: ad.productName, format: ad.format,
+          platform: ad.platform, template: ad.template, caption: ad.caption,
+          hashtags: ad.hashtags, status: ad.status
+        });
+      } else {
+        // Try restoring an autosaved draft
+        const draft = localStorage.getItem(AD_DRAFT_KEY);
+        adEditor = draft ? Object.assign(newAdState(), JSON.parse(draft)) : newAdState();
+      }
+      adsView = 'editor';
+      renderAdEditor();
+    }
+
+    function renderAdEditor() {
+      if (!adEditor) adEditor = newAdState();
+      const e = adEditor;
+      const prods = getProducts();
+      const prodOpts = ['<option value="">— Product select karein —</option>']
+        .concat(prods.map(p => `<option value="${p.id}" ${e.productId==p.id?'selected':''}>${escapeHtml(p.name)}</option>`)).join('');
+      const ctaOpts = AD_CTAS.map(c => `<option value="${c}" ${e.cta===c?'selected':''}>${c}</option>`).join('');
+      const tplCards = Object.entries(AD_TEMPLATES).map(([k,t]) => `
+        <button onclick="adSetTemplate('${k}')" style="flex:0 0 auto;width:96px;border:2px solid ${e.template===k?'var(--primary)':'var(--border)'};border-radius:10px;padding:8px 6px;cursor:pointer;background:linear-gradient(135deg,${t.bg[0]},${t.bg[1]});color:#fff;">
+          <div style="font-size:20px;">${t.emoji}</div>
+          <div style="font-size:10px;font-weight:700;margin-top:3px;line-height:1.1;">${t.name}</div>
+        </button>`).join('');
+      const fmtBtns = Object.keys(AD_FORMATS).map(f => `
+        <button onclick="adSetFormat('${f}')" style="padding:7px 12px;border:1px solid ${e.format===f?'var(--primary)':'var(--border)'};border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;background:${e.format===f?'var(--primary)':'#fff'};color:${e.format===f?'#fff':'var(--primary-dark)'};">${f}</button>`).join('');
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+          <button onclick="adsGoto('dashboard')" style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-weight:600;">← Back</button>
+          <span id="adSaveStatus" style="font-size:12px;color:var(--gray);"></span>
+        </div>
+
+        <div class="ad-editor-wrap">
+          <!-- LEFT: controls -->
+          <div class="ad-controls">
+            <div class="ad-panel">
+              <h5>📝 Basic Info</h5>
+              <label>Ad Name</label>
+              <input type="text" id="adName" value="${escapeHtml(e.name||'')}" oninput="adField('name',this.value)">
+              <label>Offer Title</label>
+              <input type="text" id="adOfferTitle" value="${escapeHtml(e.offerTitle||'')}" oninput="adField('offerTitle',this.value); adDrawSoon();">
+              <label>Product</label>
+              <select id="adProduct" onchange="adSelectProduct(this.value)">${prodOpts}</select>
+              <div style="display:flex;gap:8px;">
+                <div style="flex:1;"><label>Price ₹</label><input type="number" id="adPrice" value="${e.price}" oninput="adField('price',this.value); adDrawSoon();"></div>
+                <div style="flex:1;"><label>MRP ₹</label><input type="number" id="adMrp" value="${e.mrp}" oninput="adField('mrp',this.value); adDrawSoon();"></div>
+                <div style="flex:1;"><label>Disc %</label><input type="number" id="adDisc" value="${e.discount}" oninput="adField('discount',this.value); adDrawSoon();"></div>
+              </div>
+              <label>CTA Button</label>
+              <select id="adCta" onchange="adField('cta',this.value); adDrawSoon();">${ctaOpts}</select>
+            </div>
+
+            <div class="ad-panel">
+              <h5>🎨 Template</h5>
+              <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;">${tplCards}</div>
+            </div>
+
+            <div class="ad-panel">
+              <h5>📐 Format</h5>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">${fmtBtns}</div>
+            </div>
+
+            <div class="ad-panel">
+              <h5>🖼️ Product Image</h5>
+              <div id="adDrop" ondragover="event.preventDefault();this.style.background='#fff3e6'" ondragleave="this.style.background=''" ondrop="adDropImage(event)"
+                style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;font-size:13px;color:var(--gray);"
+                onclick="document.getElementById('adImgInput').click()">
+                📤 Image drag karo ya click karke choose karo (JPG/PNG/WEBP)
+              </div>
+              <input type="file" id="adImgInput" accept="image/*" style="display:none;" onchange="adLoadImageFile(this.files[0])">
+              <div id="adImgControls" style="display:${e.img?'block':'none'};margin-top:12px;">
+                <label>Zoom <span id="adZoomVal">${e.img?Math.round((e.img.zoom||1)*100):100}%</span></label>
+                <input type="range" id="adZoom" min="20" max="300" value="${e.img?(e.img.zoom||1)*100:100}" oninput="adImgZoom(this.value)" style="width:100%;">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+                  <button onclick="adImgRotate(-90)" class="ad-mini">↺ 90</button>
+                  <button onclick="adImgRotate(90)" class="ad-mini">↻ 90</button>
+                  <button onclick="adImgFlip('h')" class="ad-mini">↔ Flip</button>
+                  <button onclick="adImgFlip('v')" class="ad-mini">↕ Flip</button>
+                  <button onclick="adImgReset()" class="ad-mini">⟳ Reset</button>
+                  <button onclick="adImgRemove()" class="ad-mini" style="background:#ffebee;color:#c62828;">🗑️ Remove</button>
+                </div>
+                <p style="font-size:11px;color:var(--gray);margin-top:6px;">💡 Preview me image ko drag karke position set karo.</p>
+              </div>
+            </div>
+
+            <div class="ad-panel">
+              <h5>➕ Extra Text Lines</h5>
+              <div id="adLines"></div>
+              <button onclick="adAddLine()" style="margin-top:8px;padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">+ Add Text</button>
+            </div>
+
+            <div class="ad-panel">
+              <h5>🤖 Generate Content</h5>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
+                <input type="checkbox" id="adLocalMode" ${e.localMode?'checked':''} onchange="adField('localMode',this.checked)"> 🇮🇳 Local Customer Mode
+              </label>
+              <label style="margin-top:8px;">Language</label>
+              <select id="adLang" onchange="adField('lang',this.value)">
+                <option value="hindi" ${e.lang==='hindi'?'selected':''}>Hindi</option>
+                <option value="magahi" ${e.lang==='magahi'?'selected':''}>Magahi Style</option>
+                <option value="hinglish" ${e.lang==='hinglish'?'selected':''}>Hinglish</option>
+              </select>
+              <button onclick="adGenerateContent()" style="margin-top:10px;width:100%;padding:10px;background:#6a1b9a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">✨ Generate Caption + Hashtags + Hook</button>
+              <div id="adHooks" style="margin-top:10px;"></div>
+              <label style="margin-top:10px;">Caption</label>
+              <textarea id="adCaption" rows="4" oninput="adField('caption',this.value)" style="resize:vertical;">${escapeHtml(e.caption||'')}</textarea>
+              <label style="margin-top:8px;">Hashtags</label>
+              <textarea id="adHashtags" rows="2" oninput="adField('hashtags',this.value)" style="resize:vertical;">${escapeHtml(e.hashtags||'')}</textarea>
+            </div>
+          </div>
+
+          <!-- RIGHT: live preview -->
+          <div class="ad-preview-col">
+            <div class="ad-preview-sticky">
+              <div style="font-size:12px;color:var(--gray);text-align:center;margin-bottom:8px;">LIVE PREVIEW</div>
+              <div id="adCanvasWrap" style="display:flex;justify-content:center;">
+                <canvas id="adCanvas" style="max-width:100%;max-height:60vh;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.15);touch-action:none;cursor:grab;"></canvas>
+              </div>
+              <div class="ad-actions-bar">
+                <button onclick="saveAd()" class="ad-act ad-act-primary">💾 Save</button>
+                <button onclick="adDownload('png')" class="ad-act">📥 PNG</button>
+                <button onclick="adDownload('jpg')" class="ad-act">📥 JPG</button>
+                <button onclick="adCopyCaption()" class="ad-act">📋 Caption</button>
+              </div>
+              <button onclick="adShareNative()" style="width:100%;margin-top:10px;padding:13px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 3px 10px rgba(37,211,102,.35);">📲 Share (Image + Caption)</button>
+              <p style="font-size:11px;color:#2e7d32;text-align:center;margin:6px 0 0;">👆 Phone/App me: image + caption dono ek saath jaayenge. WhatsApp/FB/Insta choose karo.</p>
+              <div class="ad-share-bar" style="margin-top:10px;">
+                <button onclick="adShare('whatsapp')" class="ad-share" style="background:#25D366;">🟢 WhatsApp</button>
+                <button onclick="adShare('facebook')" class="ad-share" style="background:#1877F2;">🔵 Facebook</button>
+                <button onclick="adShare('instagram')" class="ad-share" style="background:#E1306C;">🟣 Instagram</button>
+              </div>
+              <p style="font-size:11px;color:var(--gray);text-align:center;margin-top:8px;">💻 Desktop pe: image download hogi + caption copy — phir platform me manually upload karo. (Facebook/Instagram apne aap image attach nahi karne dete — ye unki security policy hai, kisi tool me possible nahi.)</p>
+            </div>
+          </div>
+        </div>`;
+
+      // Set product dropdown selection
+      const pd = document.getElementById('adProduct');
+      if (pd && e.productId != null) pd.value = e.productId;
+      renderAdLines();
+      // Load image if present, then draw
+      adPrepareImageThenDraw();
+      startAdAutoSave();
+    }
+
+    // ---- field helpers ----
+    function adField(key, val) { adEditor[key] = val; queueAutoSave(); }
+
+    function adSelectProduct(id) {
+      const p = getProducts().find(pr => String(pr.id) === String(id));
+      adEditor.productId = id || null;
+      if (p) {
+        adEditor.productName = p.name;
+        adEditor.price = p.price;
+        adEditor.mrp = p.mrp;
+        adEditor.discount = p.discount || '';
+        if (p.image) { adSetImageSrc(p.image); }
+        const pr = document.getElementById('adPrice'); if (pr) pr.value = p.price;
+        const mr = document.getElementById('adMrp'); if (mr) mr.value = p.mrp;
+        const dc = document.getElementById('adDisc'); if (dc) dc.value = p.discount || '';
+      }
+      queueAutoSave();
+      adDrawSoon();
+    }
+
+    function adSetTemplate(k) { adEditor.template = k; renderAdEditor(); }
+    function adSetFormat(f) { adEditor.format = f; renderAdEditor(); }
+
+    // ---- template text lines ----
+    function renderAdLines() {
+      const wrap = document.getElementById('adLines');
+      if (!wrap) return;
+      wrap.innerHTML = (adEditor.lines || []).map((ln, i) => `
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <input type="text" value="${escapeHtml(ln.text||'')}" oninput="adEditLine(${i},this.value)" style="flex:1;" placeholder="Text line">
+          <button onclick="adRemoveLine(${i})" class="ad-mini" style="background:#ffebee;color:#c62828;">✕</button>
+        </div>`).join('');
+    }
+    function adAddLine() { adEditor.lines = adEditor.lines || []; adEditor.lines.push({ text: '' }); renderAdLines(); }
+    function adEditLine(i, v) { adEditor.lines[i].text = v; queueAutoSave(); adDrawSoon(); }
+    function adRemoveLine(i) { adEditor.lines.splice(i, 1); renderAdLines(); adDrawSoon(); }
+
     // Active settings sub-module (persist within session)
     let settingsSub = 'store';
     const SETTINGS_SUBS = [
@@ -2057,6 +2448,586 @@
           </label>
         </div>`;
     }
+
+    // ==========================================================
+    // ADS MODULE — image handling, canvas draw, export, caption gen, library
+    // ==========================================================
+    let _adImgObj = null;   // loaded HTMLImageElement for the product image
+
+    function adSetImageSrc(src) {
+      adEditor.img = adEditor.img || { zoom: 1, x: 0, y: 0, rot: 0, flipH: false, flipV: false };
+      adEditor.img.src = src;
+      // reset transform for a new image
+      adEditor.img.zoom = 1; adEditor.img.x = 0; adEditor.img.y = 0; adEditor.img.rot = 0;
+      adEditor.img.flipH = false; adEditor.img.flipV = false;
+    }
+
+    function adLoadImageFile(file) {
+      if (!file) return;
+      if (!/^image\/(jpeg|jpg|png|webp)$/i.test(file.type)) { showToast('Sirf JPG/PNG/WEBP', 'error'); return; }
+      const reader = new FileReader();
+      reader.onload = ev => { adSetImageSrc(ev.target.result); renderAdEditor(); };
+      reader.readAsDataURL(file);
+    }
+
+    function adDropImage(ev) {
+      ev.preventDefault();
+      ev.currentTarget.style.background = '';
+      const f = ev.dataTransfer.files && ev.dataTransfer.files[0];
+      if (f) adLoadImageFile(f);
+    }
+
+    function adImgRemove() { adEditor.img = null; _adImgObj = null; renderAdEditor(); }
+    function adImgReset() {
+      if (!adEditor.img) return;
+      adEditor.img.zoom = 1; adEditor.img.x = 0; adEditor.img.y = 0; adEditor.img.rot = 0;
+      adEditor.img.flipH = false; adEditor.img.flipV = false;
+      const z = document.getElementById('adZoom'); if (z) z.value = 100;
+      const zv = document.getElementById('adZoomVal'); if (zv) zv.textContent = '100%';
+      adDraw();
+    }
+    function adImgZoom(v) {
+      if (!adEditor.img) return;
+      adEditor.img.zoom = Number(v) / 100;
+      const zv = document.getElementById('adZoomVal'); if (zv) zv.textContent = Math.round(v) + '%';
+      adDraw(); queueAutoSave();
+    }
+    function adImgRotate(deg) { if (!adEditor.img) return; adEditor.img.rot = ((adEditor.img.rot || 0) + deg) % 360; adDraw(); queueAutoSave(); }
+    function adImgFlip(axis) { if (!adEditor.img) return; if (axis === 'h') adEditor.img.flipH = !adEditor.img.flipH; else adEditor.img.flipV = !adEditor.img.flipV; adDraw(); queueAutoSave(); }
+
+    // Resolve an image src for the canvas. External http(s) URLs are routed
+    // through our same-origin proxy so the canvas stays exportable (not tainted).
+    function adResolveImgSrc(src) {
+      if (!src) return src;
+      if (src.startsWith('data:') || src.startsWith('blob:')) return src;   // uploaded file
+      if (/^https?:\/\//i.test(src)) {
+        // Same-origin already? then use directly
+        try {
+          const u = new URL(src, window.location.href);
+          if (u.origin === window.location.origin) return src;
+        } catch (e) {}
+        return 'api/img-proxy.php?url=' + encodeURIComponent(src);
+      }
+      return src;   // relative path (same origin)
+    }
+
+    // Load the image element (if any) then draw
+    function adPrepareImageThenDraw() {
+      if (adEditor.img && adEditor.img.src) {
+        _adImgObj = new Image();
+        _adImgObj.crossOrigin = 'anonymous';
+        _adImgObj.onload = () => adDraw();
+        _adImgObj.onerror = () => { _adImgObj = null; adDraw(); showToast('Product image load nahi hui. Apni image upload karo.', 'info'); };
+        _adImgObj.src = adResolveImgSrc(adEditor.img.src);
+      } else {
+        _adImgObj = null;
+        adDraw();
+      }
+    }
+
+    let _adDrawTimer = null;
+    function adDrawSoon() { clearTimeout(_adDrawTimer); _adDrawTimer = setTimeout(adDraw, 120); }
+
+    // Core canvas renderer — draws the full creative
+    function adDraw() {
+      const canvas = document.getElementById('adCanvas');
+      if (!canvas) return;
+      const e = adEditor;
+      const fmt = AD_FORMATS[e.format] || AD_FORMATS['1:1'];
+      canvas.width = fmt.w; canvas.height = fmt.h;
+      const ctx = canvas.getContext('2d');
+      const W = fmt.w, H = fmt.h;
+      const tpl = AD_TEMPLATES[e.template] || AD_TEMPLATES['todays-offer'];
+
+      // Background gradient (diagonal for a livelier look)
+      const g = ctx.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, tpl.bg[0]); g.addColorStop(1, tpl.bg[1]);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+      // Decorative background shapes (soft circles + accent blobs) so it doesn't
+      // look flat. Kept subtle with low opacity so text stays readable.
+      const _U0 = Math.min(W, H);
+      ctx.save();
+      ctx.globalAlpha = 0.10;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(W*0.90, H*0.08, _U0*0.22, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(W*0.06, H*0.92, _U0*0.26, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 0.14;
+      ctx.fillStyle = tpl.accent;
+      ctx.beginPath(); ctx.arc(W*0.10, H*0.06, _U0*0.10, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(W*0.94, H*0.94, _U0*0.13, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      const s = getSettings();
+      const FONT = '"Nirmala UI","Noto Sans Devanagari","Mangal","Segoe UI",Arial,sans-serif';
+      // Font unit tied to the SHORTER side so text stays readable in every ratio
+      const U = Math.min(W, H);
+      const pad = W * 0.06;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+
+      // ---- Measure the text block first so we can size the image box to fit ----
+      // Every ratio: header (top) + image (flexible) + text block + footer (bottom).
+      const titleTxt = (tpl.emoji + ' ' + (e.offerTitle||'') + ' ' + tpl.emoji).trim();
+      const hasDisc = !!e.discount;
+      const hasPrice = !!e.price;
+      const showMrp = hasPrice && e.mrp && String(e.mrp) !== String(e.price);
+      const extraLines = (e.lines||[]).filter(l => l && l.text);
+
+      // Font sizes (based on U, clamped)
+      const fStore   = Math.round(U*0.075);
+      const fTagline = Math.round(U*0.032);
+      const fTitle   = Math.round(U*0.058);
+      const fDisc    = Math.round(U*0.11);
+      const fPrice   = Math.round(U*0.058);
+      const fMrp     = Math.round(U*0.038);
+      const fLine    = Math.round(U*0.036);
+      const fCta     = Math.round(U*0.036);
+      const fFoot    = Math.round(U*0.030);
+      const fAddr    = Math.round(U*0.026);
+
+      // Pre-wrap the title to know how many lines it needs
+      ctx.font = '800 ' + fTitle + 'px ' + FONT;
+      const titleLines = wrapLines(ctx, titleTxt, W*0.88);
+
+      // ---- Vertical zones ----
+      // Header block height
+      const headerTop = H*0.05;
+      const headerH   = fStore*1.1 + fTagline*1.6;
+      // Footer block height (phone line + up to 2 address lines)
+      ctx.font = '500 ' + fAddr + 'px ' + FONT;
+      const addr = (s && s.storeAddress) ? s.storeAddress : 'गजना रोड, चंद्रगढ़, नबीनगर, औरंगाबाद';
+      const addrLines = wrapLines(ctx, '📍 ' + addr, W*0.9);
+      const footerH = fFoot*1.4 + addrLines.length*fAddr*1.35 + H*0.02;
+      const footerTop = H - footerH - H*0.02;
+
+      // CTA block
+      const ctaH = Math.max(U*0.075, fCta*1.9);
+      const ctaW = Math.min(W*0.6, W - pad*2);
+
+      // Text block height (title + disc + price + extra lines) with gaps
+      const gap = U*0.028;
+      let textBlockH = titleLines.length * fTitle*1.25;
+      if (hasDisc)  textBlockH += gap + fDisc*1.0;
+      if (hasPrice) textBlockH += gap + fPrice*1.05;
+      textBlockH += extraLines.length * (fLine*1.4);
+
+      // Image box: fills the space left between header and (textBlock+CTA+footer)
+      const imgTop = headerTop + headerH + H*0.02;
+      const belowImgNeeded = textBlockH + gap*1.5 + ctaH + H*0.03;
+      let imgH = footerTop - imgTop - belowImgNeeded;
+      // Keep the image box within sensible bounds for the ratio
+      const minImgH = H*0.12, maxImgH = H*0.5;
+      imgH = Math.max(minImgH, Math.min(maxImgH, imgH));
+      const maxImgW = W - pad*2;
+      // Size the white card to HUG the product image (its aspect ratio) so a
+      // wide format (16:9) doesn't show a big empty white box around a tiny bottle.
+      let imgW = maxImgW;
+      if (_adImgObj && _adImgObj.width && _adImgObj.height) {
+        const ar = _adImgObj.width / _adImgObj.height;
+        const fitW = imgH * ar + U*0.06;   // card width to contain the image + small margin
+        imgW = Math.max(U*0.35, Math.min(maxImgW, fitW));
+      }
+      const imgX = W/2 - imgW/2, imgY = imgTop;
+      const rr = Math.round(U*0.03);
+
+      // ---- DRAW: Header ----
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 ' + fStore + 'px ' + FONT;
+      ctx.fillText('4A STORE', W/2, headerTop + fStore*0.9);
+      ctx.fillStyle = tpl.accent;
+      ctx.font = '600 ' + fTagline + 'px ' + FONT;
+      ctx.fillText('आपकी अपनी किराना दुकान', W/2, headerTop + fStore*0.9 + fTagline*1.4);
+
+      // ---- DRAW: Image box ----
+      ctx.save();
+      roundRectPath(ctx, imgX, imgY, imgW, imgH, rr);
+      if (_adImgObj && e.img) {
+        ctx.fillStyle = '#ffffff'; ctx.fill();
+        ctx.clip();
+        const cx = imgX + imgW/2 + (e.img.x||0);
+        const cy = imgY + imgH/2 + (e.img.y||0);
+        ctx.translate(cx, cy);
+        ctx.rotate((e.img.rot||0) * Math.PI/180);
+        ctx.scale((e.img.flipH?-1:1)*(e.img.zoom||1), (e.img.flipV?-1:1)*(e.img.zoom||1));
+        const iw = _adImgObj.width, ih = _adImgObj.height;
+        const sc = Math.min(imgW/iw, imgH/ih) * 0.92;   // contain with small margin
+        ctx.drawImage(_adImgObj, -iw*sc/2, -ih*sc/2, iw*sc, ih*sc);
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fill();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.font = '500 ' + Math.round(U*0.032) + 'px ' + FONT;
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🖼️ Product image daalein', W/2, imgY + imgH/2);
+        ctx.textBaseline = 'alphabetic';
+      }
+      ctx.restore();
+
+      // ---- DRAW: Text block (flows below the image) ----
+      let y = imgY + imgH + gap*1.4;
+
+      // Title (multi-line)
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 ' + fTitle + 'px ' + FONT;
+      titleLines.forEach(l => { y += fTitle; ctx.fillText(l, W/2, y); y += fTitle*0.25; });
+
+      // Discount badge
+      if (hasDisc) {
+        y += gap + fDisc*0.85;
+        ctx.fillStyle = tpl.accent;
+        ctx.font = '900 ' + fDisc + 'px ' + FONT;
+        ctx.fillText(e.discount + '% OFF', W/2, y);
+      }
+
+      // Price + struck MRP
+      if (hasPrice) {
+        y += gap + fPrice*0.9;
+        const priceTxt = '₹' + e.price;
+        ctx.font = '800 ' + fPrice + 'px ' + FONT;
+        const pw = ctx.measureText(priceTxt).width;
+        ctx.font = '600 ' + fMrp + 'px ' + FONT;
+        const mrpTxt = showMrp ? ('₹' + e.mrp) : '';
+        const mw = showMrp ? ctx.measureText(mrpTxt).width : 0;
+        const g2 = showMrp ? W*0.03 : 0;
+        const startX = W/2 - (pw + g2 + mw)/2;
+        ctx.textAlign = 'left';
+        ctx.font = '800 ' + fPrice + 'px ' + FONT;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(priceTxt, startX, y);
+        if (showMrp) {
+          const mx = startX + pw + g2;
+          ctx.font = '600 ' + fMrp + 'px ' + FONT;
+          ctx.fillStyle = 'rgba(255,255,255,0.75)';
+          ctx.fillText(mrpTxt, mx, y);
+          ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = Math.max(2, U*0.004);
+          ctx.beginPath(); ctx.moveTo(mx, y - fMrp*0.3); ctx.lineTo(mx + mw, y - fMrp*0.3); ctx.stroke();
+        }
+        ctx.textAlign = 'center';
+      }
+
+      // Extra custom lines
+      extraLines.forEach(ln => {
+        y += fLine*1.35;
+        ctx.font = '600 ' + fLine + 'px ' + FONT;
+        ctx.fillStyle = '#fff';
+        ctx.fillText(ln.text, W/2, y);
+      });
+
+      // ---- DRAW: CTA button (anchored above footer) ----
+      const ctaX = W/2 - ctaW/2;
+      const ctaY = footerTop - H*0.02 - ctaH;
+      roundRectPath(ctx, ctaX, ctaY, ctaW, ctaH, ctaH/2);
+      ctx.fillStyle = tpl.accent; ctx.fill();
+      ctx.fillStyle = '#3a2400';
+      ctx.font = '800 ' + fCta + 'px ' + FONT;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(e.cta || 'Order Now', W/2, ctaY + ctaH/2);
+      ctx.textBaseline = 'alphabetic';
+
+      // ---- DRAW: Footer (phone + site, then address) anchored to bottom ----
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 ' + fFoot + 'px ' + FONT;
+      const phone = (s && s.storePhone) ? s.storePhone : '7543888698';
+      let fy = footerTop + fFoot;
+      ctx.fillText('📞 ' + phone + '   •   🌐 4astore.com', W/2, fy);
+      ctx.font = '500 ' + fAddr + 'px ' + FONT;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      addrLines.forEach(l => { fy += fAddr*1.35; ctx.fillText(l, W/2, fy); });
+    }
+
+    // Wrap text into an array of lines that fit maxW (no drawing)
+    function wrapLines(ctx, text, maxW) {
+      const words = String(text).split(' ');
+      let line = '', out = [];
+      words.forEach(w => {
+        const test = line ? line + ' ' + w : w;
+        if (ctx.measureText(test).width > maxW && line) { out.push(line); line = w; }
+        else line = test;
+      });
+      if (line) out.push(line);
+      return out;
+    }
+
+    function roundRectPath(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.arcTo(x+w, y, x+w, y+h, r);
+      ctx.arcTo(x+w, y+h, x, y+h, r);
+      ctx.arcTo(x, y+h, x, y, r);
+      ctx.arcTo(x, y, x+w, y, r);
+      ctx.closePath();
+    }
+    function wrapText(ctx, text, x, y, maxW, lh) {
+      const words = String(text).split(' ');
+      let line = '', lines = [];
+      words.forEach(w => {
+        const test = line ? line + ' ' + w : w;
+        if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+        else line = test;
+      });
+      if (line) lines.push(line);
+      const startY = y - (lines.length-1)*lh/2;
+      lines.forEach((l, i) => ctx.fillText(l, x, startY + i*lh));
+    }
+
+    // ---- drag image on canvas (mouse + touch) ----
+    let _adDrag = null;
+    function adCanvasPointerDown(clientX, clientY) {
+      if (!adEditor.img) return;
+      const canvas = document.getElementById('adCanvas');
+      _adDrag = { sx: clientX, sy: clientY, ox: adEditor.img.x||0, oy: adEditor.img.y||0, scale: canvas.width / canvas.getBoundingClientRect().width };
+    }
+    function adCanvasPointerMove(clientX, clientY) {
+      if (!_adDrag || !adEditor.img) return;
+      adEditor.img.x = _adDrag.ox + (clientX - _adDrag.sx) * _adDrag.scale;
+      adEditor.img.y = _adDrag.oy + (clientY - _adDrag.sy) * _adDrag.scale;
+      adDraw();
+    }
+    function adCanvasPointerUp() { if (_adDrag) { _adDrag = null; queueAutoSave(); } }
+
+    // ---- Export ----
+    function adSafeName(ext) {
+      const parts = ['4A_STORE', (adEditor.offerTitle||'Ad'), (adEditor.discount? adEditor.discount+'off':''), new Date().toISOString().slice(0,10)];
+      return parts.filter(Boolean).join('_').replace(/[^\w\-]+/g, '_') + '.' + ext;
+    }
+    function adDownload(fmt) {
+      const canvas = document.getElementById('adCanvas');
+      if (!canvas) return;
+      adDraw();
+      const mime = fmt === 'jpg' ? 'image/jpeg' : 'image/png';
+      let dataUrl;
+      try { dataUrl = canvas.toDataURL(mime, 0.92); }
+      catch (err) { showToast('Image cross-origin block. Product image ko upload karke try karo.', 'error'); return; }
+      // In-app bridge (WebView) or normal download
+      if (window.AndroidApp && typeof window.AndroidApp.saveBase64File === 'function') {
+        const base64 = dataUrl.split(',')[1];
+        window.AndroidApp.saveBase64File(base64, adSafeName(fmt), mime);
+        showToast('Saved to phone', 'success');
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = dataUrl; a.download = adSafeName(fmt);
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showToast('Downloaded', 'success');
+    }
+
+    function adCopyCaption() {
+      const text = (adEditor.caption || '') + (adEditor.hashtags ? '\n\n' + adEditor.hashtags : '');
+      if (!text.trim()) { showToast('Pehle caption generate karo', 'info'); return; }
+      navigator.clipboard.writeText(text).then(
+        () => showToast('Caption copied', 'success'),
+        () => showToast('Copy failed', 'error')
+      );
+    }
+
+    // Full caption text (caption + hashtags)
+    function adFullCaption() {
+      return (adEditor.caption || '') + (adEditor.hashtags ? '\n\n' + adEditor.hashtags : '');
+    }
+
+    // Turn the current canvas into a PNG File (for native sharing)
+    function adCanvasToBlob() {
+      return new Promise((resolve, reject) => {
+        const canvas = document.getElementById('adCanvas');
+        if (!canvas) return reject('no canvas');
+        adDraw();
+        try {
+          canvas.toBlob(b => b ? resolve(b) : reject('blob failed'), 'image/png', 0.92);
+        } catch (err) { reject(err); }
+      });
+    }
+
+    // ⭐ BEST OPTION: native share sheet with IMAGE + CAPTION together.
+    // Works on phones (and the 4A Store app WebView) — user picks WhatsApp/FB/
+    // Insta from the system sheet and the image + text are already attached.
+    async function adShareNative() {
+      const caption = adFullCaption();
+      if (!caption.trim()) { showToast('Pehle caption generate karo', 'info'); }
+      try {
+        const blob = await adCanvasToBlob();
+        const file = new File([blob], adSafeName('png'), { type: 'image/png' });
+        // Prefer sharing the image file + text (needs file-share support)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text: caption, title: '4A Store Offer' });
+          showToast('Shared', 'success');
+          return;
+        }
+        // Text-only native share (image not supported) → still copy + download image
+        if (navigator.share) {
+          await navigator.share({ text: caption, title: '4A Store Offer' });
+        }
+        adCopyCaption();
+        adDownload('png');
+        showToast('Caption copied + image downloaded. App me image attach karke post karo.', 'info');
+      } catch (err) {
+        // User cancelled or unsupported → fallback: copy caption + download image
+        if (err && err.name === 'AbortError') return;   // user closed the sheet
+        adCopyCaption();
+        adDownload('png');
+        showToast('Image download ho gayi + caption copy. Manually share karo.', 'info');
+      }
+    }
+
+    // Platform-specific fallback (desktop where native share may be absent).
+    // Downloads the image, copies caption, then opens the platform.
+    function adShare(platform) {
+      adCopyCaption();
+      adDownload('png');
+      const text = encodeURIComponent(adFullCaption());
+      if (platform === 'whatsapp') {
+        window.open('https://wa.me/?text=' + text, '_blank');
+        showToast('Caption WhatsApp me gaya. Downloaded image attach kar do 📎', 'info');
+      } else if (platform === 'facebook') {
+        window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent('https://4astore.com'), '_blank');
+        showToast('Image download ho gayi. FB post me upload kar do (caption copied 📋)', 'info');
+      } else if (platform === 'instagram') {
+        window.open('https://www.instagram.com/', '_blank');
+        showToast('Image download ho gayi. Instagram me post karo (caption copied 📋)', 'info');
+      }
+    }
+
+    // ---- Caption / Hashtag / Hook generator (rule-based) ----
+    function adGenerateContent() {
+      const e = adEditor;
+      const s = getSettings();
+      const area = 'चंद्रगढ़';
+      const offer = e.offerTitle || 'खास ऑफर';
+      const disc = e.discount ? (e.discount + '% छूट') : 'बढ़िया छूट';
+      const prod = e.productName || 'ताज़ा सामान';
+      const phone = (s && s.storePhone) ? s.storePhone : '7543888698';
+
+      let caption = '';
+      if (e.lang === 'magahi') {
+        caption = `${area} वाला सुनऽ! 😍\n4A STORE पर ${prod} पर ${disc} बा।\nघरे बइठल ऑर्डर करऽ, सामान घरे पहुँचतौ! ❤️\n📞 ${phone}`;
+      } else if (e.lang === 'hinglish') {
+        caption = `${area} walo dhyaan do! 😄\n4A STORE par ${prod} par ${disc}!\nGhar baithe order karo, free home delivery. 🛵\n📞 ${phone}`;
+      } else {
+        caption = `${area} वालों! 😍\nआज 4A STORE पर ${prod} पर ${disc} है।\nताज़ा सामान, बढ़िया बचत और अपने ही बाज़ार की अपनी दुकान! ❤️\nघर बैठे ऑर्डर करें 🛵\n📞 ${phone}`;
+      }
+
+      const hashtags = `#4AStore #${area} #Nabinagar #Aurangabad #GroceryStore #HomeDelivery #KiranaStore #Offer`;
+
+      const hooks = [
+        'अरे भाई! आज बाज़ार जाने की ज़रूरत नहीं 😄',
+        'घर में सामान खत्म हो गया? 😟',
+        `आज 4A STORE पर क्या खास है? 👀`,
+        `${area} वालों, ध्यान दीजिए! ❤️`,
+        'आज की बचत देखिए! 🔥',
+        `${prod} पर ज़बरदस्त ऑफर! 🛒`
+      ];
+
+      e.caption = caption; e.hashtags = hashtags;
+      const cap = document.getElementById('adCaption'); if (cap) cap.value = caption;
+      const hh = document.getElementById('adHashtags'); if (hh) hh.value = hashtags;
+      const hookBox = document.getElementById('adHooks');
+      if (hookBox) {
+        hookBox.innerHTML = '<div style="font-size:11px;color:var(--gray);margin-bottom:4px;">Hook options (click to use as title):</div>' +
+          hooks.map(h => `<button onclick="adUseHook('${h.replace(/'/g,"\\'")}')" style="display:block;width:100%;text-align:left;margin-bottom:4px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;">${escapeHtml(h)}</button>`).join('');
+      }
+      queueAutoSave();
+      showToast('Content generated', 'success');
+    }
+    function adUseHook(h) { adEditor.offerTitle = h; const t = document.getElementById('adOfferTitle'); if (t) t.value = h; adDraw(); queueAutoSave(); }
+
+    // ---- Save ----
+    function saveAd() {
+      const e = adEditor;
+      const payload = {
+        name: e.name || 'Untitled Ad',
+        campaign: e.campaign || '',
+        offerTitle: e.offerTitle || '',
+        productId: e.productId,
+        productName: e.productName || '',
+        format: e.format, platform: e.platform, template: e.template,
+        status: e.status || 'draft',
+        caption: e.caption || '', hashtags: e.hashtags || '',
+        creative: e   // full editor state as structured JSON
+      };
+      const action = e.id ? 'update' : 'add';
+      if (e.id) payload.id = e.id;
+      adsApi({ action, ad: payload }, res => {
+        if (res && res.success) {
+          if (res.ad && res.ad.id) adEditor.id = res.ad.id;
+          localStorage.removeItem(AD_DRAFT_KEY);
+          setAdSaveStatus('✓ Saved');
+          showToast('Ad saved', 'success');
+        } else showToast((res && res.message) || 'Save failed', 'error');
+      });
+    }
+
+    // ---- Autosave ----
+    function queueAutoSave() {
+      setAdSaveStatus('Saving...');
+      clearTimeout(adAutoSaveTimer);
+      adAutoSaveTimer = setTimeout(() => {
+        try { localStorage.setItem(AD_DRAFT_KEY, JSON.stringify(adEditor)); } catch (e) {}
+        setAdSaveStatus('✓ Draft saved');
+      }, 1200);
+    }
+    function startAdAutoSave() {
+      // bind canvas drag once the canvas is present
+      const canvas = document.getElementById('adCanvas');
+      if (canvas && !canvas._adBound) {
+        canvas._adBound = true;
+        canvas.addEventListener('mousedown', ev => { canvas.style.cursor='grabbing'; adCanvasPointerDown(ev.clientX, ev.clientY); });
+        window.addEventListener('mousemove', ev => adCanvasPointerMove(ev.clientX, ev.clientY));
+        window.addEventListener('mouseup', () => { canvas.style.cursor='grab'; adCanvasPointerUp(); });
+        canvas.addEventListener('touchstart', ev => { const t=ev.touches[0]; adCanvasPointerDown(t.clientX, t.clientY); }, {passive:true});
+        canvas.addEventListener('touchmove', ev => { const t=ev.touches[0]; adCanvasPointerMove(t.clientX, t.clientY); ev.preventDefault(); }, {passive:false});
+        canvas.addEventListener('touchend', adCanvasPointerUp);
+      }
+    }
+    function setAdSaveStatus(txt) { const el = document.getElementById('adSaveStatus'); if (el) el.textContent = txt; }
+
+    // ---- 16. AD LIBRARY ----
+    let adLibFilter = 'all';
+    let adLibSearch = '';
+    function renderAdLibrary() {
+      const filters = ['all','draft','ready','scheduled','published'];
+      const filterBtns = filters.map(f => `
+        <button onclick="adLibSetFilter('${f}')" style="padding:7px 14px;border:1px solid ${adLibFilter===f?'var(--primary)':'var(--border)'};border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;background:${adLibFilter===f?'var(--primary)':'#fff'};color:${adLibFilter===f?'#fff':'var(--primary-dark)'};text-transform:capitalize;">${f}</button>`).join('');
+
+      let list = adsList.slice().reverse();
+      if (adLibFilter !== 'all') list = list.filter(a => a.status === adLibFilter);
+      if (adLibSearch) {
+        const t = adLibSearch.toLowerCase();
+        list = list.filter(a => (a.name||'').toLowerCase().includes(t) || (a.productName||'').toLowerCase().includes(t) || (a.offerTitle||'').toLowerCase().includes(t));
+      }
+
+      const cards = list.length ? list.map(a => {
+        const tpl = AD_TEMPLATES[a.template] || AD_TEMPLATES['todays-offer'];
+        return `
+        <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;">
+          <div style="height:120px;background:linear-gradient(135deg,${tpl.bg[0]},${tpl.bg[1]});display:flex;align-items:center;justify-content:center;color:#fff;text-align:center;padding:10px;">
+            <div><div style="font-size:26px;">${tpl.emoji}</div><div style="font-size:12px;font-weight:700;margin-top:4px;">${escapeHtml(a.offerTitle||a.name||'')}</div></div>
+          </div>
+          <div style="padding:10px;">
+            <div style="font-weight:700;font-size:13px;">${escapeHtml(a.name||'')}</div>
+            <div style="font-size:11px;color:var(--gray);margin:2px 0 8px;">${escapeHtml(a.format||'')} · ${escapeHtml(a.status||'draft')}</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <button onclick="openAdEditor(${a.id})" class="ad-mini" style="background:var(--primary);color:#fff;">✏️ Edit</button>
+              <button onclick="duplicateAd(${a.id})" class="ad-mini" style="background:#0891b2;color:#fff;">📋</button>
+              <button onclick="removeAd(${a.id})" class="ad-mini" style="background:#ffebee;color:#c62828;">🗑️</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('') : '<p style="grid-column:1/-1;text-align:center;padding:30px;color:var(--gray);">Koi ad nahi mila.</p>';
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="adsGoto('dashboard')" style="padding:9px 16px;border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:var(--primary-dark);">📊 Dashboard</button>
+            <button onclick="adsGoto('library')" style="padding:9px 16px;border:none;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;background:var(--primary);color:#fff;">📚 Ad Library</button>
+          </div>
+          <button onclick="openAdEditor()" style="padding:11px 22px;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;">+ Create New Ad</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">${filterBtns}</div>
+        <input type="text" value="${escapeHtml(adLibSearch)}" oninput="adLibSetSearch(this.value)" placeholder="🔍 Search by ad name, product, offer..." style="width:100%;max-width:420px;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;">${cards}</div>`;
+    }
+    function adLibSetFilter(f) { adLibFilter = f; renderAdLibrary(); }
+    function adLibSetSearch(v) { adLibSearch = v; renderAdLibrary(); }
 
     // ==========================================================
     // HOME PAGE VOICE ANNOUNCEMENT (admin)
