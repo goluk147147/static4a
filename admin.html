@@ -885,17 +885,140 @@
           </table>
         </div>
 
-        <h4 style="margin-bottom:12px;">📊 Daily Breakdown</h4>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <h4 style="margin:0;">📊 Daily Breakdown</h4>
+          <button onclick="downloadItemsCSV()" title="Download every delivered item as CSV (Excel)" style="padding:8px 16px; background:#2e7d32; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600;">📥 Download CSV (all items)</button>
+        </div>
         <div style="overflow-x:auto;">
           <table class="admin-table">
-            <thead><tr><th>Date</th><th>Orders</th><th>Earning</th></tr></thead>
+            <thead><tr><th>Date</th><th>Orders</th><th>Earning</th><th>Action</th></tr></thead>
             <tbody>
               ${dailyEntries.map(([date, data]) => `
-                <tr><td>${date}</td><td>${data.count}</td><td><strong>₹${data.total}</strong></td></tr>
+                <tr>
+                  <td>${date}</td>
+                  <td>${data.count}</td>
+                  <td><strong>₹${data.total}</strong></td>
+                  <td style="white-space:nowrap;">
+                    <button onclick="viewDayItems('${escapeHtml(date)}')" title="Us din kya-kya bika dekho" style="padding:5px 10px; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer; font-size:11px; margin-right:4px;">👁️ View</button>
+                    <button onclick="downloadItemsCSV('${escapeHtml(date)}')" title="Is din ka CSV download" style="padding:5px 10px; background:#2e7d32; color:white; border:none; border-radius:6px; cursor:pointer; font-size:11px;">📥 CSV</button>
+                  </td>
+                </tr>
               `).join('')}
             </tbody>
           </table>
         </div>`;
+    }
+
+    // Collect delivered order line-items, optionally for a single date key
+    // (date key = toLocaleDateString('en-IN'), same as the Daily Breakdown table).
+    function collectDeliveredItems(dateKey) {
+      const orders = getOrders().filter(o => (o.orderStatus || o.status) === 'Delivered');
+      const rows = [];
+      orders.forEach(o => {
+        const dk = new Date(o.orderDate).toLocaleDateString('en-IN');
+        if (dateKey && dk !== dateKey) return;
+        (o.items || []).forEach(it => {
+          const qty = Number(it.quantity) || 0;
+          const price = Number(it.price) || 0;
+          rows.push({
+            date: dk,
+            orderId: o.orderId || '',
+            customer: (o.customer && o.customer.name) || '',
+            item: it.name || ('#' + it.id),
+            weight: it.weight || '',
+            qty: qty,
+            price: price,
+            lineTotal: qty * price
+          });
+        });
+      });
+      return rows;
+    }
+
+    // Popup: show every item sold on a given day
+    function viewDayItems(dateKey) {
+      const rows = collectDeliveredItems(dateKey);
+      if (!rows.length) { showToast('Is din koi delivered item nahi', 'info'); return; }
+
+      // Aggregate by item name for a quick summary
+      const agg = {};
+      rows.forEach(r => {
+        if (!agg[r.item]) agg[r.item] = { qty: 0, total: 0, price: r.price };
+        agg[r.item].qty += r.qty;
+        agg[r.item].total += r.lineTotal;
+      });
+      const grandTotal = rows.reduce((s, r) => s + r.lineTotal, 0);
+      const totalQty = rows.reduce((s, r) => s + r.qty, 0);
+
+      const aggRows = Object.entries(agg)
+        .sort((a, b) => b[1].total - a[1].total)
+        .map(([name, d]) => `
+          <tr>
+            <td>${escapeHtml(name)}</td>
+            <td style="text-align:center;">${d.qty}</td>
+            <td style="text-align:right;">₹${d.price}</td>
+            <td style="text-align:right;"><strong>₹${d.total}</strong></td>
+          </tr>`).join('');
+
+      document.getElementById('orderDetailBody').innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3 style="color:var(--primary); margin:0;">📅 ${escapeHtml(dateKey)}</h3>
+          <button onclick="closeOrderDetail()" style="background:none; border:none; font-size:22px; cursor:pointer; color:var(--gray);">×</button>
+        </div>
+        <p style="font-size:13px; color:var(--gray); margin-bottom:12px;">Kya-kya bika us din (sirf delivered orders).</p>
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead><tr><th>Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th><th style="text-align:right;">Total</th></tr></thead>
+            <tbody>${aggRows}</tbody>
+            <tfoot>
+              <tr style="border-top:2px solid var(--border);">
+                <td><strong>Grand Total</strong></td>
+                <td style="text-align:center;"><strong>${totalQty}</strong></td>
+                <td></td>
+                <td style="text-align:right;"><strong style="color:var(--primary-dark);">₹${grandTotal}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:16px;">
+          <button onclick="downloadItemsCSV('${escapeHtml(dateKey)}')" style="flex:1; padding:10px; background:#2e7d32; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">📥 Download CSV</button>
+          <button onclick="closeOrderDetail()" style="padding:10px 20px; background:var(--gray); color:white; border:none; border-radius:8px; cursor:pointer;">Close</button>
+        </div>`;
+      document.getElementById('orderDetailModal').classList.remove('hidden');
+    }
+
+    // Download delivered items as CSV. Pass a dateKey for one day, or omit for all.
+    function downloadItemsCSV(dateKey) {
+      const rows = collectDeliveredItems(dateKey);
+      if (!rows.length) { showToast('Koi data nahi mila', 'info'); return; }
+
+      const esc = v => {
+        const s = String(v == null ? '' : v);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const header = ['Date', 'Order ID', 'Customer', 'Item', 'Weight/Size', 'Qty', 'Price', 'Line Total'];
+      const lines = [header.join(',')];
+      rows.forEach(r => {
+        lines.push([r.date, r.orderId, r.customer, r.item, r.weight, r.qty, r.price, r.lineTotal].map(esc).join(','));
+      });
+      // Totals row
+      const totQty = rows.reduce((s, r) => s + r.qty, 0);
+      const totAmt = rows.reduce((s, r) => s + r.lineTotal, 0);
+      lines.push(['', '', '', '', 'TOTAL', totQty, '', totAmt].map(esc).join(','));
+
+      // BOM so Excel reads unicode (₹, Hindi) correctly
+      const csv = '\uFEFF' + lines.join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeDate = dateKey ? dateKey.replace(/\//g, '-') : 'all';
+      a.href = url;
+      a.download = `4astore-sales-${safeDate}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('CSV downloaded', 'success');
     }
 
     function changeStatus(orderId, newStatus) {
