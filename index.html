@@ -199,34 +199,97 @@
         .then(res => {
           if (!res.success) return;
           const ann = res.announcement;
-          if (!ann || !ann.enabled || !ann.text) return;
+          if (!ann || !ann.enabled || (!ann.text && !ann.image)) return;
 
-          // Speak only if THIS message id hasn't already been spoken on this device
+          // Target check: "all" -> everyone; otherwise only the matching mobile
+          const target = (ann.target || 'all').trim();
+          if (target !== 'all') {
+            const user = (typeof getLoggedInUser === 'function') ? getLoggedInUser() : null;
+            if (!user || user.mobile !== target) return;  // not for this user
+          }
+
+          // Show only once per message id on this device
           if (String(localStorage.getItem('4astore_ann_spoken')) === String(ann.id)) return;
+
+          // Show the popup (image + text) right away
+          showAnnouncementPopup(ann);
 
           let done = false;
           const speakNow = () => {
             if (done) return;
             done = true;
             localStorage.setItem('4astore_ann_spoken', String(ann.id));
-            speakText(ann.text);
+            if (ann.text) speakText(ann.text);
             document.removeEventListener('click', onTap);
             document.removeEventListener('touchstart', onTap);
           };
           const onTap = () => speakNow();
 
-          // In the app (native TTS) it can play immediately. In web browsers,
-          // autoplay is blocked until a user gesture — so also play on first tap.
           if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
             speakNow();
           } else {
             document.addEventListener('click', onTap, { once: true });
             document.addEventListener('touchstart', onTap, { once: true });
-            // Try immediately too (works if the user already interacted with the page)
             setTimeout(speakNow, 600);
           }
         })
         .catch(() => {});
+    }
+
+    // Popup showing the announcement image + text
+    function showAnnouncementPopup(ann) {
+      if (document.getElementById('annPopup')) return;
+
+      const overlay = document.createElement('div');
+      overlay.id = 'annPopup';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+
+      // Image with padding around it
+      const imgHtml = ann.image
+        ? `<div style="padding:14px 14px 0;"><img src="${ann.image}" alt="offer" style="display:block;width:100%;height:auto;max-height:38vh;object-fit:contain;border-radius:10px;" onerror="this.parentElement.style.display='none'"></div>`
+        : '';
+
+      // Highlight words wrapped in *stars*  ->  *20% OFF*  becomes a highlighted chip
+      const rawText = ann.text || '';
+      const formatted = escapeHtmlLite(rawText).replace(/\*([^*]+)\*/g,
+        '<span style="background:#fff3cd;color:#e65100;font-weight:800;padding:1px 6px;border-radius:5px;">$1</span>');
+      const textHtml = rawText
+        ? `<p style="font-size:15px;color:#333;line-height:1.6;white-space:pre-line;margin:0;">${formatted}</p>`
+        : '';
+
+      const ctaHtml = (ann.ctaText && ann.ctaLink)
+        ? `<a href="${ann.ctaLink}" style="display:block;padding:14px;background:linear-gradient(135deg,#ff6a00,#f107a3);color:#fff;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;text-align:center;box-shadow:0 6px 16px rgba(241,7,163,.35);">${ann.ctaText} →</a>`
+        : '';
+
+      overlay.innerHTML =
+        '<div style="position:relative;display:flex;flex-direction:column;background:#fff;border-radius:18px;width:100%;max-width:420px;max-height:90vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.4);animation:annPop .28s ease;">'
+          // fixed header with close (X) inside it
+          + '<div style="position:relative;background:linear-gradient(135deg,#ff6a00,#f107a3);color:#fff;padding:14px 44px;text-align:center;font-weight:800;font-size:16px;letter-spacing:.3px;flex-shrink:0;">🎉 Special Offer'
+          +   '<button onclick="document.getElementById(\'annPopup\').remove()" aria-label="Close" style="position:absolute;top:50%;right:10px;transform:translateY(-50%);width:32px;height:32px;border:none;border-radius:50%;background:rgba(255,255,255,0.25);color:#fff;font-size:18px;line-height:1;cursor:pointer;">×</button>'
+          + '</div>'
+          // fixed image (with padding)
+          + imgHtml
+          // scrollable message area ONLY
+          + '<div style="flex:1;overflow-y:auto;padding:16px 20px;text-align:center;-webkit-overflow-scrolling:touch;">' + textHtml + '</div>'
+          // fixed CTA button at bottom
+          + (ctaHtml ? '<div style="padding:14px 16px;border-top:1px solid #eee;flex-shrink:0;">' + ctaHtml + '</div>' : '')
+        + '</div>';
+
+      if (!document.getElementById('annPopStyle')) {
+        const st = document.createElement('style');
+        st.id = 'annPopStyle';
+        st.textContent = '@keyframes annPop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}';
+        document.head.appendChild(st);
+      }
+
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+    }
+
+    // Minimal HTML-escape so admin text can't inject markup (but * highlighting still works)
+    function escapeHtmlLite(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     // Speak text: native TTS inside the app, Web Speech in browsers

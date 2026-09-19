@@ -35,7 +35,30 @@ document.addEventListener('DOMContentLoaded', () => {
   updateLoginUI();
   showAppVersion();
   updateUpiDisplays();
+  injectDownloadAppButton();
 });
+
+// Show a "Download App" button in the header — ONLY in a web browser
+// (hidden inside the Android app, where installing the app is pointless).
+function injectDownloadAppButton() {
+  try {
+    const isInApp = !!(window.AndroidApp);   // our WebView exposes AndroidApp
+    if (isInApp) return;                     // don't show inside the app
+    const actions = document.querySelector('.header-actions');
+    if (!actions || document.getElementById('getAppBtn')) return;
+    const apkUrl = new URL('4AStore.apk', window.location.href).href;
+    const a = document.createElement('a');
+    a.id = 'getAppBtn';
+    a.href = apkUrl;
+    a.setAttribute('download', '4AStore.apk');
+    a.title = 'Download our App';
+    a.innerHTML = '📥 <span class="action-text">Get App</span>';
+    // place it as the first action (before Orders)
+    const loginArea = actions.querySelector('.login-btn-area');
+    if (loginArea && loginArea.nextSibling) actions.insertBefore(a, loginArea.nextSibling);
+    else actions.appendChild(a);
+  } catch (e) { /* ignore */ }
+}
 
 // Cache-buster: if the admin bumped the version (via "Clear Cache & Update"),
 // clear caches and hard-reload once so every user gets the fresh code.
