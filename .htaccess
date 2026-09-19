@@ -31,3 +31,12 @@ RewriteRule ^ - [L]
 # Try adding .html extension for clean URLs
 RewriteCond %{REQUEST_FILENAME}.html -f
 RewriteRule ^(.*)$ $1.html [L]
+
+# ===== CACHE CONTROL =====
+# HTML, JS, CSS, JSON: no long caching so users get fresh code quickly.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css|json)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
+# ===== END CACHE CONTROL =====

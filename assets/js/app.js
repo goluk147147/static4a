@@ -29,12 +29,41 @@ let dbAdmin = null;
 // INITIALIZATION
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
+  checkAssetVersion();   // auto-refresh if admin pushed a new build
   loadData();
   updateCartBadge();
   updateLoginUI();
   showAppVersion();
   updateUpiDisplays();
 });
+
+// Cache-buster: if the admin bumped the version (via "Clear Cache & Update"),
+// clear caches and hard-reload once so every user gets the fresh code.
+function checkAssetVersion() {
+  fetch('api/bump-cache.php?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => r.json())
+    .then(res => {
+      if (!res.success) return;
+      const server = String(res.assetVersion);
+      const local = localStorage.getItem('4astore_asset_version');
+      if (local === null) {
+        // First visit — just remember the current version, no reload
+        localStorage.setItem('4astore_asset_version', server);
+        return;
+      }
+      if (local !== server) {
+        localStorage.setItem('4astore_asset_version', server);
+        // Clear service worker caches, then hard reload
+        if ('caches' in window) {
+          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+            .finally(() => location.reload(true));
+        } else {
+          location.reload(true);
+        }
+      }
+    })
+    .catch(() => {});
+}
 
 // Update every UPI ID / Name shown on the page with the admin's global setting.
 // Elements marked with [data-upi-id] / [data-upi-name] get filled automatically.

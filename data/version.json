@@ -1,7 +1,8 @@
 {
-  "versionCode": 6,
-  "versionName": "1.5",
-  "url": "https://4astore.webtoolsz.com/4AStore.apk",
-  "message": "Naya update available hai. Behtar experience ke liye update karein.",
-  "forceUpdate": false
+    "versionCode": 6,
+    "versionName": "1.5",
+    "url": "https://4astore.webtoolsz.com/4AStore.apk",
+    "message": "Naya update available hai. Behtar experience ke liye update karein.",
+    "forceUpdate": false,
+    "assetVersion": 1
 }
