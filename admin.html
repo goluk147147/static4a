@@ -8,19 +8,64 @@
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
   <link rel="stylesheet" href="assets/css/style.css">
   <style>
-    .admin-container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
-    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
-    .admin-header h1 { color: var(--primary-dark); font-size: 1.5rem; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 30px; }
-    .stat-card { background: white; border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); text-align: center; border-top: 4px solid var(--primary); }
-    .stat-card .stat-icon { font-size: 2rem; margin-bottom: 8px; }
-    .stat-card .stat-value { font-size: 1.8rem; font-weight: 800; color: var(--primary-dark); }
-    .stat-card .stat-label { font-size: 13px; color: var(--gray); margin-top: 4px; }
-    .admin-tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
-    .admin-tabs button { padding: 10px 20px; border: none; background: white; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--gray); transition: var(--transition); }
-    .admin-tabs button.active { background: var(--primary); color: white; }
-    .admin-tabs button:hover:not(.active) { background: var(--primary-light); }
-    .tab-content { background: white; border-radius: 0 12px 12px 12px; box-shadow: var(--shadow); padding: 20px; }
+    /* ===== Admin theme: BHAGWA (saffron) — scoped so storefront stays unchanged ===== */
+    :root {
+      --adm-saffron: #FF7A00;
+      --adm-saffron-dark: #E85D00;
+      --adm-saffron-deep: #C24E00;
+      --adm-saffron-light: #FFF3E6;
+    }
+    /* Remap the primary vars ONLY on the admin page (this file), so every
+       admin element that uses --primary turns saffron without touching style.css */
+    body {
+      --primary: #FF7A00;
+      --primary-dark: #C24E00;
+      --primary-light: #FFF3E6;
+      --secondary: #F5A623;
+      margin: 0 !important;
+      padding: 0 !important;      /* kill storefront mobile bottom-nav padding */
+    }
+    /* When the sidebar dashboard is active, drop the page to full-bleed.
+       Lock the page so ONLY the content area scrolls (sidebar stays put). */
+    body:has(#adminDashboard:not(.hidden)) { background: #f4f5f7; overflow: hidden; }
+
+    /* ===== Modern sidebar dashboard layout ===== */
+    #adminDashboard.admin-shell { max-width: none; margin: 0; padding: 0; display: flex; align-items: stretch; height: 100vh; width: 100%; background: #f4f5f7; overflow: hidden; }
+
+    /* Sidebar — fixed full-height column, never scrolls with content */
+    .admin-sidebar { width: 240px; flex-shrink: 0; background: linear-gradient(180deg, var(--adm-saffron-deep), var(--adm-saffron)); color: #fff; display: flex; flex-direction: column; height: 100vh; }
+    .admin-sidebar .side-brand { display: flex; align-items: center; gap: 10px; padding: 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+    .admin-sidebar .side-brand img { height: 34px; background:#fff; padding:4px 6px; border-radius:8px; }
+    .admin-sidebar .side-brand .brand-tag { font-size: 10px; font-weight: 700; letter-spacing: .5px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 20px; }
+    .admin-sidebar nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+    .side-link { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: none; color: rgba(255,255,255,0.85); padding: 12px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transition); margin-bottom: 2px; }
+    .side-link .side-ic { font-size: 18px; width: 22px; text-align: center; }
+    .side-link:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .side-link.active { background: #fff; color: var(--primary-dark); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .admin-sidebar .side-foot { padding: 12px 14px; border-top: 1px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; gap: 8px; }
+    .admin-sidebar .side-foot a, .admin-sidebar .side-foot button { color: rgba(255,255,255,0.9); background: none; border: none; text-align: left; font-size: 13px; cursor: pointer; text-decoration: none; padding: 6px 4px; border-radius: 6px; }
+    .admin-sidebar .side-foot a:hover, .admin-sidebar .side-foot button:hover { color:#fff; }
+
+    /* Main area — this is the ONLY scrollable region */
+    .admin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; overflow-y: auto; }
+    .admin-topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 50; }
+    .admin-topbar .page-title { font-size: 1.25rem; font-weight: 800; color: var(--primary-dark); }
+    .admin-topbar .topbar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+    .admin-content { padding: 22px 24px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: white; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); text-align: left; border: 1px solid var(--border); border-left: 4px solid var(--primary); }
+    .stat-card .stat-icon { font-size: 1.6rem; margin-bottom: 6px; }
+    .stat-card .stat-value { font-size: 1.7rem; font-weight: 800; color: var(--primary-dark); }
+    .stat-card .stat-label { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+    /* Hidden legacy tab bar (kept in DOM for JS that toggles .active) */
+    .admin-tabs { display: none !important; }
+    .tab-content { background: white; border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border); padding: 20px; }
+
+    /* Mobile: collapsible sidebar */
+    .side-toggle { display: none; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--primary-dark); }
+    .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 60; }
     .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .admin-table th { background: var(--primary-light); color: var(--primary-dark); padding: 12px 10px; text-align: left; font-weight: 700; white-space: nowrap; }
     .admin-table td { padding: 10px; border-bottom: 1px solid var(--border); }
@@ -46,26 +91,16 @@
       .admin-table { font-size: 11px; }
       .admin-table th, .admin-table td { padding: 8px 6px; }
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .admin-content { padding: 16px 14px; }
+      .admin-topbar { padding: 12px 14px; }
+      .side-toggle { display: block; }
+      .admin-sidebar { position: fixed; left: 0; top: 0; z-index: 70; transform: translateX(-100%); transition: transform .25s ease; }
+      #adminDashboard.admin-shell.sidebar-open .admin-sidebar { transform: translateX(0); }
+      #adminDashboard.admin-shell.sidebar-open .sidebar-backdrop { display: block; }
     }
   </style>
 </head>
 <body>
-  <!-- Top Bar -->
-  <div class="top-bar">
-    <div class="location-text">🔒 Admin Panel - 4astore</div>
-  </div>
-
-  <!-- Header -->
-  <header class="main-header">
-    <div class="header-content">
-      <a href="./" class="logo"><img src="assets/images/logo.svg" alt="4A Store" height="52"></a>
-      <div style="flex:1"></div>
-      <div class="header-actions">
-        <a href="./">🏠 <span class="action-text">Store</span></a>
-      </div>
-    </div>
-  </header>
-
   <!-- Admin Login -->
   <div id="adminLogin" class="admin-login">
     <div class="checkout-form">
@@ -82,75 +117,88 @@
   </div>
 
   <!-- Admin Dashboard (hidden until login) -->
-  <div id="adminDashboard" class="admin-container hidden">
-    <div class="admin-header">
-      <h1>📊 4astore Admin Panel</h1>
-      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end;">
-        <div style="position:relative;">
-          <button id="notifBell" onclick="toggleNotifPanel(event)" title="Notifications" style="position:relative; background:white; border:1px solid var(--border); border-radius:50%; width:44px; height:44px; font-size:20px; cursor:pointer; box-shadow:var(--shadow);">
-            🔔
-            <span id="notifBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:#e53935; color:white; font-size:11px; font-weight:700; min-width:18px; height:18px; line-height:18px; border-radius:9px; padding:0 4px;">0</span>
-          </button>
-          <!-- Notification dropdown panel -->
-          <div id="notifPanel" style="display:none; position:absolute; right:0; top:52px; width:320px; max-width:88vw; background:white; border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.18); z-index:9998; overflow:hidden;">
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid var(--border); background:var(--primary-light);">
-              <strong style="color:var(--primary-dark); font-size:14px;">🔔 Notifications</strong>
-              <button onclick="markAllNotifRead()" style="background:none; border:none; color:var(--primary); font-size:12px; font-weight:600; cursor:pointer;">Mark all read</button>
-            </div>
-            <div id="notifList" style="max-height:340px; overflow-y:auto;"></div>
-          </div>
+  <div id="adminDashboard" class="admin-shell hidden">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="side-brand">
+        <img src="assets/images/logo.svg" alt="4A Store">
+        <span class="brand-tag">ADMIN</span>
+      </div>
+      <nav>
+        <button class="side-link active" data-tab="dashboard" onclick="showTab('dashboard')"><span class="side-ic">📊</span> Dashboard</button>
+        <button class="side-link" data-tab="orders" onclick="showTab('orders')"><span class="side-ic">📦</span> Orders</button>
+        <button class="side-link" data-tab="products" onclick="showTab('products')"><span class="side-ic">🛍️</span> Products</button>
+        <button class="side-link" data-tab="categories" onclick="showTab('categories')"><span class="side-ic">🗂️</span> Categories</button>
+        <button class="side-link" data-tab="banners" onclick="showTab('banners')"><span class="side-ic">🖼️</span> Banners</button>
+        <button class="side-link" data-tab="users" onclick="showTab('users')"><span class="side-ic">👥</span> Users</button>
+        <button class="side-link" data-tab="earnings" onclick="showTab('earnings')"><span class="side-ic">💰</span> Earnings</button>
+        <button class="side-link" data-tab="settings" onclick="showTab('settings')"><span class="side-ic">⚙️</span> Settings</button>
+      </nav>
+      <div class="side-foot">
+        <a href="./">🏠 View Store</a>
+        <button onclick="adminLogout()" style="color:#ffd0d0;">🚪 Logout</button>
+      </div>
+    </aside>
+    <div class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+
+    <!-- Main -->
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button class="side-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+          <span class="page-title" id="pageTitle">📦 Orders</span>
         </div>
-        <label style="display:flex; align-items:center; gap:5px; font-size:12px; color:var(--gray); cursor:pointer;">
-          <input type="checkbox" id="notifSound" checked style="cursor:pointer;"> 🔊 Sound
-        </label>
-        <button onclick="testNotif()" title="Test notification" style="padding:8px 12px; background:var(--secondary); color:white; border:none; border-radius:6px; font-size:12px; cursor:pointer;">🔔 Test</button>
-        <button class="logout-btn" onclick="adminLogout()">🚪 Logout</button>
+        <div class="topbar-actions">
+          <div style="position:relative;">
+            <button id="notifBell" onclick="toggleNotifPanel(event)" title="Notifications" style="position:relative; background:white; border:1px solid var(--border); border-radius:50%; width:42px; height:42px; font-size:19px; cursor:pointer; box-shadow:var(--shadow);">
+              🔔
+              <span id="notifBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:#e53935; color:white; font-size:11px; font-weight:700; min-width:18px; height:18px; line-height:18px; border-radius:9px; padding:0 4px;">0</span>
+            </button>
+            <!-- Notification dropdown panel -->
+            <div id="notifPanel" style="display:none; position:absolute; right:0; top:52px; width:320px; max-width:88vw; background:white; border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.18); z-index:9998; overflow:hidden;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid var(--border); background:var(--primary-light);">
+                <strong style="color:var(--primary-dark); font-size:14px;">🔔 Notifications</strong>
+                <button onclick="markAllNotifRead()" style="background:none; border:none; color:var(--primary); font-size:12px; font-weight:600; cursor:pointer;">Mark all read</button>
+              </div>
+              <div id="notifList" style="max-height:340px; overflow-y:auto;"></div>
+            </div>
+          </div>
+          <label style="display:flex; align-items:center; gap:5px; font-size:12px; color:var(--gray); cursor:pointer;">
+            <input type="checkbox" id="notifSound" checked style="cursor:pointer;"> 🔊 Sound
+          </label>
+          <button onclick="testNotif()" title="Test notification" style="padding:8px 12px; background:var(--secondary); color:white; border:none; border-radius:6px; font-size:12px; cursor:pointer;">🔔 Test</button>
+          <span style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--primary-dark); font-weight:600;">👤 Admin</span>
+        </div>
       </div>
-    </div>
 
-    <!-- Stats -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">📦</div>
-        <div class="stat-value" id="statTotalOrders">0</div>
-        <div class="stat-label">Total Orders</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">💰</div>
-        <div class="stat-value" id="statTodayEarning">₹0</div>
-        <div class="stat-label">Today's Earning</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">📅</div>
-        <div class="stat-value" id="statMonthEarning">₹0</div>
-        <div class="stat-label">This Month</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">👥</div>
-        <div class="stat-value" id="statTotalUsers">0</div>
-        <div class="stat-label">Registered Users</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">🛍️</div>
-        <div class="stat-value" id="statTotalProducts">0</div>
-        <div class="stat-label">Total Products</div>
-      </div>
-    </div>
+      <div class="admin-content">
+        <!-- Hidden stat holders kept for loadStats() compatibility -->
+        <div style="display:none;">
+          <span id="statTotalOrders">0</span>
+          <span id="statTodayEarning">₹0</span>
+          <span id="statMonthEarning">₹0</span>
+          <span id="statTotalUsers">0</span>
+          <span id="statTotalProducts">0</span>
+        </div>
 
-    <!-- Tabs -->
-    <div class="admin-tabs">
-      <button class="active" onclick="showTab('orders')">📦 Orders</button>
-      <button onclick="showTab('products')">🛍️ Products</button>
-      <button onclick="showTab('categories')">🗂️ Categories</button>
-      <button onclick="showTab('banners')">🖼️ Banners</button>
-      <button onclick="showTab('users')">👥 Users</button>
-      <button onclick="showTab('earnings')">💰 Earnings</button>
-      <button onclick="showTab('settings')">⚙️ Settings</button>
-    </div>
+        <!-- Legacy tab bar (hidden via CSS, kept so showTab() .active logic still works) -->
+        <div class="admin-tabs">
+          <button class="active" onclick="showTab('dashboard')">📊 Dashboard</button>
+          <button onclick="showTab('orders')">📦 Orders</button>
+          <button onclick="showTab('products')">🛍️ Products</button>
+          <button onclick="showTab('categories')">🗂️ Categories</button>
+          <button onclick="showTab('banners')">🖼️ Banners</button>
+          <button onclick="showTab('users')">👥 Users</button>
+          <button onclick="showTab('earnings')">💰 Earnings</button>
+          <button onclick="showTab('settings')">⚙️ Settings</button>
+        </div>
 
-    <!-- Tab Content -->
-    <div class="tab-content" id="tabContent">
-      <!-- Dynamic content -->
+        <!-- Tab Content -->
+        <div class="tab-content" id="tabContent">
+          <!-- Dynamic content -->
+        </div>
+      </div>
     </div>
   </div>
 
@@ -220,7 +268,7 @@
       document.getElementById('adminLogin').style.display = 'none';
       document.getElementById('adminDashboard').classList.remove('hidden');
       loadStats();
-      showTab('orders');
+      showTab('dashboard');
       startOrderNotifications();
     }
 
@@ -484,26 +532,184 @@
       document.getElementById('statTotalProducts').textContent = getProducts().length;
     }
 
-    function showTab(tab) {
-      document.querySelectorAll('.admin-tabs button').forEach(btn => btn.classList.remove('active'));
-      // Activate the right tab button. Works both when called from a click
-      // (event.target) and programmatically (e.g. showTab('orders') on load).
-      if (typeof event !== 'undefined' && event && event.target && event.target.classList) {
-        event.target.classList.add('active');
-      } else {
-        const labels = { orders: 'Orders', products: 'Products', categories: 'Categories', banners: 'Banners', users: 'Users', earnings: 'Earnings', settings: 'Settings' };
-        const btn = Array.from(document.querySelectorAll('.admin-tabs button'))
-          .find(b => b.textContent.includes(labels[tab] || ''));
-        if (btn) btn.classList.add('active');
-      }
+    const TAB_TITLES = { dashboard: '📊 Dashboard', orders: '📦 Orders', products: '🛍️ Products', categories: '🗂️ Categories', banners: '🖼️ Banners', users: '👥 Users', earnings: '💰 Earnings', settings: '⚙️ Settings' };
 
-      if (tab === 'orders') renderOrdersTab();
+    function showTab(tab) {
+      // Sync sidebar nav highlight
+      document.querySelectorAll('.side-link').forEach(l => l.classList.toggle('active', l.getAttribute('data-tab') === tab));
+
+      // Sync the (hidden) legacy tab bar so any code reading .admin-tabs .active keeps working
+      const labels = { dashboard: 'Dashboard', orders: 'Orders', products: 'Products', categories: 'Categories', banners: 'Banners', users: 'Users', earnings: 'Earnings', settings: 'Settings' };
+      document.querySelectorAll('.admin-tabs button').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.includes(labels[tab] || '\0'));
+      });
+
+      // Update page title in top bar
+      const titleEl = document.getElementById('pageTitle');
+      if (titleEl) titleEl.textContent = TAB_TITLES[tab] || 'Dashboard';
+
+      // On mobile, close the drawer after picking a tab
+      toggleSidebar(false);
+
+      if (tab === 'dashboard') renderDashboardTab();
+      else if (tab === 'orders') renderOrdersTab();
       else if (tab === 'products') renderProductsTab();
       else if (tab === 'categories') renderCategoriesTab();
       else if (tab === 'banners') renderBannersTab();
       else if (tab === 'users') renderUsersTab();
       else if (tab === 'earnings') renderEarningsTab();
       else if (tab === 'settings') renderSettingsTab();
+    }
+
+    // Mobile sidebar drawer. Call with no arg to toggle, or a boolean to force.
+    function toggleSidebar(force) {
+      const shell = document.getElementById('adminDashboard');
+      if (!shell) return;
+      const open = (typeof force === 'boolean') ? force : !shell.classList.contains('sidebar-open');
+      shell.classList.toggle('sidebar-open', open);
+    }
+
+    // ==========================================================
+    // DASHBOARD TAB — analytics overview
+    // ==========================================================
+    function renderDashboardTab() {
+      const orders = getOrders();
+      const users = getUsers();
+      const prods = getProducts();
+      const cats = (typeof categories !== 'undefined' && categories) ? categories : [];
+
+      const now = new Date();
+      const today = now.toDateString();
+      const month = now.getMonth(), year = now.getFullYear();
+      const isDelivered = o => (o.orderStatus || o.status) === 'Delivered';
+      const amt = o => Number(o.totalAmount) || 0;
+
+      // Revenue (delivered only) + pending pipeline
+      const delivered = orders.filter(isDelivered);
+      const revToday = delivered.filter(o => new Date(o.orderDate).toDateString() === today).reduce((s,o)=>s+amt(o),0);
+      const revMonth = delivered.filter(o => { const d=new Date(o.orderDate); return d.getMonth()===month && d.getFullYear()===year; }).reduce((s,o)=>s+amt(o),0);
+      const revAll = delivered.reduce((s,o)=>s+amt(o),0);
+      const pendingValue = orders.filter(o=>!isDelivered(o) && (o.orderStatus||o.status)!=='Cancelled').reduce((s,o)=>s+amt(o),0);
+      const avgOrder = delivered.length ? Math.round(revAll / delivered.length) : 0;
+
+      // Status breakdown
+      const statusCounts = {};
+      orders.forEach(o => { const st = o.orderStatus || o.status || 'Order Placed'; statusCounts[st] = (statusCounts[st]||0)+1; });
+      const statusColor = st => ({
+        'Order Placed':'#f59e0b','Confirmed':'#3b82f6','Packed':'#8b5cf6',
+        'Out for Delivery':'#0ea5e9','Delivered':'#059669','Cancelled':'#dc2626'
+      }[st] || '#6b7280');
+
+      // Top products by quantity sold (delivered + all orders combined)
+      const qtyMap = {};
+      orders.forEach(o => (o.items||[]).forEach(it => {
+        const key = it.name || ('#'+it.id);
+        qtyMap[key] = (qtyMap[key]||0) + (Number(it.quantity)||0);
+      }));
+      const topProducts = Object.entries(qtyMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const maxQty = topProducts.length ? topProducts[0][1] : 1;
+
+      // Stock health
+      const outOfStock = prods.filter(p => p.inStock === false).length;
+      const inStock = prods.length - outOfStock;
+
+      // Recent orders (latest 5)
+      const recent = orders.slice(0, 5);
+
+      const card = (icon, value, label, accent) => `
+        <div class="stat-card" style="border-left-color:${accent||'var(--primary)'};">
+          <div class="stat-icon">${icon}</div>
+          <div class="stat-value">${value}</div>
+          <div class="stat-label">${label}</div>
+        </div>`;
+
+      const statusRows = Object.keys(statusCounts).length
+        ? Object.entries(statusCounts).map(([st,c]) => `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <span style="width:12px;height:12px;border-radius:3px;background:${statusColor(st)};flex-shrink:0;"></span>
+              <span style="flex:1;font-size:13px;color:#333;">${escapeHtml(st)}</span>
+              <strong style="font-size:13px;color:var(--primary-dark);">${c}</strong>
+            </div>`).join('')
+        : '<p style="font-size:13px;color:var(--gray);">No orders yet</p>';
+
+      const topRows = topProducts.length
+        ? topProducts.map(([name,q]) => `
+            <div style="margin-bottom:10px;">
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+                <span style="color:#333;">${escapeHtml(name)}</span><strong style="color:var(--primary-dark);">${q} sold</strong>
+              </div>
+              <div style="height:7px;background:#eee;border-radius:6px;overflow:hidden;">
+                <div style="height:100%;width:${Math.round((q/maxQty)*100)}%;background:var(--primary);"></div>
+              </div>
+            </div>`).join('')
+        : '<p style="font-size:13px;color:var(--gray);">No sales data yet</p>';
+
+      const recentRows = recent.length
+        ? recent.map(o => {
+            const st = o.orderStatus || o.status || 'Order Placed';
+            return `<tr>
+              <td><strong>${escapeHtml(o.orderId||'')}</strong></td>
+              <td>${escapeHtml((o.customer&&o.customer.name)||'-')}</td>
+              <td>₹${amt(o)}</td>
+              <td><span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:12px;color:#fff;background:${statusColor(st)};">${escapeHtml(st)}</span></td>
+            </tr>`;
+          }).join('')
+        : '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--gray);">No orders yet</td></tr>';
+
+      const panel = (title, inner, extra='') => `
+        <div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,0.06);${extra}">
+          <h4 style="margin:0 0 14px;color:var(--primary-dark);font-size:15px;">${title}</h4>
+          ${inner}
+        </div>`;
+
+      document.getElementById('tabContent').innerHTML = `
+        <!-- Revenue cards -->
+        <div class="stats-grid" style="margin-bottom:20px;">
+          ${card('💵', '₹'+revToday, "Today's Revenue", '#059669')}
+          ${card('📅', '₹'+revMonth, 'This Month', '#3b82f6')}
+          ${card('🏆', '₹'+revAll, 'All-time (Delivered)', '#8b5cf6')}
+          ${card('⏳', '₹'+pendingValue, 'Pending Pipeline', '#f59e0b')}
+          ${card('🧾', '₹'+avgOrder, 'Avg Order Value', '#0ea5e9')}
+        </div>
+
+        <!-- Count cards -->
+        <div class="stats-grid" style="margin-bottom:22px;">
+          ${card('📦', orders.length, 'Total Orders', 'var(--primary)')}
+          ${card('✅', delivered.length, 'Delivered', '#059669')}
+          ${card('👥', users.length, 'Registered Users', '#6a1b9a')}
+          ${card('🛍️', prods.length, 'Products', '#ef6c00')}
+          ${card('🗂️', cats.length, 'Categories', '#0891b2')}
+        </div>
+
+        <!-- Analytics panels -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px;">
+          ${panel('📊 Order Status Breakdown', statusRows)}
+          ${panel('🔥 Top Selling Products', topRows)}
+          ${panel('📦 Stock Health', `
+            <div style="display:flex;gap:16px;">
+              <div style="flex:1;text-align:center;background:#e8f5e9;border-radius:10px;padding:14px;">
+                <div style="font-size:1.6rem;font-weight:800;color:#2e7d32;">${inStock}</div>
+                <div style="font-size:12px;color:#2e7d32;">In Stock</div>
+              </div>
+              <div style="flex:1;text-align:center;background:#ffebee;border-radius:10px;padding:14px;">
+                <div style="font-size:1.6rem;font-weight:800;color:#c62828;">${outOfStock}</div>
+                <div style="font-size:12px;color:#c62828;">Out of Stock</div>
+              </div>
+            </div>
+            ${outOfStock ? '<p style="font-size:12px;color:#c62828;margin-top:12px;">⚠️ '+outOfStock+' product(s) out of stock. Restock soon.</p>' : '<p style="font-size:12px;color:#2e7d32;margin-top:12px;">✅ All products in stock.</p>'}
+          `)}
+        </div>
+
+        <!-- Recent orders -->
+        ${panel('🕒 Recent Orders', `
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead><tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
+              <tbody>${recentRows}</tbody>
+            </table>
+          </div>
+          <div style="margin-top:12px;"><button onclick="showTab('orders')" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">View all orders →</button></div>
+        `)}`;
     }
 
     function renderOrdersTab() {
@@ -883,6 +1089,8 @@
     // PRODUCTS TAB — add / edit price & features
     // ==========================================
     let productSearchTerm = '';
+    let productPage = 1;
+    const PRODUCTS_PER_PAGE = 15;
 
     function productRowsHtml(list) {
       if (!list.length) {
@@ -902,8 +1110,9 @@
             <td>${featCount ? featCount + ' ✨' : '-'}</td>
             <td><span class="stock-badge ${p.inStock ? 'stock-in' : 'stock-out'}">${p.inStock ? 'In Stock' : 'Out'}</span></td>
             <td style="white-space:nowrap;">
-              <button onclick="openProductModal(${p.id})" style="padding:5px 10px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;margin-right:4px;">✏️ Edit</button>
-              <button onclick="removeProduct(${p.id})" style="padding:5px 10px;background:#e53935;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🗑️</button>
+              <button onclick="openProductModal(${p.id})" title="Edit" style="padding:5px 10px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;margin-right:4px;">✏️ Edit</button>
+              <button onclick="openProductModal(${p.id}, 'copy')" title="Copy as new product (change size/price)" style="padding:5px 10px;background:#0891b2;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;margin-right:4px;">📋 Copy</button>
+              <button onclick="removeProduct(${p.id})" title="Delete" style="padding:5px 10px;background:#e53935;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🗑️</button>
             </td>
           </tr>`;
       }).join('');
@@ -920,15 +1129,78 @@
       );
     }
 
-    // Called on each keystroke — only re-renders the table body & count,
-    // so the search input keeps focus.
+    // Called on each keystroke — reset to page 1 and re-render the table
+    // body, count and pagination, while keeping the search input focused.
     function onProductSearch(value) {
       productSearchTerm = value;
+      productPage = 1;
       const filtered = filterProducts();
+      renderProductPage(filtered);
+    }
+
+    // Total pages for a filtered list
+    function productTotalPages(filtered) {
+      return Math.max(1, Math.ceil(filtered.length / PRODUCTS_PER_PAGE));
+    }
+
+    // Slice out the current page of products
+    function productPageSlice(filtered) {
+      const totalPages = productTotalPages(filtered);
+      if (productPage > totalPages) productPage = totalPages;
+      if (productPage < 1) productPage = 1;
+      const start = (productPage - 1) * PRODUCTS_PER_PAGE;
+      return filtered.slice(start, start + PRODUCTS_PER_PAGE);
+    }
+
+    // Re-render just the table body + count + pagination bar
+    function renderProductPage(filtered) {
       const body = document.getElementById('productTableBody');
       const count = document.getElementById('productCount');
-      if (body) body.innerHTML = productRowsHtml(filtered);
+      if (body) body.innerHTML = productRowsHtml(productPageSlice(filtered));
       if (count) count.textContent = filtered.length;
+      const pager = document.getElementById('productPager');
+      if (pager) pager.innerHTML = productPagerHtml(filtered);
+    }
+
+    function goProductPage(n) {
+      const filtered = filterProducts();
+      const totalPages = productTotalPages(filtered);
+      productPage = Math.min(Math.max(1, n), totalPages);
+      renderProductPage(filtered);
+      // scroll table into view on page change
+      const tc = document.getElementById('tabContent');
+      if (tc) tc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Build the pagination control bar
+    function productPagerHtml(filtered) {
+      const totalPages = productTotalPages(filtered);
+      if (totalPages <= 1) return '';
+      const btn = (label, page, disabled, active) =>
+        `<button onclick="goProductPage(${page})" ${disabled ? 'disabled' : ''}
+          style="min-width:36px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;cursor:${disabled ? 'not-allowed' : 'pointer'};font-size:13px;font-weight:600;
+          background:${active ? 'var(--primary)' : 'white'};color:${active ? 'white' : (disabled ? '#bbb' : 'var(--primary-dark)')};">${label}</button>`;
+
+      // Windowed page numbers around the current page
+      let nums = '';
+      const win = 2;
+      let lo = Math.max(1, productPage - win);
+      let hi = Math.min(totalPages, productPage + win);
+      if (lo > 1) { nums += btn('1', 1, false, productPage === 1); if (lo > 2) nums += `<span style="padding:0 4px;color:var(--gray);">…</span>`; }
+      for (let i = lo; i <= hi; i++) nums += btn(String(i), i, false, i === productPage);
+      if (hi < totalPages) { if (hi < totalPages - 1) nums += `<span style="padding:0 4px;color:var(--gray);">…</span>`; nums += btn(String(totalPages), totalPages, false, productPage === totalPages); }
+
+      const from = (productPage - 1) * PRODUCTS_PER_PAGE + 1;
+      const to = Math.min(productPage * PRODUCTS_PER_PAGE, filtered.length);
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;">
+          <span style="font-size:12px;color:var(--gray);">Showing ${from}–${to} of ${filtered.length}</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            ${btn('‹ Prev', productPage - 1, productPage === 1, false)}
+            ${nums}
+            ${btn('Next ›', productPage + 1, productPage === totalPages, false)}
+          </div>
+        </div>`;
     }
 
     // ==========================================================
@@ -1096,9 +1368,10 @@
                 <th>MRP</th><th>Price</th><th>Disc</th><th>Features</th><th>Stock</th><th>Action</th>
               </tr>
             </thead>
-            <tbody id="productTableBody">${productRowsHtml(filtered)}</tbody>
+            <tbody id="productTableBody">${productRowsHtml(productPageSlice(filtered))}</tbody>
           </table>
-        </div>`;
+        </div>
+        <div id="productPager">${productPagerHtml(filtered)}</div>`;
 
       // keep focus in the search box after a full re-render
       const inp = document.getElementById('productSearchInput');
@@ -1114,11 +1387,14 @@
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    function openProductModal(id) {
-      const isEdit = id !== undefined && id !== null;
+    function openProductModal(id, mode) {
+      // mode: undefined = add, 'copy' = duplicate an existing product as new, otherwise edit
+      const isCopy = mode === 'copy';
+      const isEdit = (id !== undefined && id !== null) && !isCopy;
       const prods = getProducts();
-      const p = isEdit ? prods.find(pr => parseInt(pr.id, 10) === parseInt(id, 10)) : {};
-      if (isEdit && !p) { showToast('Product not found', 'error'); return; }
+      const src = (id !== undefined && id !== null) ? prods.find(pr => parseInt(pr.id, 10) === parseInt(id, 10)) : null;
+      if ((isEdit || isCopy) && !src) { showToast('Product not found', 'error'); return; }
+      const p = src || {};
 
       const cats = (typeof categories !== 'undefined' && categories.length) ? categories : [];
       const catOptions = cats.map(c =>
@@ -1126,9 +1402,11 @@
       ).join('');
 
       const featuresText = Array.isArray(p.features) ? p.features.join('\n') : '';
+      const heading = isEdit ? '✏️ Edit Product' : (isCopy ? '📋 Copy Product (new)' : '➕ Add Product');
 
       document.getElementById('productModalBody').innerHTML = `
-        <h3 style="color:var(--primary); margin-bottom:16px;">${isEdit ? '✏️ Edit Product' : '➕ Add Product'}</h3>
+        <h3 style="color:var(--primary); margin-bottom:16px;">${heading}</h3>
+        ${isCopy ? '<p style="font-size:12px;color:#e65100;background:#fff3e6;border-radius:8px;padding:8px 10px;margin-bottom:14px;">📋 Copy ban raha hai. Title/description same hain — sirf <strong>Weight/Size</strong> aur <strong>Price</strong> badlo, phir Save. Ye ek NAYA product banega (purana waise hi rahega).</p>' : ''}
         <input type="hidden" id="pf_id" value="${isEdit ? p.id : ''}">
         <div class="prod-form-grid">
           <div class="full">
@@ -1188,6 +1466,13 @@
         </div>`;
 
       document.getElementById('productModal').classList.remove('hidden');
+
+      // In copy mode, jump straight to the Weight/Size field so the user
+      // can change size + price quickly (name/description stay as-is).
+      if (isCopy) {
+        const wf = document.getElementById('pf_weight');
+        if (wf) { wf.focus(); wf.select(); }
+      }
     }
 
     function autoDiscount() {
@@ -1447,16 +1732,51 @@
       if (typeof after === 'function') after();
     }
 
+    // Active settings sub-module (persist within session)
+    let settingsSub = 'store';
+    const SETTINGS_SUBS = [
+      { key: 'store',    label: '🏪 Store & Payment' },
+      { key: 'announce', label: '📢 Announcement' },
+      { key: 'festival', label: '🎉 Festival' },
+      { key: 'cache',    label: '🔄 Cache / Update' },
+      { key: 'data',     label: '💾 Data' }
+    ];
+
+    function openSettingsSub(key) {
+      settingsSub = key;
+      renderSettingsTab();
+    }
+
     function renderSettingsTab() {
-      const savedFestival = localStorage.getItem('4astore_festival') || '';
-      const s = getSettings();
       // Load current announcement (sync) so the textbox shows it
       loadAnnouncementForAdmin();
-      document.getElementById('tabContent').innerHTML = `
-        <h4 style="margin-bottom:16px;">🏪 Store Settings</h4>
-        <p style="font-size:13px; color:var(--gray); margin-bottom:16px;">Order notification email and delivery charges. These apply across the store.</p>
 
-        <div style="max-width:520px; display:grid; gap:14px; margin-bottom:12px;">
+      const subNav = SETTINGS_SUBS.map(s => `
+        <button onclick="openSettingsSub('${s.key}')"
+          style="padding:9px 16px;border:1px solid ${settingsSub===s.key?'var(--primary)':'var(--border)'};border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;
+          background:${settingsSub===s.key?'var(--primary)':'white'};color:${settingsSub===s.key?'white':'var(--primary-dark)'};">
+          ${s.label}
+        </button>`).join('');
+
+      let body = '';
+      if (settingsSub === 'store') body = settingsStoreHtml();
+      else if (settingsSub === 'announce') body = settingsAnnounceHtml();
+      else if (settingsSub === 'festival') body = settingsFestivalHtml();
+      else if (settingsSub === 'cache') body = settingsCacheHtml();
+      else if (settingsSub === 'data') body = settingsDataHtml();
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);">${subNav}</div>
+        <div>${body}</div>`;
+    }
+
+    // --- Sub-module: Store & Payment ---
+    function settingsStoreHtml() {
+      const s = getSettings();
+      return `
+        <h4 style="margin-bottom:6px;">🏪 Store & Payment Settings</h4>
+        <p style="font-size:13px; color:var(--gray); margin-bottom:16px;">Order notification email, delivery charges and UPI payment details. These apply across the store.</p>
+        <div style="max-width:520px; display:grid; gap:14px;">
           <div>
             <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">📧 Order Notification Email</label>
             <input type="email" id="setEmail" value="${s.storeEmail || ''}" placeholder="you@example.com" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
@@ -1486,82 +1806,93 @@
           <button onclick="saveStoreSettings()" style="justify-self:start; padding:11px 26px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
             💾 Save Store Settings
           </button>
-        </div>
+        </div>`;
+    }
 
-        <hr style="border:none; border-top:1px solid var(--border); margin:24px 0;">
-
-        <h4 style="margin-bottom:8px;">🔄 Push Update / Clear Cache</h4>
-        <p style="font-size:13px; color:var(--gray); margin-bottom:12px;">Jab bhi aap naya code (files) server pe daalein, ye button dabayein. Sabhi users ko browser me automatically naya code mil jaayega (purana cache clear ho jaayega).</p>
-        <button onclick="pushUpdate()" style="padding:11px 26px; background:#e65100; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
-          🔄 Clear Cache &amp; Update All Users
-        </button>
-
-        <hr style="border:none; border-top:1px solid var(--border); margin:24px 0;">
-
-        <h4 style="margin-bottom:8px;">📢 Notification / Announcement (Popup + Voice)</h4>
+    // --- Sub-module: Announcement ---
+    function settingsAnnounceHtml() {
+      const a = (typeof currentAnnouncement !== 'undefined' && currentAnnouncement) ? currentAnnouncement : {};
+      return `
+        <h4 style="margin-bottom:6px;">📢 Notification / Announcement (Popup + Voice)</h4>
         <p style="font-size:13px; color:var(--gray); margin-bottom:12px;">Home page khulte hi ek popup dikhega (image + text) aur voice bolega — web + app dono. Ek baar per message.</p>
-        <div style="max-width:560px; margin-bottom:24px;">
+        <div style="max-width:560px;">
           <label style="display:block; font-size:12px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">Message (text / voice)</label>
-          <textarea id="annText" rows="3" placeholder="Aaj ka offer! *20% OFF* sabhi hari sabziyon par." style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; resize:vertical;">${(typeof currentAnnouncement !== 'undefined' && currentAnnouncement) ? (currentAnnouncement.text || '') : ''}</textarea>
+          <textarea id="annText" rows="3" placeholder="Aaj ka offer! *20% OFF* sabhi hari sabziyon par." style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; resize:vertical;">${a.text || ''}</textarea>
           <p style="font-size:11px; color:var(--gray); margin-top:4px;">💡 Kisi shabd ko highlight karne ke liye uske aage-piche star lagayein: <code>*20% OFF*</code></p>
 
           <label style="display:block; font-size:12px; font-weight:600; color:var(--primary-dark); margin:10px 0 4px;">Image URL (optional)</label>
-          <input type="text" id="annImage" placeholder="https://... (offer poster)" value="${(typeof currentAnnouncement !== 'undefined' && currentAnnouncement) ? (currentAnnouncement.image || '') : ''}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+          <input type="text" id="annImage" placeholder="https://... (offer poster)" value="${a.image || ''}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
 
           <label style="display:block; font-size:12px; font-weight:600; color:var(--primary-dark); margin:10px 0 4px;">Kise bhejein?</label>
-          <input type="text" id="annTarget" placeholder="all (sabko) ya ek mobile number" value="${(typeof currentAnnouncement !== 'undefined' && currentAnnouncement) ? (currentAnnouncement.target || 'all') : 'all'}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+          <input type="text" id="annTarget" placeholder="all (sabko) ya ek mobile number" value="${a.target || 'all'}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
           <p style="font-size:11px; color:var(--gray); margin-top:4px;">"all" = sabhi users ko. Ya ek mobile number (jaise 9876543210) = sirf us user ko.</p>
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
             <div style="flex:1; min-width:160px;">
               <label style="display:block; font-size:12px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">Button Text (optional)</label>
-              <input type="text" id="annCtaText" placeholder="Shop Now" value="${(typeof currentAnnouncement !== 'undefined' && currentAnnouncement) ? (currentAnnouncement.ctaText || '') : ''}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+              <input type="text" id="annCtaText" placeholder="Shop Now" value="${a.ctaText || ''}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
             </div>
             <div style="flex:1; min-width:160px;">
               <label style="display:block; font-size:12px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">Button Link</label>
-              <input type="text" id="annCtaLink" placeholder="products.html ya https://..." value="${(typeof currentAnnouncement !== 'undefined' && currentAnnouncement) ? (currentAnnouncement.ctaLink || '') : ''}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+              <input type="text" id="annCtaLink" placeholder="products.html ya https://..." value="${a.ctaLink || ''}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
             </div>
           </div>
           <p style="font-size:11px; color:var(--gray); margin-top:4px;">Button dikhega tabhi jab text + link dono ho. Jaise "Shop Now" → products.html</p>
 
           <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--primary-dark); margin:10px 0;">
-            <input type="checkbox" id="annEnabled" ${(typeof currentAnnouncement !== 'undefined' && currentAnnouncement && currentAnnouncement.enabled) ? 'checked' : ''}> Chalu karein (enable)
+            <input type="checkbox" id="annEnabled" ${a.enabled ? 'checked' : ''}> Chalu karein (enable)
           </label>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button onclick="saveAnnouncement()" style="padding:10px 22px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">📢 Save &amp; Announce</button>
             <button onclick="clearAnnouncement()" style="padding:10px 22px; background:#e53935; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">🔇 Stop Announcement</button>
           </div>
-        </div>
+        </div>`;
+    }
 
-        <hr style="border:none; border-top:1px solid var(--border); margin:24px 0;">
-
-        <h4 style="margin-bottom:16px;">🎉 Festival / Theme Settings</h4>
+    // --- Sub-module: Festival ---
+    function settingsFestivalHtml() {
+      const savedFestival = localStorage.getItem('4astore_festival') || '';
+      const opt = (v, label) => `<option value="${v}" ${savedFestival===v?'selected':''}>${label}</option>`;
+      return `
+        <h4 style="margin-bottom:6px;">🎉 Festival / Theme Settings</h4>
         <p style="font-size:13px; color:var(--gray); margin-bottom:16px;">Change the current festival to show relevant banners on the homepage. Leave empty for default banners.</p>
-        
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; max-width:520px;">
           <select id="festivalSelect" style="padding:10px 16px; border:2px solid var(--border); border-radius:8px; font-size:14px; flex:1; min-width:200px;">
-            <option value="" ${savedFestival===''?'selected':''}>🏪 Default (No Festival)</option>
-            <option value="diwali" ${savedFestival==='diwali'?'selected':''}>🪔 Diwali</option>
-            <option value="navratri" ${savedFestival==='navratri'?'selected':''}>🕉️ Navratri</option>
-            <option value="eid" ${savedFestival==='eid'?'selected':''}>☪️ Eid</option>
-            <option value="christmas" ${savedFestival==='christmas'?'selected':''}>🎄 Christmas / New Year</option>
-            <option value="holi" ${savedFestival==='holi'?'selected':''}>🎨 Holi</option>
-            <option value="ipl" ${savedFestival==='ipl'?'selected':''}>🏏 IPL Season</option>
-            <option value="rakhi" ${savedFestival==='rakhi'?'selected':''}>🪢 Raksha Bandhan</option>
-            <option value="independence" ${savedFestival==='independence'?'selected':''}>🇮🇳 Independence Day</option>
+            ${opt('', '🏪 Default (No Festival)')}
+            ${opt('diwali', '🪔 Diwali')}
+            ${opt('navratri', '🕉️ Navratri')}
+            ${opt('eid', '☪️ Eid')}
+            ${opt('christmas', '🎄 Christmas / New Year')}
+            ${opt('holi', '🎨 Holi')}
+            ${opt('ipl', '🏏 IPL Season')}
+            ${opt('rakhi', '🪢 Raksha Bandhan')}
+            ${opt('independence', '🇮🇳 Independence Day')}
           </select>
           <button onclick="saveFestival()" style="padding:10px 24px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
             💾 Save Festival
           </button>
         </div>
-        
-        <div style="background:var(--primary-light); padding:16px; border-radius:8px;">
+        <div style="background:var(--primary-light); padding:16px; border-radius:8px; max-width:520px;">
           <p style="font-size:12px; color:var(--primary-dark); font-weight:600;">ℹ️ How it works:</p>
           <p style="font-size:12px; color:#666; margin-top:4px;">When you select a festival, the homepage will show festival-specific banners along with the default ones. Banners are configured in <code>data/config.json</code>.</p>
-        </div>
+        </div>`;
+    }
 
-        <h4 style="margin-top:24px; margin-bottom:12px;">🗑️ Data Management</h4>
-        <button onclick="if(confirm('Clear all orders? This cannot be undone!')){localStorage.removeItem('4astore_orders');localStorage.removeItem('4astore_screenshots');loadData().then(()=>{showToast('Orders reset to JSON defaults','info');loadStats();renderOrdersTab();})}" style="padding:10px 20px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; margin-right:8px;">
+    // --- Sub-module: Cache / Update ---
+    function settingsCacheHtml() {
+      return `
+        <h4 style="margin-bottom:6px;">🔄 Push Update / Clear Cache</h4>
+        <p style="font-size:13px; color:var(--gray); margin-bottom:12px; max-width:600px;">Jab bhi aap naya code (files) server pe daalein, ye button dabayein. Sabhi users ko browser me automatically naya code mil jaayega (purana cache clear ho jaayega).</p>
+        <button onclick="pushUpdate()" style="padding:11px 26px; background:#e65100; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
+          🔄 Clear Cache &amp; Update All Users
+        </button>`;
+    }
+
+    // --- Sub-module: Data (reset / export / import) ---
+    function settingsDataHtml() {
+      return `
+        <h4 style="margin-bottom:12px;">🗑️ Data Management</h4>
+        <button onclick="if(confirm('Clear all orders? This cannot be undone!')){localStorage.removeItem('4astore_orders');localStorage.removeItem('4astore_screenshots');loadData().then(()=>{showToast('Orders reset to JSON defaults','info');loadStats();})}" style="padding:10px 20px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; margin-right:8px;">
           🗑️ Reset Orders (from JSON)
         </button>
         <button onclick="if(confirm('Clear all users? This cannot be undone!')){localStorage.removeItem('4astore_users');loadData().then(()=>{showToast('Users reset to JSON defaults','info');loadStats();})}" style="padding:10px 20px; background:#666; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
@@ -1571,18 +1902,10 @@
         <h4 style="margin-top:24px; margin-bottom:12px;">💾 Export Data (Download as JSON)</h4>
         <p style="font-size:13px; color:var(--gray); margin-bottom:12px;">Download current data to update your <code>data/</code> folder JSON files. This keeps your database in sync.</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button onclick="exportData('users')" style="padding:10px 16px; background:#1565c0; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
-            📥 Export Users
-          </button>
-          <button onclick="exportData('orders')" style="padding:10px 16px; background:#2e7d32; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
-            📥 Export Orders
-          </button>
-          <button onclick="exportData('products')" style="padding:10px 16px; background:#ef6c00; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
-            📥 Export Products
-          </button>
-          <button onclick="exportData('all')" style="padding:10px 16px; background:var(--primary); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
-            📥 Export All Data
-          </button>
+          <button onclick="exportData('users')" style="padding:10px 16px; background:#1565c0; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">📥 Export Users</button>
+          <button onclick="exportData('orders')" style="padding:10px 16px; background:#2e7d32; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">📥 Export Orders</button>
+          <button onclick="exportData('products')" style="padding:10px 16px; background:#ef6c00; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">📥 Export Products</button>
+          <button onclick="exportData('all')" style="padding:10px 16px; background:var(--primary); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">📥 Export All Data</button>
         </div>
 
         <h4 style="margin-top:24px; margin-bottom:12px;">📤 Import Data (Load JSON File)</h4>
@@ -1596,8 +1919,7 @@
             📤 Choose File
             <input type="file" accept=".json" onchange="importData(this)" style="display:none;">
           </label>
-        </div>
-      `;
+        </div>`;
     }
 
     // ==========================================================
