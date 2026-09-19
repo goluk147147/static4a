@@ -368,6 +368,21 @@ function getCartTotal() {
   return { subtotal, mrpTotal, discount, deliveryCharge, total, itemCount: getCartCount() };
 }
 
+// Does the cart contain any age-restricted (18+) item?
+function cartHasAgeRestricted() {
+  const cart = getCart();
+  if (!cart.length) return false;
+  const cats = (typeof categories !== 'undefined' && categories.length) ? categories : [];
+  const restricted = cats.filter(c => c.ageRestricted || c.hidden).map(c => c.slug);
+  if (!restricted.length) return false;
+  // match by product category (look up full product list)
+  const prods = getProducts();
+  return cart.some(item => {
+    const p = prods.find(pr => pr.id === item.id);
+    return p && restricted.includes(p.category);
+  });
+}
+
 // Returns a user's custom delivery fee (number) or null if none set.
 // Reads from the freshest users list available (server-synced cache).
 function getUserCustomDelivery(mobile) {

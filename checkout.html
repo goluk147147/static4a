@@ -252,6 +252,12 @@
       if (pincode !== '824301') { document.getElementById('custPincode').parentElement.classList.add('error'); showToast('🚀 Delivery only in PIN 824301', 'error'); valid = false; }
       if (!valid) { showToast('Please fill all required fields', 'error'); return; }
 
+      // 18+ age confirmation if the cart has any age-restricted item
+      if (typeof cartHasAgeRestricted === 'function' && cartHasAgeRestricted()) {
+        const ok = confirm('⚠️ Aapke cart me 18+ (age-restricted) product hai.\n\nTobacco/nasha se cancer hota hai.\n\nKya aap 18 saal ya usse zyada ke hain?');
+        if (!ok) { showToast('Order ke liye 18+ hona zaroori hai.', 'error'); return; }
+      }
+
       customerInfo = { name, mobile, email, address, landmark, city, pincode };
       const totals = getCartTotal();
       

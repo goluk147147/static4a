@@ -1880,3 +1880,28 @@ img {
 @media (max-width: 380px) {
   .header-content .search-box { display: none; }
 }
+
+/* (image banners now use a background image with text overlay — no special rule needed) */
+
+/* ===== BANNER SIZE (tuned for 1200x400 / 3:1 images) ===== */
+/* Keeps a nice wide banner shape on every screen — web + app WebView */
+.hero-slider { width: 100%; margin: 0 auto 24px; }   /* full width + gap below */
+.slide {
+  aspect-ratio: 3 / 1;      /* matches 1200x400 images (proportional) */
+  min-height: 0;            /* let aspect-ratio drive the height */
+  max-height: 420px;
+  overflow: hidden;         /* keep overlay text inside the banner */
+}
+/* Responsive banner text so it always fits inside the banner height */
+.slide-content h1 { font-size: clamp(1.05rem, 4.2vw, 2.2rem); line-height: 1.15; }
+.slide-content p  { font-size: clamp(0.8rem, 2.6vw, 1.1rem); line-height: 1.3; }
+.slide-content .btn-shop { padding: 8px 20px; font-size: clamp(0.8rem, 2.6vw, 1rem); }
+
+@media (max-width: 768px) {
+  .slide { aspect-ratio: 5 / 2; }   /* a touch taller on phones for readable text */
+  .slide-content { padding: 0 8px; }
+  .slide-content p { margin-bottom: 10px; }
+}
+@media (max-width: 480px) {
+  .slide { aspect-ratio: 16 / 9; }  /* taller on very small phones */
+}

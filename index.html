@@ -347,15 +347,38 @@
       let banners = siteConfig.banners.filter(b => b.active && (b.festival === '' || b.festival === festival));
       if (banners.length === 0) banners = siteConfig.banners.filter(b => b.active && b.festival === '');
       
-      track.innerHTML = banners.map((b, i) => `
-        <div class="slide" style="background:linear-gradient(135deg, ${b.gradient[0]}, ${b.gradient[1]});">
+      track.innerHTML = banners.map((b, i) => {
+        const g = Array.isArray(b.gradient) ? b.gradient : ['#ff6600', '#ff9800'];
+        const btn = (b.btnText && b.btnLink)
+          ? `<a href="${b.btnLink}" class="btn-shop">${b.btnText}</a>` : '';
+
+        if (b.image) {
+          // Image banner: image is the background; text + button sit ON TOP
+          // over a dark gradient overlay (so content stays readable).
+          const hasText = (b.title || b.subtitle || btn);
+          const overlay = hasText
+            ? 'linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 55%, rgba(0,0,0,0) 100%), '
+            : '';
+          return `
+            <div class="slide" style="background:${overlay}url('${b.image}') center/cover no-repeat;">
+              ${hasText ? `<div class="slide-content" style="text-align:left; margin:0; margin-right:auto;">
+                ${b.title ? `<h1>${b.title}</h1>` : ''}
+                ${b.subtitle ? `<p>${b.subtitle}</p>` : ''}
+                ${btn}
+              </div>` : ''}
+            </div>`;
+        }
+
+        // Gradient banner (no image) — original centered layout
+        return `
+        <div class="slide" style="background:linear-gradient(135deg, ${g[0]}, ${g[1]});">
           <div class="slide-content">
-            <h1>${b.title}</h1>
-            <p>${b.subtitle}</p>
-            <a href="${b.btnLink}" class="btn-shop">${b.btnText}</a>
+            <h1>${b.title || ''}</h1>
+            <p>${b.subtitle || ''}</p>
+            ${btn}
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
       
       dotsDiv.innerHTML = banners.map((_, i) => `<span class="dot ${i===0?'active':''}"></span>`).join('');
     }
@@ -445,7 +468,8 @@
     // ============================================
     function renderCategories() {
       const grid = document.getElementById('categoriesGrid');
-      grid.innerHTML = categories.map(cat => `
+      // Hide "hidden" categories (e.g. age-restricted) from the homepage
+      grid.innerHTML = categories.filter(cat => !cat.hidden).map(cat => `
         <a href="products?category=${cat.slug}" class="category-card">
           <div class="cat-icon">${cat.icon}</div>
           <div class="cat-name">${cat.name}</div>
@@ -455,7 +479,9 @@
 
     function renderPopularProducts() {
       const grid = document.getElementById('popularProducts');
-      const popular = products.slice(0, 12);
+      // Don't feature age-restricted products in the homepage "popular" list
+      const restrictedSlugs = categories.filter(c => c.hidden || c.ageRestricted).map(c => c.slug);
+      const popular = products.filter(p => !restrictedSlugs.includes(p.category)).slice(0, 12);
       grid.innerHTML = popular.map(p => createProductCard(p)).join('');
     }
 

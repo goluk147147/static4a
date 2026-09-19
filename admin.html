@@ -141,6 +141,8 @@
     <div class="admin-tabs">
       <button class="active" onclick="showTab('orders')">📦 Orders</button>
       <button onclick="showTab('products')">🛍️ Products</button>
+      <button onclick="showTab('categories')">🗂️ Categories</button>
+      <button onclick="showTab('banners')">🖼️ Banners</button>
       <button onclick="showTab('users')">👥 Users</button>
       <button onclick="showTab('earnings')">💰 Earnings</button>
       <button onclick="showTab('settings')">⚙️ Settings</button>
@@ -160,6 +162,11 @@
   <!-- Product Edit Modal -->
   <div id="productModal" class="order-detail-modal hidden" onclick="if(event.target===this)closeProductModal()">
     <div class="modal-body" id="productModalBody"></div>
+  </div>
+
+  <!-- Category Edit Modal -->
+  <div id="categoryModal" class="order-detail-modal hidden" onclick="if(event.target===this)closeCategoryModal()">
+    <div class="modal-body" id="categoryModalBody"></div>
   </div>
 
   <script src="assets/js/app.js"></script>
@@ -484,7 +491,7 @@
       if (typeof event !== 'undefined' && event && event.target && event.target.classList) {
         event.target.classList.add('active');
       } else {
-        const labels = { orders: 'Orders', products: 'Products', users: 'Users', earnings: 'Earnings', settings: 'Settings' };
+        const labels = { orders: 'Orders', products: 'Products', categories: 'Categories', banners: 'Banners', users: 'Users', earnings: 'Earnings', settings: 'Settings' };
         const btn = Array.from(document.querySelectorAll('.admin-tabs button'))
           .find(b => b.textContent.includes(labels[tab] || ''));
         if (btn) btn.classList.add('active');
@@ -492,6 +499,8 @@
 
       if (tab === 'orders') renderOrdersTab();
       else if (tab === 'products') renderProductsTab();
+      else if (tab === 'categories') renderCategoriesTab();
+      else if (tab === 'banners') renderBannersTab();
       else if (tab === 'users') renderUsersTab();
       else if (tab === 'earnings') renderEarningsTab();
       else if (tab === 'settings') renderSettingsTab();
@@ -922,6 +931,149 @@
       if (count) count.textContent = filtered.length;
     }
 
+    // ==========================================================
+    // BANNERS TAB — dynamic homepage banners with live preview + publish
+    // ==========================================================
+    let bannerDraft = null;   // working copy (edited but not yet published)
+
+    function loadBanners() {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/config.php?t=' + Date.now(), false);
+        xhr.send();
+        const res = JSON.parse(xhr.responseText);
+        if (res.success && res.config && Array.isArray(res.config.banners)) {
+          return JSON.parse(JSON.stringify(res.config.banners)); // deep copy
+        }
+      } catch (e) {}
+      return [];
+    }
+
+    function renderBannersTab() {
+      if (bannerDraft === null) bannerDraft = loadBanners();
+      const list = bannerDraft.map((b, i) => {
+        const g = Array.isArray(b.gradient) ? b.gradient : ['#ff6600', '#ff9800'];
+        const bg = b.image ? `linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.35)), url('${b.image}') center/cover` : `linear-gradient(135deg,${g[0]},${g[1]})`;
+        return `
+          <div style="display:flex; gap:12px; align-items:center; border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px;">
+            <div style="flex-shrink:0; width:90px; height:54px; border-radius:8px; background:${bg}; background-size:cover; display:flex; align-items:center; justify-content:center; color:#fff; font-size:9px; text-align:center; padding:2px; overflow:hidden;">${escapeHtml((b.title||'').slice(0,22))}</div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:700; font-size:13px;">${escapeHtml(b.title || '(no title)')}</div>
+              <div style="font-size:11px; color:var(--gray);">${escapeHtml(b.subtitle || '')}</div>
+              <div style="font-size:11px; color:var(--primary);">${b.active ? '✅ Active' : '⛔ Hidden'}${b.image ? ' · 🖼️ image' : ''}${b.btnText ? ' · 🔘 ' + escapeHtml(b.btnText) : ''}</div>
+            </div>
+            <div style="flex-shrink:0; white-space:nowrap;">
+              <button onclick="editBanner(${i})" style="padding:5px 10px; background:var(--primary); color:#fff; border:none; border-radius:6px; font-size:11px; cursor:pointer; margin-right:4px;">✏️</button>
+              <button onclick="deleteBanner(${i})" style="padding:5px 10px; background:#e53935; color:#fff; border:none; border-radius:6px; font-size:11px; cursor:pointer;">🗑️</button>
+            </div>
+          </div>`;
+      }).join('') || '<p style="color:var(--gray); padding:16px 0;">No banners yet.</p>';
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+          <p style="font-size:13px; color:var(--gray);">Homepage banners — edit, preview, then publish.</p>
+          <div>
+            <button onclick="addBanner()" class="btn-add-product" style="margin-right:6px;">➕ Add Banner</button>
+            <button onclick="publishBanners()" style="padding:10px 18px; background:#2e7d32; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">🚀 Publish</button>
+          </div>
+        </div>
+        <p style="font-size:11px; color:#e65100; margin-bottom:14px;">⚠️ Changes are a draft until you click <strong>Publish</strong>. "Preview" dikhata hai website pe kaisa lagega.</p>
+        ${list}`;
+    }
+
+    function addBanner() {
+      bannerDraft.push({ title: 'New Banner', subtitle: '', btnText: 'Shop Now →', btnLink: 'products.html', gradient: ['#ff6600', '#ff9800'], image: '', active: true, festival: '' });
+      editBanner(bannerDraft.length - 1);
+    }
+
+    function deleteBanner(i) {
+      if (!confirm('Delete this banner from the draft?')) return;
+      bannerDraft.splice(i, 1);
+      renderBannersTab();
+    }
+
+    function editBanner(i) {
+      const b = bannerDraft[i];
+      const g = Array.isArray(b.gradient) ? b.gradient : ['#ff6600', '#ff9800'];
+      document.getElementById('orderDetailBody').innerHTML = `
+        <h3 style="color:var(--primary); margin-bottom:14px;">🖼️ Edit Banner</h3>
+        <div class="prod-form-grid">
+          <div class="full"><label>Title</label><input type="text" id="bTitle" value="${escapeHtml(b.title||'')}"></div>
+          <div class="full"><label>Subtitle</label><input type="text" id="bSub" value="${escapeHtml(b.subtitle||'')}"></div>
+          <div><label>Button Text</label><input type="text" id="bBtnText" value="${escapeHtml(b.btnText||'')}"></div>
+          <div><label>Button Link</label><input type="text" id="bBtnLink" value="${escapeHtml(b.btnLink||'')}"></div>
+          <div><label>Gradient Color 1</label><input type="color" id="bG1" value="${g[0]}" style="height:40px; padding:2px;"></div>
+          <div><label>Gradient Color 2</label><input type="color" id="bG2" value="${g[1]}" style="height:40px; padding:2px;"></div>
+          <div class="full"><label>Background Image URL (optional — overrides gradient)</label><input type="text" id="bImage" value="${escapeHtml(b.image||'')}" placeholder="https://..."></div>
+          <div><label>Festival (blank = always)</label><input type="text" id="bFestival" value="${escapeHtml(b.festival||'')}" placeholder="diwali / holi / blank"></div>
+          <div><label>Active?</label><select id="bActive"><option value="1" ${b.active?'selected':''}>✅ Show</option><option value="0" ${!b.active?'selected':''}>⛔ Hide</option></select></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+          <button onclick="previewBanner()" style="flex:1; padding:11px; background:var(--secondary); color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">👁️ Preview</button>
+          <button onclick="saveBannerDraft(${i})" style="flex:1; padding:11px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">💾 Save to Draft</button>
+          <button onclick="closeOrderDetail()" style="padding:11px 18px; background:var(--gray); color:#fff; border:none; border-radius:8px; cursor:pointer;">Close</button>
+        </div>`;
+      document.getElementById('orderDetailModal').classList.remove('hidden');
+    }
+
+    function readBannerForm() {
+      return {
+        title: document.getElementById('bTitle').value,
+        subtitle: document.getElementById('bSub').value,
+        btnText: document.getElementById('bBtnText').value,
+        btnLink: document.getElementById('bBtnLink').value,
+        gradient: [document.getElementById('bG1').value, document.getElementById('bG2').value],
+        image: document.getElementById('bImage').value.trim(),
+        festival: document.getElementById('bFestival').value.trim(),
+        active: document.getElementById('bActive').value === '1'
+      };
+    }
+
+    function saveBannerDraft(i) {
+      bannerDraft[i] = readBannerForm();
+      closeOrderDetail();
+      renderBannersTab();
+      showToast('Saved to draft. Click Publish to go live.', 'success');
+    }
+
+    // Live preview: show exactly how the banner will look on the website
+    function previewBanner() {
+      const b = readBannerForm();
+      const g = b.gradient;
+      const bg = b.image ? `linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.35)), url('${b.image}') center/cover no-repeat` : `linear-gradient(135deg,${g[0]},${g[1]})`;
+      const btn = (b.btnText && b.btnLink) ? `<span style="display:inline-block;margin-top:12px;padding:10px 26px;background:#fff;color:${g[0]};border-radius:30px;font-weight:700;font-size:14px;">${escapeHtml(b.btnText)}</span>` : '';
+      const ov = document.createElement('div');
+      ov.id = 'bannerPreview';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;';
+      ov.innerHTML = `<div style="width:100%;max-width:600px;">
+        <div style="background:${bg};background-size:cover;border-radius:14px;min-height:200px;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;color:#fff;">
+          <div><h1 style="font-size:1.6rem;margin:0 0 8px;">${escapeHtml(b.title||'')}</h1><p style="margin:0;">${escapeHtml(b.subtitle||'')}</p>${btn}</div>
+        </div>
+        <button onclick="document.getElementById('bannerPreview').remove()" style="display:block;margin:14px auto 0;padding:10px 30px;background:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Close Preview</button>
+      </div>`;
+      ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+      document.body.appendChild(ov);
+    }
+
+    function publishBanners() {
+      if (!confirm('Publish these banners to the live website?')) return;
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'api/config.php', false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ banners: bannerDraft }));
+        const res = JSON.parse(xhr.responseText);
+        if (res.success) {
+          if ('caches' in window) { caches.keys().then(ks => ks.forEach(k => caches.delete(k))); }
+          showToast('🚀 Banners published! (' + res.count + ') Live on website.', 'success');
+        } else {
+          showToast(res.message || 'Publish failed', 'error');
+        }
+      } catch (e) {
+        showToast('Publish failed (server error / folder not writable)', 'error');
+      }
+    }
+
     function renderProductsTab() {
       const prods = getProducts();
       const filtered = filterProducts();
@@ -1093,6 +1245,206 @@
       } else {
         showToast(res.message || 'Failed to delete', 'error');
       }
+    }
+
+    // ============================================
+    // CATEGORIES (Admin) — add / edit / delete / publish
+    // ============================================
+    function renderCategoriesTab() {
+      const cats = (typeof categories !== 'undefined' && categories.length) ? categories : [];
+      const prods = getProducts();
+      const countFor = slug => prods.filter(p => p.category === slug).length;
+
+      const rows = cats.map(c => {
+        const hidden = !!c.hidden;
+        const age = !!c.ageRestricted;
+        return `
+          <tr>
+            <td>${c.id != null ? c.id : '—'}</td>
+            <td style="font-size:22px;">${escapeHtml(c.icon || '📦')}</td>
+            <td><strong>${escapeHtml(c.name || '')}</strong>
+              ${age ? '<span style="background:#fff3cd;color:#664d03;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:6px;">🔞 18+</span>' : ''}
+              <div style="font-size:11px;color:var(--gray);">${escapeHtml(c.slug || '')}</div>
+            </td>
+            <td>${countFor(c.slug)}</td>
+            <td>
+              <span style="font-size:12px;font-weight:600;color:${hidden ? '#b45309' : '#059669'};">
+                ${hidden ? '🚫 Hidden' : '✅ Published'}
+              </span>
+            </td>
+            <td style="white-space:nowrap;">
+              <button onclick="toggleCategoryHidden(${c.id})" title="${hidden ? 'Publish (show on home)' : 'Hide from home'}"
+                style="padding:5px 9px;border:none;border-radius:6px;cursor:pointer;font-size:12px;background:${hidden ? '#059669' : '#f59e0b'};color:white;margin-right:4px;">
+                ${hidden ? '📢 Publish' : '🙈 Hide'}
+              </button>
+              <button onclick="openCategoryModal(${c.id})" style="padding:5px 9px;border:none;border-radius:6px;cursor:pointer;font-size:12px;background:var(--primary);color:white;margin-right:4px;">✏️ Edit</button>
+              <button onclick="removeCategory(${c.id})" style="padding:5px 9px;border:none;border-radius:6px;cursor:pointer;font-size:12px;background:#dc2626;color:white;">🗑️</button>
+            </td>
+          </tr>`;
+      }).join('');
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <p style="font-size:13px; color:var(--gray);"><strong>${cats.length}</strong> categories · <span style="color:#b45309;">Hidden</span> categories won't show on homepage</p>
+          <button class="btn-add-product" onclick="openCategoryModal()">➕ Add Category</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr><th>ID</th><th>Icon</th><th>Name / Slug</th><th>Products</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray);">No categories yet</td></tr>'}</tbody>
+          </table>
+        </div>`;
+    }
+
+    function openCategoryModal(id) {
+      const isEdit = id !== undefined && id !== null;
+      const cats = (typeof categories !== 'undefined' && categories.length) ? categories : [];
+      const c = isEdit ? cats.find(x => parseInt(x.id, 10) === parseInt(id, 10)) : {};
+      if (isEdit && !c) { showToast('Category not found', 'error'); return; }
+
+      document.getElementById('categoryModalBody').innerHTML = `
+        <h3 style="color:var(--primary); margin-bottom:16px;">${isEdit ? '✏️ Edit Category' : '➕ Add Category'}</h3>
+        <input type="hidden" id="cf_id" value="${isEdit ? c.id : ''}">
+        <div class="prod-form-grid">
+          <div class="full">
+            <label>Category Name *</label>
+            <input type="text" id="cf_name" value="${escapeHtml(c.name || '')}" placeholder="e.g. Snacks & Namkeen">
+          </div>
+          <div>
+            <label>Icon (emoji)</label>
+            <input type="text" id="cf_icon" value="${escapeHtml(c.icon || '')}" placeholder="🍪" maxlength="4">
+          </div>
+          <div>
+            <label>Slug ${isEdit ? '' : '(auto)'}</label>
+            <input type="text" id="cf_slug" value="${escapeHtml(c.slug || '')}" placeholder="auto from name">
+          </div>
+          <div class="full">
+            <label>Image URL (optional)</label>
+            <input type="text" id="cf_image" value="${escapeHtml(c.image || '')}" placeholder="https://...">
+          </div>
+          <div>
+            <label>Hide from homepage?</label>
+            <select id="cf_hidden">
+              <option value="0" ${!c.hidden ? 'selected' : ''}>✅ Show (Published)</option>
+              <option value="1" ${c.hidden ? 'selected' : ''}>🚫 Hidden</option>
+            </select>
+          </div>
+          <div>
+            <label>Age restricted (18+)?</label>
+            <select id="cf_age">
+              <option value="0" ${!c.ageRestricted ? 'selected' : ''}>No</option>
+              <option value="1" ${c.ageRestricted ? 'selected' : ''}>🔞 Yes (18+)</option>
+            </select>
+          </div>
+          <div class="full">
+            <label>Warning note (shown on this category page)</label>
+            <textarea id="cf_warning" placeholder="e.g. Tobacco causes cancer. Sirf 18+ ke liye.">${escapeHtml(c.warning || '')}</textarea>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:18px;">
+          <button onclick="saveCategory()" style="flex:1; padding:11px; background:var(--primary); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">💾 ${isEdit ? 'Update' : 'Add'} Category</button>
+          <button onclick="closeCategoryModal()" style="padding:11px 20px; background:var(--gray); color:white; border:none; border-radius:8px; cursor:pointer;">Cancel</button>
+        </div>`;
+
+      document.getElementById('categoryModal').classList.remove('hidden');
+    }
+
+    function closeCategoryModal() {
+      document.getElementById('categoryModal').classList.add('hidden');
+    }
+
+    // Persist a category via the API and refresh the in-memory list
+    function saveCategory() {
+      const idVal = document.getElementById('cf_id').value;
+      const payload = {
+        name: document.getElementById('cf_name').value.trim(),
+        icon: document.getElementById('cf_icon').value.trim(),
+        slug: document.getElementById('cf_slug').value.trim(),
+        image: document.getElementById('cf_image').value.trim(),
+        hidden: document.getElementById('cf_hidden').value === '1',
+        ageRestricted: document.getElementById('cf_age').value === '1',
+        warning: document.getElementById('cf_warning').value.trim()
+      };
+      if (!payload.name) { showToast('Category name is required', 'error'); return; }
+      if (idVal) payload.id = parseInt(idVal, 10);
+
+      const action = idVal ? 'update' : 'add';
+      categoryApi({ action, category: payload }, res => {
+        if (res && res.success) {
+          showToast(idVal ? 'Category updated' : 'Category added', 'success');
+          closeCategoryModal();
+          reloadCategories(renderCategoriesTab);
+        } else {
+          showToast((res && res.message) || 'Failed to save category', 'error');
+        }
+      });
+    }
+
+    function removeCategory(id) {
+      const c = (categories || []).find(x => parseInt(x.id, 10) === parseInt(id, 10));
+      if (!c) return;
+      const prods = getProducts().filter(p => p.category === c.slug);
+      const extra = prods.length ? `\n\n⚠️ ${prods.length} product(s) is category me hain. Delete karne se wo products bina category ke reh jayenge.` : '';
+      if (!confirm(`Delete category "${c.name}"?${extra}`)) return;
+      categoryApi({ action: 'delete', id: parseInt(id, 10) }, res => {
+        if (res && res.success) {
+          showToast('Category deleted', 'success');
+          reloadCategories(renderCategoriesTab);
+        } else {
+          showToast((res && res.message) || 'Failed to delete', 'error');
+        }
+      });
+    }
+
+    // Quick publish/hide toggle from the list
+    function toggleCategoryHidden(id) {
+      const c = (categories || []).find(x => parseInt(x.id, 10) === parseInt(id, 10));
+      if (!c) return;
+      const payload = {
+        id: parseInt(id, 10),
+        name: c.name, icon: c.icon || '', slug: c.slug || '', image: c.image || '',
+        hidden: !c.hidden,
+        ageRestricted: !!c.ageRestricted,
+        warning: c.warning || ''
+      };
+      categoryApi({ action: 'update', category: payload }, res => {
+        if (res && res.success) {
+          showToast(payload.hidden ? 'Category hidden from home' : 'Category published', 'success');
+          reloadCategories(renderCategoriesTab);
+        } else {
+          showToast((res && res.message) || 'Failed to update', 'error');
+        }
+      });
+    }
+
+    // POST helper for the categories API (synchronous XHR to match product flow)
+    function categoryApi(body, cb) {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'api/categories.php', false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify(body));
+        const res = JSON.parse(xhr.responseText);
+        cb(res);
+      } catch (e) {
+        cb({ success: false, message: 'Server error: ' + e.message });
+      }
+    }
+
+    // Refresh the global categories list from the server, then run a callback
+    function reloadCategories(after) {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/categories.php?_=' + Date.now(), false);
+        xhr.send();
+        const res = JSON.parse(xhr.responseText);
+        if (res && res.success && Array.isArray(res.categories)) {
+          categories = res.categories;
+        }
+      } catch (e) { /* keep existing in-memory list on failure */ }
+      if (typeof after === 'function') after();
     }
 
     function renderSettingsTab() {

@@ -131,6 +131,9 @@
         </div>
       </div>
 
+      <!-- Age-restricted category warning -->
+      <div id="catWarning" style="display:none;"></div>
+
       <!-- Results count -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px;">
         <span id="resultsCount" style="font-size:13px;color:var(--gray);">Loading...</span>
@@ -355,6 +358,9 @@
       const countEl = document.getElementById('resultsCount');
       const activeEl = document.getElementById('activeFilter');
 
+      // Age-restricted category warning banner
+      renderCategoryWarning();
+
       if (result.length === 0) {
         grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:50px 20px;"><div style="font-size:3rem;margin-bottom:12px;">🔍</div><h3>No products found</h3><p style="color:var(--gray);">Try different filter</p></div>`;
       } else {
@@ -368,6 +374,34 @@
 
       countEl.textContent = `Showing ${result.length} product${result.length!==1?'s':''}`;
       activeEl.textContent = (currentCategory || currentSearch || brand) ? '✕ Reset Filters' : '';
+    }
+
+    // Show a warning banner when an age-restricted / hidden category is open
+    function renderCategoryWarning() {
+      const box = document.getElementById('catWarning');
+      if (!box) return;
+      const cat = (categories || []).find(c => c.slug === currentCategory);
+      if (currentCategory && cat && (cat.ageRestricted || cat.hidden)) {
+        const warnText = cat.warning || 'Tobacco causes cancer. Sirf 18+ ke liye.';
+        box.style.display = 'block';
+        box.innerHTML = `
+          <div style="background:#fff3cd;border:1px solid #f0c36d;border-left:5px solid #e0a800;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start;">
+            <div style="font-size:20px;line-height:1;">🔞</div>
+            <div style="font-size:13px;color:#664d03;line-height:1.5;">
+              <strong>18+ only.</strong> ${escapeHtmlSafe(warnText)}<br>
+              <span style="opacity:.85;">Chetavani: Tambaku / nasha sehat ke liye haanikarak hai aur cancer ka kaaran ban sakta hai.</span>
+            </div>
+          </div>`;
+      } else {
+        box.style.display = 'none';
+        box.innerHTML = '';
+      }
+    }
+
+    function escapeHtmlSafe(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
   </script>
 </body>
