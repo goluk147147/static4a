@@ -43,7 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
 function injectDownloadAppButton() {
   try {
     const isInApp = !!(window.AndroidApp);   // our WebView exposes AndroidApp
-    if (isInApp) return;                     // don't show inside the app
+    if (isInApp) {
+      // Inside the app: no "Download App" button needed. Also remove the header
+      // "📋 Orders" link — Orders is already available in the bottom nav, so the
+      // app header stays clean (logo + search + cart).
+      const ordersLink = document.getElementById('headerOrdersLink');
+      if (ordersLink) ordersLink.style.display = 'none';
+      return;
+    }
     const actions = document.querySelector('.header-actions');
     if (!actions || document.getElementById('getAppBtn')) return;
     const apkUrl = new URL('4AStore.apk', window.location.href).href;

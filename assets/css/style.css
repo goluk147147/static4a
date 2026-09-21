@@ -1853,19 +1853,30 @@ img {
 
 /* ===== MOBILE HEADER FIT (stop icons getting cut off on the right) ===== */
 @media (max-width: 600px) {
+  /* On mobile/app: logo + icons stay on the top row, and the search bar
+     wraps to a FULL-WIDTH row just below (like Blinkit/Zepto). This keeps
+     search always visible even on very small screens / inside the app. */
   .header-content {
-    padding: 8px 10px !important;
+    padding: 8px 12px !important;
     gap: 8px !important;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;                 /* allow search to drop to its own row */
+    row-gap: 8px !important;
   }
-  /* Search shouldn't eat all the space; let icons stay visible */
-  .header-content .search-box {
-    flex: 1 1 auto;
-    min-width: 0;          /* allow it to shrink */
-  }
+  .header-content .logo { flex: 0 0 auto; order: 1; }
   .header-actions {
+    flex: 1 1 auto;
+    order: 2;
+    justify-content: flex-end;
     flex-shrink: 0;
     gap: 6px !important;
+  }
+  .header-content .search-box {
+    order: 3;                        /* full-width row below logo + icons */
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    display: block !important;       /* never hidden on any phone size */
   }
   .header-actions a {
     padding: 4px !important;
@@ -1875,10 +1886,6 @@ img {
   .logo img { height: 40px !important; }
   /* keep the cart count badge tidy */
   .header-actions .badge { font-size: 9px; }
-}
-/* Very small phones: hide the search box, show a search icon flow instead */
-@media (max-width: 380px) {
-  .header-content .search-box { display: none; }
 }
 
 /* (image banners now use a background image with text overlay — no special rule needed) */
