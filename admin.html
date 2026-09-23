@@ -364,6 +364,7 @@
       if (res && res.success) {
         currentAdmin = res.user;
         sessionStorage.setItem(ADMIN_KEY, 'true');
+        unlockNotifAudio();
         showDashboard();
       } else {
         document.getElementById('adminPass').parentElement.classList.add('error');
@@ -408,6 +409,7 @@
     // Each notification has read/unread state, saved in localStorage.
     // ==========================================================
     let notifPollTimer = null;
+    let notifAudioContext = null;
     const NOTIF_SEEN_KEY = '4astore_admin_seen_orders';   // order ids we've already turned into notifications
     const NOTIF_LIST_KEY = '4astore_admin_notifs';        // [{orderId, name, amount, time, read}]
 
@@ -421,24 +423,40 @@
       return getNotifs().filter(n => !n.read).length;
     }
 
+    // Unlock audio during the login gesture so mobile browsers allow later polling sounds.
+    function unlockNotifAudio() {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        if (!notifAudioContext) notifAudioContext = new AudioContextClass();
+        if (notifAudioContext.state === 'suspended') notifAudioContext.resume().catch(() => {});
+      } catch (e) { /* audio not available */ }
+    }
+
     function playNotifSound() {
       const soundOn = document.getElementById('notifSound');
       if (soundOn && !soundOn.checked) return;
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const notes = [880, 1175];
-        notes.forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          osc.connect(gain); gain.connect(ctx.destination);
-          const t = ctx.currentTime + i * 0.18;
-          gain.gain.setValueAtTime(0.001, t);
-          gain.gain.exponentialRampToValueAtTime(0.3, t + 0.03);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-          osc.start(t); osc.stop(t + 0.18);
-        });
+        unlockNotifAudio();
+        const ctx = notifAudioContext;
+        if (!ctx) return;
+        const play = () => {
+          const notes = [880, 1175];
+          notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            osc.connect(gain); gain.connect(ctx.destination);
+            const t = ctx.currentTime + i * 0.18;
+            gain.gain.setValueAtTime(0.001, t);
+            gain.gain.exponentialRampToValueAtTime(0.3, t + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+            osc.start(t); osc.stop(t + 0.18);
+          });
+        };
+        if (ctx.state === 'suspended') ctx.resume().then(play).catch(() => {});
+        else play();
       } catch (e) { /* audio not available */ }
     }
 
@@ -456,11 +474,22 @@
         u.pitch = 1;
         u.volume = 1;
         // Prefer a Hindi voice if the browser has one installed
-        const voices = window.speechSynthesis.getVoices();
-        const hindiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
-        if (hindiVoice) u.voice = hindiVoice;
-        // A short delay after the beep so the voice isn't cut off
-        setTimeout(() => window.speechSynthesis.speak(u), 450);
+        const speak = () => {
+          const voices = window.speechSynthesis.getVoices();
+          const hindiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
+          if (hindiVoice) u.voice = hindiVoice;
+          window.speechSynthesis.speak(u);
+        };
+        // A short delay after the beep so the voice isn't cut off. Some mobile
+        // browsers populate voices asynchronously, so wait briefly when needed.
+        if (window.speechSynthesis.getVoices().length) setTimeout(speak, 450);
+        else {
+          window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.onvoiceschanged = null;
+            setTimeout(speak, 450);
+          };
+          setTimeout(speak, 900);
+        }
       } catch (e) { /* speech not available */ }
     }
 
@@ -476,10 +505,14 @@
     }
 
     function getSeenOrderIds() {
-      return JSON.parse(localStorage.getItem(NOTIF_SEEN_KEY)) || [];
+      const adminId = currentAdmin && (currentAdmin.username || currentAdmin.mobile || currentAdmin.id);
+      const key = adminId ? NOTIF_SEEN_KEY + '_' + String(adminId) : NOTIF_SEEN_KEY;
+      return JSON.parse(localStorage.getItem(key)) || [];
     }
     function setSeenOrderIds(ids) {
-      localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(ids));
+      const adminId = currentAdmin && (currentAdmin.username || currentAdmin.mobile || currentAdmin.id);
+      const key = adminId ? NOTIF_SEEN_KEY + '_' + String(adminId) : NOTIF_SEEN_KEY;
+      localStorage.setItem(key, JSON.stringify(ids));
     }
 
     async function checkNewOrders(firstRun) {
@@ -618,6 +651,7 @@
 
     // Test button: fires a sample notification so you can verify sound + voice + badge
     function testNotif() {
+      unlockNotifAudio();
       const notifs = getNotifs();
       const fakeId = 'TEST' + Math.floor(1000 + Math.random() * 9000);
       notifs.unshift({ orderId: fakeId, name: 'Test Grahak', amount: 130, time: new Date().toISOString(), read: false });
