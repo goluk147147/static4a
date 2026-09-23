@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /login
+Disallow: /login.html
+Disallow: /cart
+Disallow: /cart.html
+Disallow: /checkout
+Disallow: /checkout.html
+Disallow: /profile
+Disallow: /profile.html
+Disallow: /order-history
+Disallow: /order-history.html
+Disallow: /rider
+Disallow: /rider.html
+Disallow: /track
+Disallow: /track.html
+Disallow: /generate-og.html
+Disallow: /api/
+Disallow: /data/
+
+Sitemap: https://4astore.com/sitemap.xml
