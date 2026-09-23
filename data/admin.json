@@ -1,6 +1,6 @@
 {
   "username": "admin",
-  "password": "4astore@admin",
+  "passwordHash": "$2y$10$1cDQDFBWOr6r2NcLqtYcrOt36BilnJ3lfgPn2OvSZGfs.5FTAYp0G",
   "name": "4astore Admin",
   "mobile": "8210874123",
   "role": "superadmin",

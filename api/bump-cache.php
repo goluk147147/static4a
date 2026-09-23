@@ -1,6 +1,5 @@
 <?php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+require_once __DIR__ . '/security.php';
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
@@ -24,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // POST -> increment assetVersion (admin "Clear Cache & Update" button)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requirePermission('settings');
     $v = readVer($file);
     $v['assetVersion'] = (int)$v['assetVersion'] + 1;
     file_put_contents($file, json_encode($v, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));

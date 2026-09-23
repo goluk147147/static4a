@@ -1227,5 +1227,19 @@
         "description": "Surf Excel Easy Wash Detergent Powder for tough stain removal.",
         "features": [],
         "inStock": true
+    },
+    {
+        "id": 96,
+        "name": "Aashirvaad Atta",
+        "brand": "Aashirvaad",
+        "category": "rice-atta-dal",
+        "weight": "5 Kg",
+        "mrp": 280,
+        "price": 200,
+        "discount": 29,
+        "image": "https://www.bbassets.com/media/uploads/p/m/40053356_9-ganesh-whole-wheat-chakki-atta.jpg?tr=w-154,q-80",
+        "description": "Aashirvaad Superior MP Whole Wheat Atta made from the choicest grains. Soft rotis every time.",
+        "features": [],
+        "inStock": true
     }
 ]

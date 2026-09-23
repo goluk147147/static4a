@@ -1,4 +1,4 @@
-const CACHE_NAME = '4astore-v6';
+const CACHE_NAME = '4astore-v8';
 // Relative paths (no leading "/") so the SW works both at the domain root
 // (live) and inside a subfolder (e.g. localhost/static4a/).
 // NOTE: dynamic JSON (products/settings/orders/users) is intentionally NOT

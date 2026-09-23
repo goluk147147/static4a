@@ -150,6 +150,13 @@
         <a href="products">Products</a>
         <a href="cart">My Cart</a>
         <a href="order-history">My Orders</a>
+        <a href="track.html">Track Order</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal &amp; Support</h4>
+        <a href="privacy-policy.html">Privacy Policy</a>
+        <a href="terms.html">Terms &amp; Conditions</a>
+        <a href="help-support.html">Help &amp; Support</a>
       </div>
       <div class="footer-col">
         <h4>Delivery & Payment</h4>
@@ -471,7 +478,7 @@
       // Hide "hidden" categories (e.g. age-restricted) from the homepage
       grid.innerHTML = categories.filter(cat => !cat.hidden).map(cat => `
         <a href="products?category=${cat.slug}" class="category-card">
-          <div class="cat-icon">${cat.icon}</div>
+          <div class="cat-icon">${cat.image ? `<img src="${cat.image}" alt="${cat.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';"><span style="display:none;">${cat.icon || '🛒'}</span>` : (cat.icon || '🛒')}</div>
           <div class="cat-name">${cat.name}</div>
         </a>
       `).join('');

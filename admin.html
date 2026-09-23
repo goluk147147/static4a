@@ -7,6 +7,7 @@
   <meta name="description" content="4A Store - Admin panel for managing products, orders and users.">
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
   <link rel="stylesheet" href="assets/css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     /* ===== Admin theme: BHAGWA (saffron) — scoped so storefront stays unchanged ===== */
     :root {
@@ -25,6 +26,30 @@
       margin: 0 !important;
       padding: 0 !important;      /* kill storefront mobile bottom-nav padding */
     }
+    body.admin-login-page { min-height:100vh; height:100vh; overflow:hidden; background:#ff9800 !important; color:#17324d; }
+    .admin-login { width:min(100% - 32px, 1320px); height:100vh; margin:0 auto; padding:22px 0 16px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; text-align:center; }
+    .admin-login .checkout-form { display:grid; grid-template-columns:1.08fr 1fr; height:min(570px, calc(100vh - 66px)); min-height:0; padding:0; overflow:hidden; background:#fff; border:0; border-radius:24px; box-shadow:0 22px 55px rgba(113,59,0,.22); }
+    .admin-brand-lockup { display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; min-height:100%; padding:38px 42px; text-align:left; background:linear-gradient(145deg,#fffaf3 0%,#fff 70%); border-right:2px solid #ff9800; }
+    .admin-brand-top { display:flex; align-items:center; gap:18px; }
+    .admin-brand-mark { width:92px; height:92px; flex:0 0 92px; padding:11px; box-sizing:border-box; border-radius:24px; background:linear-gradient(145deg,#fff3e6,#eaf5ff); box-shadow:0 12px 24px rgba(38,91,129,.16); }
+    .admin-brand-name { margin:0; color:#111f2f; font-size:clamp(30px,3.3vw,54px); line-height:1; letter-spacing:-1px; }
+    .admin-brand-tagline { margin:10px 0 0; color:#f07800; font-size:clamp(12px,1.2vw,18px); font-weight:800; letter-spacing:1.8px; text-transform:uppercase; }
+    .admin-grocery-hero { width:100%; margin:10px 0 0; padding:20px 22px; box-sizing:border-box; border-radius:18px; background:#fff; border:1px solid #f7dfbd; box-shadow:0 10px 24px rgba(141,83,16,.08); }
+    .admin-grocery-hero .grocery-icon { display:inline-flex; align-items:center; justify-content:center; width:54px; height:54px; margin-bottom:14px; border-radius:16px; background:#eaf7ee; font-size:30px; }
+    .admin-grocery-hero strong { display:block; color:#17324d; font-size:18px; line-height:1.2; }
+    .admin-grocery-hero p { margin:7px 0 0; color:#708295; font-size:12px; line-height:1.5; }
+    .admin-ops-pills { display:flex; flex-wrap:wrap; gap:7px; width:100%; }
+    .admin-ops-pills span { padding:7px 10px; border-radius:8px; background:#fff; border:1px solid #e7edf1; color:#456176; font-size:10px; font-weight:800; }
+    .admin-login-form { display:flex; flex-direction:column; justify-content:center; width:min(100% - 76px, 400px); margin:0 auto; text-align:left; }
+    .admin-login-heading { margin:0 0 6px; color:#111f2f; font-size:34px; font-weight:800; text-align:left; }
+    .admin-login-subtitle { margin:0 0 22px; color:#708295; font-size:13px; text-align:left; }
+    .admin-login .form-group { text-align:left; margin-bottom:14px; }
+    .admin-login .form-group label { display:block; margin-bottom:6px; color:#31526d; font-size:12px; font-weight:800; }
+    .admin-login input { width:100%; box-sizing:border-box; padding:13px 14px; border:1px solid #d6e5f0; border-radius:11px; background:#fbfdff; color:#17324d; font-size:14px; outline:none; transition:border-color .2s, box-shadow .2s; }
+    .admin-login input:focus { border-color:#ff7a00; box-shadow:0 0 0 4px rgba(255,122,0,.12); }
+    .admin-login .btn-checkout { width:100%; margin-top:10px; border-radius:9px; background:#ff9800; box-shadow:none; }
+    .admin-login .login-note { margin:18px 0 0; color:#8292a1; font-size:11px; }
+    .admin-login-footer { margin:10px 0 0; color:#fff; font-size:11px; font-weight:600; }
     /* Full-bleed background when the dashboard is on screen. A body class
        (added by JS in showDashboard) is used instead of :has() so it works
        in every browser, including older WebViews on the server. */
@@ -44,7 +69,10 @@
     /* Sidebar — fixed-width full-height column, never scrolls with content */
     .admin-sidebar { width: 240px; min-width: 240px; max-width: 240px; flex: 0 0 240px; background: linear-gradient(180deg, var(--adm-saffron-deep), var(--adm-saffron)); color: #fff; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
     .admin-sidebar .side-brand { display: flex; align-items: center; gap: 10px; padding: 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.15); }
-    .admin-sidebar .side-brand img { height: 34px; background:#fff; padding:4px 6px; border-radius:8px; }
+    .admin-sidebar .side-brand img { width:36px; height:36px; background:#fff; padding:4px; border-radius:10px; }
+    .admin-sidebar .side-brand-copy { display:flex; flex-direction:column; min-width:0; line-height:1.05; }
+    .admin-sidebar .side-brand-copy strong { font-size:16px; letter-spacing:.2px; }
+    .admin-sidebar .side-brand-copy small { margin-top:4px; font-size:8px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; opacity:.8; white-space:nowrap; }
     .admin-sidebar .side-brand .brand-tag { font-size: 10px; font-weight: 700; letter-spacing: .5px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 20px; }
     /* Nav scrolls only if it truly overflows; scrollbar hidden for a clean look */
     .admin-sidebar nav { flex: 1 1 auto; min-height: 0; padding: 10px 10px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
@@ -82,11 +110,11 @@
     .admin-table td { padding: 10px; border-bottom: 1px solid var(--border); }
     .admin-table tr:hover { background: #fffaf5; }
     .status-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .admin-login { max-width: 400px; margin: 80px auto; text-align: center; }
-    .admin-login .checkout-form { padding: 40px 30px; }
     .logout-btn { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
     .order-detail-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .order-detail-modal .modal-body { background: white; border-radius: 16px; padding: 24px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; }
+    .order-detail-modal .modal-body { background: white; border-radius: 16px; padding: 24px; max-width: 500px; width: min(100%, 500px); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing:border-box; }
+    .admin-invoice-actions { display:flex; gap:8px; margin-top:16px; }
+    .admin-invoice-actions button { flex:1; min-width:0; }
     .prod-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .prod-form-grid .full { grid-column: 1 / -1; }
     .prod-form-grid label { display: block; font-size: 12px; font-weight: 600; color: var(--primary-dark); margin-bottom: 4px; }
@@ -132,23 +160,59 @@
       .admin-sidebar { position: fixed; left: 0; top: 0; z-index: 70; transform: translateX(-100%); transition: transform .25s ease; }
       #adminDashboard.admin-shell.sidebar-open .admin-sidebar { transform: translateX(0); }
       #adminDashboard.admin-shell.sidebar-open .sidebar-backdrop { display: block; }
+      .admin-login { padding:12px 0; }
+      .admin-login .checkout-form { grid-template-columns:1fr; height:calc(100vh - 52px); border-radius:20px; }
+      .admin-brand-lockup { min-height:170px; padding:20px; border-right:0; border-bottom:2px solid #ff9800; justify-content:center; gap:12px; }
+      .admin-brand-top { gap:12px; }
+      .admin-brand-mark { width:76px; height:76px; flex-basis:76px; padding:9px; border-radius:20px; }
+      .admin-brand-name { font-size:32px; }
+      .admin-brand-tagline { font-size:10px; letter-spacing:1px; }
+      .admin-grocery-hero { margin:0; padding:12px 14px; }
+      .admin-grocery-hero .grocery-icon { width:38px; height:38px; margin-bottom:5px; font-size:22px; }
+      .admin-grocery-hero strong { font-size:14px; }
+      .admin-grocery-hero p, .admin-ops-pills { display:none; }
+      .admin-login-form { width:calc(100% - 40px); padding:22px 0 26px; }
+      .admin-login-heading { font-size:28px; }
+      .order-detail-modal { padding:12px; align-items:center; }
+      .order-detail-modal .modal-body { padding:18px 14px; border-radius:13px; max-height:calc(100vh - 24px); }
+      .admin-invoice-actions { flex-direction:column; }
     }
   </style>
 </head>
-<body>
+<body class="admin-login-page">
   <!-- Admin Login -->
   <div id="adminLogin" class="admin-login">
     <div class="checkout-form">
-      <div style="font-size:3rem; margin-bottom:12px;">🔐</div>
-      <h2 style="color:var(--primary); margin-bottom:16px;">Admin Login</h2>
-      <div class="form-group">
-        <label>Admin Password</label>
-        <input type="password" id="adminPass" placeholder="Enter admin password">
-        <div class="error-msg">Incorrect password</div>
+      <div class="admin-brand-lockup">
+        <div class="admin-brand-top">
+          <img class="admin-brand-mark" src="assets/images/favicon.svg" alt="4AStore logo">
+          <div>
+            <h1 class="admin-brand-name">4AStore</h1>
+            <p class="admin-brand-tagline">Grocery in minutes</p>
+          </div>
+        </div>
+        <div class="admin-grocery-hero">
+          <span class="grocery-icon">🛒</span>
+          <strong>Fresh groceries. Fast delivery.</strong>
+          <p>Keep orders moving, stock updated, and every neighbourhood delivery on time.</p>
+        </div>
+        <div class="admin-ops-pills"><span>📦 Orders</span><span>🥬 Fresh stock</span><span>🚴 Quick delivery</span></div>
       </div>
-      <button class="btn-checkout" onclick="adminLogin()">🔓 Login</button>
-      <p style="margin-top:12px; font-size:11px; color:var(--gray);">Default: 4astore@admin</p>
+      <form class="admin-login-form" onsubmit="event.preventDefault(); adminLogin();">
+        <h2 class="admin-login-heading">Login</h2>
+        <p class="admin-login-subtitle">Access your secure store workspace.</p>
+        <div class="form-group">
+          <label>Admin Username</label>
+          <input type="text" id="adminUser" placeholder="Enter admin username" autocomplete="username">
+          <label style="margin-top:10px;">Admin Password</label>
+          <input type="password" id="adminPass" placeholder="Enter admin password" autocomplete="current-password">
+          <div class="error-msg">Incorrect username or password</div>
+        </div>
+        <button class="btn-checkout" onclick="adminLogin()">🔓 SIGN IN</button>
+        <p class="login-note">Use your assigned admin username and password.</p>
+      </form>
     </div>
+    <p class="admin-login-footer">© 2026 4AStore · Grocery in minutes</p>
   </div>
 
   <!-- Admin Dashboard (hidden until login) -->
@@ -157,12 +221,14 @@
     <!-- Sidebar -->
     <aside class="admin-sidebar" id="adminSidebar">
       <div class="side-brand">
-        <img src="assets/images/logo.svg" alt="4A Store">
+        <img src="assets/images/favicon.svg" alt="4AStore logo">
+        <div class="side-brand-copy"><strong>4AStore</strong><small>Grocery in minutes</small></div>
         <span class="brand-tag">ADMIN</span>
       </div>
       <nav>
         <button class="side-link active" data-tab="dashboard" onclick="showTab('dashboard')"><span class="side-ic">📊</span> Dashboard</button>
         <button class="side-link" data-tab="orders" onclick="showTab('orders')"><span class="side-ic">📦</span> Orders</button>
+        <button class="side-link" data-tab="riderTracking" onclick="showTab('riderTracking')"><span class="side-ic">📍</span> Rider Tracking</button>
         <button class="side-link" data-tab="products" onclick="showTab('products')"><span class="side-ic">🛍️</span> Products</button>
         <button class="side-link" data-tab="categories" onclick="showTab('categories')"><span class="side-ic">🗂️</span> Categories</button>
         <button class="side-link" data-tab="banners" onclick="showTab('banners')"><span class="side-ic">🖼️</span> Banners</button>
@@ -170,9 +236,11 @@
         <button class="side-link" data-tab="users" onclick="showTab('users')"><span class="side-ic">👥</span> Users</button>
         <button class="side-link" data-tab="earnings" onclick="showTab('earnings')"><span class="side-ic">💰</span> Earnings</button>
         <button class="side-link" data-tab="settings" onclick="showTab('settings')"><span class="side-ic">⚙️</span> Settings</button>
+        <button class="side-link" data-tab="team" onclick="showTab('team')"><span class="side-ic">🔐</span> Team Access</button>
       </nav>
       <div class="side-foot">
         <a href="./">🏠 View Store</a>
+        <button onclick="showTab('riderTracking')" style="color:#fff;">📍 Rider Live Tracking</button>
         <button onclick="adminLogout()" style="color:#ffd0d0;">🚪 Logout</button>
       </div>
     </aside>
@@ -244,6 +312,17 @@
     <div class="modal-body" id="orderDetailBody"></div>
   </div>
 
+  <div id="adminInvoiceOptionsModal" class="order-detail-modal hidden" onclick="if(event.target===this)closeAdminInvoiceOptions()">
+    <div class="modal-body" style="max-width:430px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><h3 style="margin:0;color:var(--primary);">🖨️ Print Invoice</h3><button onclick="closeAdminInvoiceOptions()" style="background:none;border:0;font-size:24px;cursor:pointer;">×</button></div>
+      <p style="margin:0 0 12px;color:var(--gray);font-size:13px;">Choose printer paper size.</p>
+      <select id="adminInvoicePaperSize" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--border);border-radius:8px;font-size:14px;">
+        <option value="58mm">58mm Thermal Receipt</option><option value="80mm">80mm Thermal Receipt</option><option value="a3">A3</option><option value="a4" selected>A4</option><option value="a5">A5</option><option value="a6">A6</option><option value="letter">Letter</option><option value="half-letter">Half Letter</option><option value="legal">Legal</option><option value="tabloid">Tabloid</option><option value="ledger">Ledger</option><option value="b5">B5</option><option value="executive">Executive</option>
+      </select>
+      <button onclick="generateSelectedAdminInvoice()" style="width:100%;margin-top:15px;padding:11px;background:var(--primary);color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;">📄 Generate Invoice</button>
+    </div>
+  </div>
+
   <!-- Product Edit Modal -->
   <div id="productModal" class="order-detail-modal hidden" onclick="if(event.target===this)closeProductModal()">
     <div class="modal-body" id="productModalBody"></div>
@@ -258,42 +337,42 @@
   <script>
     const ADMIN_KEY = '4astore_admin_logged';
 
-    document.addEventListener('DOMContentLoaded', () => {
-      // Check if logged-in user is authorized for admin access
-      const user = getLoggedInUser();
-      const adminData = JSON.parse(localStorage.getItem('4astore_admin'));
-      const authorizedMobiles = adminData ? (adminData.authorizedMobiles || []) : [];
-      const adminMobile = adminData ? adminData.mobile : '';
-      
-      if (!user || (!authorizedMobiles.includes(user.mobile) && user.mobile !== adminMobile)) {
-        // Not authorized - redirect to home
-        showToast('Access denied. Admin only.', 'error');
-        setTimeout(() => { window.location.href = './'; }, 1000);
-        return;
-      }
+    let currentAdmin = null;
+    document.addEventListener('DOMContentLoaded', checkAdminSession);
 
-      if (sessionStorage.getItem(ADMIN_KEY) === 'true') {
-        showDashboard();
-      }
-    });
+    function checkAdminSession() {
+      fetch('api/users.php?action=session', { cache: 'no-store' }).then(r => r.json()).then(res => {
+        if (res.success && res.user && ['owner', 'admin', 'superadmin'].includes(res.user.role)) {
+          currentAdmin = res.user; showDashboard();
+        }
+      }).catch(() => {});
+    }
 
     document.getElementById('adminPass').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') adminLogin();
     });
 
     function adminLogin() {
+      const username = document.getElementById('adminUser').value.trim();
       const pass = document.getElementById('adminPass').value;
-      const adminCreds = getAdminCredentials();
-      if (pass === adminCreds.password) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', 'api/users.php', false);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify({ action: 'adminLogin', username, password: pass }));
+      let res = null;
+      try { res = JSON.parse(xhr.responseText); } catch (e) {}
+      if (res && res.success) {
+        currentAdmin = res.user;
         sessionStorage.setItem(ADMIN_KEY, 'true');
         showDashboard();
       } else {
         document.getElementById('adminPass').parentElement.classList.add('error');
-        showToast('Incorrect password', 'error');
+        showToast((res && res.message) || 'Admin login failed', 'error');
       }
     }
 
     function adminLogout() {
+      fetch('api/users.php', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'logout'}) }).catch(() => {});
       sessionStorage.removeItem(ADMIN_KEY);
       document.body.classList.remove('admin-active');
       document.getElementById('adminDashboard').classList.add('hidden');
@@ -306,9 +385,22 @@
       document.getElementById('adminLogin').style.display = 'none';
       document.getElementById('adminDashboard').classList.remove('hidden');
       document.body.classList.add('admin-active');
-      loadStats();
-      showTab('dashboard');
-      startOrderNotifications();
+      applyAdminPermissions();
+      loadAdminData().then(() => {
+        loadStats();
+        const firstTab = Object.keys(TAB_PERMISSIONS).find(tab => canAdmin(TAB_PERMISSIONS[tab]));
+        showTab(firstTab || 'dashboard');
+        startOrderNotifications();
+      });
+    }
+
+    async function loadAdminData() {
+      try {
+        const usersData = canAdmin('users') || canAdmin('team') ? await (await fetch('api/users.php?action=list', { cache: 'no-store' })).json() : { success:false };
+        const ordersData = canAdmin('orders') || canAdmin('dashboard') || canAdmin('earnings') ? await (await fetch('api/orders.php', { cache: 'no-store' })).json() : { success:false };
+        if (usersData.success) { dbUsers = usersData.users; localStorage.setItem('4astore_users', JSON.stringify(dbUsers)); }
+        if (ordersData.success) { dbOrders = ordersData.orders; localStorage.setItem('4astore_orders', JSON.stringify(dbOrders)); }
+      } catch (e) { showToast('Admin data load failed', 'error'); }
     }
 
     // ==========================================================
@@ -571,9 +663,23 @@
       document.getElementById('statTotalProducts').textContent = getProducts().length;
     }
 
-    const TAB_TITLES = { dashboard: '📊 Dashboard', orders: '📦 Orders', products: '🛍️ Products', categories: '🗂️ Categories', banners: '🖼️ Banners', ads: '📢 Ads & Social Media', users: '👥 Users', earnings: '💰 Earnings', settings: '⚙️ Settings' };
+    const TAB_TITLES = { dashboard: '📊 Dashboard', orders: '📦 Orders', riderTracking: '📍 Rider Tracking', products: '🛍️ Products', categories: '🗂️ Categories', banners: '🖼️ Banners', ads: '📢 Ads & Social Media', users: '👥 Users', earnings: '💰 Earnings', settings: '⚙️ Settings', team: '🔐 Team Access' };
+    const TAB_PERMISSIONS = { dashboard:'dashboard', orders:'orders', riderTracking:'riderTracking', products:'products', categories:'categories', banners:'banners', ads:'ads', users:'users', earnings:'earnings', settings:'settings', team:'team' };
+
+    function canAdmin(permission) {
+      return !!currentAdmin && ['owner', 'superadmin'].includes(currentAdmin.role)
+        || (!!currentAdmin && ((currentAdmin.permissions || []).includes('*') || (currentAdmin.permissions || []).includes(permission)));
+    }
+
+    function applyAdminPermissions() {
+      document.querySelectorAll('.side-link[data-tab]').forEach(link => {
+        link.style.display = canAdmin(TAB_PERMISSIONS[link.dataset.tab]) ? '' : 'none';
+      });
+      document.querySelector('.topbar-actions span:last-child').textContent = '👤 ' + (currentAdmin.name || currentAdmin.username || 'Admin');
+    }
 
     function showTab(tab) {
+      if (!canAdmin(TAB_PERMISSIONS[tab])) { showToast('You do not have permission for this section.', 'error'); return; }
       // Sync sidebar nav highlight
       document.querySelectorAll('.side-link').forEach(l => l.classList.toggle('active', l.getAttribute('data-tab') === tab));
 
@@ -592,6 +698,7 @@
 
       if (tab === 'dashboard') renderDashboardTab();
       else if (tab === 'orders') renderOrdersTab();
+      else if (tab === 'riderTracking') renderRiderTrackingTab();
       else if (tab === 'products') renderProductsTab();
       else if (tab === 'categories') renderCategoriesTab();
       else if (tab === 'banners') renderBannersTab();
@@ -599,6 +706,7 @@
       else if (tab === 'users') renderUsersTab();
       else if (tab === 'earnings') renderEarningsTab();
       else if (tab === 'settings') renderSettingsTab();
+      else if (tab === 'team') renderTeamTab();
     }
 
     // Mobile sidebar drawer. Call with no arg to toggle, or a boolean to force.
@@ -607,6 +715,61 @@
       if (!shell) return;
       const open = (typeof force === 'boolean') ? force : !shell.classList.contains('sidebar-open');
       shell.classList.toggle('sidebar-open', open);
+    }
+
+    const ADMIN_PERMISSION_OPTIONS = [
+      ['dashboard', 'Dashboard'], ['orders', 'Orders'], ['products', 'Products'],
+      ['categories', 'Categories'], ['banners', 'Banners'], ['ads', 'Ads & Social'], ['riderTracking', 'Rider Tracking'],
+      ['users', 'Users'], ['earnings', 'Earnings'], ['settings', 'Settings'], ['team', 'Team Access']
+    ];
+
+    async function renderTeamTab() {
+      if (!canAdmin('team')) return;
+      const box = document.getElementById('tabContent');
+      box.innerHTML = '<p style="color:var(--gray);">Loading team access...</p>';
+      try {
+        const res = await (await fetch('api/users.php?action=adminList', { cache: 'no-store' })).json();
+        if (!res.success) throw new Error(res.message || 'Unable to load team');
+        const checks = ADMIN_PERMISSION_OPTIONS.map(([key, label]) => '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;margin:4px 10px 4px 0;"><input type="checkbox" name="adminPermission" value="' + key + '"> ' + label + '</label>').join('');
+        const rows = (res.admins || []).map(admin => '<tr><td>' + escapeHtml(admin.username) + '</td><td>' + escapeHtml(admin.name) + '</td><td>' + escapeHtml((admin.permissions || []).join(', ')) + '</td><td style="white-space:nowrap;">' + (admin.role === 'owner' ? 'Owner account' : '<button onclick="editAdminAccount(' + Number(admin.id) + ')" style="padding:5px 9px;background:#0891b2;color:#fff;border:0;border-radius:5px;cursor:pointer;margin-right:5px;">Edit</button><button onclick="deleteAdminAccount(' + Number(admin.id) + ')" style="padding:5px 9px;background:#e53935;color:#fff;border:0;border-radius:5px;cursor:pointer;">Delete</button>') + '</td></tr>').join('');
+        box.innerHTML = '<div style="padding:16px;background:#fff8e1;border:1px solid #ffe082;border-radius:12px;margin-bottom:18px;"><h3 style="margin:0 0 12px;color:#8d5d00;">Create admin account</h3><div style="display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:8px;"><input id="newAdminUsername" placeholder="Username"><input id="newAdminName" placeholder="Name"><input id="newAdminPassword" type="password" placeholder="Password (8+ chars)"></div><div style="margin:10px 0;">' + checks + '</div><button onclick="createAdminAccount()" style="padding:9px 14px;background:#2e7d32;color:#fff;border:0;border-radius:7px;font-weight:700;cursor:pointer;">Create Admin</button></div><div style="overflow-x:auto;"><table class="admin-table"><thead><tr><th>Username</th><th>Name</th><th>Permissions</th><th>Action</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      } catch (e) { box.innerHTML = '<p style="color:#c62828;">' + escapeHtml(e.message) + '</p>'; }
+    }
+
+    function createAdminAccount() {
+      const permissions = [...document.querySelectorAll('input[name="adminPermission"]:checked')].map(el => el.value);
+      const payload = { action:'adminCreate', username:document.getElementById('newAdminUsername').value.trim(), name:document.getElementById('newAdminName').value.trim(), password:document.getElementById('newAdminPassword').value, permissions };
+      const xhr = new XMLHttpRequest(); xhr.open('POST', 'api/users.php', false); xhr.setRequestHeader('Content-Type', 'application/json'); xhr.send(JSON.stringify(payload));
+      const res = JSON.parse(xhr.responseText || '{}');
+      if (!res.success) { showToast(res.message || 'Admin creation failed', 'error'); return; }
+      showToast('Admin account created', 'success'); renderTeamTab();
+    }
+
+    async function editAdminAccount(id) {
+      try {
+        const res = await (await fetch('api/users.php?action=adminList', { cache:'no-store' })).json();
+        const admin = (res.admins || []).find(item => Number(item.id) === Number(id));
+        if (!admin) { showToast('Admin account not found', 'error'); return; }
+        const checks = ADMIN_PERMISSION_OPTIONS.map(([key, label]) => '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;margin:4px 10px 4px 0;"><input type="checkbox" name="editAdminPermission" value="' + key + '" ' + ((admin.permissions || []).includes(key) ? 'checked' : '') + '> ' + label + '</label>').join('');
+        document.getElementById('orderDetailBody').innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><h3 style="margin:0;color:var(--primary);">✏️ Edit Admin Permissions</h3><button onclick="closeOrderDetail()" style="background:none;border:0;font-size:22px;cursor:pointer;">×</button></div><p style="font-size:13px;color:var(--gray);">Username: <strong>' + escapeHtml(admin.username) + '</strong></p><label style="display:block;font-size:12px;font-weight:700;margin:10px 0 5px;">Name<input id="editAdminName" value="' + escapeHtml(admin.name || '') + '" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--border);border-radius:7px;"></label><label style="display:block;font-size:12px;font-weight:700;margin:10px 0 5px;">New password <small style="color:var(--gray);">(optional)</small><input id="editAdminPassword" type="password" autocomplete="new-password" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--border);border-radius:7px;"></label><div style="margin:12px 0;">' + checks + '</div><button onclick="saveAdminEdit(' + Number(id) + ')" style="width:100%;padding:10px;background:#2e7d32;color:#fff;border:0;border-radius:7px;font-weight:700;cursor:pointer;">Save Permissions</button>';
+        document.getElementById('orderDetailModal').classList.remove('hidden');
+      } catch (e) { showToast('Unable to load admin account', 'error'); }
+    }
+
+    function saveAdminEdit(id) {
+      const permissions = [...document.querySelectorAll('input[name="editAdminPermission"]:checked')].map(el => el.value);
+      const xhr = new XMLHttpRequest(); xhr.open('POST', 'api/users.php', false); xhr.setRequestHeader('Content-Type', 'application/json'); xhr.send(JSON.stringify({ action:'adminUpdate', id, name:document.getElementById('editAdminName').value.trim(), password:document.getElementById('editAdminPassword').value, permissions }));
+      const res = JSON.parse(xhr.responseText || '{}');
+      if (!res.success) { showToast(res.message || 'Permission update failed', 'error'); return; }
+      closeOrderDetail(); showToast('Permissions updated', 'success'); renderTeamTab();
+    }
+
+    function deleteAdminAccount(id) {
+      if (!confirm('Delete this admin account?')) return;
+      const xhr = new XMLHttpRequest(); xhr.open('POST', 'api/users.php', false); xhr.setRequestHeader('Content-Type', 'application/json'); xhr.send(JSON.stringify({ action:'adminDelete', id }));
+      const res = JSON.parse(xhr.responseText || '{}');
+      if (!res.success) { showToast(res.message || 'Delete failed', 'error'); return; }
+      showToast('Admin account deleted', 'success'); renderTeamTab();
     }
 
     // ==========================================================
@@ -800,6 +963,66 @@
         </div>`;
     }
 
+    let riderTrackingRefreshTimer = null;
+
+    async function renderRiderTrackingTab() {
+      if (!canAdmin('orders')) return;
+      if (riderTrackingRefreshTimer) { clearInterval(riderTrackingRefreshTimer); riderTrackingRefreshTimer = null; }
+      const box = document.getElementById('tabContent');
+      box.innerHTML = '<p style="text-align:center;padding:30px;color:var(--gray);">Loading rider locations...</p>';
+      await loadRiderTrackingData();
+      riderTrackingRefreshTimer = setInterval(() => {
+        if (document.querySelector('.side-link.active')?.dataset.tab === 'riderTracking') loadRiderTrackingData();
+      }, 15000);
+    }
+
+    async function loadRiderTrackingData() {
+      const box = document.getElementById('tabContent');
+      try {
+        const [trackingRes, ordersRes] = await Promise.all([
+          fetch('api/tracking.php?_=' + Date.now(), { cache: 'no-store' }),
+          fetch('api/orders.php?_=' + Date.now(), { cache: 'no-store' })
+        ]);
+        const trackingData = await trackingRes.json();
+        const ordersData = await ordersRes.json();
+        if (!trackingData.success) throw new Error(trackingData.message || 'Tracking data unavailable');
+        const all = trackingData.all || {};
+        const orders = ordersData.success && Array.isArray(ordersData.orders) ? ordersData.orders : getOrders();
+        const orderMap = {}; orders.forEach(order => { orderMap[order.orderId] = order; });
+        const rows = Object.values(all).filter(t => t && (t.riderName || t.riderMobile || t.lat !== null || t.lng !== null));
+        const active = rows.filter(t => !['Delivered', 'Cancelled'].includes(t.status));
+        const displayRows = active.length ? active : rows;
+        const cards = displayRows.map((t, index) => {
+          const order = orderMap[t.orderId] || {};
+          const hasLocation = Number.isFinite(Number(t.lat)) && Number.isFinite(Number(t.lng));
+          const mapsUrl = hasLocation ? 'https://www.google.com/maps?q=' + encodeURIComponent(t.lat + ',' + t.lng) : '';
+          const age = t.updatedAt ? Math.floor((Date.now() - new Date(t.updatedAt).getTime()) / 60000) : null;
+          const freshness = age === null ? 'No update time' : (age <= 2 ? 'Live now' : age + ' min ago');
+          const tone = age !== null && age <= 2 ? '#2e7d32' : '#ef6c00';
+          return `<div style="background:#fff;border:1px solid var(--border);border-left:4px solid ${tone};border-radius:12px;padding:15px;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;"><div><strong style="font-size:16px;color:var(--primary-dark);">🛵 ${escapeHtml(t.riderName || 'Unnamed rider')}</strong><div style="font-size:12px;color:var(--gray);margin-top:3px;">Order #${escapeHtml(t.orderId || '-')}</div></div><span style="padding:4px 8px;border-radius:12px;background:${tone}18;color:${tone};font-size:11px;font-weight:800;white-space:nowrap;">${escapeHtml(freshness)}</span></div>
+            <div style="font-size:13px;color:#445;">Status: <strong>${escapeHtml(t.status || order.orderStatus || 'Unknown')}</strong>${t.riderMobile ? ' · 📞 ' + escapeHtml(t.riderMobile) : ''}</div>
+            <div style="font-size:12px;color:var(--gray);">Customer: ${escapeHtml(order.customer?.name || '-')} · ${escapeHtml(order.customer?.city || '')}</div>
+            <div style="padding:9px;background:#f5f9fc;border-radius:8px;font-family:monospace;font-size:12px;">${hasLocation ? 'Lat ' + Number(t.lat).toFixed(6) + ' · Lng ' + Number(t.lng).toFixed(6) : 'Exact location not shared yet'}</div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;">${hasLocation ? '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:8px;background:#0891b2;color:#fff;border-radius:7px;text-decoration:none;font-size:12px;font-weight:700;">🗺️ Open Exact Location</a>' : ''}<button onclick="viewRiderTrackingDetail(${index})" style="flex:1;padding:8px;background:var(--primary);color:#fff;border:0;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;">👁️ View Details</button></div>
+          </div>`;
+        }).join('');
+        window.adminRiderTrackingRows = displayRows;
+        box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;"><div><h3 style="margin:0;color:var(--primary-dark);">📍 Rider Live Locations</h3><p style="margin:4px 0 0;color:var(--gray);font-size:12px;">${active.length} active rider${active.length === 1 ? '' : 's'} · Auto-refresh every 15 seconds</p></div><button onclick="loadRiderTrackingData()" style="padding:8px 12px;background:#eef5f8;color:#17627a;border:1px solid #cfe5ed;border-radius:7px;cursor:pointer;font-weight:700;">↻ Refresh</button></div>${displayRows.length ? '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;">' + cards + '</div>' : '<div style="padding:35px;text-align:center;background:#f8fafb;border-radius:12px;color:var(--gray);">No rider location records found.</div>'}`;
+      } catch (e) {
+        box.innerHTML = '<div style="padding:30px;text-align:center;color:#c62828;">Rider locations load nahi hui. ' + escapeHtml(e.message || '') + '</div>';
+      }
+    }
+
+    function viewRiderTrackingDetail(index) {
+      const t = (window.adminRiderTrackingRows || [])[index];
+      if (!t) return;
+      const hasLocation = Number.isFinite(Number(t.lat)) && Number.isFinite(Number(t.lng));
+      const mapsUrl = hasLocation ? 'https://www.google.com/maps?q=' + encodeURIComponent(t.lat + ',' + t.lng) : '';
+      document.getElementById('orderDetailBody').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><h3 style="margin:0;color:var(--primary);">🛵 Rider Details</h3><button onclick="closeOrderDetail()" style="background:none;border:0;font-size:22px;cursor:pointer;">×</button></div><div style="display:grid;gap:10px;font-size:14px;"><div><strong>Name:</strong> ${escapeHtml(t.riderName || '-')}</div><div><strong>Mobile:</strong> ${escapeHtml(t.riderMobile || '-')}</div><div><strong>Order:</strong> #${escapeHtml(t.orderId || '-')}</div><div><strong>Status:</strong> ${escapeHtml(t.status || '-')}</div><div><strong>Last update:</strong> ${t.updatedAt ? escapeHtml(new Date(t.updatedAt).toLocaleString()) : '-'}</div><div style="padding:12px;background:#f5f9fc;border-radius:8px;font-family:monospace;"><strong>Exact coordinates</strong><br>${hasLocation ? Number(t.lat).toFixed(8) + ', ' + Number(t.lng).toFixed(8) : 'Location not shared'}</div>${hasLocation ? '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="text-align:center;padding:11px;background:#0891b2;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;">🗺️ Open in Google Maps</a>' : ''}</div>`;
+      document.getElementById('orderDetailModal').classList.remove('hidden');
+    }
+
     function renderUsersTab() {
       const users = getUsers();
       if (users.length === 0) {
@@ -812,7 +1035,18 @@
       document.getElementById('tabContent').innerHTML = `
         <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <p style="font-size:13px; color:var(--gray);">Total: <strong>${users.length}</strong> users</p>
-          <button onclick="deleteInactiveUsers()" style="padding:8px 16px; background:#e53935; color:white; border:none; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">🗑️ Delete 30+ Days Inactive</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button onclick="addOrderForNewCustomer()" style="padding:8px 16px; background:#2e7d32; color:white; border:none; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">➕ New Customer Order</button><button onclick="deleteInactiveUsers()" style="padding:8px 16px; background:#e53935; color:white; border:none; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">🗑️ Delete 30+ Days Inactive</button></div>
+        </div>
+        <div style="margin-bottom:18px;padding:16px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:12px;">
+          <h3 style="margin:0 0 5px;color:#2e7d32;font-size:16px;">Delivery Boy Account</h3>
+          <p style="margin:0 0 12px;font-size:12px;color:#555;">Admin sets name, mobile, username and password. This login opens only the Rider page.</p>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(130px,1fr)) auto;gap:8px;align-items:end;">
+            <input id="newRiderName" type="text" placeholder="Name" style="padding:9px;border:1px solid var(--border);border-radius:7px;min-width:0;">
+            <input id="newRiderMobile" type="tel" inputmode="numeric" maxlength="10" placeholder="Mobile number" style="padding:9px;border:1px solid var(--border);border-radius:7px;min-width:0;">
+            <input id="newRiderUsername" type="text" placeholder="Username" style="padding:9px;border:1px solid var(--border);border-radius:7px;min-width:0;">
+            <input id="newRiderPassword" type="text" placeholder="Password" style="padding:9px;border:1px solid var(--border);border-radius:7px;min-width:0;">
+            <button onclick="createDeliveryBoy()" style="padding:10px 14px;background:#2e7d32;color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer;white-space:nowrap;">Create Rider</button>
+          </div>
         </div>
         <div style="overflow-x:auto;">
           <table class="admin-table">
@@ -822,6 +1056,7 @@
                 <th>Name</th>
                 <th>Username</th>
                 <th>Mobile</th>
+                <th>Role</th>
                 <th>Password</th>
                 <th>Registered</th>
                 <th>Last Login</th>
@@ -845,6 +1080,7 @@
                   <td><strong>${u.name}</strong></td>
                   <td>${u.username || '-'}</td>
                   <td><a href="tel:${u.mobile}">${u.mobile}</a></td>
+                  <td>${u.role === 'rider' ? 'Delivery Boy' : 'Customer'}</td>
                   <td style="font-family:monospace; font-size:11px;">${u.password || '-'}</td>
                   <td>${u.registeredAt ? formatDate(u.registeredAt) : '-'}</td>
                   <td>${lastLogin ? formatDate(u.lastLogin) : 'Never'}</td>
@@ -858,12 +1094,116 @@
                     <button onclick="setUserDelivery('${u.mobile}')" title="Set delivery fee" style="padding:4px 8px; background:var(--primary); color:white; border:none; border-radius:5px; cursor:pointer; font-size:11px;">✔</button>
                     <button onclick="clearUserDelivery('${u.mobile}')" title="Use global fee" style="padding:4px 8px; background:#888; color:white; border:none; border-radius:5px; cursor:pointer; font-size:11px;">↺</button>
                   </td>
-                  <td><button onclick="deleteUser('${u.mobile}', '${u.name}')" style="padding:5px 10px; background:#e53935; color:white; border:none; border-radius:6px; cursor:pointer; font-size:11px;">🗑️</button></td>
+                  <td style="white-space:nowrap;">
+                    <button onclick="editUser(${Number(u.id || 0)})" title="Edit user" style="padding:5px 8px; background:#0891b2; color:white; border:none; border-radius:6px; cursor:pointer; font-size:11px;">✏️</button>
+                    <button onclick="addOrderForUser(${Number(u.id || 0)})" title="Add order" style="padding:5px 8px; background:#2e7d32; color:white; border:none; border-radius:6px; cursor:pointer; font-size:11px;">➕ Order</button>
+                    <button onclick="deleteUser('${u.mobile}', '${String(u.name || '').replace(/'/g, "\\'")}')" title="Delete user" style="padding:5px 8px; background:#e53935; color:white; border:none; border-radius:6px; cursor:pointer; font-size:11px;">🗑️</button>
+                  </td>
                 </tr>`;
               }).join('')}
             </tbody>
           </table>
         </div>`; 
+    }
+
+    function findAdminUserById(id) {
+      return getUsers().find(u => Number(u.id) === Number(id)) || null;
+    }
+
+    function editUser(id) {
+      const user = findAdminUserById(id);
+      if (!user) { showToast('User not found', 'error'); return; }
+      document.getElementById('orderDetailBody').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><h3 style="margin:0;color:var(--primary);">✏️ Edit User</h3><button onclick="closeOrderDetail()" style="background:none;border:0;font-size:22px;cursor:pointer;">×</button></div>
+        <div class="prod-form-grid">
+          <label>Name<input id="editUserName" value="${escapeHtml(user.name || '')}"></label>
+          <label>Mobile<input id="editUserMobile" inputmode="numeric" maxlength="10" value="${escapeHtml(user.mobile || '')}"></label>
+          <label>Username<input id="editUserUsername" value="${escapeHtml(user.username || '')}"></label>
+          <label>Role<select id="editUserRole"><option value="customer" ${user.role !== 'rider' ? 'selected' : ''}>Customer</option><option value="rider" ${user.role === 'rider' ? 'selected' : ''}>Delivery Boy</option></select></label>
+          <label class="full">New password <small style="color:var(--gray);">(leave blank to keep current)</small><input id="editUserPassword" type="password" autocomplete="new-password"></label>
+        </div>
+        <button onclick="saveEditedUser(${Number(id)})" style="width:100%;margin-top:16px;padding:11px;background:var(--primary);color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;">Save User</button>`;
+      document.getElementById('orderDetailModal').classList.remove('hidden');
+    }
+
+    function saveEditedUser(id) {
+      const payload = { action:'updateUser', id, name:document.getElementById('editUserName').value.trim(), mobile:document.getElementById('editUserMobile').value.trim(), username:document.getElementById('editUserUsername').value.trim().toLowerCase(), role:document.getElementById('editUserRole').value, password:document.getElementById('editUserPassword').value };
+      const xhr = new XMLHttpRequest(); xhr.open('POST','api/users.php',false); xhr.setRequestHeader('Content-Type','application/json'); xhr.send(JSON.stringify(payload));
+      const res = JSON.parse(xhr.responseText || '{}');
+      if (!res.success) { showToast(res.message || 'User update failed', 'error'); return; }
+      const users = getUsers(); const index = users.findIndex(u => Number(u.id) === Number(id));
+      if (index >= 0) users[index] = res.user; localStorage.setItem('4astore_users', JSON.stringify(users)); dbUsers = users;
+      closeOrderDetail(); showToast('User updated', 'success'); renderUsersTab();
+    }
+
+    function addOrderForUser(id) {
+      const user = findAdminUserById(id);
+      if (!user) { showToast('User not found', 'error'); return; }
+      showAdminOrderForm(user.name, user.mobile, id);
+    }
+
+    function addOrderForNewCustomer() {
+      showAdminOrderForm('', '', 'new');
+    }
+
+    function showAdminOrderForm(customerName, customerMobile, customerKey) {
+      const options = (Array.isArray(products) ? products : []).filter(p => p.inStock !== false).map(p => `<option value="${Number(p.id)}">${escapeHtml(p.name)}${p.weight ? ' - ' + escapeHtml(p.weight) : ''} (₹${Number(p.price) || 0})</option>`).join('');
+      document.getElementById('orderDetailBody').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><h3 style="margin:0;color:var(--primary);">➕ Add Order</h3><button onclick="closeOrderDetail()" style="background:none;border:0;font-size:22px;cursor:pointer;">×</button></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;"><label style="font-size:12px;font-weight:700;color:var(--primary-dark);">Customer name<input id="adminOrderCustomerName" value="${escapeHtml(customerName)}" placeholder="Customer name" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--border);border-radius:8px;margin-top:4px;"></label><label style="font-size:12px;font-weight:700;color:var(--primary-dark);">Mobile number<input id="adminOrderCustomerMobile" value="${escapeHtml(customerMobile)}" inputmode="numeric" maxlength="10" placeholder="10-digit mobile" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--border);border-radius:8px;margin-top:4px;"></label></div>
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:5px;">Product</label>
+        <select id="adminOrderProduct" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;">${options}</select>
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--primary-dark);margin:12px 0 5px;">Quantity</label>
+        <input id="adminOrderQty" type="number" min="1" max="999" value="1" oninput="previewAdminOrderTotal()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;">
+        <p id="adminOrderTotal" style="text-align:right;font-size:18px;font-weight:800;color:var(--primary-dark);margin:14px 0;">Total: ₹0</p>
+        <button onclick="saveAdminOrder('${String(customerKey)}')" style="width:100%;padding:11px;background:#2e7d32;color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;">Create Order</button>`;
+      document.getElementById('adminOrderProduct').addEventListener('change', previewAdminOrderTotal);
+      document.getElementById('orderDetailModal').classList.remove('hidden');
+      previewAdminOrderTotal();
+    }
+
+    function previewAdminOrderTotal() {
+      const product = (products || []).find(p => Number(p.id) === Number(document.getElementById('adminOrderProduct')?.value));
+      const qty = Math.max(1, Number(document.getElementById('adminOrderQty')?.value) || 1);
+      if (product) document.getElementById('adminOrderTotal').textContent = 'Total: ₹' + ((Number(product.price) || 0) * qty);
+    }
+
+    function saveAdminOrder(customerKey) {
+      const product = (products || []).find(p => Number(p.id) === Number(document.getElementById('adminOrderProduct').value));
+      const quantity = Math.max(1, Number(document.getElementById('adminOrderQty').value) || 1);
+      const name = document.getElementById('adminOrderCustomerName').value.trim();
+      const mobile = document.getElementById('adminOrderCustomerMobile').value.trim();
+      if (!name || !/^[6-9]\d{9}$/.test(mobile) || !product) { showToast('Enter customer name, valid mobile and product', 'error'); return; }
+      const payload = { action:'adminCreate', customer:{name, mobile, email:'', address:'', city:'', pincode:'824301'}, items:[{id:product.id,name:product.name,weight:product.weight || '',price:Number(product.price) || 0,quantity}] };
+      const xhr = new XMLHttpRequest(); xhr.open('POST','api/orders.php',false); xhr.setRequestHeader('Content-Type','application/json'); xhr.send(JSON.stringify(payload));
+      const res = JSON.parse(xhr.responseText || '{}');
+      if (!res.success) { showToast(res.message || 'Order creation failed', 'error'); return; }
+      const orders = getOrders(); orders.unshift(res.order); localStorage.setItem('4astore_orders', JSON.stringify(orders)); dbOrders = orders;
+      closeOrderDetail(); showToast('Order ' + res.order.orderId + ' created', 'success'); renderUsersTab(); loadStats();
+    }
+
+    function createDeliveryBoy() {
+      const name = document.getElementById('newRiderName').value.trim();
+      const mobile = document.getElementById('newRiderMobile').value.trim();
+      const username = document.getElementById('newRiderUsername').value.trim().toLowerCase();
+      const password = document.getElementById('newRiderPassword').value;
+      if (!name || !/^[6-9]\d{9}$/.test(mobile) || username.length < 3 || password.length < 4) {
+        showToast('Enter name, valid mobile, username and 4+ character password.', 'error'); return;
+      }
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'api/users.php', false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ action: 'createRider', name, mobile, username, password }));
+        const res = JSON.parse(xhr.responseText);
+        if (!res.success) { showToast(res.message || 'Delivery boy account was not created.', 'error'); return; }
+        const users = getUsers();
+        const existingIndex = users.findIndex(u => u.mobile === res.user.mobile);
+        if (existingIndex >= 0) users[existingIndex] = res.user; else users.push(res.user);
+        localStorage.setItem('4astore_users', JSON.stringify(users)); dbUsers = users;
+        showToast('Delivery boy account created.', 'success');
+        renderUsersTab();
+      } catch (e) { showToast('Delivery boy account was not created.', 'error'); }
     }
 
     function renderEarningsTab() {
@@ -1052,6 +1392,18 @@
       updateOrderStatus(orderId, newStatus);
       showToast(`Order #${orderId} → ${newStatus}`, 'success');
       loadStats();
+      syncTrackingStatus(orderId, newStatus);   // keep customer track page in sync
+    }
+
+    // Mirror the order status into the live-tracking file so the customer's
+    // track.html page shows the same status.
+    function syncTrackingStatus(orderId, status) {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'api/tracking.php', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ action: 'setStatus', orderId: orderId, status: status }));
+      } catch (e) { /* tracking is optional */ }
     }
 
     // Set a per-user delivery fee (0 = free, 5 = ₹5, etc.)
@@ -1170,7 +1522,7 @@
       // fall back to a local copy if the server one isn't there.
       const localShots = JSON.parse(localStorage.getItem('4astore_screenshots')) || {};
       const localShot = localShots[orderId] || '';
-      const serverShot = 'data/screenshots/' + orderId + '.jpg?t=' + Date.now();
+      const serverShot = 'api/upload-screenshot.php?orderId=' + encodeURIComponent(orderId) + '&t=' + Date.now();
       // Try server .jpg first; onerror -> try .png; onerror -> local copy; else "no screenshot"
       const noShotMsg = `<p style="margin-top:12px; font-size:13px; color:var(--gray);">⚠️ No payment screenshot uploaded</p>`;
       const screenshotHTML = `
@@ -1199,6 +1551,12 @@
             <span>₹${item.price * item.quantity}</span>
           </div>
         `).join('')}
+
+        <div id="adminRiderDetails" style="margin-top:16px; padding:12px; background:#e8f5e9; border-radius:8px; font-size:14px;">
+          <strong>🛵 Rider details</strong>
+          <p style="margin:6px 0 0;color:var(--gray);">Loading rider details...</p>
+          <a href="rider?orderId=${encodeURIComponent(o.orderId)}" target="_blank" style="display:inline-block;margin-top:10px;padding:9px 12px;border-radius:8px;background:#0891b2;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">🛵 राइडर ट्रैकिंग खोलें</a>
+        </div>
         
         <div style="margin-top:12px; padding-top:12px; border-top:2px solid var(--border);">
           <div style="display:flex;justify-content:space-between;font-size:14px;"><span>Subtotal</span><span>₹${o.subtotal}</span></div>
@@ -1216,10 +1574,95 @@
         
         ${screenshotHTML}
         
+        <div class="admin-invoice-actions"><button onclick="downloadAdminInvoice('${o.orderId}')" style="padding:11px;background:var(--primary);color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:700;">📄 Download A4</button><button onclick="openAdminInvoiceOptions('${o.orderId}')" style="padding:11px;background:#0891b2;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:700;">🖨️ Print / Size</button></div>
         <button onclick="closeOrderDetail()" style="margin-top:16px; width:100%; padding:10px; background:var(--gray); color:white; border:none; border-radius:8px; cursor:pointer;">Close</button>
       `;
       
       document.getElementById('orderDetailModal').classList.remove('hidden');
+      loadAdminRiderDetails(orderId);
+    }
+
+    let selectedAdminInvoiceOrderId = '';
+
+    function openAdminInvoiceOptions(orderId) {
+      selectedAdminInvoiceOrderId = orderId;
+      document.getElementById('adminInvoiceOptionsModal').classList.remove('hidden');
+    }
+
+    function closeAdminInvoiceOptions() {
+      document.getElementById('adminInvoiceOptionsModal').classList.add('hidden');
+    }
+
+    function generateSelectedAdminInvoice() {
+      const size = document.getElementById('adminInvoicePaperSize').value;
+      closeAdminInvoiceOptions();
+      generateAdminInvoice(selectedAdminInvoiceOrderId, size);
+    }
+
+    function downloadAdminInvoice(orderId) {
+      generateAdminInvoice(orderId, 'a4');
+    }
+
+    function generateAdminThermalInvoice(order, size) {
+      const { jsPDF } = window.jspdf;
+      const width = size === '58mm' ? 58 : 80;
+      const height = Math.max(170, 145 + (order.items || []).length * 16);
+      const doc = new jsPDF({ unit:'mm', format:[width, height] });
+      const x=4, right=width-4, center=width/2; let y=9; const text=(value, align) => doc.text(String(value), align === 'right' ? right : (align === 'center' ? center : x), y, align ? {align} : undefined);
+      doc.setFont('helvetica','bold'); doc.setFontSize(13); text('4AStore','center'); y+=5; doc.setFont('helvetica','normal'); doc.setFontSize(7); text('Grocery in minutes','center'); y+=7;
+      doc.line(x,y,right,y); y+=5; text('Invoice #'+order.orderId); y+=4; text('Placed: '+new Date(order.orderDate).toLocaleString('en-IN')); y+=4; text('Status: '+(order.orderStatus||order.status||'Order Placed')); y+=4; if((order.orderStatus||order.status)==='Delivered'&&order.deliveredAt){text('Delivered: '+new Date(order.deliveredAt).toLocaleString('en-IN'));y+=4;} text('Customer: '+(order.customer.name||'-')); y+=4; text('Mobile: '+(order.customer.mobile||'-')); y+=6; doc.setFont('helvetica','bold'); text('ITEM'); text('AMOUNT','right'); y+=4; doc.setFont('helvetica','normal');
+      (order.items||[]).forEach(item=>{const amount=(Number(item.price)||0)*(Number(item.quantity)||0); text(String(item.name||'').slice(0,width===58?24:35)+' x'+item.quantity); text('Rs. '+amount,'right'); y+=4;});
+      y+=2; doc.line(x,y,right,y); y+=6; text('TOTAL'); text('Rs. '+order.totalAmount,'right'); y+=4; text('Payment: '+(order.paymentMethod||'UPI')); y+=8; doc.setFontSize(6.5); text('Thank you for shopping with 4AStore!','center');
+      doc.save('Invoice-'+order.orderId+'-'+size+'.pdf');
+    }
+
+    function adminInvoicePdfFormat(size) {
+      const formats = { a3:[841.89,1190.55], a4:[595.28,841.89], a5:[419.53,595.28], a6:[297.64,419.53], letter:[612,792], 'half-letter':[396,612], legal:[612,1008], tabloid:[792,1224], ledger:[1224,792], b5:[498.9,708.66], executive:[522.52,756] };
+      return formats[size] || formats.a4;
+    }
+
+    function generateAdminInvoice(orderId, size) {
+      const order = getOrders().find(item => item.orderId === orderId);
+      if (!order) { showToast('Order not found', 'error'); return; }
+      if (!window.jspdf || !window.jspdf.jsPDF) { showToast('Invoice library not loaded', 'error'); return; }
+      if (size === '58mm' || size === '80mm') { generateAdminThermalInvoice(order, size); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit:'pt', format:adminInvoicePdfFormat(size) });
+      const left = 40, pageW = doc.internal.pageSize.getWidth(), right = pageW - 40;
+      let y = 50; const rupee = 'Rs. ';
+      doc.setFillColor(44,111,173); doc.rect(0,0,pageW,125,'F');
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.text('4A Store',left,45);
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text('Grocery in Minutes',left,64); doc.setFontSize(8); doc.text(doc.splitTextToSize('Gajana Road, Chandargarh, Nabinagar, Bihar - 824301',right-left-20),left,86); doc.text('Phone: 8210874123',left,108); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('INVOICE',right,45,{align:'right'}); doc.setFontSize(10); doc.text('#'+order.orderId,right,64,{align:'right'});
+      y=145; doc.setTextColor(60,60,60); doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text('Customer: '+(order.customer.name||'-'),right,y,{align:'right'}); doc.text('Mobile: '+(order.customer.mobile||'-'),right,y+14,{align:'right'}); doc.text('Placed: '+new Date(order.orderDate).toLocaleString('en-IN'),right,y+28,{align:'right'}); doc.text('Status: '+(order.orderStatus||order.status||'Order Placed'),right,y+42,{align:'right'}); if((order.orderStatus||order.status)==='Delivered'&&order.deliveredAt) doc.text('Delivered: '+new Date(order.deliveredAt).toLocaleString('en-IN'),right,y+56,{align:'right'}); y+=62;
+      doc.setFillColor(240,240,240); doc.rect(left,y,right-left,22,'F'); doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text('Item',left+8,y+15); doc.text('Qty',right-200,y+15,{align:'right'}); doc.text('Amount',right-8,y+15,{align:'right'}); y+=22; doc.setFont('helvetica','normal');
+      (order.items||[]).forEach(item => { const total=(Number(item.price)||0)*(Number(item.quantity)||0); const lines=doc.splitTextToSize(String(item.name||''),right-left-230); const rowH=Math.max(18,lines.length*12+6); doc.text(lines,left+8,y+13); doc.text(String(item.quantity),right-200,y+13,{align:'right'}); doc.text(rupee+total,right-8,y+13,{align:'right'}); doc.setDrawColor(230,230,230); doc.line(left,y+rowH,right,y+rowH); y+=rowH; });
+      y+=14; const totalsX=right-200; const totalLine=(label,value,bold)=>{doc.setFont('helvetica',bold?'bold':'normal');doc.text(label,totalsX,y);doc.text(value,right-8,y,{align:'right'});y+=16;}; totalLine('Subtotal',rupee+(order.subtotal??order.totalAmount)); if(order.discount)totalLine('Discount','- '+rupee+order.discount); totalLine('Delivery',order.deliveryCharge?rupee+order.deliveryCharge:'FREE'); doc.line(totalsX,y,right,y); y+=16; doc.setTextColor(44,111,173); totalLine('Total',rupee+order.totalAmount,true); doc.setTextColor(130,130,130); doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text('Payment: '+(order.paymentMethod||'UPI'),left,y+20); doc.text('Thank you for shopping with 4A Store!',left,y+40);
+      const fileName='Invoice-'+order.orderId+'.pdf';
+      if(window.AndroidApp&&typeof window.AndroidApp.saveBase64File==='function'){try{window.AndroidApp.saveBase64File(doc.output('datauristring'),fileName,'application/pdf');showToast('Invoice saved to Downloads','success');return;}catch(e){}}
+      doc.save(fileName);
+    }
+
+    function loadAdminRiderDetails(orderId) {
+      const box = document.getElementById('adminRiderDetails');
+      if (!box) return;
+      const riderTrackingButton = '<a href="rider?orderId=' + encodeURIComponent(orderId) + '" target="_blank" style="display:inline-block;margin-top:10px;padding:9px 12px;border-radius:8px;background:#0891b2;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">🛵 राइडर ट्रैकिंग खोलें</a>';
+      fetch('api/tracking.php?orderId=' + encodeURIComponent(orderId) + '&_=' + Date.now())
+        .then(r => r.json())
+        .then(res => {
+          const rider = res && res.tracking;
+          const name = rider && String(rider.riderName || '').trim();
+          const phone = rider && String(rider.riderMobile || '').replace(/\D/g, '');
+          if (!name && !/^[6-9]\d{9}$/.test(phone)) {
+            box.innerHTML = '<strong>🛵 Rider details</strong><p style="margin:6px 0 0;color:var(--gray);">Abhi rider details available nahi hain.</p>' + riderTrackingButton;
+            return;
+          }
+          box.innerHTML = '<strong>🛵 Rider details</strong>' +
+            (name ? '<p style="margin:6px 0 0;">Naam: <strong>' + escapeHtml(name) + '</strong></p>' : '') +
+            (/^[6-9]\d{9}$/.test(phone) ? '<p style="margin:4px 0 0;">Mobile: <a href="tel:' + phone + '">' + phone + '</a></p>' : '') + riderTrackingButton;
+        })
+        .catch(() => {
+          box.innerHTML = '<strong>🛵 Rider details</strong><p style="margin:6px 0 0;color:var(--gray);">Rider details load nahi hue.</p>' + riderTrackingButton;
+        });
     }
 
     function closeOrderDetail() {
@@ -1233,7 +1676,7 @@
       if (step === '0') {
         // try .png
         img.setAttribute('data-step', '1');
-        img.src = 'data/screenshots/' + orderId + '.png?t=' + Date.now();
+        img.src = 'api/upload-screenshot.php?orderId=' + encodeURIComponent(orderId) + '&format=png&t=' + Date.now();
         return;
       }
       if (step === '1') {
@@ -1997,7 +2440,7 @@
             <button onclick="adsGoto('dashboard')" style="padding:9px 16px;border:none;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;background:var(--primary);color:#fff;">📊 Dashboard</button>
             <button onclick="adsGoto('library')" style="padding:9px 16px;border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:var(--primary-dark);">📚 Ad Library</button>
           </div>
-          <button onclick="openAdEditor()" style="padding:11px 22px;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;box-shadow:0 3px 10px rgba(255,122,0,.3);">+ Create New Ad</button>
+          <button onclick="openAdEditor(null, true)" style="padding:11px 22px;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;box-shadow:0 3px 10px rgba(255,122,0,.3);">+ Create New Ad</button>
         </div>
 
         <div class="stats-grid" style="margin-bottom:22px;">
@@ -2046,14 +2489,26 @@
         offerTitle: 'आज का खास ऑफर',
         productId: null,
         productName: '',
+        productIds: [],
+        productCount: 1,
+        productPrices: {},
+        productMrps: {},
         price: '', mrp: '', discount: '',
         format: '1:1',
         platform: 'all',
         template: 'todays-offer',
         cta: 'Order Now',
+        ctaLink: '',
+        headerTitle: '4A STORE',
+        headerTagline: 'आपकी अपनी किराना दुकान',
         localMode: true,
         lang: 'hindi',
         img: null,          // {src, zoom, x, y, rot, flipH, flipV}
+        background: null,   // {src, zoom}
+        layout: { background: {}, products: {}, title: {}, discount: {}, cta: {}, footer: {} },
+        textColors: { header: '#ffffff', title: '#ffffff', discount: '#FFD54F', cta: '#3a2400', footer: '#ffffff' },
+        hiddenLayers: {},
+        overlays: [],
         lines: [],          // extra custom text lines [{text}]
         caption: '',
         hashtags: '',
@@ -2061,7 +2516,7 @@
       };
     }
 
-    function openAdEditor(id) {
+    function openAdEditor(id, forceNew) {
       if (id != null) {
         // Load existing ad
         let ad = null;
@@ -2075,15 +2530,26 @@
         if (!ad) { showToast('Ad not found', 'error'); return; }
         adEditor = Object.assign(newAdState(), ad.creative || {}, {
           id: ad.id, name: ad.name, campaign: ad.campaign, offerTitle: ad.offerTitle,
-          productId: ad.productId, productName: ad.productName, format: ad.format,
+          productId: ad.productId, productName: ad.productName, format: ad.format, ctaLink: ad.ctaLink || ad.creative?.ctaLink || '',
+          productIds: Array.isArray(ad.creative?.productIds) ? ad.creative.productIds : [],
+          productCount: Math.max(1, Math.min(3, Number(ad.creative?.productCount || (Array.isArray(ad.creative?.productIds) ? ad.creative.productIds.length : 1)) || 1)),
+          productPrices: ad.creative?.productPrices || {},
+          productMrps: ad.creative?.productMrps || {},
           platform: ad.platform, template: ad.template, caption: ad.caption,
           hashtags: ad.hashtags, status: ad.status
         });
-      } else {
-        // Try restoring an autosaved draft
+      } else if (!forceNew) {
+        // Restore an autosaved draft only when returning to the editor, never for Create New Ad.
         const draft = localStorage.getItem(AD_DRAFT_KEY);
         adEditor = draft ? Object.assign(newAdState(), JSON.parse(draft)) : newAdState();
+      } else {
+        localStorage.removeItem(AD_DRAFT_KEY);
+        adEditor = newAdState();
       }
+      _adUndoStack = [];
+      _adRedoStack = [];
+      _adHistoryState = adSnapshot();
+      _adSelected = '';
       adsView = 'editor';
       renderAdEditor();
     }
@@ -2091,7 +2557,11 @@
     function renderAdEditor() {
       if (!adEditor) adEditor = newAdState();
       const e = adEditor;
+      e.textColors = e.textColors || {};
+      e.hiddenLayers = e.hiddenLayers || {};
       const prods = getProducts();
+      const selectedIds = Array.isArray(e.productIds) && e.productIds.length ? e.productIds : (e.productId ? [e.productId] : []);
+      const productCount = Math.max(1, Math.min(3, Number(e.productCount || selectedIds.length || 1)));
       const prodOpts = ['<option value="">— Product select karein —</option>']
         .concat(prods.map(p => `<option value="${p.id}" ${e.productId==p.id?'selected':''}>${escapeHtml(p.name)}</option>`)).join('');
       const ctaOpts = AD_CTAS.map(c => `<option value="${c}" ${e.cta===c?'selected':''}>${c}</option>`).join('');
@@ -2102,6 +2572,12 @@
         </button>`).join('');
       const fmtBtns = Object.keys(AD_FORMATS).map(f => `
         <button onclick="adSetFormat('${f}')" style="padding:7px 12px;border:1px solid ${e.format===f?'var(--primary)':'var(--border)'};border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;background:${e.format===f?'var(--primary)':'#fff'};color:${e.format===f?'#fff':'var(--primary-dark)'};">${f}</button>`).join('');
+      const layerBtns = [
+        ['background', 'Background'], ['header', 'Header'], ['products', 'Products'], ['title', 'Title'],
+        ['discount', 'Discount'], ['cta', 'Order Button'], ['footer', 'Footer']
+      ].map(([key, label]) => `<button onclick="adSelectElement('${key}')" class="ad-mini">${label}</button>`).join('') +
+        (e.overlays || []).map(item => `<button onclick="adSelectElement('overlay:${item.id}')" class="ad-mini">Image</button>`).join('') +
+        (e.lines || []).map((line, index) => `<button onclick="adSelectElement('line:${index}')" class="ad-mini">Text ${index + 1}</button>`).join('');
 
       document.getElementById('tabContent').innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
@@ -2119,14 +2595,19 @@
               <label>Offer Title</label>
               <input type="text" id="adOfferTitle" value="${escapeHtml(e.offerTitle||'')}" oninput="adField('offerTitle',this.value); adDrawSoon();">
               <label>Product</label>
+              <select id="adProductCount" onchange="adSetProductCount(this.value)"><option value="1" ${productCount===1?'selected':''}>1 Product - Hero poster</option><option value="2" ${productCount===2?'selected':''}>2 Products - Split offer</option><option value="3" ${productCount===3?'selected':''}>3 Products - Grocery grid</option></select>
               <select id="adProduct" onchange="adSelectProduct(this.value)">${prodOpts}</select>
+              <div id="adExtraProducts">${productCount > 1 ? renderExtraProductSelectors(prods, selectedIds, productCount) : ''}</div>
               <div style="display:flex;gap:8px;">
-                <div style="flex:1;"><label>Price ₹</label><input type="number" id="adPrice" value="${e.price}" oninput="adField('price',this.value); adDrawSoon();"></div>
-                <div style="flex:1;"><label>MRP ₹</label><input type="number" id="adMrp" value="${e.mrp}" oninput="adField('mrp',this.value); adDrawSoon();"></div>
+                <div style="flex:1;"><label>Price ₹</label><input type="number" id="adPrice" value="${e.price}" oninput="adSetPrimaryProductPrice(this.value)"></div>
+                <div style="flex:1;"><label>MRP ₹</label><input type="number" id="adMrp" value="${e.mrp}" oninput="adSetPrimaryProductMrp(this.value)"></div>
                 <div style="flex:1;"><label>Disc %</label><input type="number" id="adDisc" value="${e.discount}" oninput="adField('discount',this.value); adDrawSoon();"></div>
               </div>
               <label>CTA Button</label>
               <select id="adCta" onchange="adField('cta',this.value); adDrawSoon();">${ctaOpts}</select>
+              <label>CTA Link</label>
+              <input type="url" id="adCtaLink" value="${escapeHtml(e.ctaLink || '')}" placeholder="https://example.com ya products.html" oninput="adField('ctaLink',this.value)">
+              <p style="font-size:11px;color:var(--gray);margin:4px 0 0;">Live preview me Order button click karne par ye link khulega. PNG/JPG me click action nahi hota.</p>
             </div>
 
             <div class="ad-panel">
@@ -2156,10 +2637,37 @@
                   <button onclick="adImgFlip('h')" class="ad-mini">↔ Flip</button>
                   <button onclick="adImgFlip('v')" class="ad-mini">↕ Flip</button>
                   <button onclick="adImgReset()" class="ad-mini">⟳ Reset</button>
+                  <button onclick="adRemoveImageBackground()" class="ad-mini">✂ Remove Background</button>
                   <button onclick="adImgRemove()" class="ad-mini" style="background:#ffebee;color:#c62828;">🗑️ Remove</button>
                 </div>
                 <p style="font-size:11px;color:var(--gray);margin-top:6px;">💡 Preview me image ko drag karke position set karo.</p>
               </div>
+            </div>
+
+            <div class="ad-panel">
+              <h5>🖼️ Custom Background</h5>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <label class="ad-mini" style="cursor:pointer;">📤 Upload Background
+                  <input type="file" accept="image/*" style="display:none;" onchange="adLoadBackgroundFile(this.files[0])">
+                </label>
+                <button onclick="adRemoveBackground()" class="ad-mini" style="background:#ffebee;color:#c62828;">🗑️ Remove</button>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:8px;">
+                <input id="adBgUrl" type="url" value="${escapeHtml(e.background?.src && !e.background.src.startsWith('data:') ? e.background.src : '')}" placeholder="Background image URL" style="flex:1;">
+                <button onclick="adUseBackgroundUrl()" class="ad-mini" style="background:var(--primary);color:#fff;">Use URL</button>
+              </div>
+              <div style="display:${e.background?'block':'none'};margin-top:10px;">
+                <label>Background Zoom <span id="adBgZoomVal">${e.background?Math.round((e.background.zoom||1)*100):100}%</span></label>
+                <input type="range" min="50" max="200" value="${e.background?(e.background.zoom||1)*100:100}" oninput="adBackgroundZoom(this.value)" style="width:100%;">
+              </div>
+            </div>
+
+            <div class="ad-panel">
+              <h5>➕ Add Image Anywhere</h5>
+              <label class="ad-mini" style="display:inline-block;cursor:pointer;">📤 Add PNG/JPG/WEBP
+                <input type="file" accept="image/*" style="display:none;" onchange="adAddOverlayFile(this.files[0])">
+              </label>
+              <p style="font-size:11px;color:var(--gray);margin:7px 0 0;">Image add karke canvas par drag, resize ya delete karein.</p>
             </div>
 
             <div class="ad-panel">
@@ -2175,9 +2683,7 @@
               </label>
               <label style="margin-top:8px;">Language</label>
               <select id="adLang" onchange="adField('lang',this.value)">
-                <option value="hindi" ${e.lang==='hindi'?'selected':''}>Hindi</option>
-                <option value="magahi" ${e.lang==='magahi'?'selected':''}>Magahi Style</option>
-                <option value="hinglish" ${e.lang==='hinglish'?'selected':''}>Hinglish</option>
+                <option value="hindi" selected>Hindi</option>
               </select>
               <button onclick="adGenerateContent()" style="margin-top:10px;width:100%;padding:10px;background:#6a1b9a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">✨ Generate Caption + Hashtags + Hook</button>
               <div id="adHooks" style="margin-top:10px;"></div>
@@ -2195,6 +2701,20 @@
               <div id="adCanvasWrap" style="display:flex;justify-content:center;">
                 <canvas id="adCanvas" style="max-width:100%;max-height:60vh;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.15);touch-action:none;cursor:grab;"></canvas>
               </div>
+              <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:8px;background:#fff8ef;border:1px solid #ffe0b2;border-radius:8px;">
+                <strong style="font-size:12px;color:var(--primary-dark);">Selected: <span id="adSelectedElement">None</span></strong>
+                <input id="adSelectedText" type="text" placeholder="Edit selected text" oninput="adSetSelectedText(this.value)" style="min-width:150px;flex:1;">
+                <input id="adSelectedTagline" type="text" placeholder="Edit header subtitle" oninput="adSetSelectedTagline(this.value)" style="min-width:150px;flex:1;display:none;">
+                <input id="adSelectedColor" type="color" value="#ffffff" title="Text color" onchange="adSetSelectedColor(this.value)" style="width:34px;height:28px;padding:1px;">
+                <label style="font-size:11px;margin-left:auto;">Size <span id="adElementScaleVal">100%</span></label>
+                <input id="adElementScale" type="range" min="50" max="180" value="100" oninput="adSetSelectedScale(this.value)" style="width:110px;">
+                <button onclick="adUndo()" class="ad-mini">↶ Undo</button>
+                <button onclick="adRedo()" class="ad-mini">↷ Redo</button>
+                <button onclick="adDeleteSelected()" class="ad-mini" style="background:#ffebee;color:#c62828;">🗑️ Delete</button>
+                <button onclick="adResetLayout()" class="ad-mini">↺ Reset layout</button>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:7px;">${layerBtns}</div>
+              <p style="font-size:11px;color:var(--gray);text-align:center;margin:6px 0 0;">Canvas par background, products, title, discount, button ya footer ko drag karke move karein. Selected item ka size slider se badlein.</p>
               <div class="ad-actions-bar">
                 <button onclick="saveAd()" class="ad-act ad-act-primary">💾 Save</button>
                 <button onclick="adDownload('png')" class="ad-act">📥 PNG</button>
@@ -2220,6 +2740,7 @@
       // Load image if present, then draw
       adPrepareImageThenDraw();
       startAdAutoSave();
+      adSyncSelectedControls();
     }
 
     // ---- field helpers ----
@@ -2228,13 +2749,18 @@
     function adSelectProduct(id) {
       const p = getProducts().find(pr => String(pr.id) === String(id));
       adEditor.productId = id || null;
+      adEditor.productIds = [id].concat((adEditor.productIds || []).slice(1)).filter(Boolean);
       if (p) {
         adEditor.productName = p.name;
-        adEditor.price = p.price;
+        adEditor.productPrices = adEditor.productPrices || {};
+        adEditor.productMrps = adEditor.productMrps || {};
+        if (adEditor.productPrices[id] === undefined || adEditor.productPrices[id] === '') adEditor.productPrices[id] = p.price;
+        if (adEditor.productMrps[id] === undefined || adEditor.productMrps[id] === '') adEditor.productMrps[id] = p.mrp;
+        adEditor.price = adEditor.productPrices[id];
         adEditor.mrp = p.mrp;
         adEditor.discount = p.discount || '';
         if (p.image) { adSetImageSrc(p.image); }
-        const pr = document.getElementById('adPrice'); if (pr) pr.value = p.price;
+        const pr = document.getElementById('adPrice'); if (pr) pr.value = adEditor.productPrices[id];
         const mr = document.getElementById('adMrp'); if (mr) mr.value = p.mrp;
         const dc = document.getElementById('adDisc'); if (dc) dc.value = p.discount || '';
       }
@@ -2242,8 +2768,81 @@
       adDrawSoon();
     }
 
-    function adSetTemplate(k) { adEditor.template = k; renderAdEditor(); }
-    function adSetFormat(f) { adEditor.format = f; renderAdEditor(); }
+    function adSetPrimaryProductPrice(value) {
+      adField('price', value);
+      const id = adEditor.productId;
+      if (id) {
+        adEditor.productPrices = adEditor.productPrices || {};
+        adEditor.productMrps = adEditor.productMrps || {};
+        adEditor.productPrices[id] = value === '' ? '' : Math.max(0, Number(value) || 0);
+      }
+      adDrawSoon();
+    }
+
+    function adSetPrimaryProductMrp(value) {
+      adField('mrp', value);
+      const id = adEditor.productId;
+      if (id) {
+        adEditor.productMrps = adEditor.productMrps || {};
+        adEditor.productMrps[id] = value === '' ? '' : Math.max(0, Number(value) || 0);
+      }
+      adDrawSoon();
+    }
+
+    function renderExtraProductSelectors(prods, ids, count) {
+      return Array.from({length: count - 1}, (_, i) => {
+        const current = ids[i + 1] || '';
+        const options = ['<option value="">— Product ' + (i + 2) + ' —</option>'].concat(prods.map(p => '<option value="' + p.id + '" ' + (String(current) === String(p.id) ? 'selected' : '') + '>' + escapeHtml(p.name) + '</option>')).join('');
+        const product = prods.find(p => String(p.id) === String(current));
+        const price = current && adEditor.productPrices && adEditor.productPrices[current] !== undefined ? adEditor.productPrices[current] : (product ? product.price : '');
+        const mrp = current && adEditor.productMrps && adEditor.productMrps[current] !== undefined ? adEditor.productMrps[current] : (product ? product.mrp : '');
+        return '<select style="margin-top:7px;" onchange="adSelectExtraProduct(' + (i + 1) + ', this.value)">' + options + '</select><div style="display:flex;gap:6px;margin-top:6px;"><input id="adExtraPrice' + (i + 1) + '" type="number" min="0" step="0.01" value="' + escapeHtml(price == null ? '' : String(price)) + '" placeholder="Price" oninput="adSetExtraProductPrice(' + (i + 1) + ', this.value)" style="flex:1;"><input id="adExtraMrp' + (i + 1) + '" type="number" min="0" step="0.01" value="' + escapeHtml(mrp == null ? '' : String(mrp)) + '" placeholder="MRP" oninput="adSetExtraProductMrp(' + (i + 1) + ', this.value)" style="flex:1;"></div>';
+      }).join('');
+    }
+
+    function adSetProductCount(value) {
+      const count = Math.max(1, Math.min(3, Number(value) || 1));
+      const ids = Array.isArray(adEditor.productIds) && adEditor.productIds.length ? adEditor.productIds : (adEditor.productId ? [adEditor.productId] : []);
+      adEditor.productIds = ids.slice(0, count);
+      adEditor.productCount = count;
+      renderAdEditor();
+    }
+
+    function adSelectExtraProduct(index, id) {
+      adEditor.productIds = Array.isArray(adEditor.productIds) ? adEditor.productIds : [adEditor.productId].filter(Boolean);
+      adEditor.productIds[index] = id || null;
+      if (id) {
+        const product = getProducts().find(p => String(p.id) === String(id));
+        adEditor.productPrices = adEditor.productPrices || {};
+        adEditor.productMrps = adEditor.productMrps || {};
+        if (adEditor.productPrices[id] === undefined && product) adEditor.productPrices[id] = product.price;
+        if (adEditor.productMrps[id] === undefined && product) adEditor.productMrps[id] = product.mrp;
+        const priceInput = document.getElementById('adExtraPrice' + index);
+        if (priceInput) priceInput.value = adEditor.productPrices[id] == null ? '' : adEditor.productPrices[id];
+        const mrpInput = document.getElementById('adExtraMrp' + index);
+        if (mrpInput) mrpInput.value = adEditor.productMrps[id] == null ? '' : adEditor.productMrps[id];
+      }
+      queueAutoSave(); adDrawSoon();
+    }
+
+    function adSetExtraProductPrice(index, value) {
+      const id = (adEditor.productIds || [])[index];
+      if (!id) return;
+      adEditor.productPrices = adEditor.productPrices || {};
+      adEditor.productPrices[id] = value === '' ? '' : Math.max(0, Number(value) || 0);
+      queueAutoSave(); adDrawSoon();
+    }
+
+    function adSetExtraProductMrp(index, value) {
+      const id = (adEditor.productIds || [])[index];
+      if (!id) return;
+      adEditor.productMrps = adEditor.productMrps || {};
+      adEditor.productMrps[id] = value === '' ? '' : Math.max(0, Number(value) || 0);
+      queueAutoSave(); adDrawSoon();
+    }
+
+    function adSetTemplate(k) { adEditor.template = k; queueAutoSave(); renderAdEditor(); }
+    function adSetFormat(f) { adEditor.format = f; queueAutoSave(); renderAdEditor(); }
 
     // ---- template text lines ----
     function renderAdLines() {
@@ -2330,6 +2929,27 @@
               <input type="text" id="setUpiName" value="${s.upiName || ''}" placeholder="4astore" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
             </div>
           </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:180px;">
+              <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">📞 Store Phone</label>
+              <input type="text" id="setPhone" value="${s.storePhone || ''}" placeholder="8210874123" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+              <p style="font-size:11px; color:var(--gray); margin-top:4px;">Shown on ad creatives &amp; support.</p>
+            </div>
+            <div style="flex:2; min-width:220px;">
+              <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">📍 Store Address</label>
+              <input type="text" id="setAddress" value="${escapeHtml(s.storeAddress || '')}" placeholder="Gajana Road, Chandargarh..." style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">🏡 Serviceable Villages / Gaon</label>
+            <input type="text" id="setVillages" value="${escapeHtml(s.serviceableVillages || '')}" placeholder="Chandargarh, Nabinagar" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+            <p style="font-size:11px; color:var(--gray); margin-top:4px;">Comma se alag karein. Checkout pe customer ka gaon verify hoga (spelling mistake auto-correct + toast).</p>
+          </div>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:var(--primary-dark); background:#fff3e6; padding:12px; border-radius:8px;">
+            <input type="checkbox" id="setHideMrp" ${s.hideMrp ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
+            🙈 Hide MRP &amp; discount (Play Store pricing-safe mode)
+          </label>
+          <p style="font-size:11px; color:var(--gray); margin-top:-6px;">On karne pe strike-through MRP aur discount % kahin nahi dikhega — sirf selling price. Play Store submit ke waqt safe rehta hai.</p>
           <button onclick="saveStoreSettings()" style="justify-self:start; padding:11px 26px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
             💾 Save Store Settings
           </button>
@@ -2453,6 +3073,10 @@
     // ADS MODULE — image handling, canvas draw, export, caption gen, library
     // ==========================================================
     let _adImgObj = null;   // loaded HTMLImageElement for the product image
+    let _adBgObj = null;    // loaded HTMLImageElement for the custom background
+    let _adBgLoadToken = 0;
+    const _adOverlayCache = {};
+    const _adMultiImgCache = {};
 
     function adSetImageSrc(src) {
       adEditor.img = adEditor.img || { zoom: 1, x: 0, y: 0, rot: 0, flipH: false, flipV: false };
@@ -2460,6 +3084,11 @@
       // reset transform for a new image
       adEditor.img.zoom = 1; adEditor.img.x = 0; adEditor.img.y = 0; adEditor.img.rot = 0;
       adEditor.img.flipH = false; adEditor.img.flipV = false;
+
+      // Ensure the new image is loaded into the canvas image object immediately.
+      // Selecting a product or uploading a file sets the src without creating the
+      // canvas image element, which left the preview blank even though the src existed.
+      adPrepareImageThenDraw();
     }
 
     function adLoadImageFile(file) {
@@ -2468,6 +3097,136 @@
       const reader = new FileReader();
       reader.onload = ev => { adSetImageSrc(ev.target.result); renderAdEditor(); };
       reader.readAsDataURL(file);
+    }
+
+    function adSetBackgroundSrc(src) {
+      if (!src) return;
+      adEditor.background = { src, zoom: 1 };
+      const token = ++_adBgLoadToken;
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      _adBgObj = image;
+      image.onload = () => {
+        if (token !== _adBgLoadToken) return;
+        renderAdEditor(); adDraw();
+      };
+      image.onerror = () => {
+        if (token !== _adBgLoadToken) return;
+        _adBgObj = null; showToast('Background image load nahi hui', 'error'); adDraw();
+      };
+      image.src = adResolveImgSrc(src);
+      queueAutoSave();
+    }
+
+    function adLoadBackgroundFile(file) {
+      if (!file || !file.type.startsWith('image/')) { showToast('Sirf image file choose karo', 'error'); return; }
+      const reader = new FileReader();
+      reader.onload = ev => adSetBackgroundSrc(ev.target.result);
+      reader.readAsDataURL(file);
+    }
+
+    function adAddOverlayFile(file) {
+      if (!file || !file.type.startsWith('image/')) { showToast('Sirf image file choose karo', 'error'); return; }
+      const reader = new FileReader();
+      reader.onload = ev => {
+        adRecordHistory();
+        const id = 'overlay_' + Date.now();
+        adEditor.overlays = adEditor.overlays || [];
+        adEditor.overlays.push({ id, src: ev.target.result, x: 0, y: 0, scale: 1 });
+        adLoadOverlay(id, ev.target.result);
+        _adSelected = 'overlay:' + id;
+        renderAdEditor();
+        queueAutoSave();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function adLoadOverlay(id, src) {
+      if (_adOverlayCache[id]) return;
+      const image = new Image();
+      image.onload = () => adDraw();
+      image.src = adResolveImgSrc(src);
+      _adOverlayCache[id] = image;
+    }
+
+    function adDeleteSelected() {
+      if (!_adSelected) return;
+      if (_adSelected.startsWith('overlay:')) {
+        adRecordHistory();
+        const id = _adSelected.slice(8);
+        adEditor.overlays = (adEditor.overlays || []).filter(item => item.id !== id);
+        delete _adOverlayCache[id];
+        _adSelected = '';
+        renderAdEditor();
+        queueAutoSave();
+      } else if (_adSelected === 'background') {
+        if (_adSelected === 'background') adRemoveBackground();
+      } else if (_adSelected === 'products' || ['header', 'title', 'discount', 'cta', 'footer'].includes(_adSelected)) {
+        adRecordHistory();
+        adEditor.hiddenLayers = adEditor.hiddenLayers || {};
+        adEditor.hiddenLayers[_adSelected] = true;
+        adDraw();
+        queueAutoSave();
+      } else if (_adSelected.startsWith('line:')) {
+        const index = Number(_adSelected.slice(5));
+        if (Number.isInteger(index) && adEditor.lines[index]) {
+          adRecordHistory();
+          adEditor.lines.splice(index, 1);
+          _adSelected = '';
+          renderAdEditor();
+          queueAutoSave();
+        }
+      }
+    }
+
+    function adUseBackgroundUrl() {
+      const input = document.getElementById('adBgUrl');
+      const src = input ? input.value.trim() : '';
+      if (!src) { showToast('Background image URL daalo', 'info'); return; }
+      adSetBackgroundSrc(src);
+    }
+
+    function adRemoveBackground() {
+      adEditor.background = null;
+      _adBgObj = null;
+      renderAdEditor();
+      adDraw();
+      queueAutoSave();
+    }
+
+    function adBackgroundZoom(value) {
+      if (!adEditor.background) return;
+      adEditor.background.zoom = Number(value) / 100;
+      const label = document.getElementById('adBgZoomVal');
+      if (label) label.textContent = Math.round(value) + '%';
+      adDraw();
+      queueAutoSave();
+    }
+
+    function adWaitForCanvasImages() {
+      const pending = [];
+      if (_adImgObj && !_adImgObj.complete) pending.push(new Promise(resolve => {
+        _adImgObj.addEventListener('load', resolve, { once: true });
+        _adImgObj.addEventListener('error', resolve, { once: true });
+      }));
+      if (_adBgObj && !_adBgObj.complete) pending.push(new Promise(resolve => {
+        _adBgObj.addEventListener('load', resolve, { once: true });
+        _adBgObj.addEventListener('error', resolve, { once: true });
+      }));
+      Object.values(_adMultiImgCache).forEach(entry => {
+        const image = entry && entry.image;
+        if (image && !image.complete) pending.push(new Promise(resolve => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+        }));
+      });
+      Object.values(_adOverlayCache).forEach(image => {
+        if (image && !image.complete) pending.push(new Promise(resolve => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+        }));
+      });
+      return Promise.all(pending);
     }
 
     function adDropImage(ev) {
@@ -2484,7 +3243,7 @@
       adEditor.img.flipH = false; adEditor.img.flipV = false;
       const z = document.getElementById('adZoom'); if (z) z.value = 100;
       const zv = document.getElementById('adZoomVal'); if (zv) zv.textContent = '100%';
-      adDraw();
+        adDraw(); queueAutoSave();
     }
     function adImgZoom(v) {
       if (!adEditor.img) return;
@@ -2494,6 +3253,36 @@
     }
     function adImgRotate(deg) { if (!adEditor.img) return; adEditor.img.rot = ((adEditor.img.rot || 0) + deg) % 360; adDraw(); queueAutoSave(); }
     function adImgFlip(axis) { if (!adEditor.img) return; if (axis === 'h') adEditor.img.flipH = !adEditor.img.flipH; else adEditor.img.flipV = !adEditor.img.flipV; adDraw(); queueAutoSave(); }
+
+    function adRemoveImageBackground() {
+      if (!_adImgObj || !_adImgObj.width || !_adImgObj.height) { showToast('Pehle local product image upload karo', 'info'); return; }
+      try {
+        const work = document.createElement('canvas');
+        work.width = _adImgObj.width; work.height = _adImgObj.height;
+        const ctx = work.getContext('2d');
+        ctx.drawImage(_adImgObj, 0, 0);
+        const pixels = ctx.getImageData(0, 0, work.width, work.height);
+        const data = pixels.data, width = work.width, height = work.height;
+        const queue = [], seen = new Uint8Array(width * height);
+        const tolerance = 42;
+        const similar = (offset, r, g, b) => Math.abs(data[offset] - r) + Math.abs(data[offset + 1] - g) + Math.abs(data[offset + 2] - b) < tolerance * 3;
+        const add = (x, y) => { if (x >= 0 && y >= 0 && x < width && y < height) { const i = y * width + x; if (!seen[i]) { seen[i] = 1; queue.push(i); } } };
+        for (let x = 0; x < width; x++) { add(x, 0); add(x, height - 1); }
+        for (let y = 0; y < height; y++) { add(0, y); add(width - 1, y); }
+        while (queue.length) {
+          const i = queue.pop(), x = i % width, y = Math.floor(i / width), o = i * 4;
+          const r = data[o], g = data[o + 1], b = data[o + 2];
+          if (Math.min(r, g, b) < 205 || !similar(o, r, g, b)) continue;
+          data[o + 3] = 0;
+          add(x - 1, y); add(x + 1, y); add(x, y - 1); add(x, y + 1);
+        }
+        ctx.putImageData(pixels, 0, 0);
+        adSetImageSrc(work.toDataURL('image/png'));
+        showToast('Background removed (light edge background)', 'success');
+      } catch (error) {
+        showToast('Remote image par background remove nahi ho sakta. Image upload karo.', 'error');
+      }
+    }
 
     // Resolve an image src for the canvas. External http(s) URLs are routed
     // through our same-origin proxy so the canvas stays exportable (not tainted).
@@ -2523,10 +3312,152 @@
         _adImgObj = null;
         adDraw();
       }
+      if (adEditor.background && adEditor.background.src && !_adBgObj) {
+        _adBgObj = new Image();
+        _adBgObj.crossOrigin = 'anonymous';
+        _adBgObj.onload = () => adDraw();
+        _adBgObj.onerror = () => { _adBgObj = null; adDraw(); };
+        _adBgObj.src = adResolveImgSrc(adEditor.background.src);
+      }
+    }
+
+    function adPrepareMultiImages(adProducts) {
+      (adProducts || []).forEach(product => {
+        if (!product.image || _adMultiImgCache[product.id]) return;
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        _adMultiImgCache[product.id] = { loading: true, image };
+        image.onload = () => {
+          _adMultiImgCache[product.id] = { loading: false, image };
+          adDraw();
+        };
+        image.onerror = () => { _adMultiImgCache[product.id] = { loading: false, image: null }; adDraw(); };
+        image.src = adResolveImgSrc(product.image);
+      });
     }
 
     let _adDrawTimer = null;
+    let _adHitAreas = [];
+    let _adSelected = '';
+    let _adUndoStack = [];
+    let _adRedoStack = [];
+    let _adHistoryState = '';
     function adDrawSoon() { clearTimeout(_adDrawTimer); _adDrawTimer = setTimeout(adDraw, 120); }
+
+    function adSnapshot() { return JSON.stringify({ layout: adEditor.layout, textColors: adEditor.textColors, hiddenLayers: adEditor.hiddenLayers, headerTitle: adEditor.headerTitle, headerTagline: adEditor.headerTagline, offerTitle: adEditor.offerTitle, discount: adEditor.discount, cta: adEditor.cta, overlays: adEditor.overlays }); }
+    function adRecordHistory() {
+      const next = adSnapshot();
+      if (_adHistoryState && _adHistoryState !== next) _adUndoStack.push(_adHistoryState);
+      _adHistoryState = next;
+      _adRedoStack = [];
+      if (_adUndoStack.length > 30) _adUndoStack.shift();
+    }
+    function adRestoreSnapshot(snapshot) {
+      const data = JSON.parse(snapshot);
+      Object.assign(adEditor, data);
+      adEditor.textColors = adEditor.textColors || {};
+      adEditor.hiddenLayers = adEditor.hiddenLayers || {};
+      adEditor.overlays = adEditor.overlays || [];
+      _adHistoryState = snapshot;
+      renderAdEditor();
+      queueAutoSave();
+    }
+    function adUndo() {
+      if (!_adUndoStack.length) return;
+      _adRedoStack.push(adSnapshot());
+      adRestoreSnapshot(_adUndoStack.pop());
+    }
+    function adRedo() {
+      if (!_adRedoStack.length) return;
+      _adUndoStack.push(adSnapshot());
+      adRestoreSnapshot(_adRedoStack.pop());
+    }
+
+    function adLayout(key) {
+      adEditor.layout = adEditor.layout || {};
+      adEditor.layout[key] = adEditor.layout[key] || {};
+      return adEditor.layout[key];
+    }
+
+    function adSelectElement(key) {
+      _adSelected = key;
+      adSyncSelectedControls();
+      adDraw();
+    }
+
+    function adSyncSelectedControls() {
+      const selectedOverlay = _adSelected.startsWith('overlay:') ? (adEditor.overlays || []).find(item => item.id === _adSelected.slice(8)) : null;
+      const layout = selectedOverlay || (_adSelected ? adLayout(_adSelected) : {});
+      const textKeys = { header: 'headerTitle', title: 'offerTitle', discount: 'discount', cta: 'cta' };
+      const textKey = textKeys[_adSelected];
+      const textColors = adEditor.textColors || {};
+      const label = document.getElementById('adSelectedElement');
+      const slider = document.getElementById('adElementScale');
+      const value = document.getElementById('adElementScaleVal');
+      const text = document.getElementById('adSelectedText');
+      const tagline = document.getElementById('adSelectedTagline');
+      const color = document.getElementById('adSelectedColor');
+      if (label) label.textContent = _adSelected || 'None';
+      if (slider) slider.value = Math.round((layout.scale || 1) * 100);
+      if (value) value.textContent = Math.round((layout.scale || 1) * 100) + '%';
+      const lineIndex = _adSelected.startsWith('line:') ? Number(_adSelected.slice(5)) : -1;
+      if (text) { text.value = textKey ? String(adEditor[textKey] || '') : (lineIndex >= 0 && adEditor.lines[lineIndex] ? String(adEditor.lines[lineIndex].text || '') : ''); text.disabled = !textKey && lineIndex < 0; }
+      if (tagline) {
+        tagline.value = _adSelected === 'header' ? String(adEditor.headerTagline || '') : '';
+        tagline.style.display = _adSelected === 'header' ? '' : 'none';
+      }
+      if (color) { color.value = textColors[_adSelected] || '#ffffff'; color.disabled = !textKey && !['header', 'footer'].includes(_adSelected) && lineIndex < 0; }
+    }
+
+    function adSetSelectedText(value) {
+      const keys = { header: 'headerTitle', title: 'offerTitle', discount: 'discount', cta: 'cta' };
+      const lineIndex = _adSelected.startsWith('line:') ? Number(_adSelected.slice(5)) : -1;
+      if (!_adSelected || (!keys[_adSelected] && lineIndex < 0)) return;
+      adRecordHistory();
+      if (lineIndex >= 0 && adEditor.lines[lineIndex]) adEditor.lines[lineIndex].text = value;
+      else adEditor[keys[_adSelected]] = value;
+      adSyncSelectedControls();
+      adDraw(); queueAutoSave();
+    }
+
+    function adSetSelectedTagline(value) {
+      if (_adSelected !== 'header') return;
+      adRecordHistory();
+      adEditor.headerTagline = value;
+      adSyncSelectedControls();
+      adDraw(); queueAutoSave();
+    }
+
+    function adSetSelectedColor(value) {
+      if (!_adSelected || (!['header', 'title', 'discount', 'cta', 'footer'].includes(_adSelected) && !_adSelected.startsWith('line:'))) return;
+      adRecordHistory();
+      adEditor.textColors = adEditor.textColors || {};
+      adEditor.textColors[_adSelected] = value;
+      adDraw(); queueAutoSave();
+    }
+
+    function adSetSelectedScale(value) {
+      if (!_adSelected) return;
+      adRecordHistory();
+      if (_adSelected.startsWith('overlay:')) {
+        const item = (adEditor.overlays || []).find(entry => entry.id === _adSelected.slice(8));
+        if (item) item.scale = Number(value) / 100;
+      } else {
+        adLayout(_adSelected).scale = Number(value) / 100;
+      }
+      const label = document.getElementById('adElementScaleVal');
+      if (label) label.textContent = Math.round(value) + '%';
+      adDraw(); queueAutoSave();
+    }
+
+    function adResetLayout() {
+      adRecordHistory();
+      adEditor.layout = { background: {}, products: {}, title: {}, discount: {}, cta: {}, footer: {} };
+      adEditor.hiddenLayers = {};
+      _adSelected = '';
+      adSelectElement('');
+      queueAutoSave();
+    }
 
     // Core canvas renderer — draws the full creative
     function adDraw() {
@@ -2544,12 +3475,42 @@
       g.addColorStop(0, tpl.bg[0]); g.addColorStop(1, tpl.bg[1]);
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
+      // Custom background sits behind the template decorations and text.
+      if (_adBgObj && _adBgObj.width && _adBgObj.height) {
+        const bgZoom = Math.max(0.5, Number(e.background?.zoom || 1));
+        const bgLayout = adLayout('background');
+        const bgScale = Math.max(W / _adBgObj.width, H / _adBgObj.height) * bgZoom;
+        const bgW = _adBgObj.width * bgScale;
+        const bgH = _adBgObj.height * bgScale;
+        ctx.save();
+        ctx.globalAlpha = 0.88;
+        ctx.translate(W / 2 + (bgLayout.x || 0), H / 2 + (bgLayout.y || 0));
+        ctx.scale(bgLayout.scale || 1, bgLayout.scale || 1);
+        ctx.drawImage(_adBgObj, -bgW / 2, -bgH / 2, bgW, bgH);
+        ctx.restore();
+      }
+
+      // Additional user images are independent movable layers.
+      (e.overlays || []).forEach(item => {
+        if (!item.src) return;
+        adLoadOverlay(item.id, item.src);
+        const image = _adOverlayCache[item.id];
+        if (!image || !image.width) return;
+        const scale = Math.min(W / image.width, H / image.height) * 0.28 * (item.scale || 1);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        ctx.save();
+        ctx.translate(W / 2 + (item.x || 0), H / 2 + (item.y || 0));
+        ctx.drawImage(image, -width / 2, -height / 2, width, height);
+        ctx.restore();
+      });
+
       // Decorative background shapes (soft circles + accent blobs) so it doesn't
       // look flat. Kept subtle with low opacity so text stays readable.
       const _U0 = Math.min(W, H);
       ctx.save();
       ctx.globalAlpha = 0.10;
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = e.textColors.title || '#ffffff';
       ctx.beginPath(); ctx.arc(W*0.90, H*0.08, _U0*0.22, 0, Math.PI*2); ctx.fill();
       ctx.beginPath(); ctx.arc(W*0.06, H*0.92, _U0*0.26, 0, Math.PI*2); ctx.fill();
       ctx.globalAlpha = 0.14;
@@ -2570,9 +3531,20 @@
       // Every ratio: header (top) + image (flexible) + text block + footer (bottom).
       const titleTxt = (tpl.emoji + ' ' + (e.offerTitle||'') + ' ' + tpl.emoji).trim();
       const hasDisc = !!e.discount;
-      const hasPrice = !!e.price;
+      const selectedProductIds = (Array.isArray(e.productIds) && e.productIds.length ? e.productIds.filter(Boolean) : (e.productId ? [e.productId] : []))
+        .slice(0, Math.max(1, Math.min(3, Number(e.productCount || 1))));
+      const adProducts = selectedProductIds.map(id => {
+        const product = (products || []).find(p => String(p.id) === String(id));
+        return product ? Object.assign({}, product, {
+          adPrice: e.productPrices && e.productPrices[id] !== undefined && e.productPrices[id] !== '' ? Number(e.productPrices[id]) : Number(product.price) || 0,
+          adMrp: e.productMrps && e.productMrps[id] !== undefined && e.productMrps[id] !== '' ? Number(e.productMrps[id]) : Number(product.mrp) || 0
+        }) : null;
+      }).filter(Boolean);
+      const multiProduct = adProducts.length > 1;
+      if (multiProduct) adPrepareMultiImages(adProducts);
+      const hasPrice = !!e.price && !multiProduct;
       const showMrp = hasPrice && e.mrp && String(e.mrp) !== String(e.price);
-      const extraLines = (e.lines||[]).filter(l => l && l.text);
+      const extraLines = (e.lines||[]).map((line, index) => ({ line, index })).filter(item => item.line && item.line.text);
 
       // Font sizes (based on U, clamped)
       const fStore   = Math.round(U*0.075);
@@ -2617,7 +3589,8 @@
       const belowImgNeeded = textBlockH + gap*1.5 + ctaH + H*0.03;
       let imgH = footerTop - imgTop - belowImgNeeded;
       // Keep the image box within sensible bounds for the ratio
-      const minImgH = H*0.12, maxImgH = H*0.5;
+      const minImgH = multiProduct ? H*0.24 : H*0.12;
+      const maxImgH = multiProduct ? H*0.56 : H*0.5;
       imgH = Math.max(minImgH, Math.min(maxImgH, imgH));
       const maxImgW = W - pad*2;
       // Size the white card to HUG the product image (its aspect ratio) so a
@@ -2630,19 +3603,97 @@
       }
       const imgX = W/2 - imgW/2, imgY = imgTop;
       const rr = Math.round(U*0.03);
+      const productLayout = adLayout('products');
+      const productOffsetX = productLayout.x || 0;
+      const productOffsetY = productLayout.y || 0;
+      const productScale = productLayout.scale || 1;
+      const discountLayout = adLayout('discount');
 
       // ---- DRAW: Header ----
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '700 ' + fStore + 'px ' + FONT;
-      ctx.fillText('4A STORE', W/2, headerTop + fStore*0.9);
-      ctx.fillStyle = tpl.accent;
-      ctx.font = '600 ' + fTagline + 'px ' + FONT;
-      ctx.fillText('आपकी अपनी किराना दुकान', W/2, headerTop + fStore*0.9 + fTagline*1.4);
+      if (!e.hiddenLayers.header) {
+        const headerLayout = adLayout('header');
+        ctx.save();
+        ctx.translate(W / 2 + (headerLayout.x || 0), headerTop + (headerLayout.y || 0));
+        ctx.scale(headerLayout.scale || 1, headerLayout.scale || 1);
+        ctx.translate(-W / 2, -headerTop);
+        ctx.fillStyle = e.textColors.header || '#ffffff';
+        ctx.font = '700 ' + fStore + 'px ' + FONT;
+        ctx.fillText(e.headerTitle || '4A STORE', W/2, headerTop + fStore*0.9);
+        ctx.fillStyle = tpl.accent;
+        ctx.font = '600 ' + fTagline + 'px ' + FONT;
+        ctx.fillText(e.headerTagline || 'आपकी अपनी किराना दुकान', W/2, headerTop + fStore*0.9 + fTagline*1.4);
+        ctx.restore();
+      }
 
       // ---- DRAW: Image box ----
       ctx.save();
+      ctx.translate(W / 2 + productOffsetX, imgY + imgH / 2 + productOffsetY);
+      ctx.scale(productScale, productScale);
+      ctx.translate(-W / 2, -(imgY + imgH / 2));
       roundRectPath(ctx, imgX, imgY, imgW, imgH, rr);
-      if (_adImgObj && e.img) {
+      if (multiProduct && !e.hiddenLayers.products) {
+        ctx.fillStyle = 'rgba(255,255,255,0.96)'; ctx.fill(); ctx.clip();
+        const cardGap = Math.max(12, U * 0.022);
+        const cardW = (imgW - cardGap * (adProducts.length + 1)) / adProducts.length;
+        adProducts.forEach((p, i) => {
+          const cardX = imgX + cardGap + i * (cardW + cardGap);
+          const cardY = imgY + imgH * 0.045;
+          const cardH = imgH * 0.91;
+          const innerPad = Math.max(12, U * 0.022);
+          roundRectPath(ctx, cardX, cardY, cardW, cardH, rr * 0.6);
+          ctx.fillStyle = i % 2 ? '#fff7e8' : '#f2faf5'; ctx.fill();
+          ctx.strokeStyle = '#e4e8e8'; ctx.lineWidth = Math.max(1, U * 0.002); ctx.stroke();
+          const cached = _adMultiImgCache[p.id];
+          const productImg = cached && cached.image;
+          const imageTop = cardY + innerPad;
+          const imageH = cardH * 0.50;
+          if (productImg && productImg.width && productImg.height) {
+            const iw = productImg.width, ih = productImg.height;
+            const productZoom = Math.max(0.2, Number(e.img?.zoom || 1.18));
+            const scale = Math.min((cardW - innerPad * 2) / iw, imageH / ih) * 0.98 * productZoom;
+            ctx.drawImage(productImg, cardX + cardW / 2 - iw * scale / 2, imageTop + imageH / 2 - ih * scale / 2, iw * scale, ih * scale);
+          } else {
+            ctx.fillStyle = '#dfeee5';
+            ctx.font = '700 ' + Math.max(16, Math.round(U * 0.028)) + 'px ' + FONT;
+            ctx.fillText('🛒', cardX + cardW / 2, imageTop + imageH / 2);
+          }
+          const nameFont = Math.max(18, Math.min(Math.round(U * 0.045), Math.round(cardW * 0.13)));
+          const nameLineH = nameFont * 1.15;
+          ctx.fillStyle = '#17324d'; ctx.font = '800 ' + nameFont + 'px ' + FONT;
+          const nameLines = wrapLines(ctx, p.name || 'Product', cardW - innerPad * 2).slice(0, 3);
+          const nameStartY = imageTop + imageH + nameFont * 0.9;
+          nameLines.forEach((line, n) => ctx.fillText(line, cardX + cardW / 2, nameStartY + n * nameLineH));
+          const multiPriceY = cardY + cardH - innerPad * 1.8;
+          const saleFont = Math.max(18, Math.min(Math.round(U * 0.052), Math.round(cardW * 0.19)));
+          const mrpFont = Math.max(13, Math.min(Math.round(U * 0.030), Math.round(cardW * 0.13)));
+          const saleText = '₹' + p.adPrice;
+          const mrpText = p.adMrp && p.adMrp !== p.adPrice ? '₹' + p.adMrp : '';
+          ctx.font = '900 ' + saleFont + 'px ' + FONT;
+          const saleWidth = ctx.measureText(saleText).width;
+          ctx.font = '600 ' + mrpFont + 'px ' + FONT;
+          const mrpWidth = mrpText ? ctx.measureText(mrpText).width : 0;
+          const priceGap = mrpText ? Math.max(8, U * 0.012) : 0;
+          const pillWidth = Math.min(cardW - innerPad, saleWidth + mrpWidth + priceGap + innerPad);
+          const pillHeight = Math.max(30, saleFont * 1.35);
+          const pillX = cardX + cardW / 2 - pillWidth / 2;
+          const pillY = multiPriceY - pillHeight * 0.78;
+          roundRectPath(ctx, pillX, pillY, pillWidth, pillHeight, pillHeight / 2);
+          ctx.fillStyle = '#fff1a8'; ctx.fill();
+          ctx.textAlign = 'left';
+          ctx.font = '900 ' + saleFont + 'px ' + FONT;
+          ctx.fillStyle = tpl.bg[0];
+          ctx.fillText(saleText, cardX + cardW / 2 - (saleWidth + priceGap + mrpWidth) / 2, multiPriceY);
+          if (mrpText) {
+            const mrpX = cardX + cardW / 2 - (saleWidth + priceGap + mrpWidth) / 2 + saleWidth + priceGap;
+            ctx.font = '600 ' + mrpFont + 'px ' + FONT;
+            ctx.fillStyle = '#6b7280';
+            ctx.fillText(mrpText, mrpX, multiPriceY);
+            ctx.strokeStyle = '#6b7280'; ctx.lineWidth = Math.max(1, U * 0.002);
+            ctx.beginPath(); ctx.moveTo(mrpX, multiPriceY - mrpFont * 0.3); ctx.lineTo(mrpX + mrpWidth, multiPriceY - mrpFont * 0.3); ctx.stroke();
+          }
+          ctx.textAlign = 'center';
+        });
+      } else if (!e.hiddenLayers.products && _adImgObj && e.img) {
         ctx.fillStyle = '#ffffff'; ctx.fill();
         ctx.clip();
         const cx = imgX + imgW/2 + (e.img.x||0);
@@ -2653,7 +3704,7 @@
         const iw = _adImgObj.width, ih = _adImgObj.height;
         const sc = Math.min(imgW/iw, imgH/ih) * 0.92;   // contain with small margin
         ctx.drawImage(_adImgObj, -iw*sc/2, -ih*sc/2, iw*sc, ih*sc);
-      } else {
+      } else if (!e.hiddenLayers.products) {
         ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fill();
         ctx.clip();
         ctx.fillStyle = 'rgba(255,255,255,0.75)';
@@ -2666,18 +3717,34 @@
 
       // ---- DRAW: Text block (flows below the image) ----
       let y = imgY + imgH + gap*1.4;
+      const titleLayout = adLayout('title');
+      const titleScale = titleLayout.scale || 1;
 
       // Title (multi-line)
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '800 ' + fTitle + 'px ' + FONT;
-      titleLines.forEach(l => { y += fTitle; ctx.fillText(l, W/2, y); y += fTitle*0.25; });
+      if (!e.hiddenLayers.title) {
+        ctx.save();
+        ctx.translate(W / 2 + (titleLayout.x || 0), y + (titleLayout.y || 0));
+        ctx.scale(titleScale, titleScale);
+        ctx.translate(-W / 2, -y);
+        ctx.fillStyle = e.textColors.title || '#ffffff';
+        ctx.font = '800 ' + fTitle + 'px ' + FONT;
+        titleLines.forEach(l => { y += fTitle; ctx.fillText(l, W/2, y); y += fTitle*0.25; });
+        ctx.restore();
+      } else {
+        y += titleLines.length * fTitle * 1.25;
+      }
 
       // Discount badge
-      if (hasDisc) {
+      if (hasDisc && !e.hiddenLayers.discount) {
         y += gap + fDisc*0.85;
-        ctx.fillStyle = tpl.accent;
+        ctx.save();
+        ctx.translate(W / 2 + (discountLayout.x || 0), y + (discountLayout.y || 0));
+        ctx.scale(discountLayout.scale || 1, discountLayout.scale || 1);
+        ctx.translate(-W / 2, -y);
+        ctx.fillStyle = e.textColors.discount || tpl.accent;
         ctx.font = '900 ' + fDisc + 'px ' + FONT;
         ctx.fillText(e.discount + '% OFF', W/2, y);
+        ctx.restore();
       }
 
       // Price + struck MRP
@@ -2707,26 +3774,51 @@
       }
 
       // Extra custom lines
-      extraLines.forEach(ln => {
+      const lineHitAreas = [];
+      extraLines.forEach((item) => {
+        const ln = item.line;
+        const index = item.index;
         y += fLine*1.35;
+        const lineLayout = adLayout('line:' + index);
+        const lineScale = lineLayout.scale || 1;
+        ctx.save();
+        ctx.translate(W / 2 + (lineLayout.x || 0), y + (lineLayout.y || 0));
+        ctx.scale(lineScale, lineScale);
+        ctx.translate(-W / 2, -y);
         ctx.font = '600 ' + fLine + 'px ' + FONT;
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = e.textColors['line:' + index] || '#fff';
         ctx.fillText(ln.text, W/2, y);
+        ctx.restore();
+        lineHitAreas.push({ key: 'line:' + index, x: W * 0.12 + (lineLayout.x || 0), y: y - fLine + (lineLayout.y || 0), w: W * 0.76 * lineScale, h: fLine * 1.6 * lineScale });
       });
 
       // ---- DRAW: CTA button (anchored above footer) ----
       const ctaX = W/2 - ctaW/2;
       const ctaY = footerTop - H*0.02 - ctaH;
-      roundRectPath(ctx, ctaX, ctaY, ctaW, ctaH, ctaH/2);
-      ctx.fillStyle = tpl.accent; ctx.fill();
-      ctx.fillStyle = '#3a2400';
-      ctx.font = '800 ' + fCta + 'px ' + FONT;
-      ctx.textBaseline = 'middle';
-      ctx.fillText(e.cta || 'Order Now', W/2, ctaY + ctaH/2);
-      ctx.textBaseline = 'alphabetic';
+      const ctaLayout = adLayout('cta');
+      if (!e.hiddenLayers.cta) {
+        ctx.save();
+        ctx.translate(W / 2 + (ctaLayout.x || 0), ctaY + ctaH / 2 + (ctaLayout.y || 0));
+        ctx.scale(ctaLayout.scale || 1, ctaLayout.scale || 1);
+        ctx.translate(-W / 2, -(ctaY + ctaH / 2));
+        roundRectPath(ctx, ctaX, ctaY, ctaW, ctaH, ctaH/2);
+        ctx.fillStyle = tpl.accent; ctx.fill();
+        ctx.fillStyle = e.textColors.cta || '#3a2400';
+        ctx.font = '800 ' + fCta + 'px ' + FONT;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.cta || 'Order Now', W/2, ctaY + ctaH/2);
+        ctx.textBaseline = 'alphabetic';
+        ctx.restore();
+      }
 
       // ---- DRAW: Footer (phone + site, then address) anchored to bottom ----
-      ctx.fillStyle = '#ffffff';
+      const footerLayout = adLayout('footer');
+      ctx.save();
+      ctx.translate(W / 2 + (footerLayout.x || 0), footerTop + (footerLayout.y || 0));
+      ctx.scale(footerLayout.scale || 1, footerLayout.scale || 1);
+      ctx.translate(-W / 2, -footerTop);
+      if (e.hiddenLayers.footer) { ctx.restore(); } else {
+      ctx.fillStyle = e.textColors.footer || '#ffffff';
       ctx.font = '700 ' + fFoot + 'px ' + FONT;
       const phone = (s && s.storePhone) ? s.storePhone : '7543888698';
       let fy = footerTop + fFoot;
@@ -2734,6 +3826,24 @@
       ctx.font = '500 ' + fAddr + 'px ' + FONT;
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
       addrLines.forEach(l => { fy += fAddr*1.35; ctx.fillText(l, W/2, fy); });
+      ctx.restore();
+      }
+
+      _adHitAreas = [
+        { key: 'background', x: 0, y: 0, w: W, h: H },
+        ...(e.overlays || []).map(item => {
+          const image = _adOverlayCache[item.id];
+          const scale = image && image.width ? Math.min(W / image.width, H / image.height) * 0.28 * (item.scale || 1) : 120;
+          return { key: 'overlay:' + item.id, x: W / 2 + (item.x || 0) - (image ? image.width * scale / 2 : 60), y: H / 2 + (item.y || 0) - (image ? image.height * scale / 2 : 60), w: image ? image.width * scale : 120, h: image ? image.height * scale : 120 };
+        }),
+        { key: 'products', x: imgX + productOffsetX, y: imgY + productOffsetY, w: imgW * productScale, h: imgH * productScale },
+        { key: 'header', x: W * 0.18, y: headerTop - fStore * 0.2, w: W * 0.64, h: fStore + fTagline * 2.1 },
+        { key: 'title', x: W * 0.05 + (titleLayout.x || 0), y: imgY + imgH + (titleLayout.y || 0), w: W * 0.9, h: Math.max(fTitle * 1.5, titleLines.length * fTitle * 1.5) },
+        { key: 'discount', x: W * 0.2 + (discountLayout.x || 0), y: y - fDisc + (discountLayout.y || 0), w: W * 0.6, h: fDisc * 1.4 },
+        ...lineHitAreas,
+        { key: 'cta', x: ctaX + (ctaLayout.x || 0), y: ctaY + (ctaLayout.y || 0), w: ctaW * (ctaLayout.scale || 1), h: ctaH * (ctaLayout.scale || 1) },
+        { key: 'footer', x: W * 0.08 + (footerLayout.x || 0), y: footerTop + (footerLayout.y || 0), w: W * 0.84, h: footerH * (footerLayout.scale || 1) }
+      ];
     }
 
     // Wrap text into an array of lines that fit maxW (no drawing)
@@ -2773,27 +3883,57 @@
 
     // ---- drag image on canvas (mouse + touch) ----
     let _adDrag = null;
+    let _adPointerMoved = false;
     function adCanvasPointerDown(clientX, clientY) {
-      if (!adEditor.img) return;
       const canvas = document.getElementById('adCanvas');
-      _adDrag = { sx: clientX, sy: clientY, ox: adEditor.img.x||0, oy: adEditor.img.y||0, scale: canvas.width / canvas.getBoundingClientRect().width };
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = (clientX - rect.left) * canvas.width / rect.width;
+      const y = (clientY - rect.top) * canvas.height / rect.height;
+      const hit = _adHitAreas.slice().reverse().find(area => x >= area.x && x <= area.x + area.w && y >= area.y && y <= area.y + area.h);
+      const key = hit ? hit.key : 'background';
+      const overlay = key.startsWith('overlay:') ? (adEditor.overlays || []).find(item => item.id === key.slice(8)) : null;
+      const layout = overlay || adLayout(key);
+      adSelectElement(key);
+      _adPointerMoved = false;
+      _adDrag = { sx: clientX, sy: clientY, ox: layout.x || 0, oy: layout.y || 0, key, scale: canvas.width / rect.width };
     }
     function adCanvasPointerMove(clientX, clientY) {
-      if (!_adDrag || !adEditor.img) return;
-      adEditor.img.x = _adDrag.ox + (clientX - _adDrag.sx) * _adDrag.scale;
-      adEditor.img.y = _adDrag.oy + (clientY - _adDrag.sy) * _adDrag.scale;
+      if (!_adDrag) return;
+      if (Math.abs(clientX - _adDrag.sx) > 3 || Math.abs(clientY - _adDrag.sy) > 3) _adPointerMoved = true;
+      const layout = _adDrag.key.startsWith('overlay:')
+        ? (adEditor.overlays || []).find(item => item.id === _adDrag.key.slice(8))
+        : adLayout(_adDrag.key);
+      if (!layout) return;
+      layout.x = _adDrag.ox + (clientX - _adDrag.sx) * _adDrag.scale;
+      layout.y = _adDrag.oy + (clientY - _adDrag.sy) * _adDrag.scale;
       adDraw();
     }
     function adCanvasPointerUp() { if (_adDrag) { _adDrag = null; queueAutoSave(); } }
+
+    function adCanvasActivateCTA(clientX, clientY) {
+      if (_adPointerMoved || !adEditor.ctaLink) return;
+      const canvas = document.getElementById('adCanvas');
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = (clientX - rect.left) * canvas.width / rect.width;
+      const y = (clientY - rect.top) * canvas.height / rect.height;
+      const cta = _adHitAreas.find(area => area.key === 'cta');
+      if (!cta || x < cta.x || x > cta.x + cta.w || y < cta.y || y > cta.y + cta.h) return;
+      const target = String(adEditor.ctaLink).trim();
+      if (!target) return;
+      window.open(target, '_blank', 'noopener,noreferrer');
+    }
 
     // ---- Export ----
     function adSafeName(ext) {
       const parts = ['4A_STORE', (adEditor.offerTitle||'Ad'), (adEditor.discount? adEditor.discount+'off':''), new Date().toISOString().slice(0,10)];
       return parts.filter(Boolean).join('_').replace(/[^\w\-]+/g, '_') + '.' + ext;
     }
-    function adDownload(fmt) {
+    async function adDownload(fmt) {
       const canvas = document.getElementById('adCanvas');
       if (!canvas) return;
+      await adWaitForCanvasImages();
       adDraw();
       const mime = fmt === 'jpg' ? 'image/jpeg' : 'image/png';
       let dataUrl;
@@ -2831,10 +3971,12 @@
       return new Promise((resolve, reject) => {
         const canvas = document.getElementById('adCanvas');
         if (!canvas) return reject('no canvas');
-        adDraw();
-        try {
-          canvas.toBlob(b => b ? resolve(b) : reject('blob failed'), 'image/png', 0.92);
-        } catch (err) { reject(err); }
+        adWaitForCanvasImages().then(() => {
+          adDraw();
+          try {
+            canvas.toBlob(b => b ? resolve(b) : reject('blob failed'), 'image/png', 0.92);
+          } catch (err) { reject(err); }
+        });
       });
     }
 
@@ -2892,29 +4034,38 @@
       const e = adEditor;
       const s = getSettings();
       const area = 'चंद्रगढ़';
-      const offer = e.offerTitle || 'खास ऑफर';
       const disc = e.discount ? (e.discount + '% छूट') : 'बढ़िया छूट';
-      const prod = e.productName || 'ताज़ा सामान';
       const phone = (s && s.storePhone) ? s.storePhone : '7543888698';
-
-      let caption = '';
-      if (e.lang === 'magahi') {
-        caption = `${area} वाला सुनऽ! 😍\n4A STORE पर ${prod} पर ${disc} बा।\nघरे बइठल ऑर्डर करऽ, सामान घरे पहुँचतौ! ❤️\n📞 ${phone}`;
-      } else if (e.lang === 'hinglish') {
-        caption = `${area} walo dhyaan do! 😄\n4A STORE par ${prod} par ${disc}!\nGhar baithe order karo, free home delivery. 🛵\n📞 ${phone}`;
-      } else {
-        caption = `${area} वालों! 😍\nआज 4A STORE पर ${prod} पर ${disc} है।\nताज़ा सामान, बढ़िया बचत और अपने ही बाज़ार की अपनी दुकान! ❤️\nघर बैठे ऑर्डर करें 🛵\n📞 ${phone}`;
-      }
-
-      const hashtags = `#4AStore #${area} #Nabinagar #Aurangabad #GroceryStore #HomeDelivery #KiranaStore #Offer`;
-
+      const selectedIds = Array.isArray(e.productIds) && e.productIds.length ? e.productIds.filter(Boolean) : (e.productId ? [e.productId] : []);
+      const productNames = selectedIds.map(id => (getProducts() || []).find(p => String(p.id) === String(id))?.name).filter(Boolean);
+      const productsText = productNames.length > 1
+        ? productNames.slice(0, -1).join(', ') + ' और ' + productNames[productNames.length - 1]
+        : (productNames[0] || e.productName || 'ताज़ा सामान');
+      const variant = Number(e.captionVariant || 0);
+      const captions = [
+        `चंद्रगढ़ के सम्मानित निवासियों के लिए विशेष सूचना! 😍\nआज 4A STORE पर ${productsText} पर ${disc} का विशेष लाभ उपलब्ध है।\nगुणवत्तापूर्ण सामान, उचित मूल्य और भरोसेमंद सेवा का लाभ उठाइए।\nघर बैठे ऑर्डर करें 🛵\n📞 ${phone}`,
+        `आपकी दैनिक जरूरतों के लिए 4A STORE प्रस्तुत करता है विशेष बचत का अवसर। 🛒\n${productsText} पर ${disc} का लाभ उठाइए।\nअपनी पसंद का सामान आसानी से मंगाइए और समय की बचत कीजिए।\n📞 ${phone}`,
+        `चंद्रगढ़ क्षेत्र के ग्राहकों के लिए आज का विशेष ऑफर! 🔥\n${productsText} पर ${disc} की बचत प्राप्त कीजिए।\nगुणवत्तापूर्ण किराना सामान अब आपके घर तक सुविधाजनक होम डिलीवरी के साथ।\nअभी ऑर्डर करें 🛵\n📞 ${phone}`,
+        `आपके परिवार की रोजमर्रा की जरूरतों के लिए भरोसेमंद खरीदारी का विकल्प। 😊\n${productsText} पर 4A STORE की ओर से ${disc} का विशेष लाभ उपलब्ध है।\nआज ही अपना ऑर्डर बुक कीजिए।\n📞 ${phone}`,
+        `बचत और सुविधा के साथ बेहतर खरीदारी का सही समय आज है! ✨\n${productsText} पर ${disc} का शानदार अवसर उपलब्ध है।\n4A STORE से खरीदारी कीजिए और सामान अपने घर पर प्राप्त कीजिए।\n📞 ${phone}`
+      ];
+      const caption = captions[variant % captions.length];
+      e.captionVariant = variant + 1;
+      e.lang = 'hindi';
+      const hashtagSets = [
+        '#4AStore #Chandargarh #Nabinagar #GroceryStore #HomeDelivery #Offer',
+        '#4AStore #आजकाऑफर #किरानास्टोर #घरपहुँचसेवा #बचत',
+        '#4AStore #FreshGrocery #BestOffer #Chandargarh #Shopping',
+        '#4AStore #घरबैठेऑर्डर #होमडिलीवरी #आजकीबचत',
+        '#4AStore #KiranaShopping #SpecialOffer #Nabinagar #Grocery'
+      ];
+      const hashtags = hashtagSets[variant % hashtagSets.length];
       const hooks = [
-        'अरे भाई! आज बाज़ार जाने की ज़रूरत नहीं 😄',
-        'घर में सामान खत्म हो गया? 😟',
-        `आज 4A STORE पर क्या खास है? 👀`,
-        `${area} वालों, ध्यान दीजिए! ❤️`,
-        'आज की बचत देखिए! 🔥',
-        `${prod} पर ज़बरदस्त ऑफर! 🛒`
+        `${area} के सम्मानित निवासियों के लिए आज का विशेष लाभ! 😍`,
+        `${productsText} पर उपलब्ध विशेष बचत का लाभ उठाइए। 🛒`,
+        'घर बैठे सुविधाजनक किराना खरीदारी का लाभ उठाइए। 🛵',
+        'गुणवत्तापूर्ण सामान और उचित मूल्य के साथ बेहतर खरीदारी कीजिए। 🔥',
+        '4A STORE की नई ग्राहक सुविधा और विशेष ऑफर देखिए। ✨'
       ];
 
       e.caption = caption; e.hashtags = hashtags;
@@ -2933,16 +4084,25 @@
     // ---- Save ----
     function saveAd() {
       const e = adEditor;
+      e.headerTitle = e.headerTitle == null ? '4A STORE' : String(e.headerTitle);
+      e.headerTagline = e.headerTagline == null ? 'आपकी अपनी किराना दुकान' : String(e.headerTagline);
+      e.textColors = e.textColors || {};
+      e.hiddenLayers = e.hiddenLayers || {};
+      e.layout = e.layout || {};
+      e.overlays = Array.isArray(e.overlays) ? e.overlays : [];
       const payload = {
         name: e.name || 'Untitled Ad',
         campaign: e.campaign || '',
         offerTitle: e.offerTitle || '',
         productId: e.productId,
         productName: e.productName || '',
-        format: e.format, platform: e.platform, template: e.template,
+        productIds: Array.isArray(e.productIds) ? e.productIds.filter(Boolean) : [],
+        productCount: Math.max(1, Math.min(3, Number(e.productCount || 1))),
+        productPrices: e.productPrices || {},
+        format: e.format, platform: e.platform, template: e.template, ctaLink: e.ctaLink || '',
         status: e.status || 'draft',
         caption: e.caption || '', hashtags: e.hashtags || '',
-        creative: e   // full editor state as structured JSON
+        creative: JSON.parse(JSON.stringify(e))   // full editor state as structured JSON
       };
       const action = e.id ? 'update' : 'add';
       if (e.id) payload.id = e.id;
@@ -2950,6 +4110,7 @@
         if (res && res.success) {
           if (res.ad && res.ad.id) adEditor.id = res.ad.id;
           localStorage.removeItem(AD_DRAFT_KEY);
+          _adHistoryState = adSnapshot();
           setAdSaveStatus('✓ Saved');
           showToast('Ad saved', 'success');
         } else showToast((res && res.message) || 'Save failed', 'error');
@@ -2966,16 +4127,30 @@
       }, 1200);
     }
     function startAdAutoSave() {
-      // bind canvas drag once the canvas is present
       const canvas = document.getElementById('adCanvas');
       if (canvas && !canvas._adBound) {
         canvas._adBound = true;
         canvas.addEventListener('mousedown', ev => { canvas.style.cursor='grabbing'; adCanvasPointerDown(ev.clientX, ev.clientY); });
-        window.addEventListener('mousemove', ev => adCanvasPointerMove(ev.clientX, ev.clientY));
-        window.addEventListener('mouseup', () => { canvas.style.cursor='grab'; adCanvasPointerUp(); });
+        canvas.addEventListener('click', ev => adCanvasActivateCTA(ev.clientX, ev.clientY));
         canvas.addEventListener('touchstart', ev => { const t=ev.touches[0]; adCanvasPointerDown(t.clientX, t.clientY); }, {passive:true});
         canvas.addEventListener('touchmove', ev => { const t=ev.touches[0]; adCanvasPointerMove(t.clientX, t.clientY); ev.preventDefault(); }, {passive:false});
         canvas.addEventListener('touchend', adCanvasPointerUp);
+      }
+      if (!window._adGlobalDragBound) {
+        window._adGlobalDragBound = true;
+        window.addEventListener('mousemove', ev => adCanvasPointerMove(ev.clientX, ev.clientY));
+        window.addEventListener('mouseup', () => {
+          const currentCanvas = document.getElementById('adCanvas');
+          if (currentCanvas) currentCanvas.style.cursor='grab';
+          adCanvasPointerUp();
+        });
+        window.addEventListener('keydown', ev => {
+          const tag = document.activeElement && document.activeElement.tagName;
+          if ((tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') && !ev.ctrlKey && !ev.metaKey) return;
+          if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') { ev.preventDefault(); ev.shiftKey ? adRedo() : adUndo(); }
+          if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'y') { ev.preventDefault(); adRedo(); }
+          if (ev.key === 'Delete' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) { ev.preventDefault(); adDeleteSelected(); }
+        });
       }
     }
     function setAdSaveStatus(txt) { const el = document.getElementById('adSaveStatus'); if (el) el.textContent = txt; }
@@ -3020,7 +4195,7 @@
             <button onclick="adsGoto('dashboard')" style="padding:9px 16px;border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:var(--primary-dark);">📊 Dashboard</button>
             <button onclick="adsGoto('library')" style="padding:9px 16px;border:none;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;background:var(--primary);color:#fff;">📚 Ad Library</button>
           </div>
-          <button onclick="openAdEditor()" style="padding:11px 22px;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;">+ Create New Ad</button>
+          <button onclick="openAdEditor(null, true)" style="padding:11px 22px;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;">+ Create New Ad</button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">${filterBtns}</div>
         <input type="text" value="${escapeHtml(adLibSearch)}" oninput="adLibSetSearch(this.value)" placeholder="🔍 Search by ad name, product, offer..." style="width:100%;max-width:420px;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:16px;">
@@ -3109,7 +4284,7 @@
         if (res.success) {
           // Update this admin browser too
           localStorage.setItem('4astore_asset_version', String(res.assetVersion));
-          showToast('✅ Update pushed! All users will get fresh code (v' + res.assetVersion + ').', 'success');
+          showToast('Update pushed! All users will get fresh code (v' + res.assetVersion + ').', 'success');
         } else {
           showToast('Failed to push update', 'error');
         }
@@ -3128,16 +4303,23 @@
         return;
       }
 
+      const phoneEl = document.getElementById('setPhone');
+      const addrEl = document.getElementById('setAddress');
+      const hideEl = document.getElementById('setHideMrp');
       const res = saveSettings({
         storeEmail: email,
         deliveryCharge: delivery,
         freeDeliveryAbove: freeAbove,
         upiId: document.getElementById('setUpiId').value.trim(),
-        upiName: document.getElementById('setUpiName').value.trim()
+        upiName: document.getElementById('setUpiName').value.trim(),
+        hideMrp: hideEl ? hideEl.checked : false,
+        storePhone: phoneEl ? phoneEl.value.trim() : '',
+        storeAddress: addrEl ? addrEl.value.trim() : '',
+        serviceableVillages: (document.getElementById('setVillages') ? document.getElementById('setVillages').value.trim() : '')
       });
 
       if (res.success) {
-        showToast('✅ Store settings saved', 'success');
+        showToast('Store settings saved', 'success');
       } else {
         showToast(res.message || 'Failed to save settings', 'error');
       }

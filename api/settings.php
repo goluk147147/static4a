@@ -1,13 +1,5 @@
 <?php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+require_once __DIR__ . '/security.php';
 
 $settingsFile = __DIR__ . '/../data/settings.json';
 
@@ -17,6 +9,10 @@ $defaults = [
     'freeDeliveryAbove' => 500,
     'upiId'             => 'goluk147147@ybl',
     'upiName'           => '4astore',
+    'hideMrp'           => false,
+    'storePhone'        => '8210874123',
+    'storeAddress'      => 'गजना रोड, चंद्रगढ़, नबीनगर, औरंगाबाद',
+    'serviceableVillages' => 'Chandargarh(चंद्रगढ़), Mayapur(मायापुर), Sankarpur(शंकरपुर), Mishirbigha(मिशिरबिगहा), Sinpur(सिनपुर), Kharundha(खरौंधा), Simiri(सिमरी), Bilaspur(बिलासपुर), Bighapar(बिघापर)',
 ];
 
 function readSettings($file, $defaults) {
@@ -34,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // POST - save settings
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requirePermission('settings');
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $current = readSettings($settingsFile, $defaults);
 
@@ -57,6 +54,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (isset($input['upiName'])) {
         $current['upiName'] = trim((string)$input['upiName']);
+    }
+    if (isset($input['hideMrp'])) {
+        $current['hideMrp'] = (bool)$input['hideMrp'];
+    }
+    if (isset($input['storePhone'])) {
+        $current['storePhone'] = trim((string)$input['storePhone']);
+    }
+    if (isset($input['storeAddress'])) {
+        $current['storeAddress'] = trim((string)$input['storeAddress']);
+    }
+    if (isset($input['serviceableVillages'])) {
+        $current['serviceableVillages'] = trim((string)$input['serviceableVillages']);
     }
 
     file_put_contents($settingsFile, json_encode($current, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));

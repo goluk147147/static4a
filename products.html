@@ -43,9 +43,12 @@
     .cat-pills-wrapper .arrow-btn:hover { background:var(--primary-dark); }
     .cat-pills { display:flex; gap:8px; overflow-x:auto; padding:4px 2px; -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-behavior:smooth; flex:1; min-width:0; }
     .cat-pills::-webkit-scrollbar { display:none; }
-    .cat-pill { padding:8px 14px; border-radius:20px; font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; border:1.5px solid #e0e0e0; background:white; color:#555; transition:all .2s ease; user-select:none; }
+    .cat-pill { box-sizing:border-box; width:104px; min-width:104px; height:92px; padding:8px 6px; border-radius:16px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; font-size:12px; line-height:1.15; font-weight:600; white-space:normal; overflow:hidden; cursor:pointer; border:1.5px solid #e0e0e0; background:white; color:#555; transition:all .2s ease; user-select:none; }
+    .cat-pill img { width:48px; height:48px; flex:0 0 48px; object-fit:contain; display:block; }
+    .cat-pill:not(:has(img)) { font-size:13px; }
     .cat-pill:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-light); }
     .cat-pill.active { background:var(--primary); color:white; border-color:var(--primary); }
+    @media (max-width:600px) { .cat-pill { width:88px; min-width:88px; height:84px; font-size:11px; } .cat-pill img { width:42px; height:42px; flex-basis:42px; } }
 
     /* Mid Banner */
     .mid-banner { grid-column:1/-1; border-radius:12px; padding:18px 24px; color:white; cursor:pointer; margin:10px 0; display:flex; align-items:center; justify-content:center; gap:14px; text-decoration:none; transition:all .3s ease; text-align:center; }
@@ -261,7 +264,7 @@
       const pillsDiv = document.getElementById('catPills');
       let pillsHTML = `<span class="cat-pill ${!currentCategory?'active':''}" onclick="selectCategory('')">🛒 All</span>`;
       categories.forEach(c => {
-        pillsHTML += `<span class="cat-pill ${currentCategory===c.slug?'active':''}" onclick="selectCategory('${c.slug}')">${c.icon} ${c.name}</span>`;
+        pillsHTML += `<span class="cat-pill ${currentCategory===c.slug?'active':''}" onclick="selectCategory('${c.slug}')">${c.image ? `<img src="${c.image}" alt="" onerror="this.style.display='none';">` : (c.icon || '🛒')} ${c.name}</span>`;
       });
       pillsDiv.innerHTML = pillsHTML;
 

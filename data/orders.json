@@ -25,9 +25,9 @@
         "deliveryCharge": 1,
         "totalAmount": 29,
         "paymentMethod": "UPI",
-        "orderStatus": "Order Placed",
+        "orderStatus": "Delivered",
         "orderDate": "2026-09-16T14:47:22.964Z",
-        "status": "Order Placed"
+        "status": "Delivered"
     },
     {
         "orderId": "4A383782",
@@ -58,5 +58,98 @@
         "orderStatus": "Order Placed",
         "orderDate": "2026-09-17T10:42:48.935Z",
         "status": "Order Placed"
+    },
+    {
+        "orderId": "4A916301",
+        "userId": 4,
+        "customer": {
+            "name": "akashh",
+            "mobile": "8002116652",
+            "email": "",
+            "address": "fghgfdfgh",
+            "landmark": "",
+            "city": "Chandragarh (चंद्रगढ़)",
+            "pincode": "824301",
+            "deliveryLat": 28.512927640394437,
+            "deliveryLng": 77.41112552982112
+        },
+        "items": [
+            {
+                "id": 4,
+                "name": "Soya Health Refined Soyabean Oil",
+                "weight": "1 Litre",
+                "price": 145,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 145,
+        "discount": 15,
+        "deliveryCharge": 0,
+        "totalAmount": 145,
+        "paymentMethod": "UPI",
+        "orderStatus": "Out for Delivery",
+        "orderDate": "2026-09-22T09:49:20.407Z",
+        "status": "Out for Delivery"
+    },
+    {
+        "orderId": "4A366951",
+        "userId": 4,
+        "customer": {
+            "name": "Akash",
+            "mobile": "8002116652",
+            "email": "",
+            "address": "takurbari pe near middile school",
+            "landmark": "takurbari pe",
+            "city": "Chandragarh (चंद्रगढ़)",
+            "pincode": "824301",
+            "deliveryLat": 28.51292141940702,
+            "deliveryLng": 77.41112210463919
+        },
+        "items": [
+            {
+                "id": 5,
+                "name": "Tata Salt",
+                "weight": "1 Kg",
+                "price": 28,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 28,
+        "discount": 2,
+        "deliveryCharge": 0,
+        "totalAmount": 28,
+        "paymentMethod": "UPI",
+        "orderStatus": "Order Placed",
+        "orderDate": "2026-09-22T12:50:24.974Z"
+    },
+    {
+        "orderId": "4AABC572E3",
+        "userId": null,
+        "customer": {
+            "name": "Akash Kumar",
+            "mobile": "9876543210",
+            "email": "",
+            "address": "",
+            "city": "",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 1,
+                "name": "Aashirvaad Atta",
+                "weight": "5 Kg",
+                "price": 200,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 200,
+        "discount": 0,
+        "deliveryCharge": 0,
+        "totalAmount": 200,
+        "paymentMethod": "Cash",
+        "orderStatus": "Order Placed",
+        "status": "Order Placed",
+        "orderDate": "2026-09-22T15:02:21+02:00",
+        "createdBy": "akgupta"
     }
 ]

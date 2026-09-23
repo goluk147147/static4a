@@ -1,13 +1,5 @@
 <?php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+require_once __DIR__ . '/security.php';
 
 $file = __DIR__ . '/../data/announcement.json';
 
@@ -26,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // POST - save/update announcement
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requirePermission('ads');
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $current = readAnn($file);
 

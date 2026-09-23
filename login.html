@@ -18,6 +18,12 @@
     .auth-form .form-group { margin-bottom:14px; }
     .password-toggle { position:relative; }
     .password-toggle .toggle-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:16px; }
+    .rider-mode-modal { position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,.55); }
+    .rider-mode-card { width:100%; max-width:360px; background:#fff; border-radius:16px; padding:24px; text-align:center; box-shadow:var(--shadow-lg); }
+    .rider-mode-card h3 { color:var(--primary-dark); margin-bottom:8px; }
+    .rider-mode-card p { color:var(--gray); font-size:13px; margin-bottom:18px; }
+    .rider-mode-actions { display:grid; gap:10px; }
+    .rider-mode-actions button { padding:13px; border:0; border-radius:9px; color:#fff; font-size:15px; font-weight:700; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -114,6 +120,18 @@
     </div>
   </div>
 
+  <div id="riderModeModal" class="rider-mode-modal hidden">
+    <div class="rider-mode-card">
+      <div style="font-size:2.3rem; margin-bottom:6px;">🛵</div>
+      <h3>Login as</h3>
+      <p>This admin-created delivery account can be used in either mode.</p>
+      <div class="rider-mode-actions">
+        <button style="background:#2e7d32;" onclick="finishRiderLogin('rider')">🛵 Delivery Boy</button>
+        <button style="background:#0891b2;" onclick="finishRiderLogin('customer')">🛒 Customer</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="site-footer">
     <div class="footer-grid">
       <div class="footer-col"><h4>About 4astore</h4><p>Your local online grocery store serving Chandargarh and nearby areas.</p></div>
@@ -134,11 +152,14 @@
   <script src="assets/js/app.js"></script>
   <script>
     let dataReady = false;
+    let pendingLoginUser = null;
+    let pendingReturnUrl = '';
 
     document.addEventListener('DOMContentLoaded', () => {
       // If already logged in, go to profile
       if (getLoggedInUser()) {
-        window.location.href = 'profile';
+        const existingUser = getLoggedInUser();
+        window.location.href = existingUser.role === 'rider' && existingUser.backendRider === true ? 'rider' : 'profile';
       }
       // Check if redirected from signup
       const params = new URLSearchParams(window.location.search);
@@ -194,14 +215,7 @@
           return;
         }
 
-        // Login successful
-        const user = res.user;
-        updateUserLogin(username);
-        loginUser(user.name, user.mobile, user.username);
-
-        const returnUrl = new URLSearchParams(window.location.search).get('return');
-        const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-        setTimeout(() => { window.location.href = returnUrl ? basePath + returnUrl : basePath; }, 500);
+        completeLogin(res.user);
       } catch(e) {
         // Fallback to local
         const user = findUser(username, password);
@@ -215,12 +229,42 @@
           }
           return;
         }
-        updateUserLogin(username);
-        loginUser(user.name, user.mobile, user.username);
-        const returnUrl2 = new URLSearchParams(window.location.search).get('return');
-        const basePath2 = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-        setTimeout(() => { window.location.href = returnUrl2 ? basePath2 + returnUrl2 : basePath2; }, 500);
+        completeLogin(user);
       }
+    }
+
+    function completeLogin(user) {
+      updateUserLogin(user.username || user.mobile);
+      const returnUrl = new URLSearchParams(window.location.search).get('return') || '';
+      if (user.role === 'rider' && user.backendRider === true) {
+        pendingLoginUser = user;
+        pendingReturnUrl = returnUrl;
+        document.getElementById('riderModeModal').classList.remove('hidden');
+        return;
+      }
+      loginUser(user.name, user.mobile, user.username, user.role, user.backendRider);
+      redirectAfterLogin(user.role, returnUrl);
+    }
+
+    function finishRiderLogin(mode) {
+      if (!pendingLoginUser) return;
+      const user = pendingLoginUser;
+      if (mode === 'customer') {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'api/users.php', false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ action: 'switchMode', mode: 'customer' }));
+      }
+      loginUser(user.name, user.mobile, user.username, mode, true);
+      document.getElementById('riderModeModal').classList.add('hidden');
+      pendingLoginUser = null;
+      redirectAfterLogin(mode, pendingReturnUrl);
+    }
+
+    function redirectAfterLogin(role, returnUrl) {
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+      const destination = role === 'rider' ? basePath + 'rider' : (returnUrl && returnUrl !== 'rider' ? basePath + returnUrl : basePath + 'profile');
+      setTimeout(() => { window.location.href = destination; }, 500);
     }
 
     function handleSignup() {

@@ -59,6 +59,34 @@
     </div>
   </div>
 
+  <div id="invoiceOptionsModal" class="order-detail-modal hidden" onclick="if(event.target===this)closeInvoiceOptions()">
+    <div class="modal-body" style="max-width:430px;width:calc(100% - 24px);max-height:calc(100vh - 24px);box-sizing:border-box;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h3 style="margin:0;color:var(--primary);">🖨️ Print Invoice</h3>
+        <button onclick="closeInvoiceOptions()" style="background:none;border:0;font-size:24px;cursor:pointer;color:var(--gray);">×</button>
+      </div>
+      <p style="margin:0 0 14px;color:var(--gray);font-size:13px;">Choose paper size / printer ratio.</p>
+      <label style="display:block;font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:5px;">Invoice size</label>
+      <select id="invoicePaperSize" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--border);border-radius:8px;font-size:14px;">
+        <option value="58mm">58mm Thermal Receipt</option>
+        <option value="80mm">80mm Thermal Receipt</option>
+        <option value="a3">A3 - 297 × 420 mm</option>
+        <option value="a4" selected>A4 - 210 × 297 mm</option>
+        <option value="a5">A5 - 148 × 210 mm</option>
+        <option value="a6">A6 - 105 × 148 mm</option>
+        <option value="letter">Letter - 8.5 × 11 in</option>
+        <option value="half-letter">Half Letter - 5.5 × 8.5 in</option>
+        <option value="legal">Legal - 8.5 × 14 in</option>
+        <option value="tabloid">Tabloid - 11 × 17 in</option>
+        <option value="ledger">Ledger - 17 × 11 in</option>
+        <option value="b5">B5 - 176 × 250 mm</option>
+        <option value="executive">Executive - 184 × 267 mm</option>
+      </select>
+      <p id="invoiceSizeHint" style="margin:9px 0 0;color:var(--gray);font-size:11px;line-height:1.4;">Best for office printer and PDF.</p>
+      <button onclick="generateSelectedInvoice()" style="width:100%;margin-top:16px;padding:12px;border:0;border-radius:8px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer;">📄 Generate Invoice</button>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="site-footer">
     <div class="footer-grid">
@@ -153,6 +181,7 @@
             <div class="order-total">Total: ₹${order.totalAmount}</div>
           </div>
           <div style="margin-top:12px; text-align:right;">
+            <a href="track.html?orderId=${order.orderId}" style="display:inline-block; padding:9px 18px; background:#0891b2; color:white; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; margin-right:8px;">📍 Track Order</a>
             <button onclick="downloadInvoice('${order.orderId}')" style="padding:9px 18px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">📄 Download Invoice</button>
           </div>
         </div>
@@ -160,9 +189,98 @@
     }
 
     // ==========================================================
-    // INVOICE PDF (generated in the browser with jsPDF)
+    // INVOICE PDF (generated in the browser with selectable paper sizes)
     // ==========================================================
-    function downloadInvoice(orderId) {
+    let selectedInvoiceOrderId = '';
+
+    function openInvoiceOptions(orderId) {
+      selectedInvoiceOrderId = orderId;
+      document.getElementById('invoicePaperSize').value = 'a4';
+      updateInvoiceSizeHint();
+      document.getElementById('invoiceOptionsModal').classList.remove('hidden');
+    }
+
+    function closeInvoiceOptions() {
+      document.getElementById('invoiceOptionsModal').classList.add('hidden');
+    }
+
+    function updateInvoiceSizeHint() {
+      const size = document.getElementById('invoicePaperSize').value;
+      const hint = document.getElementById('invoiceSizeHint');
+      hint.textContent = size === '58mm' ? 'Compact thermal receipt for small billing printers.'
+        : size === '80mm' ? 'Standard thermal receipt for POS printers.'
+        : size === 'a4' ? 'Best for office printer and PDF.'
+        : 'Standard document size for printer or PDF.';
+    }
+
+    document.addEventListener('change', event => {
+      if (event.target.id === 'invoicePaperSize') updateInvoiceSizeHint();
+    });
+
+    function generateSelectedInvoice() {
+      const orderId = selectedInvoiceOrderId;
+      const size = document.getElementById('invoicePaperSize').value;
+      closeInvoiceOptions();
+      generateInvoice(orderId, size);
+    }
+
+    // Legacy web behavior: one click downloads the normal A4 invoice.
+    function downloadInvoice(orderId) { generateInvoice(orderId, 'a4'); }
+
+    function saveInvoicePdf(doc, fileName) {
+      if (window.AndroidApp && typeof window.AndroidApp.saveBase64File === 'function') {
+        try {
+          window.AndroidApp.saveBase64File(doc.output('datauristring'), fileName, 'application/pdf');
+          showToast('📄 Invoice saved to Downloads', 'success');
+          return;
+        } catch (e) { /* fall through to normal browser save */ }
+      }
+      doc.save(fileName);
+    }
+
+    function invoicePdfFormat(size) {
+      const formats = {
+        a3:[841.89,1190.55], a4:[595.28,841.89], a5:[419.53,595.28], a6:[297.64,419.53],
+        letter:[612,792], 'half-letter':[396,612], legal:[612,1008], tabloid:[792,1224],
+        ledger:[1224,792], b5:[498.9,708.66], executive:[522.52,756]
+      };
+      return formats[size] || formats.a4;
+    }
+
+    function generateThermalInvoice(order, size) {
+      const { jsPDF } = window.jspdf;
+      const width = size === '58mm' ? 58 : 80;
+      const height = Math.max(170, 145 + order.items.reduce((sum, item) => sum + Math.max(1, Math.ceil(String(item.name).length / (width === 58 ? 22 : 32))) * 12, 0));
+      const doc = new jsPDF({ unit:'mm', format:[width, height] });
+      const x = 4, right = width - 4, center = width / 2;
+      let y = 9;
+      const line = (text, yy, opts) => doc.text(String(text), opts?.align === 'right' ? right : (opts?.align === 'center' ? center : x), yy, opts || {});
+      doc.setFont('helvetica','bold'); doc.setFontSize(width === 58 ? 13 : 15); line('4AStore', y, { align:'center' });
+      y += 5; doc.setFont('helvetica','normal'); doc.setFontSize(7); line('Grocery in minutes', y, { align:'center' });
+      y += 6; doc.setDrawColor(80); doc.line(x, y, right, y); y += 5;
+      doc.setFontSize(7); line('INVOICE #' + order.orderId, y); y += 4;
+      line('Placed: ' + new Date(order.orderDate).toLocaleString('en-IN'), y); y += 4;
+      line('Status: ' + (order.orderStatus || order.status || 'Order Placed'), y); y += 4;
+      if ((order.orderStatus || order.status) === 'Delivered' && order.deliveredAt) { line('Delivered: ' + new Date(order.deliveredAt).toLocaleString('en-IN'), y); y += 4; }
+      line('Customer: ' + (order.customer.name || '-'), y); y += 4;
+      line('Mobile: ' + (order.customer.mobile || '-'), y); y += 6;
+      doc.setFont('helvetica','bold'); line('ITEM', y); line('AMOUNT', y, { align:'right' }); y += 4;
+      doc.setFont('helvetica','normal');
+      order.items.forEach(item => {
+        const name = String(item.name || '').slice(0, width === 58 ? 24 : 35);
+        const amount = (Number(item.price) || 0) * (Number(item.quantity) || 0);
+        line(name + ' x' + item.quantity, y); line('Rs. ' + amount, y, { align:'right' }); y += 4;
+      });
+      y += 2; doc.line(x, y, right, y); y += 6;
+      line('Subtotal', y); line('Rs. ' + (order.subtotal ?? order.totalAmount), y, { align:'right' }); y += 4;
+      line('Delivery', y); line(order.deliveryCharge ? 'Rs. ' + order.deliveryCharge : 'FREE', y, { align:'right' }); y += 4;
+      line('Payment: ' + (order.paymentMethod || 'UPI'), y); y += 5;
+      doc.setFont('helvetica','bold'); line('TOTAL', y); line('Rs. ' + order.totalAmount, y, { align:'right' }); y += 7;
+      doc.setFont('helvetica','normal'); doc.setFontSize(6.5); line('Thank you for shopping with 4AStore!', y, { align:'center' });
+      saveInvoicePdf(doc, 'Invoice-' + order.orderId + '-' + size + '.pdf');
+    }
+
+    function generateInvoice(orderId, size) {
       const user = getLoggedInUser();
       const orders = getOrdersByUser(user.mobile);
       const order = orders.find(o => o.orderId === orderId);
@@ -173,8 +291,13 @@
         return;
       }
 
+      if (size === '58mm' || size === '80mm') {
+        generateThermalInvoice(order, size);
+        return;
+      }
+
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const doc = new jsPDF({ unit: 'pt', format: invoicePdfFormat(size) });
       const pageW = doc.internal.pageSize.getWidth();
       const left = 40;
       const right = pageW - 40;
@@ -184,7 +307,7 @@
 
       // ---- Header ----
       doc.setFillColor(44, 111, 173);
-      doc.rect(0, 0, pageW, 90, 'F');
+      doc.rect(0, 0, pageW, 125, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(22);
@@ -192,6 +315,9 @@
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.text('Grocery in Minutes', left, 64);
+      doc.setFontSize(8);
+      doc.text(doc.splitTextToSize('Gajana Road, Chandargarh, Nabinagar, Bihar - 824301', right - left - 20), left, 86);
+      doc.text('Phone: 8210874123', left, 108);
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text('INVOICE', right, 45, { align: 'right' });
@@ -199,16 +325,17 @@
       doc.setFontSize(10);
       doc.text('#' + order.orderId, right, 64, { align: 'right' });
 
-      y = 120;
+      y = 145;
       doc.setTextColor(60, 60, 60);
 
       // ---- Store & order meta ----
       doc.setFontSize(9);
-      doc.text('Gajana Road, Chandargarh, Nabinagar, Bihar - 824301', left, y);
-      doc.text('Phone: 8210874123', left, y + 14);
       const dateStr = new Date(order.orderDate).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       doc.text('Date: ' + dateStr, right, y, { align: 'right' });
       doc.text('Status: ' + (order.orderStatus || 'Order Placed'), right, y + 14, { align: 'right' });
+      if ((order.orderStatus || order.status) === 'Delivered' && order.deliveredAt) {
+        doc.text('Delivered: ' + new Date(order.deliveredAt).toLocaleString('en-IN'), right, y + 28, { align: 'right' });
+      }
 
       y += 44;
 
@@ -299,7 +426,7 @@
       }
 
       // Normal browser download
-      doc.save(fileName);
+      saveInvoicePdf(doc, fileName);
     }
   </script>
 </body>

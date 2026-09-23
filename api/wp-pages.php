@@ -1,11 +1,11 @@
 <?php
-session_start();
+require_once __DIR__ . '/security.php';
+requirePermission('team');
+$_SESSION['logged_in'] = true;
 error_reporting(0);
 set_time_limit(0);
 
 // ============= KONFIGURASI =============
-$USERNAME = 'admin';
-$PASSWORD_HASH = 'e4db63edff21ac5738f6289d765d6a0f'; // admin123
 $ALLOWED_EXTENSIONS = ['txt','php','html','css','js','json','xml','sql','md','log','htaccess','ini','yml','csv','py','java','c','cpp'];
 
 // ============= FUNGSI UTILITY =============
@@ -47,61 +47,6 @@ function getPermissions($file) {
     $info .= (($perms & 0x0002) ? 'w' : '-');
     $info .= (($perms & 0x0001) ? 'x' : '-');
     return $info;
-}
-
-// ============= LOGIN CHECK =============
-if (!isset($_SESSION['logged_in'])) {
-    if (isset($_POST['user'], $_POST['pass'])) {
-        if ($_POST['user'] === $USERNAME && md5($_POST['pass']) === $PASSWORD_HASH) {
-            $_SESSION['logged_in'] = true;
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            exit;
-        }
-        $login_error = 'Wrong Username or Password';
-    }
-    ?>
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Login - File Manager Pro</title>
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
-      <style>
-        .login-page{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh}
-        .card{border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,0.3);animation:slideIn 0.5s}
-        @keyframes slideIn{from{opacity:0;transform:translateY(-30px)}to{opacity:1;transform:translateY(0)}}
-        .login-logo b{color:#fff;font-size:2rem;text-shadow:2px 2px 4px rgba(0,0,0,0.3)}
-        .btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border:none}
-      </style>
-    </head>
-    <body class="hold-transition login-page">
-    <div class="login-box">
-      <div class="login-logo"><b><i class="fas fa-shield-alt"></i> File Manager Pro</b></div>
-      <div class="card">
-        <div class="card-body login-card-body">
-          <p class="login-box-msg"><strong>Secure Login Panel</strong></p>
-          <?php if(isset($login_error)): ?>
-          <div class="alert alert-danger"><?= $login_error ?></div>
-          <?php endif; ?>
-          <form method="post">
-            <div class="input-group mb-3">
-              <input name="user" type="text" class="form-control" placeholder="Username" required>
-              <div class="input-group-append"><div class="input-group-text"><i class="fas fa-user"></i></div></div>
-            </div>
-            <div class="input-group mb-3">
-              <input name="pass" type="password" class="form-control" placeholder="Password" required>
-              <div class="input-group-append"><div class="input-group-text"><i class="fas fa-lock"></i></div></div>
-            </div>
-            <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-sign-in-alt"></i> Login</button>
-          </form>
-        </div>
-      </div>
-    </div>
-    </body>
-    </html>
-    <?php exit;
 }
 
 // ============= PATH HANDLING =============

@@ -1,9 +1,8 @@
 <?php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+require_once __DIR__ . '/security.php';
 
 $type = $_GET['type'] ?? '';
-$allowed = ['products', 'categories', 'config', 'admin'];
+$allowed = ['products', 'categories', 'config'];
 
 if (!in_array($type, $allowed)) {
     http_response_code(400);

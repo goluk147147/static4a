@@ -1,13 +1,5 @@
 <?php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+require_once __DIR__ . '/security.php';
 
 // ==========================================================
 // ORDER EMAIL NOTIFICATION
@@ -48,9 +40,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $order = $input['order'] ?? null;
 
+$viewer = requireSessionUser();
+
 if (!$order || empty($order['orderId'])) {
     echo json_encode(['success' => false, 'message' => 'Invalid order data']);
     exit;
+}
+
+if (($viewer['role'] ?? '') !== 'superadmin' && ($order['customer']['mobile'] ?? '') !== ($viewer['mobile'] ?? '')) {
+    apiJson(['success' => false, 'message' => 'Order owner mismatch'], 403);
 }
 
 // ---- Helpers -------------------------------------------------

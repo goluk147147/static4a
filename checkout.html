@@ -44,38 +44,42 @@
       <h3>🏠 Delivery Details</h3>
       <div class="form-row">
         <div class="form-group">
-          <label>Full Name *</label>
+          <label>Full Name (पूरा नाम) *</label>
           <input type="text" id="custName" placeholder="Enter your full name">
           <div class="error-msg">Please enter your name</div>
         </div>
         <div class="form-group">
-          <label>Mobile Number *</label>
+          <label>Mobile Number (मोबाइल नंबर) *</label>
           <input type="tel" id="custMobile" placeholder="10-digit mobile number" maxlength="10">
           <div class="error-msg">Enter valid 10-digit mobile number</div>
         </div>
       </div>
       <div class="form-group">
-        <label>Email Address</label>
+        <label>Email Address (ईमेल)</label>
         <input type="email" id="custEmail" placeholder="your@email.com (optional)">
       </div>
       <div class="form-group">
-        <label>Complete Address *</label>
-        <textarea id="custAddress" rows="3" placeholder="House/Shop number, Street, Area"></textarea>
+        <label>Complete Address (पूरा पता) *</label>
+        <textarea id="custAddress" rows="3" placeholder="घर नंबर, टोला/मोहल्ला, गाँव और सड़क का पूरा पता लिखें"></textarea>
         <div class="error-msg">Please enter your address</div>
+        <button type="button" id="deliveryLocationBtn" onclick="captureDeliveryLocation()" style="margin-top:8px;padding:9px 12px;border:1px solid var(--primary);border-radius:8px;background:#fff;color:var(--primary-dark);font-weight:600;cursor:pointer;">डिलीवरी पिन के लिए मेरी लोकेशन लें</button>
+        <div id="deliveryLocationStatus" style="margin-top:6px;font-size:12px;color:var(--gray);">ऑर्डर आगे बढ़ाने के लिए सटीक डिलीवरी लोकेशन Allow करना जरूरी है।</div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Landmark</label>
-          <input type="text" id="custLandmark" placeholder="Near temple, school, etc.">
+          <label>Landmark (पास की मशहूर जगह)</label>
+          <input type="text" id="custLandmark" placeholder="जैसे — स्कूल के पास, मंदिर के बगल में, चौक के पास">
         </div>
-        <div class="form-group">
-          <label>City *</label>
-          <input type="text" id="custCity" placeholder="City" value="Chandargarh">
-          <div class="error-msg">Please enter city</div>
+        <div class="form-group" style="position:relative;">
+          <label>Village (गाँव) *</label>
+          <input type="text" id="custCity" placeholder="गाँव का नाम टाइप करें या चुनें" autocomplete="off"
+                 oninput="villageSearch(this.value)" onfocus="villageSearch(this.value)">
+          <div id="villageDropdown" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:50; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.15); max-height:220px; overflow-y:auto;"></div>
+          <div class="error-msg">Please select your village</div>
         </div>
       </div>
       <div class="form-group">
-        <label>PIN Code *</label>
+        <label>PIN Code (पिन कोड) *</label>
         <input type="text" id="custPincode" placeholder="6-digit PIN Code" maxlength="6" value="824301">
         <div class="error-msg">Delivery available only for PIN Code 824301</div>
       </div>
@@ -188,6 +192,7 @@
     let orderData = null;
     let customerInfo = null;
     let paymentScreenshot = null;
+    let deliveryLocation = null;
 
     document.addEventListener('DOMContentLoaded', () => {
       if (!requireLogin()) return;
@@ -200,6 +205,9 @@
       }
       renderOrderSummary();
       loadSavedCustomer();
+      // Ask for a fresh high-accuracy delivery pin as soon as checkout opens.
+      // The browser still controls the permission prompt; it cannot be forced by JavaScript.
+      setTimeout(requestDeliveryLocationOnLoad, 250);
     });
 
     // Re-render the order summary once backend settings (delivery fee etc.) load
@@ -219,7 +227,55 @@
         if (saved.address) document.getElementById('custAddress').value = saved.address;
         if (saved.landmark) document.getElementById('custLandmark').value = saved.landmark;
         if (saved.city) document.getElementById('custCity').value = saved.city;
+        if (Number.isFinite(Number(saved.deliveryLat)) && Number.isFinite(Number(saved.deliveryLng))) {
+          deliveryLocation = { lat: Number(saved.deliveryLat), lng: Number(saved.deliveryLng) };
+          showDeliveryLocationSaved();
+        }
       }
+    }
+
+    function showDeliveryLocationSaved() {
+      const btn = document.getElementById('deliveryLocationBtn');
+      const status = document.getElementById('deliveryLocationStatus');
+      if (btn) btn.textContent = 'डिलीवरी लोकेशन सेव है - बदलें';
+      if (status) { status.textContent = 'राइडर को आपका सही डिलीवरी पिन दिखेगा।'; status.style.color = '#2e7d32'; }
+    }
+
+    function captureDeliveryLocation() {
+      if (!navigator.geolocation) { showToast('Is device me location support nahi hai.', 'error'); return; }
+      const btn = document.getElementById('deliveryLocationBtn');
+      const status = document.getElementById('deliveryLocationStatus');
+      btn.disabled = true;
+      btn.textContent = 'लोकेशन ली जा रही है...';
+      if (status) { status.textContent = 'Location permission allow karein.'; status.style.color = 'var(--gray)'; }
+      navigator.geolocation.getCurrentPosition(
+        p => {
+          deliveryLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
+          btn.disabled = false;
+          showDeliveryLocationSaved();
+        },
+        e => {
+          btn.disabled = false;
+          btn.textContent = 'डिलीवरी पिन के लिए मेरी लोकेशन लें';
+          const reason = e.code === 1
+            ? 'कृपया browser settings में इस site की location permission Allow करें, फिर दोबारा कोशिश करें।'
+            : e.code === 3
+              ? 'Location मिलने में समय लग रहा है। खुले स्थान पर जाकर दोबारा कोशिश करें।'
+              : 'Location उपलब्ध नहीं है। कृपया दोबारा कोशिश करें।';
+          if (status) { status.textContent = reason; status.style.color = '#c62828'; }
+        },
+        { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+      );
+    }
+
+    function requestDeliveryLocationOnLoad() {
+      if (!navigator.geolocation) return;
+      const status = document.getElementById('deliveryLocationStatus');
+      if (status) {
+        status.textContent = 'सटीक डिलीवरी लोकेशन लेने के लिए browser permission Allow करें...';
+        status.style.color = 'var(--primary-dark)';
+      }
+      captureDeliveryLocation();
     }
 
     function renderOrderSummary() {
@@ -234,6 +290,39 @@
         <div style="display:flex;justify-content:space-between;padding:12px 0 0;font-size:18px;font-weight:700;border-top:2px solid var(--border);margin-top:8px;color:var(--primary-dark);"><span>Total</span><span>₹${totals.total}</span></div>`;
     }
 
+    // ---- Searchable village dropdown ----
+    function villageSearch(term) {
+      const dd = document.getElementById('villageDropdown');
+      if (!dd) return;
+      const list = (typeof getServiceableVillages === 'function') ? getServiceableVillages() : [];
+      const t = (term || '').trim().toLowerCase();
+      const matches = t ? list.filter(v => v.toLowerCase().includes(t)) : list;
+      if (!matches.length) {
+        dd.innerHTML = `<div style="padding:12px;color:#c62828;font-size:13px;">❌ Ye gaon serviceable nahi hai</div>`;
+        dd.style.display = 'block';
+        return;
+      }
+      dd.innerHTML = matches.map(v =>
+        `<div onclick="selectVillage('${v.replace(/'/g,"\\'")}')" style="padding:11px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;" onmouseover="this.style.background='#fff3e6'" onmouseout="this.style.background=''">📍 ${v}</div>`
+      ).join('');
+      dd.style.display = 'block';
+    }
+    function selectVillage(v) {
+      const inp = document.getElementById('custCity');
+      if (inp) inp.value = v;
+      const dd = document.getElementById('villageDropdown');
+      if (dd) dd.style.display = 'none';
+      const fg = inp ? inp.parentElement : null;
+      if (fg) fg.classList.remove('error');
+    }
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(ev) {
+      const inp = document.getElementById('custCity');
+      const dd = document.getElementById('villageDropdown');
+      if (!dd || !inp) return;
+      if (ev.target !== inp && !dd.contains(ev.target)) dd.style.display = 'none';
+    });
+
     function proceedToPayment() {
       let valid = true;
       document.querySelectorAll('.form-group').forEach(fg => fg.classList.remove('error'));
@@ -242,7 +331,7 @@
       const email = document.getElementById('custEmail').value.trim();
       const address = document.getElementById('custAddress').value.trim();
       const landmark = document.getElementById('custLandmark').value.trim();
-      const city = document.getElementById('custCity').value.trim();
+      let city = document.getElementById('custCity').value.trim();
       const pincode = document.getElementById('custPincode').value.trim();
 
       if (!name) { document.getElementById('custName').parentElement.classList.add('error'); valid = false; }
@@ -251,6 +340,35 @@
       if (!city) { document.getElementById('custCity').parentElement.classList.add('error'); valid = false; }
       if (pincode !== '824301') { document.getElementById('custPincode').parentElement.classList.add('error'); showToast('🚀 Delivery only in PIN 824301', 'error'); valid = false; }
       if (!valid) { showToast('Please fill all required fields', 'error'); return; }
+      if (!deliveryLocation || !Number.isFinite(Number(deliveryLocation.lat)) || !Number.isFinite(Number(deliveryLocation.lng))) {
+        showToast('पहले delivery location Allow करें, तभी order आगे बढ़ेगा।', 'error');
+        const status = document.getElementById('deliveryLocationStatus');
+        if (status) { status.textContent = 'लोकेशन नहीं मिली। ऊपर वाले button पर क्लिक करके browser में Allow करें।'; status.style.color = '#c62828'; }
+        captureDeliveryLocation();
+        return;
+      }
+
+      // ---- Village / gaon verification (spelling auto-detect + toast) ----
+      if (typeof verifyVillage === 'function') {
+        const vr = verifyVillage(city);
+        const cityEl = document.getElementById('custCity');
+        if (vr.status === 'invalid') {
+          const list = (typeof getServiceableVillages === 'function') ? getServiceableVillages().join(', ') : '';
+          cityEl.parentElement.classList.add('error');
+          showToast('❌ "' + city + '" me delivery nahi hai. Hum yahan deliver karte hain: ' + list, 'error');
+          return;
+        }
+        if (vr.status === 'suggest') {
+          // Spelling mistake detected — auto-correct + ask to confirm
+          showToast('🔎 Kya aapka matlab "' + vr.match + '" hai? Sahi kar diya — dobara confirm karein.', 'info');
+          cityEl.value = vr.match;   // auto-correct the spelling
+          cityEl.parentElement.classList.add('error');
+          return;   // user re-taps Proceed with corrected village -> becomes 'exact'
+        }
+        // exact -> normalise to the official spelling and continue
+        city = vr.match;
+        cityEl.value = vr.match;
+      }
 
       // 18+ age confirmation if the cart has any age-restricted item
       if (typeof cartHasAgeRestricted === 'function' && cartHasAgeRestricted()) {
@@ -259,6 +377,10 @@
       }
 
       customerInfo = { name, mobile, email, address, landmark, city, pincode };
+      if (deliveryLocation) {
+        customerInfo.deliveryLat = deliveryLocation.lat;
+        customerInfo.deliveryLng = deliveryLocation.lng;
+      }
       const totals = getCartTotal();
       
       // Show payment modal

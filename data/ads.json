@@ -49,5 +49,65 @@
         "image": "",
         "createdAt": "2026-09-19T14:01:43+02:00",
         "updatedAt": "2026-09-19T14:01:43+02:00"
+    },
+    {
+        "id": 3,
+        "name": "New Ad",
+        "campaign": "",
+        "offerTitle": "आज का खास ऑफर",
+        "productId": "11",
+        "productName": "Banana (Dozen)",
+        "format": "16:9",
+        "platform": "all",
+        "status": "draft",
+        "template": "discount",
+        "creative": {
+            "id": null,
+            "name": "New Ad",
+            "campaign": "",
+            "offerTitle": "आज का खास ऑफर",
+            "productId": "11",
+            "productName": "Banana (Dozen)",
+            "productIds": [
+                "11",
+                "18"
+            ],
+            "productCount": 2,
+            "productPrices": {
+                "4": 145,
+                "9": 45,
+                "11": 50,
+                "16": 25,
+                "18": 30,
+                "21": 72
+            },
+            "price": 50,
+            "mrp": 60,
+            "discount": 17,
+            "format": "16:9",
+            "platform": "all",
+            "template": "discount",
+            "cta": "Order Now",
+            "localMode": true,
+            "lang": "hindi",
+            "img": {
+                "zoom": 2.61,
+                "x": 0,
+                "y": 0,
+                "rot": 0,
+                "flipH": false,
+                "flipV": false,
+                "src": "https://www.bbassets.com/media/uploads/p/m/10000025_32-fresho-banana-robusta.jpg?tr=w-154,q-80"
+            },
+            "lines": [],
+            "caption": "",
+            "hashtags": "",
+            "status": "draft"
+        },
+        "caption": "",
+        "hashtags": "",
+        "image": "",
+        "createdAt": "2026-09-23T09:53:37+02:00",
+        "updatedAt": "2026-09-23T09:53:37+02:00"
     }
 ]

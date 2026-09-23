@@ -28,12 +28,14 @@
     },
     {
         "id": 4,
-        "name": "akashh",
+        "name": "Akash",
         "mobile": "8002116652",
-        "username": "sssss",
-        "password": "123456789",
+        "username": "akas800",
         "registeredAt": "2026-08-26T08:44:16+02:00",
-        "lastLogin": "2026-09-17T12:44:10+02:00",
-        "customDelivery": 0
+        "lastLogin": "2026-09-23T14:00:50+02:00",
+        "customDelivery": 0,
+        "role": "rider",
+        "backendRider": true,
+        "passwordHash": "$2y$10$Ky3GcKCdGU\/LKuizSN5Uf.NLrewPVnYWFs9JSoSJ0emJfJHF1c4Dy"
     }
 ]

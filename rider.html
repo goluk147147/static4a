@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rider Live Location - 4A Store</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .rider-wrap { max-width: 480px; margin: 20px auto; padding: 0 16px 40px; }
+    .rider-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:22px; box-shadow:var(--shadow); }
+    .rider-card h1 { color:var(--primary-dark); font-size:1.4rem; margin-bottom:6px; }
+    .rider-card label { display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin:12px 0 4px; }
+    .rider-card input { width:100%; padding:11px 14px; border:2px solid var(--border); border-radius:8px; font-size:15px; box-sizing:border-box; }
+    .rider-btn { width:100%; padding:14px; border:none; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; margin-top:16px; color:#fff; }
+    .start { background:#2e7d32; } .stop { background:#c62828; }
+    .rider-status { margin-top:16px; padding:14px; border-radius:10px; font-size:14px; text-align:center; }
+    .live { background:#e8f5e9; color:#2e7d32; } .idle { background:#f5f5f5; color:#666; }
+    .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#2e7d32; margin-right:6px; animation:pulse 1.2s infinite; }
+    .rider-account-actions { display:flex; gap:8px; margin-bottom:14px; }
+    .rider-account-actions button { flex:1; padding:9px 8px; border:0; border-radius:8px; color:#fff; font-size:12px; font-weight:700; cursor:pointer; }
+    .customer-location { margin-top:10px; padding:12px; border-radius:10px; background:#eef8ff; border:1px solid #b9def5; color:#174a68; font-size:12px; }
+    .customer-location.missing { background:#fff8e1; border-color:#ffe082; color:#795548; }
+    .customer-location a { display:inline-block; margin-top:8px; padding:7px 10px; border-radius:7px; background:#1565c0; color:#fff; text-decoration:none; font-weight:700; }
+    .customer-location.pin-bar { position:sticky; top:8px; z-index:5; box-shadow:0 4px 12px rgba(23,74,104,.12); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  </style>
+</head>
+<body>
+  <div class="top-bar"><div class="location-text">🛵 Rider • 4A Store</div></div>
+  <header class="main-header">
+    <div class="header-content">
+      <a href="./" class="logo"><img src="assets/images/logo.svg" alt="4A Store" height="48"></a>
+      <div style="flex:1"></div>
+    </div>
+  </header>
+
+  <div class="rider-wrap">
+    <div class="rider-card">
+      <div class="rider-account-actions">
+        <button style="background:#0891b2;" onclick="switchToCustomer()">🛒 Switch to Customer</button>
+        <button style="background:#777;" onclick="logoutRider()">🚪 Logout</button>
+      </div>
+      <h1>🛵 Live Location Share</h1>
+      <p style="font-size:13px;color:var(--gray);">Order deliver karne jaate waqt ye page khol ke "Start" dabayein. Customer aapki live location dekh payega.</p>
+      <label>Order chunein *</label>
+      <select id="rOrderSelect" onchange="onOrderPick(this.value)" style="width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:8px;font-size:15px;box-sizing:border-box;">
+        <option value="">Loading orders...</option>
+      </select>
+      <div id="customerLocationInfo" class="customer-location pin-bar missing">Order select karne par customer ka delivery pin yahan dikhega.</div>
+      <input type="text" id="rOrder" placeholder="Ya Order ID type karein" autocomplete="off" oninput="showCustomerLocation(this.value.trim())" style="margin-top:8px;">
+      <label>Aapka Naam</label>
+      <input type="text" id="rName" placeholder="Rider name" autocomplete="off">
+      <label>मोबाइल नंबर (ग्राहक के कॉल के लिए)</label>
+      <input type="tel" id="rMobile" placeholder="10 अंकों का मोबाइल नंबर" inputmode="numeric" maxlength="10" autocomplete="tel">
+      <button id="rBtn" class="rider-btn start" onclick="toggleShare()">▶ Start Live Location</button>
+      <div id="rStatus" class="rider-status idle">Abhi location share nahi ho rahi.</div>
+      <button class="rider-btn" style="background:#0891b2;margin-top:10px;" onclick="markDelivered()">✅ Mark Delivered</button>
+    </div>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    let watchId = null, sending = false, lastPos = null, timer = null, wakeLock = null;
+    let riderOrders = [];
+    const API = 'api/tracking.php';
+
+    const riderAccount = getLoggedInUser();
+    if (!riderAccount || riderAccount.role !== 'rider' || riderAccount.backendRider !== true) {
+      window.location.replace('login?return=rider');
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('rName').value = riderAccount.name || '';
+        document.getElementById('rMobile').value = riderAccount.mobile || '';
+        document.getElementById('rName').readOnly = true;
+        document.getElementById('rMobile').readOnly = true;
+      });
+    }
+
+    function setStatus(html, cls) {
+      const el = document.getElementById('rStatus');
+      el.className = 'rider-status ' + cls;
+      el.innerHTML = html;
+    }
+
+    function riderEscapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>'"]/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[ch]));
+    }
+
+    function switchToCustomer() {
+      if (sending) stopShare();
+      const user = getLoggedInUser();
+      if (!user || user.backendRider !== true) return;
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', 'api/users.php', false);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify({ action: 'switchMode', mode: 'customer' }));
+      const res = JSON.parse(xhr.responseText || '{}');
+      if (!res.success) { showToast(res.message || 'Mode change failed', 'error'); return; }
+      user.role = 'customer';
+      localStorage.setItem('4astore_user', JSON.stringify(user));
+      window.location.href = 'profile';
+    }
+
+    function logoutRider() {
+      if (sending) stopShare();
+      logoutUser();
+    }
+
+    async function ensureRiderMode() {
+      try {
+        const response = await fetch('api/users.php', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'switchMode', mode: 'rider' })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.ok && result.success) return true;
+        setStatus('⚠️ Rider mode active nahi hai. Logout karke rider account se dobara login karein.', 'idle');
+        return false;
+      } catch (e) {
+        setStatus('⚠️ Rider session verify nahi ho saka. Internet/session check karein.', 'idle');
+        return false;
+      }
+    }
+
+    async function toggleShare() {
+      if (sending) { stopShare(); return; }
+      const order = document.getElementById('rOrder').value.trim();
+      const mobile = document.getElementById('rMobile').value.trim();
+      if (!order) { alert('Order ID daalein'); return; }
+      if (!navigator.geolocation) { alert('Is device me GPS/location support nahi hai'); return; }
+      if (mobile && !/^[6-9]\d{9}$/.test(mobile)) { alert('Sahi 10-digit mobile number daalein'); return; }
+      if (!await ensureRiderMode()) return;
+
+      sending = true;
+      requestRiderWakeLock();
+      document.getElementById('rBtn').textContent = '⏹ Stop Sharing';
+      document.getElementById('rBtn').className = 'rider-btn stop';
+      setStatus('<span class="dot"></span> Location share ho rahi hai...', 'live');
+
+      // Track continuously; push to server every 15s
+      watchId = navigator.geolocation.watchPosition(
+        p => { lastPos = { lat: p.coords.latitude, lng: p.coords.longitude }; },
+        e => setStatus('⚠️ Location error: ' + e.message + '. Permission allow karein.', 'idle'),
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+      );
+      push();                       // immediate first push
+      timer = setInterval(push, 15000);
+    }
+
+    async function requestRiderWakeLock() {
+      if (!('wakeLock' in navigator) || !sending) return;
+      try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { wakeLock = null; }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!sending) return;
+      if (document.visibilityState === 'visible') {
+        requestRiderWakeLock();
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            p => { lastPos = { lat: p.coords.latitude, lng: p.coords.longitude }; push(); },
+            () => {},
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          );
+        }
+      }
+    });
+
+    function push() {
+      if (!lastPos) return;
+      const order = document.getElementById('rOrder').value.trim();
+      const name = document.getElementById('rName').value.trim();
+      const mobile = document.getElementById('rMobile').value.trim();
+      fetch(API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'updateLocation', orderId: order, lat: lastPos.lat, lng: lastPos.lng, riderName: name, riderMobile: mobile })
+      }).then(async response => {
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) {
+          if (response.status === 401 || response.status === 403) {
+            stopShare();
+            setStatus('⚠️ Rider mode/session expired. Switch to Rider mode karke dobara Start karein.', 'idle');
+          } else {
+            setStatus('⚠️ Location update nahi hui: ' + (result.message || 'server error'), 'idle');
+          }
+          return;
+        }
+        setStatus('<span class="dot"></span> Live • last update ' + new Date().toLocaleTimeString(), 'live');
+      }).catch(() => {});
+    }
+
+    function stopShare() {
+      sending = false;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      if (timer) clearInterval(timer);
+      if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+      document.getElementById('rBtn').textContent = '▶ Start Live Location';
+      document.getElementById('rBtn').className = 'rider-btn start';
+      setStatus('Location share band.', 'idle');
+    }
+
+    // Load real orders so the rider never has to type an ID (no mismatch)
+    function loadRiderOrders() {
+      const sel = document.getElementById('rOrderSelect');
+      fetch('api/orders.php?_=' + Date.now())
+        .then(r => r.json())
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res.orders || []);
+          const active = list.filter(o => {
+            const st = o.orderStatus || o.status || '';
+            return st !== 'Delivered' && st !== 'Cancelled';
+          });
+          const rows = active.length ? active : list;
+          riderOrders = rows;
+          if (!rows.length) { sel.innerHTML = '<option value="">Koi order nahi mila</option>'; return; }
+          sel.innerHTML = '<option value="">-- Order chunein --</option>' + rows.map(o => {
+            const c = o.customer || {};
+            const label = o.orderId + '  |  ' + (c.name || '') + '  |  ' + (c.city || '') + '  |  ' + (o.orderStatus || o.status || '');
+            return '<option value="' + o.orderId + '">' + label + '</option>';
+          }).join('');
+          const linkedOrder = new URLSearchParams(location.search).get('orderId');
+          if (linkedOrder && [...sel.options].some(o => o.value === linkedOrder)) {
+            sel.value = linkedOrder;
+            showCustomerLocation(linkedOrder);
+          }
+          const typedOrder = document.getElementById('rOrder').value.trim();
+          if (typedOrder) showCustomerLocation(typedOrder);
+        })
+        .catch(() => { sel.innerHTML = '<option value="">Orders load nahi hue - ID type karein</option>'; });
+    }
+    function onOrderPick(v) {
+      if (v) {
+        document.getElementById('rOrder').value = v;
+        showCustomerLocation(v);
+      } else {
+        showCustomerLocation('');
+      }
+    }
+
+    function showCustomerLocation(orderId) {
+      const box = document.getElementById('customerLocationInfo');
+      if (!box) return;
+      const order = riderOrders.find(item => String(item.orderId) === String(orderId));
+      const customer = order && order.customer ? order.customer : {};
+      const savedLocation = customer.deliveryLocation || (order && order.deliveryLocation) || {};
+      const lat = Number(order && (order.deliveryLat ?? customer.deliveryLat ?? savedLocation.lat ?? savedLocation.latitude));
+      const lng = Number(order && (order.deliveryLng ?? customer.deliveryLng ?? savedLocation.lng ?? savedLocation.longitude));
+      const address = [customer.address, customer.landmark, customer.city, customer.pincode].filter(Boolean).join(', ');
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        box.className = 'customer-location missing';
+        box.innerHTML = '⚠️ Customer location share nahi hui.' + (address ? '<br>📍 Address: ' + riderEscapeHtml(address) : '') + '<br>Customer se exact location confirm karein.';
+        return;
+      }
+      const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat + ',' + lng);
+      box.className = 'customer-location';
+      box.innerHTML = '📍 <strong>Customer delivery pin available</strong><br>Lat: ' + lat.toFixed(6) + ' · Lng: ' + lng.toFixed(6) + (address ? '<br>Address: ' + riderEscapeHtml(address) : '') + '<br><a href="' + mapsUrl + '" target="_blank" rel="noopener">🗺️ Open Customer Location</a>';
+    }
+    loadRiderOrders();
+
+    // Admin can open rider.html?orderId=4A123456 so the correct order is ready.
+    (function prefillOrderFromLink() {
+      const orderId = new URLSearchParams(location.search).get('orderId');
+      if (!orderId) return;
+      document.getElementById('rOrder').value = orderId;
+    })();
+
+    function markDelivered() {
+      const order = document.getElementById('rOrder').value.trim();
+      if (!order) { alert('Order ID daalein'); return; }
+      fetch(API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setStatus', orderId: order, status: 'Delivered' })
+      }).then(r => r.json()).then(res => {
+        if (res.success) { stopShare(); setStatus('✅ Order delivered mark ho gaya.', 'idle'); }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -14,7 +14,7 @@ const STORE_CONFIG = {
   whatsappNumber: "918210874123",
   upiId: "goluk147147@ybl",
   upiName: "4astore",
-  adminPassword: "4astore@admin",
+  adminPassword: "",
   storeEmail: "4astorewale@gmail.com"
 };
 
@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
   showAppVersion();
   updateUpiDisplays();
   injectDownloadAppButton();
+  applyHideMode();                       // catalog-only mode: hide cart/buy UI
+  // Re-apply after settings finish loading from the server
+  window.addEventListener('dataLoaded', applyHideMode);
 });
 
 // Show a "Download App" button in the header — ONLY in a web browser
@@ -135,25 +138,21 @@ async function loadData() {
     let prodData, catData, adminData;
     
     try {
-      const [prodRes, catRes, adminRes] = await Promise.all([
+      const [prodRes, catRes] = await Promise.all([
         fetch('api/data.php?type=products'),
-        fetch('api/data.php?type=categories'),
-        fetch('api/data.php?type=admin')
+        fetch('api/data.php?type=categories')
       ]);
-      if (!prodRes.ok || !catRes.ok || !adminRes.ok) throw new Error('API not available');
+      if (!prodRes.ok || !catRes.ok) throw new Error('API not available');
       prodData = await prodRes.json();
       catData = await catRes.json();
-      adminData = await adminRes.json();
     } catch(apiErr) {
       // Fallback to direct JSON files (local development)
-      const [prodRes2, catRes2, adminRes2] = await Promise.all([
+      const [prodRes2, catRes2] = await Promise.all([
         fetch('data/products.json'),
-        fetch('data/categories.json'),
-        fetch('data/admin.json')
+        fetch('data/categories.json')
       ]);
       prodData = await prodRes2.json();
       catData = await catRes2.json();
-      adminData = await adminRes2.json();
     }
     
     products = prodData;
@@ -185,45 +184,23 @@ async function loadData() {
       }
     } catch (e) { /* keep defaults in STORE_CONFIG */ }
     
-    // Load users from PHP API
+    // Users and orders are loaded only by authenticated pages that need them.
+    dbUsers = [];
+    dbOrders = [];
     try {
-      const usersApiRes = await fetch('api/users.php?action=list');
-      if (!usersApiRes.ok) throw new Error('API not available');
-      const usersApiData = await usersApiRes.json();
-      if (usersApiData.success) {
-        dbUsers = usersApiData.users;
-      } else {
-        dbUsers = [];
+      const sessionRes = await fetch('api/users.php?action=session', { cache: 'no-store' });
+      const sessionData = await sessionRes.json();
+      if (sessionData.success && sessionData.user && sessionData.user.mobile) {
+        const orderRes = await fetch('api/orders.php?mobile=' + encodeURIComponent(sessionData.user.mobile), { cache: 'no-store' });
+        const orderData = await orderRes.json();
+        if (orderData.success && Array.isArray(orderData.orders)) {
+          dbOrders = orderData.orders;
+          localStorage.setItem('4astore_orders', JSON.stringify(dbOrders));
+        }
       }
-    } catch(e) {
-      // Fallback to direct JSON file
-      const usersRes = await fetch('data/users.json');
-      dbUsers = await usersRes.json();
-    }
-    localStorage.setItem('4astore_users', JSON.stringify(dbUsers));
-
-    // Load orders from PHP API
-    try {
-      const ordersApiRes = await fetch('api/orders.php');
-      if (!ordersApiRes.ok) throw new Error('API not available');
-      const ordersApiData = await ordersApiRes.json();
-      if (ordersApiData.success) {
-        dbOrders = ordersApiData.orders;
-      } else {
-        dbOrders = [];
-      }
-    } catch(e) {
-      // Fallback to direct JSON file
-      const ordersRes = await fetch('data/orders.json');
-      dbOrders = await ordersRes.json();
-    }
-    localStorage.setItem('4astore_orders', JSON.stringify(dbOrders));
-
-    // Load admin credentials
-    dbAdmin = adminData;
-    localStorage.setItem('4astore_admin', JSON.stringify(dbAdmin));
+    } catch (e) { /* unauthenticated storefront has no private order data */ }
     
-    window.dispatchEvent(new CustomEvent('dataLoaded', { detail: { products, categories, users: dbUsers, orders: dbOrders, admin: dbAdmin } }));
+    window.dispatchEvent(new CustomEvent('dataLoaded', { detail: { products, categories, users: [], orders: [], admin: null } }));
   } catch (e) {
     console.error('Error loading data:', e);
     // Remove shimmer placeholders on error and show fallback
@@ -243,8 +220,8 @@ function getLoggedInUser() {
   return JSON.parse(localStorage.getItem('4astore_user')) || null;
 }
 
-function loginUser(name, mobile, username) {
-  const user = { name, mobile, username: username || mobile, loggedInAt: new Date().toISOString() };
+function loginUser(name, mobile, username, role, backendRider) {
+  const user = { name, mobile, username: username || mobile, role: role || 'customer', backendRider: backendRider === true, loggedInAt: new Date().toISOString() };
   localStorage.setItem('4astore_user', JSON.stringify(user));
   updateLoginUI();
   showToast(`🙏 Welcome, ${name}!`, 'success');
@@ -252,6 +229,12 @@ function loginUser(name, mobile, username) {
 }
 
 function logoutUser() {
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/users.php', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({ action: 'logout' }));
+  } catch (e) { /* clear local state even if the server is unavailable */ }
   localStorage.removeItem('4astore_user');
   updateLoginUI();
   showToast('Logged out successfully', 'info');
@@ -286,12 +269,42 @@ function requireLogin() {
 // ============================================
 // CART FUNCTIONS
 // ============================================
+function normalizeCartItem(item) {
+  const product = (Array.isArray(products) && products.length)
+    ? products.find(p => Number(p.id) === Number(item && item.id))
+    : null;
+
+  if (!product || !item) return item;
+
+  return {
+    ...item,
+    name: item.name || product.name,
+    brand: item.brand || product.brand,
+    weight: item.weight || product.weight,
+    price: Number(product.price) || Number(item.price) || 0,
+    mrp: Number(product.mrp) || Number(item.mrp) || 0,
+    image: item.image || product.image
+  };
+}
+
 function getCart() {
-  return JSON.parse(localStorage.getItem('4astore_cart')) || [];
+  const raw = JSON.parse(localStorage.getItem('4astore_cart')) || [];
+  const normalized = Array.isArray(raw) ? raw.map(normalizeCartItem) : [];
+
+  // Keep cart data synced with live product prices so stale snapshots do not override
+  // the current catalog values after an admin update.
+  const current = JSON.stringify(normalized);
+  const saved = JSON.stringify(raw);
+  if (current !== saved) {
+    localStorage.setItem('4astore_cart', current);
+  }
+
+  return normalized;
 }
 
 function saveCart(cartData) {
-  localStorage.setItem('4astore_cart', JSON.stringify(cartData));
+  const normalized = Array.isArray(cartData) ? cartData.map(normalizeCartItem) : [];
+  localStorage.setItem('4astore_cart', JSON.stringify(normalized));
   updateCartBadge();
 }
 
@@ -614,6 +627,7 @@ function updateOrderStatus(orderId, newStatus) {
   const order = orders.find(o => o.orderId === orderId);
   if (order) {
     order.orderStatus = newStatus;
+    if (newStatus === 'Delivered') order.deliveredAt = order.deliveredAt || new Date().toISOString();
     localStorage.setItem('4astore_orders', JSON.stringify(orders));
     dbOrders = orders;
   }
@@ -720,8 +734,110 @@ function getSettings() {
     deliveryCharge: cached.deliveryCharge !== undefined ? Number(cached.deliveryCharge) : STORE_CONFIG.deliveryCharge,
     freeDeliveryAbove: cached.freeDeliveryAbove !== undefined ? Number(cached.freeDeliveryAbove) : STORE_CONFIG.freeDeliveryAbove,
     upiId: cached.upiId || STORE_CONFIG.upiId,
-    upiName: cached.upiName || STORE_CONFIG.upiName
+    upiName: cached.upiName || STORE_CONFIG.upiName,
+    hideMrp: cached.hideMrp === true,
+    storePhone: cached.storePhone || '8210874123',
+    storeAddress: cached.storeAddress || 'गजना रोड, चंद्रगढ़, नबीनगर, औरंगाबाद',
+    serviceableVillages: cached.serviceableVillages || 'Chandargarh(चंद्रगढ़), Mayapur(मायापुर), Sankarpur(शंकरपुर), Mishirbigha(मिशिरबिगहा), Sinpur(सिनपुर), Kharundha(खरौंधा), Simiri(सिमरी), Bilaspur(बिलासपुर), Bighapar(बिघापर)'
   };
+}
+
+// ============================================
+// VILLAGE / GAON VERIFICATION (fuzzy match + auto-correct)
+// ============================================
+// Returns array of serviceable village names (from admin settings).
+// Each entry keeps its full "English(Hindi)" label.
+function getServiceableVillages() {
+  try {
+    const raw = getSettings().serviceableVillages || '';
+    return raw.split(',').map(v => v.trim()).filter(Boolean);
+  } catch (e) { return ['Chandargarh(चंद्रगढ़)']; }
+}
+
+// Levenshtein distance — how many edits to turn a into b (for spelling match)
+function _levenshtein(a, b) {
+  a = a.toLowerCase(); b = b.toLowerCase();
+  const m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+    }
+  }
+  return d[m][n];
+}
+
+// Verify a typed village against the serviceable list, tolerating spelling
+// mistakes. Returns:
+//   { status:'exact',    match:'Chandargarh' }               -> perfect
+//   { status:'suggest',  match:'Chandargarh', typed:'...' }   -> close typo
+//   { status:'invalid' }                                      -> not serviceable
+// Split an "English(Hindi)" entry into search tokens: full, english, hindi
+function _villageTokens(v) {
+  const full = v.trim();
+  const m = full.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
+  if (m) return { full, en: m[1].trim(), hi: m[2].trim() };
+  return { full, en: full, hi: '' };
+}
+
+function verifyVillage(input) {
+  const typed = (input || '').trim();
+  if (!typed) return { status: 'invalid' };
+  const list = getServiceableVillages();
+  const tl = typed.toLowerCase();
+
+  // 1) exact — matches full "English(Hindi)", or just English, or just Hindi
+  for (const v of list) {
+    const t = _villageTokens(v);
+    if (t.full.toLowerCase() === tl || t.en.toLowerCase() === tl || (t.hi && t.hi === typed)) {
+      return { status: 'exact', match: v };
+    }
+  }
+  // 2) contains / partial (English or Hindi part)
+  for (const v of list) {
+    const t = _villageTokens(v);
+    const el = t.en.toLowerCase();
+    if (el.includes(tl) || tl.includes(el) || (t.hi && typed.includes(t.hi))) {
+      return { status: 'suggest', match: v, typed };
+    }
+  }
+  // 3) fuzzy: closest English part by edit distance (spelling mistakes)
+  let best = null, bestDist = Infinity;
+  for (const v of list) {
+    const t = _villageTokens(v);
+    const dist = _levenshtein(tl, t.en.toLowerCase());
+    if (dist < bestDist) { bestDist = dist; best = v; }
+  }
+  if (best) {
+    const enLen = _villageTokens(best).en.length;
+    const tol = Math.max(2, Math.floor(enLen * 0.4));   // allow ~40% typos
+    if (bestDist <= tol) return { status: 'suggest', match: best, typed };
+  }
+  return { status: 'invalid' };
+}
+
+// Should the strike-through MRP / discount be hidden? (admin toggle)
+function shouldHideMrp() {
+  try { return getSettings().hideMrp === true; } catch (e) { return false; }
+}
+
+// When "Hide MRP" (catalog-only / Play Store safe) mode is ON, hide the whole
+// buying flow: cart icon in header, cart in bottom nav, and cart footer link.
+// Products stay browsable (catalog), but nothing to buy is shown.
+function applyHideMode() {
+  const hide = shouldHideMrp();
+  const sel = [
+    '.cart-badge',                       // header cart icon
+    '.bottom-nav a[href="cart"]',        // bottom-nav cart
+    '.bottom-nav .nav-item[href="cart"]',
+    '.footer-col a[href="cart"]'         // footer "My Cart" link
+  ];
+  document.querySelectorAll(sel.join(',')).forEach(el => {
+    el.style.display = hide ? 'none' : '';
+  });
 }
 
 // Save settings to the server (with localStorage fallback). Returns { success, message }.
@@ -731,7 +847,11 @@ function saveSettings(data) {
     deliveryCharge: parseInt(data.deliveryCharge, 10) || 0,
     freeDeliveryAbove: parseInt(data.freeDeliveryAbove, 10) || 0,
     upiId: (data.upiId || '').trim(),
-    upiName: (data.upiName || '').trim()
+    upiName: (data.upiName || '').trim(),
+    hideMrp: data.hideMrp === true,
+    storePhone: (data.storePhone || '').trim(),
+    storeAddress: (data.storeAddress || '').trim(),
+    serviceableVillages: (data.serviceableVillages || '').trim()
   };
   try {
     const xhr = new XMLHttpRequest();
@@ -990,9 +1110,11 @@ function getProductImage(product) {
 // SVG placeholder. Real URLs are preferred so admin-set images show on the store.
 function getProductImageSrc(product) {
   const url = (product && product.image ? String(product.image).trim() : '');
-  if (url && /^(https?:)?\/\//i.test(url)) return url;
-  if (url && !/^https?:/i.test(url) && url.length > 0 && url.indexOf('data:') !== 0) return url; // relative path
+  if (!url) return getProductImage(product);
+  if (/^(https?:|data:|blob:)/i.test(url)) return url;
   if (url.indexOf('data:') === 0) return url;
+  if (url.startsWith('/')) return url;
+  if (url.startsWith('./') || url.startsWith('../')) return url;
   return getProductImage(product);
 }
 
@@ -1027,7 +1149,7 @@ function getStatusClass(status) {
 // ============================================
 function createProductCard(product) {
   const qty = getItemQuantityInCart(product.id);
-  const discountBadge = product.discount > 0 
+  const discountBadge = (product.discount > 0 && !shouldHideMrp())
     ? `<span class="discount-badge">${product.discount}% OFF</span>` : '';
   
   const actionsHTML = qty > 0 
@@ -1050,11 +1172,13 @@ function createProductCard(product) {
       <div class="product-weight">${product.weight}</div>
       <div class="price-row">
         <span class="price">₹${product.price}</span>
-        ${product.discount > 0 ? `<span class="mrp">₹${product.mrp}</span>` : ''}
+        ${(product.discount > 0 && !shouldHideMrp()) ? `<span class="mrp">₹${product.mrp}</span>` : ''}
       </div>
-      ${product.inStock 
-        ? `<div class="card-actions">${actionsHTML}</div>` 
-        : `<div class="stock-out">Out of Stock</div>`}
+      ${shouldHideMrp()
+        ? ''
+        : (product.inStock
+            ? `<div class="card-actions">${actionsHTML}</div>`
+            : `<div class="stock-out">Out of Stock</div>`)}
     </div>
   `;
 }

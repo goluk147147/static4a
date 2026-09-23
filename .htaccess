@@ -1,5 +1,9 @@
 RewriteEngine On
 
+# Public APK endpoint: never render download.html or require a login.
+# Keep this before coming-soon and clean-URL rules so /download always downloads.
+RewriteRule ^download(?:\.html)?/?$ 4AStore.apk [L]
+
 # ===== COMING SOON MODE =====
 # Redirect all visitors to coming-soon page EXCEPT:
 # - Requests with ?devmode=4adev parameter
@@ -14,6 +18,7 @@ RewriteCond %{REMOTE_ADDR} !^127\.0\.0\.1$
 RewriteCond %{REMOTE_ADDR} !^::1$
 RewriteCond %{QUERY_STRING} !(^|&)(dev)?mode=4adev
 RewriteCond %{REQUEST_URI} !coming-soon
+RewriteCond %{REQUEST_URI} !/download(?:\.html)?/?$
 RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|svg|gif|ico|woff|woff2|json|php|apk)$
 # Coming soon - internal rewrite (URL won't change in browser)
 RewriteRule ^(index\.html?)?$ coming-soon.html [L]
@@ -35,6 +40,11 @@ RewriteRule ^(.*)$ $1.html [L]
 # ===== CACHE CONTROL =====
 # HTML, JS, CSS, JSON: no long caching so users get fresh code quickly.
 <IfModule mod_headers.c>
+  <FilesMatch "^4AStore\.apk$">
+    Header set Content-Type "application/vnd.android.package-archive"
+    Header set Content-Disposition "attachment; filename=4AStore.apk"
+    Header set Cache-Control "no-store"
+  </FilesMatch>
   <FilesMatch "\.(html|js|css|json)$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>

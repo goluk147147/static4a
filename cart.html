@@ -171,12 +171,12 @@
         <div class="cart-summary">
           <div class="summary-row">
             <span>Subtotal (${totals.itemCount} items)</span>
-            <span>₹${totals.mrpTotal}</span>
+            <span>₹${(typeof shouldHideMrp==='function' && shouldHideMrp()) ? totals.subtotal : totals.mrpTotal}</span>
           </div>
-          <div class="summary-row">
+          ${(typeof shouldHideMrp==='function' && shouldHideMrp()) ? '' : `<div class="summary-row">
             <span>Discount</span>
             <span class="discount">-₹${totals.discount}</span>
-          </div>
+          </div>`}
           <div class="summary-row">
             <span>Delivery Charge</span>
             <span>${totals.deliveryCharge === 0 ? '<span style="color:var(--primary)">FREE</span>' : '₹' + totals.deliveryCharge}</span>

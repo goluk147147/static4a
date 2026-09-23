@@ -146,7 +146,7 @@
             
             <div class="detail-price">
               <span class="current">₹${p.price}</span>
-              ${p.discount > 0 ? `<span class="original">₹${p.mrp}</span><span class="off">${p.discount}% OFF</span>` : ''}
+              ${(p.discount > 0 && !(typeof shouldHideMrp==='function' && shouldHideMrp())) ? `<span class="original">₹${p.mrp}</span><span class="off">${p.discount}% OFF</span>` : ''}
             </div>
             
             <p class="detail-desc">${p.description}</p>
@@ -156,11 +156,12 @@
                 <tr><td>Brand</td><td>${p.brand}</td></tr>
                 <tr><td>Category</td><td>${getCategoryName(p.category)}</td></tr>
                 <tr><td>Weight/Qty</td><td>${p.weight}</td></tr>
-                <tr><td>MRP</td><td>₹${p.mrp}</td></tr>
+                ${(typeof shouldHideMrp==='function' && shouldHideMrp()) ? '' : `<tr><td>MRP</td><td>₹${p.mrp}</td></tr>`}
                 <tr><td>Availability</td><td>${p.inStock ? '<span style="color:var(--primary)">✅ In Stock</span>' : '<span style="color:var(--accent)">❌ Out of Stock</span>'}</td></tr>
               </table>
             </div>
             
+            ${(typeof shouldHideMrp==='function' && shouldHideMrp()) ? '' : `
             <!-- PIN Code Check -->
             <div class="pincode-check">
               <h4>📍 Check Delivery Availability</h4>
@@ -170,8 +171,8 @@
               </div>
               <div class="pincode-result" id="pincodeResult"></div>
             </div>
-            
             ${p.inStock ? `<div data-product-id="${p.id}"><div class="card-actions">${actionsHTML}</div></div>` : ''}
+            `}
           </div>
         </div>
       `;

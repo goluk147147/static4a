@@ -1,14 +1,8 @@
-# Allow access to JSON data files (static hosting)
+# Data files contain credentials and private order records; serve them only through API endpoints.
 <IfModule mod_authz_core.c>
-  Require all granted
+  Require all denied
 </IfModule>
 <IfModule !mod_authz_core.c>
-  Order allow,deny
-  Allow from all
+  Order deny,allow
+  Deny from all
 </IfModule>
-
-# Set correct content type for JSON files
-<FilesMatch "\.json$">
-  Header set Content-Type "application/json"
-  Header set Access-Control-Allow-Origin "*"
-</FilesMatch>
