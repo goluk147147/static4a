@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace 'com.store4a.app'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.store4a.app"
         minSdk 24
-        targetSdk 34
+        targetSdk 36
         versionCode 7
         versionName "1.6"
     }
@@ -17,9 +17,9 @@ android {
     signingConfigs {
         release {
             storeFile file("${rootProject.projectDir}/4astore-key.jks")
-            storePassword "Store4A2026"
+            storePassword findProperty('STORE4A_KEYSTORE_PASSWORD') ?: System.getenv('STORE4A_KEYSTORE_PASSWORD')
             keyAlias "4astore"
-            keyPassword "Store4A2026"
+            keyPassword findProperty('STORE4A_KEY_PASSWORD') ?: System.getenv('STORE4A_KEY_PASSWORD')
         }
     }
 

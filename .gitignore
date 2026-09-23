@@ -1,3 +1,13 @@
 node_modules/
 .expo/
 *.cer
+
+# Private production data and signing material
+4AStoreApp/4astore-key.jks
+4AStoreApp/local.properties
+data/users.json
+data/admin-users.json
+data/orders.json
+data/mail-config.php
+data/screenshots/*
+!data/screenshots/.gitkeep

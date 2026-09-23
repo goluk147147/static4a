@@ -29,6 +29,8 @@
     .profile-actions .action-address:hover { background:#6a1b9a; color:white; }
     .profile-actions .action-logout { background:#ffebee; color:#c62828; }
     .profile-actions .action-logout:hover { background:#c62828; color:white; }
+    .profile-actions .action-delete { background:#fff3e0; color:#a34b00; }
+    .profile-actions .action-delete:hover { background:#a34b00; color:white; }
     .profile-stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:20px; }
     .profile-stats .stat { text-align:center; padding:12px; background:var(--light-gray); border-radius:10px; }
     .profile-stats .stat .num { font-size:1.3rem; font-weight:800; color:var(--primary-dark); }
@@ -146,6 +148,7 @@
             <a href="checkout" class="action-address">🏠 Delivery Address</a>
             ${isAdminUser(user) ? '<a href="admin" class="action-admin" style="background:#2C6FAD;color:white;">🔐 Admin Panel →</a>' : ''}
             <button class="action-logout" onclick="handleLogout()">🚪 Logout</button>
+            <button class="action-delete" onclick="deleteMyAccount()">🗑️ Delete my account</button>
           </div>
         </div>
       `;
@@ -155,6 +158,23 @@
       if (confirm('Are you sure you want to logout?')) {
         logoutUser();
       }
+    }
+
+    function deleteMyAccount() {
+      if (!confirm('Delete your account permanently? Your account details will be removed. Existing order records may be retained for legal and store records.')) return;
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', 'api/users.php', false);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify({ action: 'deleteSelf' }));
+      let response = null;
+      try { response = JSON.parse(xhr.responseText || '{}'); } catch (e) { response = null; }
+      if (!response || !response.success) {
+        showToast((response && response.message) || 'Unable to delete account. Please contact support.', 'error');
+        return;
+      }
+      ['4astore_user', '4astore_customer', '4astore_cart', '4astore_orders'].forEach(key => localStorage.removeItem(key));
+      alert('Your account has been deleted.');
+      window.location.href = 'account-deletion';
     }
 
     function isAdminUser(user) {

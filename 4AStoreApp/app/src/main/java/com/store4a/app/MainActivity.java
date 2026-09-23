@@ -103,7 +103,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        requestPermissions();
         setupWebView();
         setupSwipeRefresh();
 
@@ -182,28 +181,6 @@ public class MainActivity extends AppCompatActivity {
             b.setNegativeButton("Later", (dialog, which) -> dialog.dismiss());
         }
         b.show();
-    }
-
-    private void requestPermissions() {
-        String[] permissions = {
-                Manifest.permission.CAMERA,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-        };
-
-        boolean needRequest = false;
-        for (String permission : permissions) {
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                needRequest = true;
-                break;
-            }
-        }
-
-        if (needRequest) {
-            ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE);
-        }
     }
 
     private void setupWebView() {
@@ -546,8 +523,11 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 } else {
-                    // Older Android : write to the public Downloads folder
-                    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    // Older Android: use app-specific Downloads storage without broad storage
+                    // permission.
+                    File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                    if (dir == null)
+                        throw new IOException("Downloads directory unavailable");
                     if (!dir.exists())
                         dir.mkdirs();
                     File outFile = new File(dir, fileName);
