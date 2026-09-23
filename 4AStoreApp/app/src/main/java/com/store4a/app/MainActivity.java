@@ -94,7 +94,10 @@ public class MainActivity extends AppCompatActivity {
                         tts.setLanguage(Locale.US); // fallback if Hindi voice not installed
                     }
                 } catch (Exception e) {
-                    try { tts.setLanguage(Locale.US); } catch (Exception ex) { /* ignore */ }
+                    try {
+                        tts.setLanguage(Locale.US);
+                    } catch (Exception ex) {
+                        /* ignore */ }
                 }
                 ttsReady = true;
             }
@@ -122,14 +125,16 @@ public class MainActivity extends AppCompatActivity {
     private void checkForUpdate() {
         new Thread(() -> {
             try {
-                HttpURLConnection conn = (HttpURLConnection) new URL(VERSION_URL + "?t=" + System.currentTimeMillis()).openConnection();
+                HttpURLConnection conn = (HttpURLConnection) new URL(VERSION_URL + "?t=" + System.currentTimeMillis())
+                        .openConnection();
                 conn.setConnectTimeout(8000);
                 conn.setReadTimeout(8000);
                 conn.setRequestProperty("Cache-Control", "no-cache");
                 BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 StringBuilder sb = new StringBuilder();
                 String line;
-                while ((line = r.readLine()) != null) sb.append(line);
+                while ((line = r.readLine()) != null)
+                    sb.append(line);
                 r.close();
                 conn.disconnect();
 
@@ -183,7 +188,9 @@ public class MainActivity extends AppCompatActivity {
         String[] permissions = {
                 Manifest.permission.CAMERA,
                 Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
         };
 
         boolean needRequest = false;
@@ -205,6 +212,7 @@ public class MainActivity extends AppCompatActivity {
         // Basic settings
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
+        webSettings.setGeolocationEnabled(true);
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -353,7 +361,7 @@ public class MainActivity extends AppCompatActivity {
             // route it through the normal navigation logic instead.
             @Override
             public boolean onCreateWindow(WebView view, boolean isDialog,
-                                          boolean isUserGesture, android.os.Message resultMsg) {
+                    boolean isUserGesture, android.os.Message resultMsg) {
                 WebView.HitTestResult result = view.getHitTestResult();
                 String target = (result != null) ? result.getExtra() : null;
                 if (target != null && !target.isEmpty()) {
@@ -375,7 +383,7 @@ public class MainActivity extends AppCompatActivity {
             // File upload support
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCb,
-                                             FileChooserParams fileChooserParams) {
+                    FileChooserParams fileChooserParams) {
                 if (filePathCallback != null) {
                     filePathCallback.onReceiveValue(null);
                 }
@@ -411,7 +419,7 @@ public class MainActivity extends AppCompatActivity {
                 // Combine intents
                 Intent[] intentArray;
                 if (takePictureIntent != null) {
-                    intentArray = new Intent[]{takePictureIntent};
+                    intentArray = new Intent[] { takePictureIntent };
                 } else {
                     intentArray = new Intent[0];
                 }
@@ -428,7 +436,7 @@ public class MainActivity extends AppCompatActivity {
             // Geolocation permission
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin,
-                                                           GeolocationPermissions.Callback callback) {
+                    GeolocationPermissions.Callback callback) {
                 callback.invoke(origin, true, false);
             }
 
@@ -444,23 +452,23 @@ public class MainActivity extends AppCompatActivity {
         webView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent, String contentDisposition,
-                                        String mimetype, long contentLength) {
-                if (url == null) return;
+                    String mimetype, long contentLength) {
+                if (url == null)
+                    return;
                 // These are handled in-page by jsPDF + the JS bridge
                 if (url.startsWith("blob:") || url.startsWith("data:")) {
                     return;
                 }
                 try {
-                    android.app.DownloadManager.Request req =
-                            new android.app.DownloadManager.Request(Uri.parse(url));
+                    android.app.DownloadManager.Request req = new android.app.DownloadManager.Request(Uri.parse(url));
                     req.setMimeType(mimetype);
                     String name = URLUtil.guessFileName(url, contentDisposition, mimetype);
                     req.addRequestHeader("User-Agent", userAgent);
                     req.setNotificationVisibility(
                             android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
                     req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name);
-                    android.app.DownloadManager dm =
-                            (android.app.DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                    android.app.DownloadManager dm = (android.app.DownloadManager) getSystemService(
+                            Context.DOWNLOAD_SERVICE);
                     if (dm != null) {
                         dm.enqueue(req);
                         Toast.makeText(MainActivity.this, "Downloading " + name, Toast.LENGTH_SHORT).show();
@@ -503,7 +511,8 @@ public class MainActivity extends AppCompatActivity {
         // Speak Hindi text using the phone's native TTS (guaranteed in-app).
         @JavascriptInterface
         public void speak(String text) {
-            if (text == null || text.isEmpty()) return;
+            if (text == null || text.isEmpty())
+                return;
             // Diagnostic: confirm the bridge is actually being called from JS
             runOnUiThread(() -> Toast.makeText(MainActivity.this,
                     ttsReady ? "🔊 Playing voice..." : "⏳ Voice engine loading...", Toast.LENGTH_SHORT).show());
@@ -531,12 +540,16 @@ public class MainActivity extends AppCompatActivity {
                     Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
                     if (uri != null) {
                         OutputStream os = resolver.openOutputStream(uri);
-                        if (os != null) { os.write(bytes); os.close(); }
+                        if (os != null) {
+                            os.write(bytes);
+                            os.close();
+                        }
                     }
                 } else {
                     // Older Android : write to the public Downloads folder
                     File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                    if (!dir.exists()) dir.mkdirs();
+                    if (!dir.exists())
+                        dir.mkdirs();
                     File outFile = new File(dir, fileName);
                     FileOutputStream fos = new FileOutputStream(outFile);
                     fos.write(bytes);
@@ -558,13 +571,14 @@ public class MainActivity extends AppCompatActivity {
             if (tts != null && ttsReady) {
                 // Turn media volume up so the voice guide is clearly audible
                 try {
-                    android.media.AudioManager am =
-                            (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                    android.media.AudioManager am = (android.media.AudioManager) getSystemService(
+                            Context.AUDIO_SERVICE);
                     if (am != null) {
                         int max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC);
                         am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, max, 0);
                     }
-                } catch (Exception e) { /* ignore */ }
+                } catch (Exception e) {
+                    /* ignore */ }
 
                 android.os.Bundle params = new android.os.Bundle();
                 params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f);
@@ -594,7 +608,8 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
-            if (filePathCallback == null) return;
+            if (filePathCallback == null)
+                return;
 
             Uri[] results = null;
 
@@ -602,13 +617,13 @@ public class MainActivity extends AppCompatActivity {
                 if (data == null || data.getData() == null) {
                     // Camera photo was taken
                     if (cameraPhotoPath != null) {
-                        results = new Uri[]{Uri.parse(cameraPhotoPath)};
+                        results = new Uri[] { Uri.parse(cameraPhotoPath) };
                     }
                 } else {
                     // File was selected from gallery
                     String dataString = data.getDataString();
                     if (dataString != null) {
-                        results = new Uri[]{Uri.parse(dataString)};
+                        results = new Uri[] { Uri.parse(dataString) };
                     }
                 }
             }
@@ -620,8 +635,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupSwipeRefresh() {
         swipeRefresh.setColorSchemeColors(
-                getResources().getColor(R.color.primary, getTheme())
-        );
+                getResources().getColor(R.color.primary, getTheme()));
         swipeRefresh.setOnRefreshListener(() -> {
             if (isNetworkAvailable()) {
                 webView.reload();
@@ -688,7 +702,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         // Permissions handled - WebView will work with whatever permissions granted
     }
