@@ -18,6 +18,24 @@ const STORE_CONFIG = {
   storeEmail: "4astorewale@gmail.com"
 };
 
+const LOGIN_SESSION_VERSION = '2026-09-24-session-reset-1';
+const LOGIN_SESSION_VERSION_KEY = '4astore_login_session_version';
+
+function resetOldLoginSession() {
+  const savedUser = localStorage.getItem('4astore_user');
+  const savedVersion = localStorage.getItem(LOGIN_SESSION_VERSION_KEY);
+  if (!savedUser || savedVersion === LOGIN_SESSION_VERSION) return;
+
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/users.php', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({ action: 'logout' }));
+  } catch (e) { /* local logout still proceeds */ }
+  localStorage.removeItem('4astore_user');
+  localStorage.setItem(LOGIN_SESSION_VERSION_KEY, LOGIN_SESSION_VERSION);
+}
+
 // State
 let products = [];
 let categories = [];
@@ -29,6 +47,7 @@ let dbAdmin = null;
 // INITIALIZATION
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
+  resetOldLoginSession();
   checkAssetVersion();   // auto-refresh if admin pushed a new build
   loadData();
   updateCartBadge();
@@ -223,6 +242,7 @@ function getLoggedInUser() {
 function loginUser(name, mobile, username, role, backendRider) {
   const user = { name, mobile, username: username || mobile, role: role || 'customer', backendRider: backendRider === true, loggedInAt: new Date().toISOString() };
   localStorage.setItem('4astore_user', JSON.stringify(user));
+  localStorage.setItem(LOGIN_SESSION_VERSION_KEY, LOGIN_SESSION_VERSION);
   updateLoginUI();
   showToast(`🙏 Welcome, ${name}!`, 'success');
   return user;
@@ -236,6 +256,7 @@ function logoutUser() {
     xhr.send(JSON.stringify({ action: 'logout' }));
   } catch (e) { /* clear local state even if the server is unavailable */ }
   localStorage.removeItem('4astore_user');
+  localStorage.removeItem(LOGIN_SESSION_VERSION_KEY);
   updateLoginUI();
   showToast('Logged out successfully', 'info');
   window.location.href = 'login';
@@ -577,15 +598,27 @@ function placeOrder(customerData) {
     orderDate: new Date().toISOString()
   };
   
-  // Save to PHP API (server-side JSON)
+  let serverSave = { success: false, message: 'Order server par save nahi ho saka.' };
+
+  // Save to PHP API (server-side JSON) before showing order success.
   try {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', 'api/orders.php', false);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.send(JSON.stringify({ action: 'save', order: order }));
+    serverSave = JSON.parse(xhr.responseText || '{}');
+    if (xhr.status !== 200 || serverSave.success !== true) {
+      serverSave.success = false;
+      serverSave.message = serverSave.message || ('Server returned HTTP ' + xhr.status);
+    }
   } catch(e) {
     console.error('Failed to save order to server:', e);
+    serverSave = { success: false, message: 'Server se connection nahi ho saka.' };
   }
+
+  order.serverSaved = serverSave.success === true;
+  order.serverMessage = serverSave.message || '';
+  if (!order.serverSaved) return order;
 
   // Also save to localStorage as cache
   let orders = JSON.parse(localStorage.getItem('4astore_orders')) || [];

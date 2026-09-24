@@ -63,8 +63,12 @@
         <label>Complete Address (पूरा पता) *</label>
         <textarea id="custAddress" rows="3" placeholder="घर नंबर, टोला/मोहल्ला, गाँव और सड़क का पूरा पता लिखें"></textarea>
         <div class="error-msg">Please enter your address</div>
-        <button type="button" id="deliveryLocationBtn" onclick="captureDeliveryLocation()" style="margin-top:8px;padding:9px 12px;border:1px solid var(--primary);border-radius:8px;background:#fff;color:var(--primary-dark);font-weight:600;cursor:pointer;">डिलीवरी पिन के लिए मेरी लोकेशन लें</button>
-        <div id="deliveryLocationStatus" style="margin-top:6px;font-size:12px;color:var(--gray);">ऑर्डर आगे बढ़ाने के लिए सटीक डिलीवरी लोकेशन Allow करना जरूरी है।</div>
+        <div style="margin-top:10px;font-size:13px;font-weight:700;color:var(--primary-dark);">डिलीवरी लोकेशन कैसे देना है?</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:7px;">
+          <button type="button" id="currentLocationOption" onclick="selectLocationMode('current')" style="padding:9px 12px;border:1px solid var(--primary);border-radius:8px;background:#fff;color:var(--primary-dark);font-weight:600;cursor:pointer;">📍 Current location लें</button>
+          <button type="button" id="manualLocationOption" onclick="selectLocationMode('manual')" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--primary-light);color:var(--primary-dark);font-weight:600;cursor:pointer;">✍️ Address manually डालें</button>
+        </div>
+        <div id="deliveryLocationStatus" style="margin-top:6px;font-size:12px;color:var(--gray);">अगर आप Chandargarh के बाहर हैं, तो manual address चुनें। GPS तभी लिया जाएगा जब आप Current location चुनेंगे।</div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -194,6 +198,7 @@
     let customerInfo = null;
     let paymentScreenshot = null;
     let deliveryLocation = null;
+    let locationMode = 'manual';
 
     document.addEventListener('DOMContentLoaded', () => {
       if (!requireLogin()) return;
@@ -206,9 +211,6 @@
       }
       renderOrderSummary();
       loadSavedCustomer();
-      // Ask for a fresh high-accuracy delivery pin as soon as checkout opens.
-      // The browser still controls the permission prompt; it cannot be forced by JavaScript.
-      setTimeout(requestDeliveryLocationOnLoad, 250);
     });
 
     // Re-render the order summary once backend settings (delivery fee etc.) load
@@ -228,36 +230,56 @@
         if (saved.address) document.getElementById('custAddress').value = saved.address;
         if (saved.landmark) document.getElementById('custLandmark').value = saved.landmark;
         if (saved.city) document.getElementById('custCity').value = saved.city;
-        if (Number.isFinite(Number(saved.deliveryLat)) && Number.isFinite(Number(saved.deliveryLng))) {
-          deliveryLocation = { lat: Number(saved.deliveryLat), lng: Number(saved.deliveryLng) };
-          showDeliveryLocationSaved();
-        }
+        // Never silently reuse an old GPS pin: the customer must choose GPS again.
       }
     }
 
     function showDeliveryLocationSaved() {
-      const btn = document.getElementById('deliveryLocationBtn');
       const status = document.getElementById('deliveryLocationStatus');
-      if (btn) btn.textContent = 'डिलीवरी लोकेशन सेव है - बदलें';
-      if (status) { status.textContent = 'राइडर को आपका सही डिलीवरी पिन दिखेगा।'; status.style.color = '#2e7d32'; }
+      if (status) { status.textContent = 'Current location मिल गई। यही GPS pin rider को भेजी जाएगी।'; status.style.color = '#2e7d32'; }
+      const current = document.getElementById('currentLocationOption');
+      if (current) current.style.background = '#e8f5e9';
+    }
+
+    function selectLocationMode(mode) {
+      locationMode = mode === 'current' ? 'current' : 'manual';
+      const current = document.getElementById('currentLocationOption');
+      const manual = document.getElementById('manualLocationOption');
+      const status = document.getElementById('deliveryLocationStatus');
+      if (locationMode === 'manual') {
+        deliveryLocation = null;
+        if (current) current.style.background = '#fff';
+        if (manual) manual.style.background = '#e8f5e9';
+        if (status) { status.textContent = 'Manual address use hoga. Rider ko yahi address diya jayega, GPS nahi.'; status.style.color = '#2e7d32'; }
+        return;
+      }
+      if (manual) manual.style.background = '#fff';
+      if (current) current.style.background = '#fff8e1';
+      if (status) { status.textContent = 'Aapki current GPS location lene ke liye permission Allow karein.'; status.style.color = 'var(--primary-dark)'; }
+      captureDeliveryLocation();
     }
 
     function captureDeliveryLocation() {
       if (!navigator.geolocation) { showToast('Is device me location support nahi hai.', 'error'); return; }
-      const btn = document.getElementById('deliveryLocationBtn');
+      const btn = document.getElementById('currentLocationOption');
       const status = document.getElementById('deliveryLocationStatus');
-      btn.disabled = true;
-      btn.textContent = 'लोकेशन ली जा रही है...';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'लोकेशन ली जा रही है...';
+      }
       if (status) { status.textContent = 'Location permission allow karein.'; status.style.color = 'var(--gray)'; }
       navigator.geolocation.getCurrentPosition(
         p => {
           deliveryLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
-          btn.disabled = false;
+          locationMode = 'current';
+          if (btn) btn.disabled = false;
           showDeliveryLocationSaved();
         },
         e => {
-          btn.disabled = false;
-          btn.textContent = 'डिलीवरी पिन के लिए मेरी लोकेशन लें';
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '📍 Current location लें';
+          }
           const reason = e.code === 1
             ? 'कृपया browser settings में इस site की location permission Allow करें, फिर दोबारा कोशिश करें।'
             : e.code === 3
@@ -267,16 +289,6 @@
         },
         { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
       );
-    }
-
-    function requestDeliveryLocationOnLoad() {
-      if (!navigator.geolocation) return;
-      const status = document.getElementById('deliveryLocationStatus');
-      if (status) {
-        status.textContent = 'सटीक डिलीवरी लोकेशन लेने के लिए browser permission Allow करें...';
-        status.style.color = 'var(--primary-dark)';
-      }
-      captureDeliveryLocation();
     }
 
     function renderOrderSummary() {
@@ -293,12 +305,18 @@
           }
           const image = typeof getProductImageSrc === 'function' ? getProductImageSrc(product) : '';
           const fallback = typeof getProductImage === 'function' ? escapeAttr(getProductImage(product)) : '';
-          return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px;border-bottom:1px solid var(--border);"><img src="${escapeAttr(image)}" alt="${escapeHtml(item.name)}" style="width:48px;height:48px;object-fit:contain;border-radius:7px;background:#f7fafc;" onerror="this.onerror=null;this.src='${fallback}'"><span style="flex:1;">${escapeHtml(item.name)} × ${item.quantity}</span><span>₹${item.price * item.quantity}</span></div>`;
+          return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px;border-bottom:1px solid var(--border);"><img src="${escapeAttr(image)}" alt="${checkoutEscapeHtml(item.name)}" style="width:48px;height:48px;object-fit:contain;border-radius:7px;background:#f7fafc;" onerror="this.onerror=null;this.src='${fallback}'"><span style="flex:1;">${checkoutEscapeHtml(item.name)} × ${item.quantity}</span><span>₹${item.price * item.quantity}</span></div>`;
         }).join('')}
         <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:var(--gray);"><span>Subtotal</span><span>₹${totals.subtotal}</span></div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:var(--primary);"><span>Discount</span><span>-₹${totals.discount}</span></div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span>Delivery</span><span>${totals.deliveryCharge===0?'FREE':'₹'+totals.deliveryCharge}</span></div>
         <div style="display:flex;justify-content:space-between;padding:12px 0 0;font-size:18px;font-weight:700;border-top:2px solid var(--border);margin-top:8px;color:var(--primary-dark);"><span>Total</span><span>₹${totals.total}</span></div>`;
+    }
+
+    function checkoutEscapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[character]));
     }
 
     // ---- Searchable village dropdown ----
@@ -351,11 +369,11 @@
       if (!city) { document.getElementById('custCity').parentElement.classList.add('error'); valid = false; }
       if (pincode !== '824301') { document.getElementById('custPincode').parentElement.classList.add('error'); showToast('🚀 Delivery only in PIN 824301', 'error'); valid = false; }
       if (!valid) { showToast('Please fill all required fields', 'error'); return; }
-      if (!deliveryLocation || !Number.isFinite(Number(deliveryLocation.lat)) || !Number.isFinite(Number(deliveryLocation.lng))) {
-        showToast('पहले delivery location Allow करें, तभी order आगे बढ़ेगा।', 'error');
+      const hasGpsLocation = deliveryLocation && Number.isFinite(Number(deliveryLocation.lat)) && Number.isFinite(Number(deliveryLocation.lng));
+      if (locationMode === 'current' && !hasGpsLocation) {
+        showToast('Current location nahi mili. Manual address choose karein ya GPS permission Allow karein.', 'error');
         const status = document.getElementById('deliveryLocationStatus');
-        if (status) { status.textContent = 'लोकेशन नहीं मिली। ऊपर वाले button पर क्लिक करके browser में Allow करें।'; status.style.color = '#c62828'; }
-        captureDeliveryLocation();
+        if (status) { status.textContent = 'GPS location nahi mili. Dobara Current location choose karein, ya manual address select karein.'; status.style.color = '#c62828'; }
         return;
       }
 
@@ -581,6 +599,11 @@
       
       // Place order with screenshot reference
       orderData = placeOrder(customerInfo);
+
+      if (!orderData.serverSaved) {
+        showToast('Order save nahi hua: ' + (orderData.serverMessage || 'Please login again and retry.'), 'error');
+        return;
+      }
 
       // Upload the payment screenshot to the SERVER so the admin can see it
       // from any device (not just this browser).

@@ -1,8 +1,11 @@
 <?php
 // Shared API security helpers. Sessions are the source of truth for identity and role.
 if (session_status() !== PHP_SESSION_ACTIVE) {
+    // Keep the authenticated API session alive across browser/app restarts.
+    ini_set('session.gc_maxlifetime', '31536000');
     session_name('4astore_session');
     session_set_cookie_params([
+        'lifetime' => 31536000,
         'httponly' => true,
         'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'samesite' => 'Lax'
