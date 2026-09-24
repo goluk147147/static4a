@@ -86,4 +86,11 @@ function safeUser($user, $includeSensitive = false)
     }
     return $user;
 }
+
+function adminListUser($user)
+{
+    $user['passwordHashed'] = !empty($user['passwordHash']);
+    unset($user['passwordHash']);
+    return $user;
+}
 ?>

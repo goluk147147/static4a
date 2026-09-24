@@ -54,9 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         requirePermission('users');
         echo json_encode([
             'success' => true,
-            'users' => array_map(function ($user) {
-                return safeUser($user, true);
-            }, getUsers())
+            'users' => array_map('adminListUser', getUsers())
         ]);
     }
     if ($action === 'adminList') {

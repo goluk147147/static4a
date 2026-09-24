@@ -27,7 +27,8 @@
         "paymentMethod": "UPI",
         "orderStatus": "Delivered",
         "orderDate": "2026-09-16T14:47:22.964Z",
-        "status": "Delivered"
+        "status": "Delivered",
+        "deliveredAt": "2026-09-22T10:51:23+02:00"
     },
     {
         "orderId": "4A383782",
@@ -151,5 +152,34 @@
         "status": "Order Placed",
         "orderDate": "2026-09-22T15:02:21+02:00",
         "createdBy": "akgupta"
+    },
+    {
+        "orderId": "4A250615",
+        "userId": 4,
+        "customer": {
+            "name": "Akash",
+            "mobile": "8002116652",
+            "email": "",
+            "address": "sdfghj",
+            "landmark": "",
+            "city": "Chandragarh (चंद्रगढ़)",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 5,
+                "name": "Tata Salt",
+                "weight": "1 Kg",
+                "price": 28,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 28,
+        "discount": 2,
+        "deliveryCharge": 0,
+        "totalAmount": 28,
+        "paymentMethod": "UPI",
+        "orderStatus": "Order Placed",
+        "orderDate": "2026-09-24T12:14:56.825Z"
     }
 ]
