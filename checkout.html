@@ -136,7 +136,7 @@
             <p style="font-size:13px; color:var(--primary); font-weight:600; margin-top:8px;">Tap to upload payment screenshot</p>
             <p style="font-size:11px; color:#999;">JPG, PNG supported</p>
           </div>
-          <img id="screenshotPreview" class="preview-img" style="display:none;">
+          <img id="screenshotPreview" class="preview-img" alt="Payment screenshot preview" style="display:none;">
         </div>
       </div>
       
@@ -284,7 +284,17 @@
       const totals = getCartTotal();
       document.getElementById('orderSummaryCheckout').innerHTML = `
         <h4 style="margin-bottom:12px;">📦 Order Summary</h4>
-        ${cart.map(item => `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;border-bottom:1px solid var(--border);"><span>${item.name} × ${item.quantity}</span><span>₹${item.price * item.quantity}</span></div>`).join('')}
+        ${cart.map(item => {
+          const product = { id: item.id, name: item.name, category: '', weight: item.weight, image: item.image || '' };
+          const catalogProduct = window.products && window.products.find(p => Number(p.id) === Number(item.id));
+          if (catalogProduct) {
+            product.category = catalogProduct.category || '';
+            product.image = product.image || catalogProduct.image || '';
+          }
+          const image = typeof getProductImageSrc === 'function' ? getProductImageSrc(product) : '';
+          const fallback = typeof getProductImage === 'function' ? escapeAttr(getProductImage(product)) : '';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px;border-bottom:1px solid var(--border);"><img src="${escapeAttr(image)}" alt="${escapeHtml(item.name)}" style="width:48px;height:48px;object-fit:contain;border-radius:7px;background:#f7fafc;" onerror="this.onerror=null;this.src='${fallback}'"><span style="flex:1;">${escapeHtml(item.name)} × ${item.quantity}</span><span>₹${item.price * item.quantity}</span></div>`;
+        }).join('')}
         <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:var(--gray);"><span>Subtotal</span><span>₹${totals.subtotal}</span></div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:var(--primary);"><span>Discount</span><span>-₹${totals.discount}</span></div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span>Delivery</span><span>${totals.deliveryCharge===0?'FREE':'₹'+totals.deliveryCharge}</span></div>

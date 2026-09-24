@@ -142,10 +142,13 @@
       const totals = getCartTotal();
       
       const itemsHTML = cart.map(item => {
-        const product = { id: item.id, name: item.name, category: '', weight: item.weight, price: item.price, brand: item.brand || '' };
+        const product = { id: item.id, name: item.name, category: '', weight: item.weight, price: item.price, brand: item.brand || '', image: item.image || '' };
         if (window.products && window.products.length) {
           const found = window.products.find(p => p.id === item.id);
-          if (found) product.category = found.category;
+          if (found) {
+            product.category = found.category;
+            product.image = product.image || found.image || '';
+          }
         }
         const imgSrc = (typeof getProductImageSrc === 'function') ? getProductImageSrc(product) : (product.image || '');
         const fallbackImg = (typeof getProductImage === 'function') ? getProductImage(product) : '';

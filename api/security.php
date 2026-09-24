@@ -76,9 +76,11 @@ function hasPermission($user, $permission)
         || (($user['role'] ?? '') === 'admin' && (in_array('*', $user['permissions'] ?? [], true) || in_array($permission, $user['permissions'] ?? [], true)));
 }
 
-function safeUser($user)
+function safeUser($user, $includeSensitive = false)
 {
-    unset($user['password'], $user['passwordHash']);
+    if (!$includeSensitive) {
+        unset($user['password'], $user['passwordHash']);
+    }
     return $user;
 }
 ?>

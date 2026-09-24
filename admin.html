@@ -1116,7 +1116,7 @@
                   <td>${u.username || '-'}</td>
                   <td><a href="tel:${u.mobile}">${u.mobile}</a></td>
                   <td>${u.role === 'rider' ? 'Delivery Boy' : 'Customer'}</td>
-                  <td style="font-family:monospace; font-size:11px;">${u.password || '-'}</td>
+                  <td style="font-family:monospace; font-size:11px;">${u.password ?? (u.passwordHash ? '[hash saved]' : '-')}</td>
                   <td>${u.registeredAt ? formatDate(u.registeredAt) : '-'}</td>
                   <td>${lastLogin ? formatDate(u.lastLogin) : 'Never'}</td>
                   <td style="${inactiveClass}">${daysSinceLogin >= 999 ? 'Never' : daysSinceLogin + ' days'}</td>

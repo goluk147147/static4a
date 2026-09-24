@@ -1111,7 +1111,8 @@ function getProductImage(product) {
 function getProductImageSrc(product) {
   const url = (product && product.image ? String(product.image).trim() : '');
   if (!url) return getProductImage(product);
-  if (/^(https?:|data:|blob:)/i.test(url)) return url;
+  if (/^https?:/i.test(url)) return 'api/img-proxy.php?url=' + encodeURIComponent(url);
+  if (/^(data:|blob:)/i.test(url)) return url;
   if (url.indexOf('data:') === 0) return url;
   if (url.startsWith('/')) return url;
   if (url.startsWith('./') || url.startsWith('../')) return url;

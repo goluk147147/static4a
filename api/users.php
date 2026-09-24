@@ -52,7 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if ($action === 'list') {
         requirePermission('users');
-        echo json_encode(['success' => true, 'users' => array_map('safeUser', getUsers())]);
+        echo json_encode([
+            'success' => true,
+            'users' => array_map(function ($user) {
+                return safeUser($user, true);
+            }, getUsers())
+        ]);
     }
     if ($action === 'adminList') {
         requirePermission('team');

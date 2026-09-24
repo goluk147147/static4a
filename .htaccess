@@ -1,52 +1,34 @@
 RewriteEngine On
 
-# Public APK endpoint: never render download.html or require a login.
-# Keep this before coming-soon and clean-URL rules so /download always downloads.
+# SEO files must always be served directly, never rewritten to the homepage.
+RewriteRule ^(?:robots\.txt|sitemap\.xml)$ - [END]
+
+# Temporary mode: domain forwarding is handled by the hosting panel.
+# Do not add a reverse redirect here until 4astore.com serves this folder.
+
+# Public APK endpoint: /download and /download.html both download the APK.
 RewriteRule ^download(?:\.html)?/?$ 4AStore.apk [L]
 
-# ===== COMING SOON MODE =====
-# Redirect all visitors to coming-soon page EXCEPT:
-# - Requests with ?devmode=4adev parameter
-# - Already on coming-soon page
-# - Asset files (css, js, images, etc.)
-# - API requests
-# - Localhost / local testing (127.0.0.1 / localhost)
-# Comment out these lines below to DISABLE coming soon mode after launch
-# Dev bypass: add ?devmode=4adev OR ?mode=4adev to any URL
-
-RewriteCond %{REMOTE_ADDR} !^127\.0\.0\.1$
-RewriteCond %{REMOTE_ADDR} !^::1$
-RewriteCond %{QUERY_STRING} !(^|&)(dev)?mode=4adev
-RewriteCond %{REQUEST_URI} !coming-soon
-RewriteCond %{REQUEST_URI} !/download(?:\.html)?/?$
-RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|svg|gif|ico|woff|woff2|json|php|apk)$
-# Coming soon - internal rewrite (URL won't change in browser)
-RewriteRule ^(index\.html?)?$ coming-soon.html [L]
-
-# ===== END COMING SOON =====
-
-# Allow PHP files to execute directly (don't add .html)
-RewriteCond %{REQUEST_FILENAME} -f
-RewriteRule ^ - [L]
-
-# Allow directories
+# Serve existing files and directories directly. This keeps robots.txt,
+# sitemap.xml, assets, APIs, and legal HTML pages reachable by crawlers.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Try adding .html extension for clean URLs
+# Clean URLs: /products -> /products.html. Query strings are preserved.
+RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME}.html -f
-RewriteRule ^(.*)$ $1.html [L]
+RewriteRule ^(.+?)/?$ $1.html [L]
 
-# ===== CACHE CONTROL =====
-# HTML, JS, CSS, JSON: no long caching so users get fresh code quickly.
+# Prevent stale HTML, JS, CSS, and JSON after deployments.
 <IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css|json)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
   <FilesMatch "^4AStore\.apk$">
     Header set Content-Type "application/vnd.android.package-archive"
     Header set Content-Disposition "attachment; filename=4AStore.apk"
     Header set Cache-Control "no-store"
   </FilesMatch>
-  <FilesMatch "\.(html|js|css|json)$">
-    Header set Cache-Control "no-cache, must-revalidate"
-  </FilesMatch>
 </IfModule>
-# ===== END CACHE CONTROL =====
+
