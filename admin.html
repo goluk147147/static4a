@@ -334,6 +334,7 @@
     <div class="modal-body" id="categoryModalBody"></div>
   </div>
 
+  <script src="assets/js/store-location.js"></script>
   <script src="assets/js/app.js"></script>
   <script>
     const ADMIN_KEY = '4astore_admin_logged';
@@ -413,6 +414,7 @@
     let notifAudioContext = null;
     const NOTIF_SEEN_KEY = '4astore_admin_seen_orders';   // order ids we've already turned into notifications
     const NOTIF_LIST_KEY = '4astore_admin_notifs';        // [{orderId, name, amount, time, read}]
+    const NOTIF_LAST_CHECK_KEY = '4astore_admin_last_order_check';
 
     function getNotifs() {
       return JSON.parse(localStorage.getItem(NOTIF_LIST_KEY)) || [];
@@ -520,19 +522,29 @@
       const orders = await fetchServerOrders();
       const allIds = orders.map(o => o.orderId);
       const seen = getSeenOrderIds();
-      const newOrders = orders.filter(o => !seen.includes(o.orderId));
+      const adminId = currentAdmin && (currentAdmin.username || currentAdmin.mobile || currentAdmin.id);
+      const lastCheckKey = adminId ? NOTIF_LAST_CHECK_KEY + '_' + String(adminId) : NOTIF_LAST_CHECK_KEY;
+      const lastCheck = Number(localStorage.getItem(lastCheckKey) || 0);
+      const newOrders = orders.filter(o => {
+        const createdAt = Date.parse(o.orderDate || o.createdAt || '');
+        if (!firstRun) return !seen.includes(o.orderId);
+        // Do not alert for the full historical order list on login, but do
+        // surface orders placed since this admin last checked the panel.
+        // A short fallback window repairs sessions created before this
+        // checkpoint existed, where a recent order may already be in `seen`.
+        const sinceLastCheck = lastCheck > 0 && Number.isFinite(createdAt) && createdAt > lastCheck;
+        const recentFallback = lastCheck === 0 && Number.isFinite(createdAt) && createdAt > Date.now() - (15 * 60 * 1000);
+        return sinceLastCheck || recentFallback;
+      });
 
       // Always keep cache fresh for stats/tables
       localStorage.setItem('4astore_orders', JSON.stringify(orders));
       dbOrders = orders;
 
       if (firstRun) {
-        // On first login, don't spam: mark all existing orders as seen.
-        // (They won't create unread notifications.)
-        setSeenOrderIds(allIds);
-        updateNotifBadge();
-        renderNotifList();
-        return;
+        // Keep old orders as the baseline, while retaining recent orders for
+        // the normal notification path below.
+        setSeenOrderIds(Array.from(new Set(seen.concat(allIds.filter(id => !newOrders.some(o => o.orderId === id))))));
       }
 
       if (newOrders.length > 0) {
@@ -568,6 +580,7 @@
         const activeTab = document.querySelector('.admin-tabs button.active');
         if (activeTab && activeTab.textContent.includes('Orders')) renderOrdersTab();
       }
+      localStorage.setItem(lastCheckKey, String(Date.now()));
     }
 
     function updateNotifBadge() {
@@ -1062,7 +1075,10 @@
         const cards = displayRows.map((t, index) => {
           const order = orderMap[t.orderId] || {};
           const hasLocation = Number.isFinite(Number(t.lat)) && Number.isFinite(Number(t.lng));
-          const mapsUrl = hasLocation ? 'https://www.google.com/maps?q=' + encodeURIComponent(t.lat + ',' + t.lng) : '';
+          const settings = typeof getSettings === 'function' ? getSettings() : {};
+          const origin = Number.isFinite(Number(settings.storeLatitude)) && Number.isFinite(Number(settings.storeLongitude))
+            ? Number(settings.storeLatitude) + ',' + Number(settings.storeLongitude) : STORE_LOCATION_FALLBACK.latitude + ',' + STORE_LOCATION_FALLBACK.longitude;
+          const mapsUrl = hasLocation ? 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(origin) + '&destination=' + encodeURIComponent(t.lat + ',' + t.lng) + '&travelmode=driving' : '';
           const age = t.updatedAt ? Math.floor((Date.now() - new Date(t.updatedAt).getTime()) / 60000) : null;
           const freshness = age === null ? 'No update time' : (age <= 2 ? 'Live now' : age + ' min ago');
           const tone = age !== null && age <= 2 ? '#2e7d32' : '#ef6c00';
@@ -1085,7 +1101,10 @@
       const t = (window.adminRiderTrackingRows || [])[index];
       if (!t) return;
       const hasLocation = Number.isFinite(Number(t.lat)) && Number.isFinite(Number(t.lng));
-      const mapsUrl = hasLocation ? 'https://www.google.com/maps?q=' + encodeURIComponent(t.lat + ',' + t.lng) : '';
+      const settings = typeof getSettings === 'function' ? getSettings() : {};
+      const origin = Number.isFinite(Number(settings.storeLatitude)) && Number.isFinite(Number(settings.storeLongitude))
+        ? Number(settings.storeLatitude) + ',' + Number(settings.storeLongitude) : STORE_LOCATION_FALLBACK.latitude + ',' + STORE_LOCATION_FALLBACK.longitude;
+      const mapsUrl = hasLocation ? 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(origin) + '&destination=' + encodeURIComponent(t.lat + ',' + t.lng) + '&travelmode=driving' : '';
       document.getElementById('orderDetailBody').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><h3 style="margin:0;color:var(--primary);">🛵 Rider Details</h3><button onclick="closeOrderDetail()" style="background:none;border:0;font-size:22px;cursor:pointer;">×</button></div><div style="display:grid;gap:10px;font-size:14px;"><div><strong>Name:</strong> ${escapeHtml(t.riderName || '-')}</div><div><strong>Mobile:</strong> ${escapeHtml(t.riderMobile || '-')}</div><div><strong>Order:</strong> #${escapeHtml(t.orderId || '-')}</div><div><strong>Status:</strong> ${escapeHtml(t.status || '-')}</div><div><strong>Last update:</strong> ${t.updatedAt ? escapeHtml(new Date(t.updatedAt).toLocaleString()) : '-'}</div><div style="padding:12px;background:#f5f9fc;border-radius:8px;font-family:monospace;"><strong>Exact coordinates</strong><br>${hasLocation ? Number(t.lat).toFixed(8) + ', ' + Number(t.lng).toFixed(8) : 'Location not shared'}</div>${hasLocation ? '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="text-align:center;padding:11px;background:#0891b2;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;">🗺️ Open in Google Maps</a>' : ''}</div>`;
       document.getElementById('orderDetailModal').classList.remove('hidden');
     }
@@ -3185,6 +3204,17 @@
               <input type="text" id="setAddress" value="${escapeHtml(s.storeAddress || '')}" placeholder="Gajana Road, Chandargarh..." style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
             </div>
           </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:180px;">
+              <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">📍 Store Latitude</label>
+              <input type="number" step="0.000001" id="setStoreLatitude" value="${s.storeLatitude ?? STORE_LOCATION_FALLBACK.latitude}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+            <div style="flex:1; min-width:180px;">
+              <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">📍 Store Longitude</label>
+              <input type="number" step="0.000001" id="setStoreLongitude" value="${s.storeLongitude ?? STORE_LOCATION_FALLBACK.longitude}" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
+            </div>
+          </div>
+          <p style="font-size:11px; color:var(--gray); margin-top:-6px;">यह fixed store origin delivery distance, rider ETA, navigation और maps में इस्तेमाल होगा।</p>
           <div>
             <label style="display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin-bottom:4px;">🏡 Serviceable Villages / Gaon</label>
             <input type="text" id="setVillages" value="${escapeHtml(s.serviceableVillages || '')}" placeholder="Chandargarh, Nabinagar" style="width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:8px; font-size:14px;">
@@ -4560,6 +4590,8 @@
         hideMrp: hideEl ? hideEl.checked : false,
         storePhone: phoneEl ? phoneEl.value.trim() : '',
         storeAddress: addrEl ? addrEl.value.trim() : '',
+        storeLatitude: document.getElementById('setStoreLatitude') ? document.getElementById('setStoreLatitude').value : STORE_LOCATION_FALLBACK.latitude,
+        storeLongitude: document.getElementById('setStoreLongitude') ? document.getElementById('setStoreLongitude').value : STORE_LOCATION_FALLBACK.longitude,
         serviceableVillages: (document.getElementById('setVillages') ? document.getElementById('setVillages').value.trim() : '')
       });
 

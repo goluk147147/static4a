@@ -215,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Check duplicates
         foreach ($users as $user) {
-            if ($user['username'] === $username) {
+            if (strtolower((string) ($user['username'] ?? '')) === $username) {
                 echo json_encode(['success' => false, 'message' => 'Username already taken']);
                 exit;
             }
@@ -246,7 +246,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $users[] = $newUser;
         saveUsers($users);
 
-        echo json_encode(['success' => true, 'user' => safeUser($newUser)]);
+        $sessionUser = safeUser($newUser);
+        $sessionUser['mode'] = 'customer';
+        $_SESSION['user'] = $sessionUser;
+        echo json_encode(['success' => true, 'user' => $sessionUser]);
         exit;
     }
 
@@ -320,7 +323,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $exists = false;
 
         foreach ($users as &$user) {
-            if ($user['username'] === $username || $user['mobile'] === $username) {
+            $storedUsername = strtolower((string) ($user['username'] ?? ''));
+            if ($storedUsername === strtolower($username) || (string) ($user['mobile'] ?? '') === $username) {
                 $exists = true;
                 $passwordValid = isset($user['passwordHash'])
                     ? password_verify($password, $user['passwordHash'])

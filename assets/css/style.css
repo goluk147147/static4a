@@ -1188,7 +1188,9 @@ a {
   align-items: center;
   gap: 10px;
   min-width: 300px;
-  max-width: 400px;
+  width: min(400px, calc(100vw - 32px));
+  min-width: 0;
+  max-width: calc(100vw - 32px);
   animation: slideIn 0.3s ease;
   border-left: 4px solid var(--primary);
 }
@@ -1205,6 +1207,9 @@ a {
   flex: 1;
   font-size: 14px;
   font-weight: 500;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .toast .toast-close {

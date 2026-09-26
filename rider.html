@@ -6,6 +6,9 @@
   <title>Rider Dashboard - 4A Store</title>
   <meta name="robots" content="noindex, nofollow, noarchive">
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <script src="assets/js/store-location.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root {
       --bg: #f1f7f4;
@@ -613,6 +616,14 @@
       overflow: hidden;
     }
 
+    #riderLiveMap { position:absolute; inset:0; z-index:1; }
+    .rider-map-status { position:absolute; left:14px; right:14px; bottom:72px; z-index:6; padding:7px 10px; border-radius:9px; background:rgba(255,255,255,.92); color:#46534a; font-size:11px; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,.12); }
+    .rider-live-pin, .customer-live-pin, .store-live-pin { display:grid; place-items:center; border:2px solid #fff; box-shadow:0 3px 10px rgba(0,0,0,.3); text-align:center; }
+    .rider-live-pin { width:38px; height:38px; border-radius:50%; background:#168447; font-size:20px; }
+    .customer-live-pin { width:30px; height:30px; border-radius:50% 50% 50% 0; background:#d93636; transform:rotate(-45deg); font-size:16px; }
+    .customer-live-pin span { transform:rotate(45deg); }
+    .store-live-pin { width:30px; height:30px; border-radius:50%; background:#2c6fad; font-size:15px; }
+
     .map-surface {
       position: absolute;
       inset: 0;
@@ -1217,14 +1228,8 @@
               <div id="mapMeta" class="meta">— • ETA —</div>
             </div>
 
-            <div class="map-surface"></div>
-            <div class="map-water"></div>
-            <div class="map-route">
-              <div class="route-curve"></div>
-              <div class="route-origin"></div>
-              <div class="route-line"></div>
-              <div class="map-pin"></div>
-            </div>
+            <div id="riderLiveMap" aria-label="Live delivery map"></div>
+            <div id="riderMapStatus" class="rider-map-status">Waiting for rider GPS...</div>
 
             <div class="delivery-badge">
               <div>
@@ -1239,6 +1244,7 @@
 
             <div class="map-cta-row">
               <button id="callCustomerBtn" class="call-btn" type="button">Call Customer</button>
+              <button id="recenterRiderBtn" class="call-btn" type="button">Recenter</button>
               <button id="markDeliveredBtn" class="deliver-btn" type="button">Delivered</button>
             </div>
           </div>
@@ -1404,6 +1410,16 @@
 
   <script>
     let orders = [];
+    let storeLocation = { lat: STORE_LOCATION_FALLBACK.latitude, lng: STORE_LOCATION_FALLBACK.longitude };
+    let riderGpsWatchId = null;
+    let lastGpsReading = null;
+    let lastGpsSentAt = 0;
+    let riderMap = null;
+    let riderMapMarker = null;
+    let customerMapMarker = null;
+    let storeMapMarker = null;
+    let riderRouteLine = null;
+    let riderMapHasFitted = false;
     let trackingMap = {};
     let productMap = {};
 
@@ -1471,6 +1487,7 @@
     }
 
     function toDistanceText(distance) {
+      if (!Number.isFinite(Number(distance)) || Number(distance) < 0) return '—';
       const km = toNumber(distance, 0);
       return `${km < 10 ? km.toFixed(1) : km.toFixed(0)} km`;
     }
@@ -1486,16 +1503,27 @@
       return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
+    function deliveryCoordinateNearStore(lat, lng) {
+      return validGps(lat, lng) && haversineKm(storeLocation.lat, storeLocation.lng, Number(lat), Number(lng)) <= 100;
+    }
+
     function normalizeOrder(order, trackingData = {}) {
       const customer = order.customer || {};
-      const riderLat = toNumber(trackingData.lat, null);
-      const riderLng = toNumber(trackingData.lng, null);
-      const destLat = toNumber(customer.deliveryLat ?? trackingData.destLat, null);
-      const destLng = toNumber(customer.deliveryLng ?? trackingData.destLng, null);
-      let distance = toNumber(order.distance, 0);
+      const snapshot = order.deliveryAddress || {};
+      const liveTracking = trackingData.source === 'device_gps';
+      const riderLat = liveTracking ? toNumber(trackingData.lat, null) : null;
+      const riderLng = liveTracking ? toNumber(trackingData.lng, null) : null;
+      const rawDestLat = toNumber(snapshot.latitude ?? customer.deliveryLat ?? trackingData.destLat, null);
+      const rawDestLng = toNumber(snapshot.longitude ?? customer.deliveryLng ?? trackingData.destLng, null);
+      const destinationIsValid = deliveryCoordinateNearStore(rawDestLat, rawDestLng);
+      const destLat = destinationIsValid ? rawDestLat : null;
+      const destLng = destinationIsValid ? rawDestLng : null;
+      let distance = null;
 
       if (riderLat !== null && riderLng !== null && destLat !== null && destLng !== null) {
         distance = haversineKm(riderLat, riderLng, destLat, destLng);
+      } else if (destLat !== null && destLng !== null) {
+        distance = haversineKm(storeLocation.lat, storeLocation.lng, destLat, destLng);
       }
 
       const itemList = Array.isArray(order.items)
@@ -1517,7 +1545,7 @@
         phone: customer.mobile || '+91 00000 00000',
         address: [customer.address, customer.city, customer.pincode].filter(Boolean).join(', ') || 'Delivery address',
         distance,
-        eta: Number(order.eta || Math.max(4, Math.ceil(distance * 4 + 1))),
+        eta: distance === null ? null : Number(order.eta || Math.max(4, Math.ceil(distance * 4 + 1))),
         amount: Number(order.totalAmount || order.amount || 0),
         items: itemList,
         status: order.orderStatus || order.status || 'Order Placed',
@@ -1556,7 +1584,7 @@
           </div>
           <div class="meta">
             <span class="loc">📍 ${order.address}</span>
-            <span class="distance">${order.distance} km</span>
+            <span class="distance">${toDistanceText(order.distance)}</span>
           </div>
           <button class="accept-btn" data-order-id="${order.id}">Accept</button>
         </div>
@@ -1594,7 +1622,7 @@
         </div>
         <div class="loc-row">
           <span class="loc">📍 ${order.address}</span>
-          <span class="pin">${order.distance} km</span>
+          <span class="pin">${toDistanceText(order.distance)}</span>
         </div>
       `;
 
@@ -1629,67 +1657,124 @@
       `;
     }
 
-    function normalizeMapPoint(lat, lng) {
-      const mapEl = document.querySelector('.map-screen');
-      const rect = mapEl ? mapEl.getBoundingClientRect() : { width: 320, height: 500 };
-      const width = Math.max(rect.width, 240);
-      const height = Math.max(rect.height, 360);
-
-      const minLat = Math.min(lat, 28.5127, 28.5134) - 0.0005;
-      const maxLat = Math.max(lat, 28.5127, 28.5134) + 0.0005;
-      const minLng = Math.min(lng, 77.4109, 77.4116) - 0.0005;
-      const maxLng = Math.max(lng, 77.4109, 77.4116) + 0.0005;
-
-      const x = 30 + ((lng - minLng) / (Math.max(maxLng - minLng, 0.0001))) * (width - 60);
-      const y = height - 120 - ((lat - minLat) / (Math.max(maxLat - minLat, 0.0001))) * (height - 180);
-      return { x, y };
+    function validGps(lat, lng) {
+      return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && Number(lat) >= -90 && Number(lat) <= 90 && Number(lng) >= -180 && Number(lng) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
     }
 
-    function getRouteCoordinates(order) {
-      const raw = order && order.raw ? order.raw : {};
-      const customer = raw.customer || {};
-      const mapTrack = trackingMap[raw.orderId || order.id] || {};
+    function riderIcon(heading) {
+      const rotation = Number.isFinite(Number(heading)) ? Number(heading) : 0;
+      return L.divIcon({ className: '', html: `<div class="rider-live-pin" style="transform:rotate(${rotation}deg)">🛵</div>`, iconSize: [42, 42], iconAnchor: [21, 21] });
+    }
 
-      const riderLat = toNumber(mapTrack.lat, 28.51292);
-      const riderLng = toNumber(mapTrack.lng, 77.41112);
-      let destLat = toNumber(customer.deliveryLat ?? mapTrack.destLat, 28.51295);
-      let destLng = toNumber(customer.deliveryLng ?? mapTrack.destLng, 77.41126);
+    function initRiderMap() {
+      if (riderMap || typeof L === 'undefined') return;
+      riderMap = L.map('riderLiveMap', { zoomControl: true, attributionControl: true }).setView([storeLocation.lat, storeLocation.lng], 14);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(riderMap);
+      storeMapMarker = L.marker([storeLocation.lat, storeLocation.lng], { icon: L.divIcon({ className: '', html: '<div class="store-live-pin">4A</div>', iconSize: [34, 34], iconAnchor: [17, 17] }) }).addTo(riderMap).bindTooltip('4A Store');
+    }
 
-      if (Math.abs(destLat - riderLat) < 0.00002 && Math.abs(destLng - riderLng) < 0.00002) {
-        destLat = riderLat + 0.00028;
-        destLng = riderLng + 0.00034;
+    function refreshRiderMap(payload) {
+      const order = getActiveOrder();
+      if (!order || !payload) return;
+      initRiderMap();
+      if (!riderMap) return;
+      const customer = payload.customer || {};
+      if (validGps(customer.latitude, customer.longitude)) {
+        if (!customerMapMarker) customerMapMarker = L.marker([customer.latitude, customer.longitude], { icon: L.divIcon({ className: '', html: '<div class="customer-live-pin"><span>📍</span></div>', iconSize: [34, 34], iconAnchor: [17, 27] }) }).addTo(riderMap).bindTooltip('Customer');
+        else customerMapMarker.setLatLng([customer.latitude, customer.longitude]);
       }
-
-      return { riderLat, riderLng, destLat, destLng };
+      const live = payload.rider && payload.rider.location;
+      if (live && validGps(live.latitude, live.longitude)) {
+        const point = [live.latitude, live.longitude];
+        if (!riderMapMarker) riderMapMarker = L.marker(point, { icon: riderIcon(live.heading), zIndexOffset: 1000 }).addTo(riderMap).bindTooltip(payload.rider.name || 'Live rider');
+        else { riderMapMarker.setLatLng(point); riderMapMarker.setIcon(riderIcon(live.heading)); }
+        document.getElementById('riderMapStatus').textContent = live.accuracy !== null && Number(live.accuracy) > 100 ? 'GPS accuracy poor; waiting for a better reading...' : 'GPS live • accuracy ' + (live.accuracy == null ? '—' : Math.round(live.accuracy) + ' m');
+      } else {
+        document.getElementById('riderMapStatus').textContent = 'Waiting for rider GPS permission/location...';
+      }
+      const routeCoordinates = payload.route && payload.route.polyline && payload.route.polyline.coordinates;
+      if (Array.isArray(routeCoordinates) && routeCoordinates.length > 1) {
+        const latLngs = routeCoordinates.map(point => [Number(point[1]), Number(point[0])]).filter(point => validGps(point[0], point[1]));
+        if (latLngs.length > 1) {
+          if (riderRouteLine) riderRouteLine.setLatLngs(latLngs);
+          else riderRouteLine = L.polyline(latLngs, { color: '#168447', weight: 5, opacity: .82 }).addTo(riderMap);
+        }
+      }
+      if (!riderMapHasFitted) {
+        const points = [customerMapMarker, riderMapMarker, storeMapMarker].filter(Boolean).map(marker => marker.getLatLng());
+        if (points.length > 1) riderMap.fitBounds(L.latLngBounds(points), { padding: [30, 30] });
+        riderMapHasFitted = true;
+      }
+      if (payload.route) {
+        order.distance = Number(payload.route.distance || order.distance || 0);
+        order.eta = Number(payload.route.eta || order.eta || 0);
+        document.getElementById('mapMeta').textContent = `${toDistanceText(order.distance)} • ETA ${order.eta} min`;
+        document.getElementById('mapDistance').textContent = toDistanceText(order.distance);
+        document.getElementById('mapEta').textContent = `${order.eta} min`;
+      } else {
+        order.distance = null;
+        order.eta = null;
+        document.getElementById('mapMeta').textContent = 'Waiting for valid delivery GPS';
+        document.getElementById('mapDistance').textContent = '—';
+        document.getElementById('mapEta').textContent = '—';
+        if (!payload.customer || !validGps(payload.customer.latitude, payload.customer.longitude)) document.getElementById('riderMapStatus').textContent = 'Delivery GPS is invalid or unavailable. Please select the address location again.';
+      }
     }
 
-    function renderMapRoute() {
+    async function refreshActiveTracking() {
       const order = getActiveOrder();
       if (!order) return;
-      const { riderLat, riderLng, destLat, destLng } = getRouteCoordinates(order);
+      try {
+        const response = await fetch('api/tracking.php?orderId=' + encodeURIComponent(order.raw.orderId || order.id) + '&_=' + Date.now(), { cache: 'no-store', credentials: 'include' });
+        const result = await response.json();
+        if (result.success && result.tracking) {
+          trackingMap[order.id] = result.tracking;
+          refreshRiderMap(result.tracking);
+        }
+      } catch (error) { console.warn('Tracking refresh failed', error); }
+    }
 
-      const routeLine = document.querySelector('.route-line');
-      const mapPin = document.querySelector('.map-pin');
-      const routeOrigin = document.querySelector('.route-origin');
-      if (routeLine && mapPin && routeOrigin) {
-        const rider = normalizeMapPoint(riderLat, riderLng);
-        const dest = normalizeMapPoint(destLat, destLng);
-        const dx = dest.x - rider.x;
-        const dy = dest.y - rider.y;
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-        const distance = Math.max(Math.hypot(dx, dy), 50);
+    function stopRiderGps() {
+      if (riderGpsWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(riderGpsWatchId);
+      riderGpsWatchId = null;
+      lastGpsReading = null;
+      lastGpsSentAt = 0;
+    }
 
-        routeOrigin.style.left = `${rider.x}px`;
-        routeOrigin.style.top = `${rider.y}px`;
-
-        routeLine.style.left = `${rider.x}px`;
-        routeLine.style.top = `${rider.y}px`;
-        routeLine.style.width = `${distance}px`;
-        routeLine.style.transform = `rotate(${angle}deg)`;
-
-        mapPin.style.left = `${dest.x}px`;
-        mapPin.style.top = `${dest.y}px`;
+    function startRiderGps() {
+      const order = getActiveOrder();
+      if (!order || !navigator.geolocation) {
+        document.getElementById('riderMapStatus').textContent = 'Location permission is required to share live delivery location.';
+        return;
       }
+      stopRiderGps();
+      document.getElementById('riderMapStatus').textContent = 'Requesting live GPS permission...';
+      riderGpsWatchId = navigator.geolocation.watchPosition(async position => {
+        const coords = position.coords;
+        const reading = { latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy, heading: coords.heading, speed: coords.speed, timestamp: new Date(position.timestamp || Date.now()).toISOString() };
+        if (!validGps(reading.latitude, reading.longitude)) return;
+        if (Number.isFinite(Number(reading.accuracy)) && Number(reading.accuracy) > 100) {
+          document.getElementById('riderMapStatus').textContent = 'GPS accuracy poor (' + Math.round(reading.accuracy) + ' m); waiting for a better reading...';
+          return;
+        }
+        const previousReading = lastGpsReading;
+        lastGpsReading = reading;
+        const moved = !previousReading || Math.abs(reading.latitude - previousReading.latitude) > 0.00003 || Math.abs(reading.longitude - previousReading.longitude) > 0.00003;
+        const now = Date.now();
+        if (now - lastGpsSentAt < 7000 && !moved) return;
+        const activeOrder = getActiveOrder();
+        if (!activeOrder) return;
+        try {
+          const response = await fetch('api/tracking.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ action: 'updateLocation', orderId: activeOrder.raw.orderId || activeOrder.id, latitude: reading.latitude, longitude: reading.longitude, accuracy: reading.accuracy, heading: reading.heading, speed: reading.speed, timestamp: reading.timestamp }) });
+          if (!response.ok) throw new Error('GPS update rejected');
+          lastGpsSentAt = now;
+          await refreshActiveTracking();
+        } catch (error) {
+          document.getElementById('riderMapStatus').textContent = 'Unable to send live location. Check network/login.';
+        }
+      }, error => {
+        document.getElementById('riderMapStatus').textContent = error.code === 1 ? 'Location permission is required to share live delivery location.' : 'Rider GPS temporarily unavailable.';
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
     }
 
     function callCustomer() {
@@ -1718,7 +1803,8 @@
       document.getElementById('mapMeta').textContent = `${toDistanceText(order.distance)} • ETA ${order.eta} min`;
       document.getElementById('mapDistance').textContent = toDistanceText(order.distance);
       document.getElementById('mapEta').textContent = `${order.eta} min`;
-      renderMapRoute();
+      initRiderMap();
+      refreshActiveTracking();
     }
 
     function renderDelivered() {
@@ -1738,7 +1824,7 @@
       document.getElementById('completedOrderId').textContent = `Order ${order.id}`;
       document.getElementById('earningsValue').textContent = formatPrice(order.earnings);
       document.getElementById('completedTotal').textContent = formatPrice(order.amount);
-      document.getElementById('completedDistance').textContent = `${order.distance} km`;
+      document.getElementById('completedDistance').textContent = toDistanceText(order.distance);
       document.getElementById('completedTime').textContent = `${order.eta} min`;
     }
 
@@ -1798,10 +1884,18 @@
       try {
         await loadProducts();
 
-        const [payload, trackingPayload] = await Promise.all([
+        const [payload, trackingPayload, settingsPayload] = await Promise.all([
           fetchJsonWithFallback('api/orders.php', 'data/orders.json'),
-          fetchJsonWithFallback('api/tracking.php', 'data/tracking.json')
+          fetchJsonWithFallback('api/tracking.php', 'data/tracking.json'),
+          fetchJsonWithFallback('api/settings.php', 'data/settings.json')
         ]);
+
+        const settings = settingsPayload && settingsPayload.settings ? settingsPayload.settings : (settingsPayload || {});
+        const storeLat = Number(settings.storeLatitude);
+        const storeLng = Number(settings.storeLongitude);
+        if (Number.isFinite(storeLat) && Number.isFinite(storeLng)) {
+          storeLocation = { lat: storeLat, lng: storeLng };
+        }
 
         const list = Array.isArray(payload.orders) ? payload.orders : (Array.isArray(payload) ? payload : []);
         trackingMap = trackingPayload && trackingPayload.all ? trackingPayload.all : (trackingPayload && typeof trackingPayload === 'object' ? trackingPayload : {});
@@ -1809,7 +1903,7 @@
         orders = list
           .filter(order => {
             const status = (order.orderStatus || order.status || '').trim();
-            return ['Order Placed', 'Confirmed', 'Packed', 'Out for Delivery'].includes(status);
+            return ['Order Placed', 'Confirmed', 'Packed', 'Rider Assigned', 'Out for Delivery'].includes(status);
           })
           .map(order => normalizeOrder(order, trackingMap[order.orderId] || {}));
 
@@ -1841,15 +1935,24 @@
 
       state.activeOrderId = orderId;
       try {
-        await fetch('api/orders.php', {
+        const response = await fetch('api/orders.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'updateStatus', orderId: order.raw.orderId || order.id, status: 'Out for Delivery' })
+          credentials: 'include',
+          body: JSON.stringify({ action: 'acceptOrder', orderId: order.raw.orderId || order.id })
         });
+        let result = {};
+        try { result = await response.json(); } catch (error) { /* handled below */ }
+        if (!response.ok || result.success !== true) {
+          throw new Error(result.message || 'Order accept nahi hua. Rider login/session check karein.');
+        }
       } catch (error) {
         console.error('Accept order failed', error);
+        alert(error.message || 'Order accept nahi hua. Please dobara try karein.');
+        return;
       }
 
+      startRiderGps();
       renderDetails();
       showScreen('details');
     }
@@ -1857,6 +1960,18 @@
     async function startNavigation() {
       const order = getActiveOrder();
       if (!order) return;
+      try {
+        const response = await fetch('api/orders.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ action: 'updateStatus', orderId: order.raw.orderId || order.id, status: 'Out for Delivery' }) });
+        if (!response.ok) throw new Error('Could not start delivery');
+        order.status = 'Out for Delivery';
+        order.raw.orderStatus = 'Out for Delivery';
+      } catch (error) {
+        alert(error.message || 'Delivery start nahi hua. Please dobara try karein.');
+        return;
+      }
+      startRiderGps();
+      initRiderMap();
+      refreshActiveTracking();
       renderMap();
       showScreen('map');
     }
@@ -1864,15 +1979,19 @@
     async function markDelivered() {
       const order = getActiveOrder();
       if (!order) return;
+      if (!confirm(`Complete delivery for ${order.id}?`)) return;
+
+      stopRiderGps();
 
       try {
-        await fetch('api/orders.php', {
+        const orderResponse = await fetch('api/orders.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'updateStatus', orderId: order.raw.orderId || order.id, status: 'Delivered' })
         });
+        if (!orderResponse.ok) throw new Error('Delivery status update failed');
 
-        await fetch('api/tracking.php', {
+        const trackingResponse = await fetch('api/tracking.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1883,8 +2002,12 @@
             destLng: order.raw.customer && order.raw.customer.deliveryLng
           })
         });
+        if (!trackingResponse.ok) throw new Error('Tracking status update failed');
       } catch (error) {
         console.error('Update delivered status failed', error);
+        alert(error.message || 'Delivery status update failed. Please retry.');
+        startRiderGps();
+        return;
       }
 
       order.status = 'Delivered';
@@ -1920,6 +2043,10 @@
     document.getElementById('startNavigationBtn').addEventListener('click', startNavigation);
     document.getElementById('markDeliveredBtn').addEventListener('click', markDelivered);
     document.getElementById('callCustomerBtn').addEventListener('click', callCustomer);
+    document.getElementById('recenterRiderBtn').addEventListener('click', () => {
+      if (riderMapMarker && riderMap) riderMap.setView(riderMapMarker.getLatLng(), Math.max(riderMap.getZoom(), 16));
+      else document.getElementById('riderMapStatus').textContent = 'Waiting for rider GPS...';
+    });
     document.getElementById('nextOrderBtn').addEventListener('click', backToOrders);
     document.getElementById('backToOrdersBtn').addEventListener('click', backToOrders);
 
@@ -1933,6 +2060,7 @@
     });
 
     document.getElementById('logoutMenuItem').addEventListener('click', () => {
+      stopRiderGps();
       document.getElementById('headerMenu').classList.remove('open');
       window.location.href = 'login.html';
     });

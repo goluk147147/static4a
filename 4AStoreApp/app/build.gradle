@@ -10,13 +10,13 @@ android {
         applicationId "com.store4a.app"
         minSdk 24
         targetSdk 36
-        versionCode 7
-        versionName "1.6"
+        versionCode 9
+        versionName "1.7.1"
     }
 
     signingConfigs {
         release {
-            storeFile file("${rootProject.projectDir}/4astore-key.jks")
+            storeFile file("${rootProject.projectDir}/4astore-key-new.jks")
             storePassword findProperty('STORE4A_KEYSTORE_PASSWORD') ?: System.getenv('STORE4A_KEYSTORE_PASSWORD')
             keyAlias "4astore"
             keyPassword findProperty('STORE4A_KEY_PASSWORD') ?: System.getenv('STORE4A_KEY_PASSWORD')
@@ -25,7 +25,8 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

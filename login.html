@@ -341,6 +341,13 @@
       const result = registerUser({ name, mobile, username, password });
 
       if (!result.success) {
+        if (result.message.includes('already')) {
+          const identifier = result.message.includes('Username') ? username : mobile;
+          document.getElementById('loginUsername').value = identifier;
+          showAuthTab('login');
+          showToast('This account already exists. Please log in.', 'info');
+          return;
+        }
         if (result.message.includes('Username')) {
           document.getElementById('signupUsername').parentElement.classList.add('error');
         } else {

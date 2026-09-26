@@ -68,9 +68,12 @@ public class MainActivity extends AppCompatActivity {
     private static final String WEBSITE_URL = "https://4astore.webtoolsz.com/";
     private static final int FILE_CHOOSER_REQUEST_CODE = 100;
     private static final int PERMISSION_REQUEST_CODE = 200;
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 201;
 
     private ValueCallback<Uri[]> filePathCallback;
     private String cameraPhotoPath;
+    private GeolocationPermissions.Callback pendingGeolocationCallback;
+    private String pendingGeolocationOrigin;
 
     private TextToSpeech tts;
     private boolean ttsReady = false;
@@ -290,6 +293,21 @@ public class MainActivity extends AppCompatActivity {
                     return true;
                 }
 
+                // Handle native map navigation requests in-app without opening the site in a
+                // browser
+                if (url.startsWith("geo:") || url.startsWith("google.navigation:") || url.startsWith("maps:")
+                        || url.contains("maps.google.com") || url.contains("google.com/maps")) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        if (intent.resolveActivity(getPackageManager()) != null) {
+                            startActivity(intent);
+                        }
+                    } catch (Exception e) {
+                        // Ignore
+                    }
+                    return true;
+                }
+
                 // Keep our site (subdomain or main domain) inside the WebView
                 if (url.contains("4astore.webtoolsz.com") || url.contains("4astore.com")) {
                     return false;
@@ -414,7 +432,20 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin,
                     GeolocationPermissions.Callback callback) {
-                callback.invoke(origin, true, false);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                        || (ContextCompat.checkSelfPermission(MainActivity.this,
+                                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                || ContextCompat.checkSelfPermission(MainActivity.this,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
+                    callback.invoke(origin, true, false);
+                    return;
+                }
+                pendingGeolocationOrigin = origin;
+                pendingGeolocationCallback = callback;
+                ActivityCompat.requestPermissions(MainActivity.this,
+                        new String[] { Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION },
+                        LOCATION_PERMISSION_REQUEST_CODE);
             }
 
             // Permission request (camera, mic etc.)
@@ -494,6 +525,42 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> Toast.makeText(MainActivity.this,
                     ttsReady ? "🔊 Playing voice..." : "⏳ Voice engine loading...", Toast.LENGTH_SHORT).show());
             speakWithRetry(text, 0);
+        }
+
+        @JavascriptInterface
+        public void openMapDirections(String latitude, String longitude, String label) {
+            try {
+                double lat = Double.parseDouble(latitude);
+                double lng = Double.parseDouble(longitude);
+                String uriString = "google.navigation:q=" + lat + "," + lng + "&mode=d";
+                if (label != null && !label.trim().isEmpty()) {
+                    uriString += "&q=" + Uri.encode(label);
+                }
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uriString));
+                intent.setPackage("com.google.android.apps.maps");
+                if (intent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(intent);
+                    return;
+                }
+
+                Intent fallback = new Intent(Intent.ACTION_VIEW, Uri.parse("geo:" + lat + "," + lng + "?q=" + lat + ","
+                        + lng + "(" + Uri.encode(label == null ? "Destination" : label) + ")"));
+                if (fallback.resolveActivity(getPackageManager()) != null) {
+                    startActivity(fallback);
+                    return;
+                }
+            } catch (Exception e) {
+                // Fall back to browser if native maps not available.
+            }
+
+            try {
+                String fallbackUrl = "https://www.google.com/maps/dir/?api=1&destination="
+                        + Uri.encode(latitude + "," + longitude) + "&travelmode=driving";
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(fallbackUrl));
+                startActivity(intent);
+            } catch (Exception e) {
+                Toast.makeText(MainActivity.this, "Maps app not available", Toast.LENGTH_SHORT).show();
+            }
         }
 
         @JavascriptInterface
@@ -685,6 +752,17 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
             @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        // Permissions handled - WebView will work with whatever permissions granted
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE && pendingGeolocationCallback != null) {
+            boolean granted = false;
+            for (int result : grantResults) {
+                if (result == PackageManager.PERMISSION_GRANTED) {
+                    granted = true;
+                    break;
+                }
+            }
+            pendingGeolocationCallback.invoke(pendingGeolocationOrigin, granted, false);
+            pendingGeolocationCallback = null;
+            pendingGeolocationOrigin = null;
+        }
     }
 }

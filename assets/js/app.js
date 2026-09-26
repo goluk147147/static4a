@@ -9,6 +9,8 @@ const STORE_CONFIG = {
   email: "YOUR_EMAIL_HERE",
   address: "Gajana Road, Chandargarh, Nabinagar, Aurangabad, Bihar – 824301",
   pincode: "824301",
+  storeLatitude: null,
+  storeLongitude: null,
   deliveryCharge: 30,
   freeDeliveryAbove: 500,
   whatsappNumber: "918210874123",
@@ -46,15 +48,14 @@ function openMapNavigation(destinationLat, destinationLng, label) {
 function resetOldLoginSession() {
   const savedUser = localStorage.getItem('4astore_user');
   const savedVersion = localStorage.getItem(LOGIN_SESSION_VERSION_KEY);
-  if (!savedUser || savedVersion === LOGIN_SESSION_VERSION) return;
+  if (!savedUser) {
+    localStorage.setItem(LOGIN_SESSION_VERSION_KEY, LOGIN_SESSION_VERSION);
+    return;
+  }
 
-  try {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'api/users.php', false);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify({ action: 'logout' }));
-  } catch (e) { /* local logout still proceeds */ }
-  localStorage.removeItem('4astore_user');
+  // Asset updates must not log a customer out. PHP keeps the authenticated
+  // session in its persistent cookie; only an explicit user logout should
+  // clear that session and local identity.
   localStorage.setItem(LOGIN_SESSION_VERSION_KEY, LOGIN_SESSION_VERSION);
 }
 
@@ -219,6 +220,9 @@ async function loadData() {
         if (settings.deliveryCharge !== undefined) STORE_CONFIG.deliveryCharge = Number(settings.deliveryCharge);
         if (settings.freeDeliveryAbove !== undefined) STORE_CONFIG.freeDeliveryAbove = Number(settings.freeDeliveryAbove);
         if (settings.storeEmail) STORE_CONFIG.storeEmail = settings.storeEmail;
+        if (settings.storeAddress) STORE_CONFIG.address = settings.storeAddress;
+        if (settings.storeLatitude !== undefined) STORE_CONFIG.storeLatitude = Number(settings.storeLatitude);
+        if (settings.storeLongitude !== undefined) STORE_CONFIG.storeLongitude = Number(settings.storeLongitude);
         if (settings.upiId) STORE_CONFIG.upiId = settings.upiId;
         if (settings.upiName) STORE_CONFIG.upiName = settings.upiName;
         localStorage.setItem('4astore_settings', JSON.stringify(settings));
@@ -261,8 +265,21 @@ function getLoggedInUser() {
   return JSON.parse(localStorage.getItem('4astore_user')) || null;
 }
 
+function getCartStorageKey(user = getLoggedInUser()) {
+  if (!user) return '4astore_cart_guest';
+  const identity = String(user.mobile || user.username || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_');
+  return '4astore_cart_' + identity;
+}
+
 function loginUser(name, mobile, username, role, backendRider) {
   const user = { name, mobile, username: username || mobile, role: role || 'customer', backendRider: backendRider === true, loggedInAt: new Date().toISOString() };
+  localStorage.removeItem('4astore_cart');
+  const guestCart = JSON.parse(localStorage.getItem('4astore_cart_guest') || '[]');
+  const userCartKey = getCartStorageKey(user);
+  if (!localStorage.getItem(userCartKey) && Array.isArray(guestCart) && guestCart.length) {
+    localStorage.setItem(userCartKey, JSON.stringify(guestCart));
+    localStorage.removeItem('4astore_cart_guest');
+  }
   localStorage.setItem('4astore_user', JSON.stringify(user));
   localStorage.setItem(LOGIN_SESSION_VERSION_KEY, LOGIN_SESSION_VERSION);
   updateLoginUI();
@@ -331,7 +348,8 @@ function normalizeCartItem(item) {
 }
 
 function getCart() {
-  const raw = JSON.parse(localStorage.getItem('4astore_cart')) || [];
+  const storageKey = getCartStorageKey();
+  const raw = JSON.parse(localStorage.getItem(storageKey)) || [];
   const normalized = Array.isArray(raw) ? raw.map(normalizeCartItem) : [];
 
   // Keep cart data synced with live product prices so stale snapshots do not override
@@ -339,7 +357,7 @@ function getCart() {
   const current = JSON.stringify(normalized);
   const saved = JSON.stringify(raw);
   if (current !== saved) {
-    localStorage.setItem('4astore_cart', current);
+    localStorage.setItem(storageKey, current);
   }
 
   return normalized;
@@ -347,7 +365,7 @@ function getCart() {
 
 function saveCart(cartData) {
   const normalized = Array.isArray(cartData) ? cartData.map(normalizeCartItem) : [];
-  localStorage.setItem('4astore_cart', JSON.stringify(normalized));
+  localStorage.setItem(getCartStorageKey(), JSON.stringify(normalized));
   updateCartBadge();
 }
 

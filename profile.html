@@ -187,7 +187,9 @@
         showToast((response && response.message) || 'Unable to delete account. Please contact support.', 'error');
         return;
       }
-      ['4astore_user', '4astore_customer', '4astore_cart', '4astore_orders'].forEach(key => localStorage.removeItem(key));
+      const user = getLoggedInUser();
+      const cartKey = typeof getCartStorageKey === 'function' ? getCartStorageKey(user) : '4astore_cart';
+      ['4astore_user', '4astore_customer', cartKey, '4astore_cart_guest', '4astore_cart', '4astore_orders'].forEach(key => localStorage.removeItem(key));
       alert('Your account has been deleted.');
       window.location.href = 'account-deletion';
     }

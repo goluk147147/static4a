@@ -7,15 +7,17 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
   <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/store-location.js"></script>
   <!-- Leaflet (free OpenStreetMap maps, no API key) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    .track-wrap { max-width: 620px; margin: 18px auto; padding: 0 14px 40px; }
-    .track-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:18px; box-shadow:var(--shadow); margin-bottom:14px; }
+    .track-wrap { width:100%; max-width:620px; margin:16px auto; padding:0 12px 40px; }
+    .track-card { width:100%; background:#fff; border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow); margin-bottom:14px; overflow:hidden; }
     #trackMap { width:100%; height:340px; border-radius:12px; margin-top:12px; }
-    .steps { display:flex; justify-content:space-between; margin:8px 0 4px; }
-    .step { flex:1; text-align:center; font-size:11px; color:#999; position:relative; }
+    #recenterTracking { margin-top:8px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--primary-dark); font-weight:700; cursor:pointer; }
+    .steps { display:flex; justify-content:flex-start; gap:8px; margin:8px -4px 8px; padding:2px 4px 8px; overflow-x:auto; scrollbar-width:thin; }
+    .step { flex:0 0 78px; text-align:center; font-size:11px; line-height:1.25; color:#999; position:relative; overflow-wrap:anywhere; }
     .step .dot { width:22px; height:22px; border-radius:50%; background:#e0e0e0; color:#fff; line-height:22px; margin:0 auto 4px; font-size:12px; }
     .step.done .dot { background:var(--primary); }
     .step.done { color:var(--primary-dark); font-weight:600; }
@@ -31,6 +33,17 @@
     @keyframes riderPulse { 0%{transform:scale(.7);opacity:.8} 70%{transform:scale(2.2);opacity:0} 100%{opacity:0} }
     .leaflet-container { font-family:inherit; }
     .track-input button { padding:11px 20px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; }
+    .track-title { color:var(--primary-dark); font-size:1.2rem; margin:0 0 10px; line-height:1.3; }
+    #statusMsg { line-height:1.45; overflow-wrap:anywhere; }
+    @media (max-width:420px) {
+      .track-card { padding:13px 11px; }
+      .track-input { gap:6px; }
+      .track-input input { min-width:0; padding:10px; font-size:14px; }
+      .track-input button { padding:10px 12px; }
+      #trackMap { height:280px; }
+      .steps { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px 4px; overflow:visible; margin-left:0; margin-right:0; padding:2px 0 4px; }
+      .step { width:auto; min-width:0; flex:none; }
+    }
   </style>
 </head>
 <body>
@@ -45,7 +58,7 @@
 
   <div class="track-wrap">
     <div class="track-card">
-      <h2 style="color:var(--primary-dark);font-size:1.2rem;margin-bottom:10px;">📦 Apna Order Track Karein</h2>
+      <h2 class="track-title">📦 Apna Order Track Karein</h2>
       <div class="track-input">
         <input type="text" id="orderInput" placeholder="Order ID (e.g. 4A123456)">
         <button onclick="startTracking()">Track</button>
@@ -58,13 +71,15 @@
       <div id="riderContact" style="text-align:center;margin-top:10px;"><span id="riderCallLink" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#777;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">डिलीवरी बॉय का नंबर उपलब्ध नहीं है</span></div>
       <div id="navActions" style="display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
       <div id="trackMap"></div>
+      <button id="recenterTracking" type="button">📍 Recenter Rider</button>
       <p style="font-size:11px;color:var(--gray);margin-top:8px;text-align:center;">Map har 15 second me update hota hai. Rider live location share kare tabhi pin dikhega.</p>
     </div>
   </div>
 
   <script>
-    const STEPS = ['Order Placed','Confirmed','Packed','Out for Delivery','Delivered'];
-    let map = null, riderMarker = null, destMarker = null, poll = null, currentOrder = '', accCircle = null, destinationLoadedFor = '';
+    const STEPS = ['Order Placed','Confirmed','Packed','Rider Assigned','Out for Delivery','Delivered'];
+    let map = null, riderMarker = null, destMarker = null, storeMarker = null, routeLine = null, poll = null, currentOrder = '', accCircle = null, destinationLoadedFor = '', mapHasFitted = false, mapUserMoved = false, lastLiveAt = 0;
+    let storeLocation = { lat: STORE_LOCATION_FALLBACK.latitude, lng: STORE_LOCATION_FALLBACK.longitude };
 
     // Animate the marker from its old spot to the new one (Blinkit-style glide)
     function smoothMove(marker, to) {
@@ -90,19 +105,37 @@
       if (!id) { alert('Order ID daalein'); return; }
       currentOrder = id;
       document.getElementById('statusCard').style.display = 'block';
+      fetch('api/settings.php?_=' + Date.now(), { cache: 'no-store' })
+        .then(response => response.json())
+        .then(result => {
+          const settings = result && result.settings ? result.settings : {};
+          const lat = Number(settings.storeLatitude);
+          const lng = Number(settings.storeLongitude);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            storeLocation = { lat, lng };
+            if (map && !riderMarker) map.setView([lat, lng], 12);
+          }
+        })
+        .catch(() => {});
       if (!map) {
         map = L.map('trackMap', { zoomControl: true, attributionControl: true })
-                .setView([24.65, 84.15], 12);
+                .setView([storeLocation.lat, storeLocation.lng], 12);
         // OpenStreetMap tiles: no API key required.
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
           attribution: '© OpenStreetMap contributors'
         }).addTo(map);
+        map.on('dragstart zoomstart', () => { mapUserMoved = true; });
       }
+      document.getElementById('recenterTracking').onclick = () => {
+        mapUserMoved = false;
+        if (riderMarker) map.setView(riderMarker.getLatLng(), 16);
+        else map.setView([storeLocation.lat, storeLocation.lng], 12);
+      };
       loadDestinationFromOrder();
       fetchTracking();
       if (poll) clearInterval(poll);
-      poll = setInterval(fetchTracking, 15000);
+      poll = setInterval(fetchTracking, 10000);
     }
 
     function renderSteps(status) {
@@ -115,6 +148,11 @@
     function addDestinationMarker(lat, lng) {
       if (!map || destMarker || !hasCoordinates(lat, lng)) return;
       destMarker = L.marker([lat, lng]).addTo(map).bindPopup('डिलीवरी पता');
+    }
+
+    function addStoreMarker() {
+      if (!map || storeMarker || !hasCoordinates(storeLocation.lat, storeLocation.lng)) return;
+      storeMarker = L.marker([storeLocation.lat, storeLocation.lng]).addTo(map).bindPopup('4A Store');
     }
 
     function buildDirectionsUrl(destLat, destLng, label) {
@@ -194,12 +232,16 @@
           }
           renderSteps(t.status || 'Order Placed');
           let msg = 'Status: ' + (t.status || 'Order Placed');
-          if (t.riderName) msg += ' • Rider: ' + t.riderName;
+          const riderName = t.riderName || (t.rider && t.rider.name) || '';
+          if (riderName) msg += ' • Rider: ' + riderName;
+          if (t.route && t.route.distance !== undefined) msg += ' • ' + t.route.distance + ' km • ETA ' + t.route.eta + ' min';
           if (t.updatedAt) msg += ' • ' + new Date(t.updatedAt).toLocaleTimeString();
           document.getElementById('statusMsg').textContent = msg;
 
-          if (hasCoordinates(t.lat, t.lng)) {
-            const pos = [Number(t.lat), Number(t.lng)];
+          const live = t.rider && t.rider.location ? t.rider.location : t;
+          if (hasCoordinates(live.latitude ?? live.lat, live.longitude ?? live.lng) && (!live.accuracy || Number(live.accuracy) <= 100)) {
+            lastLiveAt = Date.now();
+            const pos = [Number(live.latitude ?? live.lat), Number(live.longitude ?? live.lng)];
             setNavigationActions(Number(t.lat), Number(t.lng), 'Rider Location');
             if (!riderMarker) {
               const icon = L.divIcon({
@@ -208,18 +250,20 @@
                 iconSize: [46, 46], iconAnchor: [23, 23]
               });
               riderMarker = L.marker(pos, { icon: icon, zIndexOffset: 1000 }).addTo(map);
-              accCircle = L.circle(pos, { radius: 60, color: '#0891b2', weight: 1, fillColor: '#0891b2', fillOpacity: 0.12 }).addTo(map);
-              map.setView(pos, 16);
+              accCircle = L.circle(pos, { radius: Number(live.accuracy || 60), color: '#0891b2', weight: 1, fillColor: '#0891b2', fillOpacity: 0.12 }).addTo(map);
             } else {
               smoothMove(riderMarker, pos);
-              if (accCircle) accCircle.setLatLng(pos);
-              map.panTo(pos, { animate: true, duration: 1 });
+              if (accCircle) { accCircle.setLatLng(pos); accCircle.setRadius(Number(live.accuracy || 60)); }
             }
-            riderMarker.bindTooltip((t.riderName || 'डिलीवरी बॉय') + ' आ रहे हैं', { permanent: false, direction: 'top', offset: [0, -18] });
+            const heading = Number(live.heading);
+            if (Number.isFinite(heading)) riderMarker.setIcon(L.divIcon({ className: 'rider-pin-wrap', html: '<div class="rider-pin" style="transform:rotate(' + heading + 'deg)">🛵</div>', iconSize: [46, 46], iconAnchor: [23, 23] }));
+            riderMarker.bindTooltip((riderName || 'डिलीवरी बॉय') + ' आ रहे हैं', { permanent: false, direction: 'top', offset: [0, -18] });
           } else {
             setNavigationActions(null, null, currentOrder ? 'Order ' + currentOrder : 'Delivery location');
+            const stale = lastLiveAt && Date.now() - lastLiveAt > 30000;
+            document.getElementById('statusMsg').textContent += stale ? ' • ⚠️ Rider location temporarily unavailable' : ' • Waiting for rider live location';
           }
-          const phone = String(t.riderMobile || '').replace(/\D/g, '');
+          const phone = String(t.riderMobile || (t.rider && t.rider.phone) || '').replace(/\D/g, '');
           const contact = document.getElementById('riderContact');
           const callLink = document.getElementById('riderCallLink');
           if (/^[6-9]\d{9}$/.test(phone)) {
@@ -234,6 +278,17 @@
           }
           if (hasCoordinates(t.destLat, t.destLng)) {
             addDestinationMarker(t.destLat, t.destLng);
+          }
+          if (t.customer && hasCoordinates(t.customer.latitude, t.customer.longitude)) addDestinationMarker(t.customer.latitude, t.customer.longitude);
+          addStoreMarker();
+          const routeCoordinates = t.route && t.route.polyline && t.route.polyline.coordinates;
+          if (Array.isArray(routeCoordinates) && routeCoordinates.length > 1) {
+            const latLngs = routeCoordinates.map(point => [Number(point[1]), Number(point[0])]).filter(point => hasCoordinates(point[0], point[1]));
+            if (latLngs.length > 1) {
+              if (routeLine) routeLine.setLatLngs(latLngs);
+              else routeLine = L.polyline(latLngs, { color: '#168447', weight: 5, opacity: .82 }).addTo(map);
+              if (!mapHasFitted && !mapUserMoved) { map.fitBounds(routeLine.getBounds(), { padding: [25, 25] }); mapHasFitted = true; }
+            }
           }
           if (t.status === 'Delivered' && poll) { clearInterval(poll); }
         })
