@@ -19,7 +19,7 @@
   <link rel="stylesheet" href="assets/css/style.css">
   <style>
     /* Page wrapper with side ads */
-    .page-outer { display:grid; grid-template-columns:1fr; max-width:1600px; margin:0 auto; padding:0 10px; }
+    .page-outer { display:grid; grid-template-columns:1fr; max-width:1600px; margin:0 auto; padding:32px 10px 0; }
     .page-outer.has-ads { grid-template-columns:160px minmax(0, 1fr) 160px; gap:12px; }
     .page-outer .side-ad { position:relative; }
     .side-ad-inner { position:sticky; top:70px; height:calc(100vh - 90px); border-radius:14px; padding:20px 12px; text-align:center; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; text-decoration:none; transition:all .3s ease; }
@@ -45,16 +45,16 @@
 
     /* Category Pills with Arrow Buttons */
     .cat-pills-wrapper { display:flex; align-items:center; gap:6px; }
-    .cat-pills-wrapper .arrow-btn { flex-shrink:0; width:28px; height:28px; min-width:28px; border-radius:50%; background:var(--primary); color:white; border:none; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
-    .cat-pills-wrapper .arrow-btn:hover { background:var(--primary-dark); }
+    .cat-pills-wrapper .arrow-btn { flex-shrink:0; width:32px; height:32px; min-width:32px; border-radius:50%; background:linear-gradient(120deg,#ef233c,#ff7a00,#ffd166,#ff7a00,#ef233c); background-size:260% 260%; animation:warmThemeFlow 4s ease-in-out infinite; color:white; border:none; font-size:17px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 8px rgba(239,35,60,0.24); }
+    .cat-pills-wrapper .arrow-btn:hover { background:#c62828; }
     .cat-pills { display:flex; gap:8px; overflow-x:auto; padding:4px 2px; -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-behavior:smooth; flex:1; min-width:0; }
     .cat-pills::-webkit-scrollbar { display:none; }
-    .cat-pill { box-sizing:border-box; width:104px; min-width:104px; height:92px; padding:8px 6px; border-radius:16px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; font-size:12px; line-height:1.15; font-weight:600; white-space:normal; overflow:hidden; cursor:pointer; border:1.5px solid #e0e0e0; background:white; color:#555; transition:all .2s ease; user-select:none; }
-    .cat-pill img { width:48px; height:48px; flex:0 0 48px; object-fit:contain; display:block; }
+    .cat-pill { box-sizing:border-box; width:104px; min-width:104px; flex:0 0 104px; height:104px; padding:9px 6px; border-radius:16px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; font-size:12px; line-height:1.15; font-weight:600; white-space:normal; overflow:visible; cursor:pointer; border:1.5px solid #e0e0e0; background:white; color:#555; transition:all .2s ease; user-select:none; }
+    .cat-pill img { width:54px; height:54px; flex:0 0 54px; object-fit:contain; display:block; padding:2px; }
     .cat-pill:not(:has(img)) { font-size:13px; }
-    .cat-pill:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-light); }
-    .cat-pill.active { background:var(--primary); color:white; border-color:var(--primary); }
-    @media (max-width:600px) { .cat-pill { width:88px; min-width:88px; height:84px; font-size:11px; } .cat-pill img { width:42px; height:42px; flex-basis:42px; } }
+    .cat-pill:hover { border-color:#ff7a00; color:#c62828; background:#fff0d8; }
+    .cat-pill.active { background:linear-gradient(120deg,#ef233c,#ff7a00,#ffd166,#ff7a00,#ef233c); background-size:260% 260%; animation:warmThemeFlow 4s ease-in-out infinite; color:white; border-color:#ff7a00; box-shadow:0 5px 12px rgba(239,35,60,0.2); }
+    @media (max-width:600px) { .cat-pill { width:88px; min-width:88px; flex-basis:88px; height:92px; font-size:11px; } .cat-pill img { width:46px; height:46px; flex-basis:46px; } }
 
     /* Mid Banner */
     .mid-banner { grid-column:1/-1; border-radius:12px; padding:18px 24px; color:white; cursor:pointer; margin:10px 0; display:flex; align-items:center; justify-content:center; gap:14px; text-decoration:none; transition:all .3s ease; text-align:center; }
@@ -74,6 +74,9 @@
       .page-outer.has-ads { grid-template-columns:1fr; }
       .page-outer .side-ad { display:none; }
       .prod-grid { grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:10px; }
+    }
+    @media(max-width:600px) {
+      .page-outer { padding-top:55px; }
     }
     @media(max-width:480px) {
       .prod-grid { grid-template-columns:repeat(2, 1fr); gap:8px; }

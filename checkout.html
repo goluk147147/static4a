@@ -234,6 +234,32 @@
       }
     }
 
+    function resolveDeliveryCoordinates(address, city, pincode) {
+      const defaultCoords = { lat: 28.51292, lng: 77.41112 };
+      const sourceText = `${address || ''} ${city || ''} ${pincode || ''}`.toLowerCase();
+      const knownAreas = [
+        { key: 'chandargarh', lat: 28.51292, lng: 77.41112 },
+        { key: 'chandragarh', lat: 28.51292, lng: 77.41112 },
+        { key: 'nabinagar', lat: 28.51306, lng: 77.41105 },
+        { key: 'gajana', lat: 28.51318, lng: 77.41125 },
+        { key: 'gajana road', lat: 28.51318, lng: 77.41125 },
+        { key: 'aurangabad', lat: 28.5128, lng: 77.41128 },
+        { key: 'bihar', lat: 28.51285, lng: 77.41118 },
+        { key: '824301', lat: 28.51292, lng: 77.41112 }
+      ];
+
+      const matched = knownAreas.find(area => sourceText.includes(area.key));
+      if (matched) return { lat: matched.lat, lng: matched.lng };
+
+      const seed = sourceText.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+      const offsetLat = ((seed % 17) - 8) / 10000;
+      const offsetLng = ((seed % 19) - 9) / 10000;
+      return {
+        lat: Number((defaultCoords.lat + offsetLat).toFixed(6)),
+        lng: Number((defaultCoords.lng + offsetLng).toFixed(6))
+      };
+    }
+
     function showDeliveryLocationSaved() {
       const status = document.getElementById('deliveryLocationStatus');
       if (status) { status.textContent = 'Current location मिल गई। यही GPS pin rider को भेजी जाएगी।'; status.style.color = '#2e7d32'; }
@@ -356,7 +382,7 @@
       let valid = true;
       document.querySelectorAll('.form-group').forEach(fg => fg.classList.remove('error'));
       const name = document.getElementById('custName').value.trim();
-      const mobile = document.getElementById('custMobile').value.trim();
+      const mobile = document.getElementById('custMobile').value.trim().replace(/\D+/g, '');
       const email = document.getElementById('custEmail').value.trim();
       const address = document.getElementById('custAddress').value.trim();
       const landmark = document.getElementById('custLandmark').value.trim();
@@ -406,9 +432,14 @@
       }
 
       customerInfo = { name, mobile, email, address, landmark, city, pincode };
-      if (deliveryLocation) {
+      if (locationMode === 'current' && deliveryLocation) {
         customerInfo.deliveryLat = deliveryLocation.lat;
         customerInfo.deliveryLng = deliveryLocation.lng;
+      } else {
+        const manualCoords = resolveDeliveryCoordinates(address, city, pincode);
+        customerInfo.deliveryLat = manualCoords.lat;
+        customerInfo.deliveryLng = manualCoords.lng;
+        customerInfo.deliverySource = 'manual';
       }
       const totals = getCartTotal();
       

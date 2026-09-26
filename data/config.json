@@ -1,15 +1,15 @@
 {
     "banners": [
         {
-            "title": "🥬 ताज़ी सब्ज़ियाँ, अब आपके घर तक! 🥕  हर दिन ताज़गी • अच्छी क्वालिटी • आसान डिलीवरी",
-            "subtitle": "Quality products from your trusted local store in Chandargarh",
+            "title": "घर बैठे मंगाइए ताज़ा किराना सामान! चावल • दाल • आटा • तेल • मसाले • बिस्कुट • साबुन और बहुत कुछ",
+            "subtitle": "",
             "btnText": "Shop Now →",
             "btnLink": "products.html",
             "gradient": [
                 "#ff6600",
                 "#ff9800"
             ],
-            "image": "https://i.pinimg.com/736x/f4/94/d8/f494d8b0dd24b5f7e51fc84001c11c0c.jpg",
+            "image": "data/banners/banner_20260925_194840_d51eb737.png",
             "festival": "",
             "active": true
         },

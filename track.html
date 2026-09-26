@@ -56,6 +56,7 @@
       <div class="steps" id="steps"></div>
       <div id="statusMsg" style="text-align:center;font-size:14px;color:var(--gray);margin-top:6px;"></div>
       <div id="riderContact" style="text-align:center;margin-top:10px;"><span id="riderCallLink" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#777;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">डिलीवरी बॉय का नंबर उपलब्ध नहीं है</span></div>
+      <div id="navActions" style="display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
       <div id="trackMap"></div>
       <p style="font-size:11px;color:var(--gray);margin-top:8px;text-align:center;">Map har 15 second me update hota hai. Rider live location share kare tabhi pin dikhega.</p>
     </div>
@@ -114,6 +115,28 @@
     function addDestinationMarker(lat, lng) {
       if (!map || destMarker || !hasCoordinates(lat, lng)) return;
       destMarker = L.marker([lat, lng]).addTo(map).bindPopup('डिलीवरी पता');
+    }
+
+    function buildDirectionsUrl(destLat, destLng, label) {
+      const origin = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(destLat + ',' + destLng);
+      if (label) return origin + '&waypoints=' + encodeURIComponent(label);
+      return origin;
+    }
+
+    function setNavigationActions(riderLat, riderLng, label) {
+      const box = document.getElementById('navActions');
+      if (!box) return;
+      if (hasCoordinates(riderLat, riderLng)) {
+        const url = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent('My Location') + '&destination=' + encodeURIComponent(riderLat + ',' + riderLng) + '&travelmode=driving';
+        box.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener" onclick="if(window.AndroidApp&&typeof window.AndroidApp.openMapDirections===\'function\'){event.preventDefault();window.AndroidApp.openMapDirections(\'' + riderLat + '\',\'' + riderLng + '\',\'Rider location\'); return false;}" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#0891b2;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">🧭 Navigate to Rider</a>';
+        return;
+      }
+      if (label) {
+        const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(label);
+        box.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#0f766e;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">📍 View Delivery Address</a>';
+        return;
+      }
+      box.innerHTML = '';
     }
 
     function hasCoordinates(lat, lng) {
@@ -177,6 +200,7 @@
 
           if (hasCoordinates(t.lat, t.lng)) {
             const pos = [Number(t.lat), Number(t.lng)];
+            setNavigationActions(Number(t.lat), Number(t.lng), 'Rider Location');
             if (!riderMarker) {
               const icon = L.divIcon({
                 className: 'rider-pin-wrap',
@@ -192,6 +216,8 @@
               map.panTo(pos, { animate: true, duration: 1 });
             }
             riderMarker.bindTooltip((t.riderName || 'डिलीवरी बॉय') + ' आ रहे हैं', { permanent: false, direction: 'top', offset: [0, -18] });
+          } else {
+            setNavigationActions(null, null, currentOrder ? 'Order ' + currentOrder : 'Delivery location');
           }
           const phone = String(t.riderMobile || '').replace(/\D/g, '');
           const contact = document.getElementById('riderContact');

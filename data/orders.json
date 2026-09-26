@@ -58,7 +58,8 @@
         "paymentMethod": "UPI",
         "orderStatus": "Order Placed",
         "orderDate": "2026-09-17T10:42:48.935Z",
-        "status": "Order Placed"
+        "status": "Order Placed",
+        "deliveredAt": "2026-09-25T13:31:45+02:00"
     },
     {
         "orderId": "4A916301",
@@ -88,9 +89,10 @@
         "deliveryCharge": 0,
         "totalAmount": 145,
         "paymentMethod": "UPI",
-        "orderStatus": "Out for Delivery",
+        "orderStatus": "Delivered",
         "orderDate": "2026-09-22T09:49:20.407Z",
-        "status": "Out for Delivery"
+        "status": "Delivered",
+        "deliveredAt": "2026-09-25T13:12:57+02:00"
     },
     {
         "orderId": "4A366951",
@@ -120,8 +122,10 @@
         "deliveryCharge": 0,
         "totalAmount": 28,
         "paymentMethod": "UPI",
-        "orderStatus": "Order Placed",
-        "orderDate": "2026-09-22T12:50:24.974Z"
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-22T12:50:24.974Z",
+        "status": "Delivered",
+        "deliveredAt": "2026-09-25T14:22:22+02:00"
     },
     {
         "orderId": "4AABC572E3",
@@ -148,10 +152,11 @@
         "deliveryCharge": 0,
         "totalAmount": 200,
         "paymentMethod": "Cash",
-        "orderStatus": "Order Placed",
-        "status": "Order Placed",
+        "orderStatus": "Delivered",
+        "status": "Delivered",
         "orderDate": "2026-09-22T15:02:21+02:00",
-        "createdBy": "akgupta"
+        "createdBy": "akgupta",
+        "deliveredAt": "2026-09-25T14:22:31+02:00"
     },
     {
         "orderId": "4A250615",
@@ -179,7 +184,76 @@
         "deliveryCharge": 0,
         "totalAmount": 28,
         "paymentMethod": "UPI",
-        "orderStatus": "Order Placed",
-        "orderDate": "2026-09-24T12:14:56.825Z"
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-24T12:14:56.825Z",
+        "status": "Delivered",
+        "deliveredAt": "2026-09-25T13:31:35+02:00"
+    },
+    {
+        "orderId": "4A203002",
+        "userId": null,
+        "customer": {
+            "name": "Akash",
+            "mobile": "8002116652",
+            "email": "",
+            "address": "Alpha Bhutani",
+            "landmark": "shiv mandir",
+            "city": "Chandragarh (चंद्रगढ़)",
+            "pincode": "824301",
+            "deliveryLat": 28.51293135368222,
+            "deliveryLng": 77.41112069676684
+        },
+        "items": [
+            {
+                "id": 4,
+                "name": "Soya Health Refined Soyabean Oil",
+                "weight": "1 Litre",
+                "price": 145,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 145,
+        "discount": 15,
+        "deliveryCharge": 1,
+        "totalAmount": 146,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-25T11:19:00.585Z",
+        "status": "Delivered",
+        "deliveredAt": "2026-09-25T14:22:26+02:00"
+    },
+    {
+        "orderId": "4A449003",
+        "userId": 4,
+        "customer": {
+            "name": "Akash",
+            "mobile": "8002116652",
+            "email": "",
+            "address": "Alpha Bhutani",
+            "landmark": "shiv mandir",
+            "city": "Chandragarh (चंद्रगढ़)",
+            "pincode": "824301",
+            "deliveryLat": 28.51292,
+            "deliveryLng": 77.41112,
+            "deliverySource": "manual"
+        },
+        "items": [
+            {
+                "id": 5,
+                "name": "Tata Salt",
+                "weight": "1 Kg",
+                "price": 28,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 28,
+        "discount": 2,
+        "deliveryCharge": 0,
+        "totalAmount": 28,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-25T11:56:22.744Z",
+        "status": "Delivered",
+        "deliveredAt": "2026-09-25T14:22:16+02:00"
     }
 ]

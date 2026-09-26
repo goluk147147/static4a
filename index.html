@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#2C6FAD">
+  <meta name="theme-color" content="#0FA958">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="4A Store - Apna local grocery store. Fresh fruits, vegetables, daily essentials, snacks & more delivered in minutes. Chandargarh, Nabinagar, Bihar.">
@@ -105,8 +105,6 @@
         <div class="skeleton-banner shimmer"></div>
       </div>
     </div>
-    <button class="slider-btn prev">‹</button>
-    <button class="slider-btn next">›</button>
     <div class="slider-dots" id="sliderDots"></div>
   </section>
 
@@ -366,6 +364,11 @@
     // ============================================
     // DYNAMIC BANNERS (Festival-based)
     // ============================================
+    function resolveBannerImage(src) {
+      if (!src || /^https?:\/\//i.test(src) || /^data:image\//i.test(src)) return src;
+      try { return new URL(src, window.location.href).href; } catch (e) { return src; }
+    }
+
     function renderBanners() {
       const track = document.getElementById('sliderTrack');
       const dotsDiv = document.getElementById('sliderDots');
@@ -389,7 +392,7 @@
             ? 'linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 55%, rgba(0,0,0,0) 100%), '
             : '';
           return `
-            <div class="slide" style="background:${overlay}url('${b.image}') center/cover no-repeat;">
+            <div class="slide" style="background:${overlay}url('${resolveBannerImage(b.image)}') center/cover no-repeat;">
               ${hasText ? `<div class="slide-content" style="text-align:left; margin:0; margin-right:auto;">
                 ${b.title ? `<h1>${b.title}</h1>` : ''}
                 ${b.subtitle ? `<p>${b.subtitle}</p>` : ''}

@@ -950,14 +950,41 @@
         `)}`;
     }
 
+    let adminOrdersPage = 1;
+    let adminOrdersSearch = '';
+
+    function setAdminOrdersSearch(value) {
+      adminOrdersSearch = value || '';
+      adminOrdersPage = 1;
+      renderOrdersTab();
+    }
+
+    function setAdminOrdersPage(page) {
+      adminOrdersPage = Math.max(1, Number(page) || 1);
+      renderOrdersTab();
+    }
+
     function renderOrdersTab() {
       const orders = getOrders();
       if (orders.length === 0) {
         document.getElementById('tabContent').innerHTML = '<p style="text-align:center;padding:40px;color:var(--gray);">No orders yet</p>';
         return;
       }
+      const search = adminOrdersSearch.trim().toLowerCase();
+      const filteredOrders = search
+        ? orders.filter(o => String(o.customer?.name || '').toLowerCase().includes(search) || String(o.orderId || '').toLowerCase().includes(search))
+        : orders;
+      const pageSize = search ? Math.max(filteredOrders.length, 1) : 10;
+      const pageCount = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
+      adminOrdersPage = Math.min(adminOrdersPage, pageCount);
+      const pageOrders = filteredOrders.slice((adminOrdersPage - 1) * pageSize, adminOrdersPage * pageSize);
 
       document.getElementById('tabContent').innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+          <input value="${escapeHtml(adminOrdersSearch)}" oninput="if(!this.value.trim()) setAdminOrdersSearch('')" onkeydown="if(event.key==='Enter') setAdminOrdersSearch(this.value)" placeholder="Search customer name or Order ID" style="flex:1;min-width:220px;max-width:380px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
+          <button onclick="setAdminOrdersSearch(this.previousElementSibling.value)" style="padding:10px 14px;border:0;border-radius:8px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer;">Search</button>
+          <span style="font-size:12px;color:var(--gray);">${filteredOrders.length} order${filteredOrders.length === 1 ? '' : 's'}</span>
+        </div>
         <div style="overflow-x:auto;">
           <table class="admin-table">
             <thead>
@@ -973,7 +1000,7 @@
               </tr>
             </thead>
             <tbody>
-              ${orders.map(o => `
+              ${pageOrders.length ? pageOrders.map(o => `
                 <tr>
                   <td><strong>#${o.orderId}</strong></td>
                   <td>${formatDate(o.orderDate)}</td>
@@ -992,9 +1019,14 @@
                   </td>
                   <td><button onclick="viewOrder('${o.orderId}')" style="padding:6px 12px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">👁️ View</button></td>
                 </tr>
-              `).join('')}
+              `).join('') : '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--gray);">No customer found</td></tr>'}
             </tbody>
           </table>
+        </div>
+        <div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;">
+          <button onclick="setAdminOrdersPage(${adminOrdersPage - 1})" ${adminOrdersPage <= 1 ? 'disabled' : ''} style="padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;">← Prev</button>
+          <span style="font-size:12px;color:var(--gray);">Page ${adminOrdersPage} of ${pageCount}</span>
+          <button onclick="setAdminOrdersPage(${adminOrdersPage + 1})" ${adminOrdersPage >= pageCount ? 'disabled' : ''} style="padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;">Next →</button>
         </div>`;
     }
 
@@ -1058,6 +1090,38 @@
       document.getElementById('orderDetailModal').classList.remove('hidden');
     }
 
+    let adminUsersPage = 1;
+    let adminUsersSearch = '';
+
+    function setAdminUsersSearch(value) {
+      adminUsersSearch = value || '';
+      adminUsersPage = 1;
+      renderUsersTab();
+    }
+
+    function setAdminUsersPage(page) {
+      adminUsersPage = Math.max(1, Number(page) || 1);
+      renderUsersTab();
+    }
+
+    function toggleDeliveryBoyForm() {
+      const panel = document.getElementById('deliveryBoyFormPanel');
+      if (!panel) return;
+      const opening = panel.style.display === 'none';
+      panel.style.display = opening ? 'block' : 'none';
+      if (opening) document.getElementById('newRiderName')?.focus();
+    }
+
+    function fillRiderFromCustomer(id) {
+      if (!id) return;
+      const customer = getUsers().find(user => Number(user.id) === Number(id));
+      if (!customer) return;
+      document.getElementById('newRiderName').value = customer.name || '';
+      document.getElementById('newRiderMobile').value = customer.mobile || '';
+      document.getElementById('newRiderUsername').value = customer.username || '';
+      document.getElementById('newRiderPassword').focus();
+    }
+
     function renderUsersTab() {
       const users = getUsers();
       if (users.length === 0) {
@@ -1066,15 +1130,34 @@
       }
 
       const now = new Date();
+      const search = adminUsersSearch.trim().toLowerCase();
+      const filteredUsers = search
+        ? users.filter(u => [u.name, u.username, u.mobile].some(value => String(value || '').toLowerCase().includes(search)))
+        : users;
+      const pageSize = search ? Math.max(filteredUsers.length, 1) : 10;
+      const pageCount = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+      adminUsersPage = Math.min(adminUsersPage, pageCount);
+      const pageUsers = filteredUsers.slice((adminUsersPage - 1) * pageSize, adminUsersPage * pageSize);
+      const customerOptions = users
+        .filter(u => (u.role || 'customer') !== 'rider')
+        .map(u => `<option value="${Number(u.id || 0)}">${escapeHtml(u.name || 'Unnamed')} - ${escapeHtml(u.mobile || '')}</option>`)
+        .join('');
 
       document.getElementById('tabContent').innerHTML = `
         <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-          <p style="font-size:13px; color:var(--gray);">Total: <strong>${users.length}</strong> users</p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button onclick="addOrderForNewCustomer()" style="padding:8px 16px; background:#2e7d32; color:white; border:none; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">➕ New Customer Order</button><button onclick="deleteInactiveUsers()" style="padding:8px 16px; background:#e53935; color:white; border:none; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">🗑️ Delete 30+ Days Inactive</button></div>
+          <p style="font-size:13px; color:var(--gray);margin:0;">Showing: <strong>${filteredUsers.length}</strong> of ${users.length} users</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;"><button onclick="addOrderForNewCustomer()" style="padding:8px 16px; background:#2e7d32; color:white; border:none; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">➕ New Customer Order</button><button onclick="toggleDeliveryBoyForm()" style="padding:8px 16px; background:#0891b2; color:white; border:none; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">🛵 New Delivery Boy</button><button onclick="deleteInactiveUsers()" style="padding:8px 16px; background:#e53935; color:white; border:none; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">🗑️ Delete 30+ Days Inactive</button></div>
         </div>
-        <div style="margin-bottom:18px;padding:16px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:12px;">
-          <h3 style="margin:0 0 5px;color:#2e7d32;font-size:16px;">Delivery Boy Account</h3>
+        <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <input value="${escapeHtml(adminUsersSearch)}" oninput="if(!this.value.trim()) setAdminUsersSearch('')" onkeydown="if(event.key==='Enter') setAdminUsersSearch(this.value)" placeholder="Search name, username or mobile" style="flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;"><button onclick="setAdminUsersSearch(this.previousElementSibling.value)" style="padding:10px 14px;border:0;border-radius:8px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer;">Search</button>
+        </div>
+        <div id="deliveryBoyFormPanel" style="display:none;margin-bottom:18px;padding:16px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px;"><h3 style="margin:0;color:#2e7d32;font-size:16px;">Delivery Boy Account</h3><button type="button" onclick="toggleDeliveryBoyForm()" title="Close form" style="padding:5px 10px;border:1px solid #a5d6a7;border-radius:7px;background:#fff;color:#2e7d32;font-weight:700;cursor:pointer;">✕ Close</button></div>
           <p style="margin:0 0 12px;font-size:12px;color:#555;">Admin sets name, mobile, username and password. This login opens only the Rider page.</p>
+          <select id="existingCustomerForRider" onchange="fillRiderFromCustomer(this.value)" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:7px;margin-bottom:10px;">
+            <option value="">Convert an existing customer (optional)</option>
+            ${customerOptions}
+          </select>
           <div style="display:grid;grid-template-columns:repeat(4,minmax(130px,1fr)) auto;gap:8px;align-items:end;">
             <input id="newRiderName" type="text" placeholder="Name" style="padding:9px;border:1px solid var(--border);border-radius:7px;min-width:0;">
             <input id="newRiderMobile" type="tel" inputmode="numeric" maxlength="10" placeholder="Mobile number" style="padding:9px;border:1px solid var(--border);border-radius:7px;min-width:0;">
@@ -1103,7 +1186,7 @@
               </tr>
             </thead>
             <tbody>
-              ${users.map((u, i) => {
+              ${pageUsers.map((u, i) => {
                 const userOrders = getOrdersByUser(u.mobile);
                 const totalSpent = userOrders.reduce((s, o) => s + o.totalAmount, 0);
                 const lastLogin = u.lastLogin ? new Date(u.lastLogin) : null;
@@ -1135,9 +1218,14 @@
                     <button onclick="deleteUser('${u.mobile}', '${String(u.name || '').replace(/'/g, "\\'")}')" title="Delete user" style="padding:5px 8px; background:#e53935; color:white; border:none; border-radius:6px; cursor:pointer; font-size:11px;">🗑️</button>
                   </td>
                 </tr>`;
-              }).join('')}
+              }).join('') || '<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--gray);">No customer found</td></tr>'}
             </tbody>
           </table>
+        </div>
+        <div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;">
+          <button onclick="setAdminUsersPage(${adminUsersPage - 1})" ${adminUsersPage <= 1 ? 'disabled' : ''} style="padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;">← Prev</button>
+          <span style="font-size:12px;color:var(--gray);">Page ${adminUsersPage} of ${pageCount}</span>
+          <button onclick="setAdminUsersPage(${adminUsersPage + 1})" ${adminUsersPage >= pageCount ? 'disabled' : ''} style="padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;">Next →</button>
         </div>`; 
     }
 
@@ -1862,14 +1950,22 @@
       return [];
     }
 
+    function bannerImageSrc(src) {
+      if (!src || /^https?:\/\//i.test(src) || /^data:image\//i.test(src)) return src;
+      try { return new URL(src, window.location.href).href; } catch (e) { return src; }
+    }
+
     function renderBannersTab() {
       if (bannerDraft === null) bannerDraft = loadBanners();
       const list = bannerDraft.map((b, i) => {
         const g = Array.isArray(b.gradient) ? b.gradient : ['#ff6600', '#ff9800'];
-        const bg = b.image ? `linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.35)), url('${b.image}') center/cover` : `linear-gradient(135deg,${g[0]},${g[1]})`;
+        const bg = `linear-gradient(135deg,${g[0]},${g[1]})`;
+        const thumbnail = b.image
+          ? `<img src="${escapeHtml(bannerImageSrc(b.image))}" alt="${escapeHtml(b.title || 'Banner')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">`
+          : '';
         return `
           <div style="display:flex; gap:12px; align-items:center; border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px;">
-            <div style="flex-shrink:0; width:90px; height:54px; border-radius:8px; background:${bg}; background-size:cover; display:flex; align-items:center; justify-content:center; color:#fff; font-size:9px; text-align:center; padding:2px; overflow:hidden;">${escapeHtml((b.title||'').slice(0,22))}</div>
+            <div style="position:relative; flex-shrink:0; width:90px; height:54px; border-radius:8px; background:${bg}; display:flex; align-items:center; justify-content:center; color:#fff; font-size:9px; text-align:center; padding:2px; overflow:hidden;">${thumbnail}<span style="position:relative;z-index:1;text-shadow:0 1px 3px #000;">${escapeHtml((b.title||'').slice(0,22))}</span></div>
             <div style="flex:1; min-width:0;">
               <div style="font-weight:700; font-size:13px;">${escapeHtml(b.title || '(no title)')}</div>
               <div style="font-size:11px; color:var(--gray);">${escapeHtml(b.subtitle || '')}</div>
@@ -1917,7 +2013,17 @@
           <div><label>Button Link</label><input type="text" id="bBtnLink" value="${escapeHtml(b.btnLink||'')}"></div>
           <div><label>Gradient Color 1</label><input type="color" id="bG1" value="${g[0]}" style="height:40px; padding:2px;"></div>
           <div><label>Gradient Color 2</label><input type="color" id="bG2" value="${g[1]}" style="height:40px; padding:2px;"></div>
-          <div class="full"><label>Background Image URL (optional — overrides gradient)</label><input type="text" id="bImage" value="${escapeHtml(b.image||'')}" placeholder="https://..."></div>
+          <div class="full">
+            <label>Banner Image Source</label>
+            <select id="bImageMode" onchange="setBannerImageMode(this.value)">
+              <option value="url" ${/^https?:\/\//i.test(b.image || '') ? 'selected' : ''}>Image URL</option>
+              <option value="local" ${b.image && !/^https?:\/\//i.test(b.image) ? 'selected' : ''}>Upload Local Image</option>
+            </select>
+          </div>
+          <input type="hidden" id="bImage" value="${escapeHtml(b.image||'')}">
+          <input type="hidden" id="bImagePreview" value="">
+          <div class="full" id="bImageUrlWrap" style="display:${/^https?:\/\//i.test(b.image || '') || !b.image ? 'block' : 'none'};"><label>Background Image URL</label><input type="url" id="bImageUrl" value="${escapeHtml(/^https?:\/\//i.test(b.image || '') ? b.image : '')}" placeholder="https://..."></div>
+          <div class="full" id="bImageFileWrap" style="display:${b.image && !/^https?:\/\//i.test(b.image) ? 'block' : 'none'};"><label>Upload Local Image</label><input type="file" id="bImageFile" accept="image/png,image/jpeg,image/webp" onchange="uploadBannerImage(this)"><small id="bImageStatus" style="display:block;margin-top:5px;color:var(--gray);">${b.image && !/^https?:\/\//i.test(b.image) ? 'Stored image: ' + escapeHtml(b.image) : 'JPG, PNG or WEBP up to 8 MB'}</small></div>
           <div><label>Festival (blank = always)</label><input type="text" id="bFestival" value="${escapeHtml(b.festival||'')}" placeholder="diwali / holi / blank"></div>
           <div><label>Active?</label><select id="bActive"><option value="1" ${b.active?'selected':''}>✅ Show</option><option value="0" ${!b.active?'selected':''}>⛔ Hide</option></select></div>
         </div>
@@ -1929,14 +2035,117 @@
       document.getElementById('orderDetailModal').classList.remove('hidden');
     }
 
+    function setBannerImageMode(mode) {
+      const urlWrap = document.getElementById('bImageUrlWrap');
+      const fileWrap = document.getElementById('bImageFileWrap');
+      if (urlWrap) urlWrap.style.display = mode === 'url' ? 'block' : 'none';
+      if (fileWrap) fileWrap.style.display = mode === 'local' ? 'block' : 'none';
+      if (mode === 'url') {
+        const url = document.getElementById('bImageUrl');
+        const image = document.getElementById('bImage');
+        const preview = document.getElementById('bImagePreview');
+        if (url && image) image.value = url.value.trim();
+        if (preview) preview.value = '';
+      }
+    }
+
+    async function compressBannerImage(file) {
+      const imageUrl = URL.createObjectURL(file);
+      try {
+        const image = new Image();
+        image.src = imageUrl;
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = () => reject(new Error('Could not read the selected image.'));
+        });
+
+        let width = Math.round(image.naturalWidth * Math.min(1, 1600 / image.naturalWidth, 1000 / image.naturalHeight));
+        let height = Math.round(image.naturalHeight * width / image.naturalWidth);
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        let type = 'image/webp';
+        let quality = 0.82;
+        const maxBytes = 900 * 1024;
+        let blob;
+
+        while (true) {
+          canvas.width = width;
+          canvas.height = height;
+          if (type === 'image/jpeg') {
+            context.fillStyle = '#fff';
+            context.fillRect(0, 0, width, height);
+          }
+          context.drawImage(image, 0, 0, width, height);
+          blob = await new Promise(resolve => canvas.toBlob(resolve, type, quality));
+
+          if (type === 'image/webp' && (!blob || blob.type !== 'image/webp')) {
+            type = 'image/jpeg';
+            quality = 0.82;
+            continue;
+          }
+          if (!blob || blob.size <= maxBytes) break;
+          if (quality > 0.5) quality = Math.max(0.5, quality - 0.12);
+          else if (width > 640) {
+            width = Math.round(width * 0.8);
+            height = Math.round(height * 0.8);
+            quality = 0.78;
+          } else break;
+        }
+
+        if (!blob) throw new Error('Could not prepare the selected image.');
+        const extension = type === 'image/webp' ? 'webp' : 'jpg';
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.' + extension, { type });
+      } finally {
+        URL.revokeObjectURL(imageUrl);
+      }
+    }
+
+    async function uploadBannerImage(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) {
+        showToast('Only PNG, JPG or WEBP images are supported.', 'error');
+        input.value = '';
+        return;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        showToast('Banner image must be 8 MB or smaller.', 'error');
+        input.value = '';
+        return;
+      }
+
+      const status = document.getElementById('bImageStatus');
+      try {
+        if (status) status.textContent = 'Compressing image for server upload...';
+        const compressedFile = await compressBannerImage(file);
+        const formData = new FormData();
+        formData.append('image', compressedFile);
+        if (status) status.textContent = 'Uploading optimized image (' + Math.round(compressedFile.size / 1024) + ' KB)...';
+        const response = await fetch('api/upload-banner.php', { method: 'POST', body: formData });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || 'Upload failed');
+        document.getElementById('bImage').value = result.url;
+        document.getElementById('bImagePreview').value = '';
+        if (status) status.textContent = 'Uploaded to server: ' + result.url;
+        showToast('Banner image uploaded. Save to Draft next.', 'success');
+      } catch (error) {
+        if (status) status.textContent = 'Upload failed.';
+        showToast(error.message || 'Banner upload failed.', 'error');
+      }
+    }
+
     function readBannerForm() {
+      const imageMode = document.getElementById('bImageMode')?.value || 'url';
+      const imageUrl = document.getElementById('bImageUrl');
+      const storedImage = document.getElementById('bImage');
+      if (imageMode === 'url' && imageUrl && storedImage) storedImage.value = imageUrl.value.trim();
       return {
         title: document.getElementById('bTitle').value,
         subtitle: document.getElementById('bSub').value,
         btnText: document.getElementById('bBtnText').value,
         btnLink: document.getElementById('bBtnLink').value,
         gradient: [document.getElementById('bG1').value, document.getElementById('bG2').value],
-        image: document.getElementById('bImage').value.trim(),
+        image: storedImage ? storedImage.value.trim() : '',
         festival: document.getElementById('bFestival').value.trim(),
         active: document.getElementById('bActive').value === '1'
       };
@@ -1953,7 +2162,8 @@
     function previewBanner() {
       const b = readBannerForm();
       const g = b.gradient;
-      const bg = b.image ? `linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.35)), url('${b.image}') center/cover no-repeat` : `linear-gradient(135deg,${g[0]},${g[1]})`;
+      const previewImage = document.getElementById('bImagePreview')?.value || b.image;
+      const bg = previewImage ? `linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.35)), url('${bannerImageSrc(previewImage)}') center/cover no-repeat` : `linear-gradient(135deg,${g[0]},${g[1]})`;
       const btn = (b.btnText && b.btnLink) ? `<span style="display:inline-block;margin-top:12px;padding:10px 26px;background:#fff;color:${g[0]};border-radius:30px;font-weight:700;font-size:14px;">${escapeHtml(b.btnText)}</span>` : '';
       const ov = document.createElement('div');
       ov.id = 'bannerPreview';

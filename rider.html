@@ -3,282 +3,1961 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rider Live Location - 4A Store</title>
+  <title>Rider Dashboard - 4A Store</title>
   <meta name="robots" content="noindex, nofollow, noarchive">
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
-  <link rel="stylesheet" href="assets/css/style.css">
   <style>
-    .rider-wrap { max-width: 480px; margin: 20px auto; padding: 0 16px 40px; }
-    .rider-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:22px; box-shadow:var(--shadow); }
-    .rider-card h1 { color:var(--primary-dark); font-size:1.4rem; margin-bottom:6px; }
-    .rider-card label { display:block; font-size:13px; font-weight:600; color:var(--primary-dark); margin:12px 0 4px; }
-    .rider-card input { width:100%; padding:11px 14px; border:2px solid var(--border); border-radius:8px; font-size:15px; box-sizing:border-box; }
-    .rider-btn { width:100%; padding:14px; border:none; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; margin-top:16px; color:#fff; }
-    .start { background:#2e7d32; } .stop { background:#c62828; }
-    .rider-status { margin-top:16px; padding:14px; border-radius:10px; font-size:14px; text-align:center; }
-    .live { background:#e8f5e9; color:#2e7d32; } .idle { background:#f5f5f5; color:#666; }
-    .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#2e7d32; margin-right:6px; animation:pulse 1.2s infinite; }
-    .rider-account-actions { display:flex; gap:8px; margin-bottom:14px; }
-    .rider-account-actions button { flex:1; padding:9px 8px; border:0; border-radius:8px; color:#fff; font-size:12px; font-weight:700; cursor:pointer; }
-    .customer-location { margin-top:10px; padding:12px; border-radius:10px; background:#eef8ff; border:1px solid #b9def5; color:#174a68; font-size:12px; }
-    .customer-location.missing { background:#fff8e1; border-color:#ffe082; color:#795548; }
-    .customer-location a { display:inline-block; margin-top:8px; padding:7px 10px; border-radius:7px; background:#1565c0; color:#fff; text-decoration:none; font-weight:700; }
-    .customer-location.pin-bar { position:sticky; top:8px; z-index:5; box-shadow:0 4px 12px rgba(23,74,104,.12); }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    :root {
+      --bg: #f1f7f4;
+      --panel: #f8fafc;
+      --dark: #10231b;
+      --dark-2: #19352a;
+      --green: #ff7a00;
+      --green-soft: #fff0d8;
+      --green-deep: #c62828;
+      --text: #291b16;
+      --muted: #76645c;
+      --line: #f1d8ba;
+      --shadow: 0 18px 44px rgba(116, 54, 16, 0.15);
+      --map: #dfe9db;
+      --map-road: rgba(141, 165, 180, 0.2);
+      --map-water: rgba(114, 190, 227, 0.6);
+      --map-green: rgba(146, 201, 122, 0.55);
+      --blue: #3d7ce3;
+      --warning: #f7f4e7;
+      --orange: #ffd166;
+    }
+
+    @keyframes warmThemeFlow {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .switch,
+      .accept-btn,
+      .cta,
+      .big-cta,
+      .foot-btn {
+        animation: none;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at 100% 0, rgba(255, 122, 0, 0.14), transparent 30rem), #fffaf3;
+      color: var(--text);
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 18px;
+    }
+
+    .rider-page {
+      width: 100%;
+      max-width: 1200px;
+      overflow-x: hidden;
+      padding: 8px 0 12px;
+    }
+
+    .phone-grid {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-width: 0;
+      width: 100%;
+      padding-bottom: 6px;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    .device {
+      width: min(100%, 390px);
+      height: min(86vh, 760px);
+      min-height: 620px;
+      background: rgba(248, 250, 252, 0.86);
+      border-radius: 28px;
+      border: 1px solid rgba(35, 45, 58, 0.08);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .statusbar {
+      display: none;
+    }
+
+    .status-icons {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 10px;
+    }
+
+    .signal, .wifi, .battery {
+      display: inline-block;
+      opacity: 0.9;
+    }
+
+    .content {
+      height: 100%;
+      background: rgba(248, 250, 252, 0.9);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .details-content {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .details-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 12px;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px 10px;
+      background: rgba(255, 255, 255, 0.72);
+      border-bottom: 1px solid rgba(255, 122, 0, 0.14);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+      position: relative;
+      gap: 10px;
+    }
+
+    .header-menu-wrap {
+      position: relative;
+    }
+
+    .menu-button {
+      border: none;
+      background: transparent;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .menu-button .menu-dots {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .menu-button .menu-dots span {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #1e293b;
+      display: block;
+    }
+
+    .header-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      min-width: 160px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(17, 24, 39, 0.08);
+      border-radius: 12px;
+      box-shadow: 0 12px 28px rgba(17, 24, 39, 0.12);
+      padding: 8px;
+      display: none;
+      z-index: 30;
+    }
+
+    .header-menu.open {
+      display: block;
+    }
+
+    .header-menu button {
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: var(--dark);
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      padding: 10px 10px;
+      cursor: pointer;
+    }
+
+    .header-menu button:hover {
+      background: #f3f6f8;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      color: var(--dark);
+      margin-right: auto;
+      margin-left: 4px;
+    }
+
+    .brand-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #26ad5c, #1d9c54);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .brand small {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .switch {
+      width: 56px;
+      height: 30px;
+      background: linear-gradient(120deg, #ef233c, #ff7a00, #ffd166, #ff7a00, #ef233c);
+      background-size: 260% 260%;
+      animation: warmThemeFlow 4s ease-in-out infinite;
+      border-radius: 999px;
+      border: none;
+      padding: 0;
+      position: relative;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04), 0 4px 10px rgba(15, 169, 88, 0.18);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s ease;
+    }
+
+    .switch::before {
+      content: "";
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 6px rgba(17, 24, 39, 0.12);
+      transition: transform 0.2s ease;
+    }
+
+    .switch.off {
+      background: #dfe6eb;
+      box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.04), 0 4px 10px rgba(17, 24, 39, 0.06);
+    }
+
+    .switch.off::before {
+      transform: translateX(-26px);
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 20px 20px 0 0;
+      margin-top: 3px;
+      padding: 16px 14px 12px;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 -4px 14px rgba(39, 52, 63, 0.04);
+    }
+
+    .panel-title {
+      font-weight: 800;
+      font-size: 15px;
+      color: var(--dark);
+      margin: 0 0 14px;
+    }
+
+    .order-list {
+      display: grid;
+      gap: 12px;
+      padding-bottom: 8px;
+    }
+
+    .order-item {
+      background: #fff;
+      border: 1px solid rgba(24, 32, 43, 0.06);
+      border-radius: 14px;
+      padding: 12px 12px 10px;
+      box-shadow: 0 8px 20px rgba(16, 35, 27, 0.07);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .order-id {
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: var(--dark);
+      font-size: 13px;
+    }
+
+    .pill {
+      background: var(--green-soft);
+      color: var(--green-deep);
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 8px;
+    }
+
+    .pill.paid {
+      background: #edf4ff;
+      color: #1a5ab6;
+    }
+
+    .shopper {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin: 4px 0 8px;
+    }
+
+    .shopper-name {
+      font-size: 12px;
+      color: var(--dark);
+      font-weight: 700;
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--muted);
+      gap: 6px;
+    }
+
+    .loc {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex: 1;
+    }
+
+    .distance {
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .accept-btn {
+      width: 100%;
+      margin-top: 10px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(120deg, #ef233c, #ff7a00, #ffd166, #ff7a00, #ef233c);
+      background-size: 260% 260%;
+      animation: warmThemeFlow 4s ease-in-out infinite;
+      color: #fff;
+      font-weight: 800;
+      height: 36px;
+      font-size: 12px;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(15, 169, 88, 0.2);
+    }
+
+    .accept-btn.secondary {
+      background: linear-gradient(135deg, #0f8acc, #2c9ee6);
+      box-shadow: 0 8px 16px rgba(37, 126, 224, 0.18);
+    }
+
+    .device-2 .content, .device-4 .content, .device-5 .content {
+      background: #f5f6f7;
+    }
+
+    .device-2 .panel, .device-4 .panel, .device-5 .panel {
+      background: #f3f5f7;
+      border-radius: 20px 20px 0 0;
+    }
+
+    .backbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px 10px;
+      background: #1f2430;
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .back-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .arrow {
+      width: 10px;
+      height: 10px;
+      border-left: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(45deg);
+      display: inline-block;
+      margin-left: 2px;
+    }
+
+    .top-mini-icons {
+      display: flex;
+      gap: 12px;
+      opacity: 0.9;
+    }
+
+    .mini-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #fff;
+      display: inline-block;
+      opacity: 0.8;
+    }
+
+    .status-card {
+      margin: 14px;
+      background: #ebf8ee;
+      border: 1px solid rgba(62, 174, 92, 0.18);
+      border-radius: 14px;
+      padding: 12px 12px 11px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: #1d7a45;
+      font-weight: 700;
+    }
+
+    .check {
+      width: 18px;
+      height: 18px;
+      background: #30b956;
+      border-radius: 50%;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .details-box {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 8px 18px rgba(13, 30, 44, 0.06);
+      padding: 14px 14px 12px;
+      margin: 0 14px;
+    }
+
+    .order-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .dark-tag {
+      background: #f2f5f7;
+      color: #586574;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 8px;
+    }
+
+    .customer-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #eff3f7, #dfe8f4);
+      font-size: 13px;
+      color: var(--dark);
+      font-weight: 700;
+    }
+
+    .customer-name {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--dark);
+      margin-bottom: 2px;
+    }
+
+    .phone-link {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .loc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 11px;
+      gap: 10px;
+    }
+
+    .loc-row .pin {
+      color: var(--dark);
+      font-weight: 700;
+    }
+
+    .item-summary {
+      margin: 16px 14px 0;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 8px 18px rgba(13, 30, 44, 0.06);
+      padding: 14px 14px 12px;
+    }
+
+    .summary-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--dark);
+    }
+
+    .summary-row.total {
+      font-weight: 800;
+      font-size: 13px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+      margin-top: 4px;
+    }
+
+    .cta {
+      margin: 12px 14px 14px;
+      width: calc(100% - 28px);
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #20a45a, #2fbf68);
+      color: #fff;
+      font-weight: 800;
+      height: 42px;
+      font-size: 13px;
+      box-shadow: 0 8px 16px rgba(38, 181, 93, 0.18);
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+    }
+
+    .map-screen {
+      height: calc(100% - 52px);
+      background: linear-gradient(#edf2ef, #e9f0ea);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-surface {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(17, 24, 39, 0.02) 1px, transparent 1px),
+        linear-gradient(rgba(17, 24, 39, 0.02) 1px, transparent 1px),
+        radial-gradient(circle at 18% 18%, rgba(85, 150, 98, 0.08), transparent 18%),
+        radial-gradient(circle at 78% 70%, rgba(130, 190, 130, 0.08), transparent 20%),
+        linear-gradient(135deg, #e8f0eb 0%, #edf4ef 100%);
+      background-size: 24px 24px, 24px 24px, auto, auto, auto;
+    }
+
+    .map-water {
+      position: absolute;
+      width: 170px;
+      height: 120px;
+      border-radius: 50% 50% 60% 40% / 40% 55% 45% 60%;
+      background: rgba(95, 171, 204, 0.15);
+      right: -26px;
+      bottom: 50px;
+      transform: rotate(-20deg);
+    }
+
+    .map-route {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    .route-origin {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #1d8fe9;
+      box-shadow: 0 0 0 6px rgba(29, 143, 233, 0.12);
+      left: var(--origin-left, 80px);
+      top: var(--origin-top, 180px);
+      transform: translate(-50%, -50%);
+      z-index: 3;
+    }
+
+    .route-line {
+      position: absolute;
+      width: var(--route-width, 160px);
+      height: 4px;
+      background: linear-gradient(90deg, #1d8fe9, #1b74d8);
+      border-radius: 999px;
+      transform-origin: 0 50%;
+      transform: rotate(var(--route-angle, 30deg));
+      left: var(--route-left, 58px);
+      top: var(--route-top, 390px);
+      box-shadow: 0 0 0 5px rgba(29, 143, 233, 0.06);
+    }
+
+    .route-line::before,
+    .route-line::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ef4444;
+      top: -5px;
+      right: 6px;
+    }
+
+    .route-line::after {
+      left: 6px;
+      right: auto;
+      background: #3b82f6;
+    }
+
+    .route-curve {
+      position: absolute;
+      left: 42px;
+      top: 110px;
+      width: 150px;
+      height: 130px;
+      border: 3px solid rgba(59, 130, 246, 0.9);
+      border-color: rgba(59, 130, 246, 0.9) transparent transparent transparent;
+      border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+      transform: rotate(48deg);
+    }
+
+    .route-curve::before {
+      content: "";
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #3b82f6;
+      left: 10px;
+      bottom: 12px;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+    }
+
+    .map-pin {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50% 50% 50% 0;
+      background: #f43f5e;
+      transform: translate(-50%, -50%) rotate(-45deg);
+      left: var(--pin-left, 170px);
+      top: var(--pin-top, 285px);
+      box-shadow: 0 8px 16px rgba(244, 63, 94, 0.18);
+      z-index: 2;
+    }
+
+    .map-pin::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+      left: 5px;
+      top: 5px;
+    }
+
+    .delivery-badge {
+      position: absolute;
+      left: 50%;
+      bottom: 80px;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255,255,255,0.94);
+      border: 1px solid rgba(17, 24, 39, 0.05);
+      border-radius: 14px;
+      padding: 10px 14px;
+      box-shadow: 0 12px 24px rgba(17, 24, 39, 0.08);
+      font-size: 12px;
+      color: var(--dark);
+      font-weight: 700;
+      z-index: 3;
+    }
+
+    .distance-mini {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .delivery-badge strong {
+      display: block;
+      font-size: 15px;
+    }
+
+    .map-top {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      z-index: 4;
+      background: rgba(255,255,255,0.92);
+      border-radius: 14px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+    }
+
+    .map-top .name {
+      font-weight: 800;
+      font-size: 12px;
+      color: var(--dark);
+      margin-left: 8px;
+    }
+
+    .map-top .meta {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .map-cta-row {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      z-index: 5;
+    }
+
+    .map-cta-row button {
+      border: none;
+      height: 42px;
+      border-radius: 10px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .map-cta-row .call-btn {
+      background: #fff;
+      color: var(--dark);
+      box-shadow: 0 8px 16px rgba(17, 24, 39, 0.06);
+    }
+
+    .map-cta-row .deliver-btn {
+      background: linear-gradient(135deg, #20a45a, #2fbf68);
+      color: white;
+      box-shadow: 0 10px 18px rgba(38, 181, 93, 0.18);
+    }
+
+    .device-3 .map-top,
+    .device-3 .delivery-badge {
+      width: auto;
+    }
+
+    .device-3 .backbar {
+      background: #1f2430;
+    }
+
+    .device-4 .panel {
+      background: white;
+      min-height: 100%;
+    }
+
+    .success-wrap {
+      display: flex;
+      flex-direction: column;
+      text-align: center;
+      padding: 14px 14px 0;
+      min-height: calc(100% - 56px);
+    }
+
+    .delivery-hero {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 150px;
+      margin: 10px auto 8px;
+      background: linear-gradient(180deg, rgba(219, 245, 229, 0.8), rgba(255,255,255,0));
+      border-radius: 22px;
+      overflow: hidden;
+    }
+
+    .delivery-hero svg {
+      width: 100%;
+      max-width: 320px;
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 6px 10px rgba(35, 161, 94, 0.08));
+    }
+
+    .mini-check {
+      position: absolute;
+      left: 50%;
+      top: 18px;
+      width: 34px;
+      height: 34px;
+      transform: translateX(-50%);
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2fc775, #1fa85e);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 900;
+      box-shadow: 0 10px 18px rgba(31, 168, 94, 0.18);
+      z-index: 2;
+    }
+
+    .success-icon {
+      width: 90px;
+      height: 90px;
+      margin: 8px auto 12px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ebf9f0, #dff5e8);
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+
+    .success-icon::before {
+      content: "";
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      position: absolute;
+      background: rgba(45, 181, 94, 0.12);
+    }
+
+    .success-icon::after {
+      content: "✓";
+      position: relative;
+      font-size: 42px;
+      color: #1ca85d;
+      font-weight: 900;
+    }
+
+    .success-head {
+      margin: 0 0 6px;
+      font-weight: 800;
+      font-size: 22px;
+      color: var(--dark);
+    }
+
+    .success-sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 14px;
+    }
+
+    .order-summary {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 12px 12px 6px;
+      text-align: left;
+      box-shadow: 0 8px 16px rgba(17, 24, 39, 0.06);
+      margin-top: 12px;
+      border: 1px solid rgba(17, 24, 39, 0.04);
+    }
+
+    .summary-row--large {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 4px;
+      font-size: 12px;
+      color: var(--muted);
+      border-bottom: 1px solid rgba(17, 24, 39, 0.05);
+    }
+
+    .summary-row--large:last-child {
+      border-bottom: none;
+      padding-bottom: 6px;
+    }
+
+    .summary-row--large strong {
+      color: var(--dark);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .summary-row--large .status-pill {
+      color: var(--green-deep);
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .big-cta {
+      margin-top: auto;
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      background: linear-gradient(135deg, #20a45a, #2fbf68);
+      font-weight: 800;
+      height: 42px;
+      box-shadow: 0 8px 18px rgba(38, 181, 93, 0.2);
+      margin-bottom: 12px;
+    }
+
+    .device-5 .content {
+      background: #f2f5f7;
+    }
+
+    .device-5 .panel {
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .done-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .done-card {
+      background: #ebf8ee;
+      border: 1px solid rgba(40, 170, 84, 0.12);
+      border-radius: 14px;
+      padding: 14px 12px;
+      margin: 18px 14px 0;
+    }
+
+    .done-card .check {
+      width: 28px;
+      height: 28px;
+      font-size: 15px;
+      background: #2fbf68;
+    }
+
+    .done-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 10px;
+    }
+
+    .done-balance {
+      display: grid;
+      gap: 10px;
+      margin: 18px 14px 0;
+      padding: 14px 12px;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 8px 16px rgba(17, 24, 39, 0.04);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .done-balance .value {
+      color: var(--dark);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .delivery-illustration {
+      margin: 16px 14px 0;
+      background: linear-gradient(180deg, #eef8f0 0%, #fff 100%);
+      border-radius: 18px;
+      padding: 10px;
+      box-shadow: 0 8px 16px rgba(17, 24, 39, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 110px;
+    }
+
+    .delivery-illustration svg {
+      width: 100%;
+      max-width: 220px;
+      height: auto;
+      display: block;
+    }
+
+    .foot-btn {
+      margin: auto 14px 18px;
+      background: linear-gradient(135deg, #20a45a, #2fbf68);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      height: 42px;
+      font-weight: 800;
+      width: calc(100% - 28px);
+      box-shadow: 0 8px 18px rgba(38, 181, 93, 0.18);
+    }
+
+    @media (max-width: 900px) {
+      body {
+        padding: 10px 0;
+      }
+
+      .rider-page {
+        max-width: 100%;
+      }
+
+      .phone-grid {
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 0;
+      }
+
+      .rider-page {
+        padding: 0;
+      }
+
+      .device {
+        width: 100vw;
+        max-width: 100vw;
+        min-height: 100dvh;
+        height: 100dvh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .content {
+        height: 100%;
+      }
+
+      .panel {
+        border-radius: 18px 18px 0 0;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="top-bar"><div class="location-text">🛵 Rider • 4A Store</div></div>
-  <header class="main-header">
-    <div class="header-content">
-      <a href="./" class="logo"><img src="assets/images/logo.svg" alt="4A Store" height="48"></a>
-      <div style="flex:1"></div>
-    </div>
-  </header>
-
-  <div class="rider-wrap">
-    <div class="rider-card">
-      <div class="rider-account-actions">
-        <button style="background:#0891b2;" onclick="switchToCustomer()">🛒 Switch to Customer</button>
-        <button style="background:#777;" onclick="logoutRider()">🚪 Logout</button>
+  <div class="rider-page">
+    <div class="phone-grid">
+      <div id="ordersScreen" class="screen active">
+        <div class="device device-1">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="status-icons">
+              <span class="signal">▣</span>
+              <span class="wifi">◔</span>
+              <span class="battery">▭</span>
+            </div>
+          </div>
+          <div class="content">
+            <div class="header-row">
+              <div class="header-menu-wrap">
+                <button type="button" class="menu-button" id="headerMenuButton" aria-label="More options">
+                  <span class="menu-dots"><span></span><span></span><span></span></span>
+                </button>
+                <div class="header-menu" id="headerMenu">
+                  <button type="button" id="toggleModeMenuItem">Switch to Store</button>
+                  <button type="button" id="logoutMenuItem">Log out</button>
+                </div>
+              </div>
+              <div class="brand">
+                <span class="brand-badge">4A</span>
+                <div>
+                  <div id="roleLabel" style="font-size: 12px; font-weight: 800; color: var(--dark);">Rider</div>
+                  <small id="roleSubLabel">Store</small>
+                </div>
+              </div>
+              <button type="button" id="modeToggle" class="switch" aria-label="Toggle rider and customer mode" aria-pressed="false"></button>
+            </div>
+            <div class="panel">
+              <div class="panel-title">Available Orders</div>
+              <div id="orderList" class="order-list"></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <h1>🛵 Live Location Share</h1>
-      <p style="font-size:13px;color:var(--gray);">Order deliver karne jaate waqt ye page khol ke "Start" dabayein. Customer aapki live location dekh payega.</p>
-      <label>Order chunein *</label>
-      <select id="rOrderSelect" onchange="onOrderPick(this.value)" style="width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:8px;font-size:15px;box-sizing:border-box;">
-        <option value="">Loading orders...</option>
-      </select>
-      <div id="customerLocationInfo" class="customer-location pin-bar missing">Order select karne par customer ka delivery pin yahan dikhega.</div>
-      <input type="text" id="rOrder" placeholder="Ya Order ID type karein" autocomplete="off" oninput="showCustomerLocation(this.value.trim())" style="margin-top:8px;">
-      <label>Aapka Naam</label>
-      <input type="text" id="rName" placeholder="Rider name" autocomplete="off">
-      <label>मोबाइल नंबर (ग्राहक के कॉल के लिए)</label>
-      <input type="tel" id="rMobile" placeholder="10 अंकों का मोबाइल नंबर" inputmode="numeric" maxlength="10" autocomplete="tel">
-      <button id="rBtn" class="rider-btn start" onclick="toggleShare()">▶ Start Live Location</button>
-      <div id="rStatus" class="rider-status idle">Abhi location share nahi ho rahi.</div>
-      <button class="rider-btn" style="background:#0891b2;margin-top:10px;" onclick="markDelivered()">✅ Mark Delivered</button>
+
+      <div id="detailsScreen" class="screen">
+        <div class="device device-2">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="status-icons">
+              <span class="signal">▣</span>
+              <span class="wifi">◔</span>
+              <span class="battery">▭</span>
+            </div>
+          </div>
+          <div class="content">
+            <div class="backbar">
+              <div class="back-left">
+                <span class="arrow"></span>
+                <span>Order Details</span>
+              </div>
+              <div class="top-mini-icons">
+                <span class="mini-dot"></span>
+                <span class="mini-dot"></span>
+                <span class="mini-dot"></span>
+              </div>
+            </div>
+            <div class="details-content">
+              <div class="details-scroll">
+                <div id="detailsStatus" class="status-card"></div>
+                <div id="detailsBox" class="details-box"></div>
+                <div id="detailsSummary" class="item-summary"></div>
+              </div>
+              <button id="startNavigationBtn" class="cta">Start Navigation</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="mapScreen" class="screen">
+        <div class="device device-3">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="status-icons">
+              <span class="signal">▣</span>
+              <span class="wifi">◔</span>
+              <span class="battery">▭</span>
+            </div>
+          </div>
+          <div class="content map-screen">
+            <div class="backbar" style="padding-top: 11px; padding-bottom: 11px;">
+              <div class="back-left">
+                <span class="arrow"></span>
+                <span id="mapHeaderOrder">Order</span>
+              </div>
+              <div class="top-mini-icons">
+                <span class="mini-dot"></span>
+                <span class="mini-dot"></span>
+                <span class="mini-dot"></span>
+              </div>
+            </div>
+
+            <div class="map-top">
+              <div class="avatar" style="width: 22px; height: 22px; font-size: 10px;">R</div>
+              <div id="mapCustomerName" class="name">Customer</div>
+              <div id="mapMeta" class="meta">— • ETA —</div>
+            </div>
+
+            <div class="map-surface"></div>
+            <div class="map-water"></div>
+            <div class="map-route">
+              <div class="route-curve"></div>
+              <div class="route-origin"></div>
+              <div class="route-line"></div>
+              <div class="map-pin"></div>
+            </div>
+
+            <div class="delivery-badge">
+              <div>
+                <strong id="mapDistance">—</strong>
+                <span class="distance-mini">Distance</span>
+              </div>
+              <div>
+                <strong id="mapEta">—</strong>
+                <span class="distance-mini">ETA</span>
+              </div>
+            </div>
+
+            <div class="map-cta-row">
+              <button id="callCustomerBtn" class="call-btn" type="button">Call Customer</button>
+              <button id="markDeliveredBtn" class="deliver-btn" type="button">Delivered</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="deliveredScreen" class="screen">
+        <div class="device device-4">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="status-icons">
+              <span class="signal">▣</span>
+              <span class="wifi">◔</span>
+              <span class="battery">▭</span>
+            </div>
+          </div>
+          <div class="content">
+            <div class="backbar">
+              <div class="back-left">
+                <span class="arrow"></span>
+                <span>Order Delivered</span>
+              </div>
+              <div class="top-mini-icons">
+                <span class="mini-dot"></span>
+                <span class="mini-dot"></span>
+                <span class="mini-dot"></span>
+              </div>
+            </div>
+            <div class="success-wrap">
+              <div class="delivery-hero" aria-label="Delivery completed scooter illustration">
+                <div class="mini-check">✓</div>
+                <svg viewBox="0 0 520 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+                  <rect x="0" y="0" width="520" height="200" rx="24" fill="#dfeee6"/>
+
+                  <g opacity="0.7" fill="#d4e1d7">
+                    <rect x="24" y="128" width="38" height="30"/>
+                    <rect x="70" y="118" width="34" height="40"/>
+                    <rect x="108" y="110" width="36" height="48"/>
+                    <rect x="390" y="120" width="38" height="38"/>
+                    <rect x="432" y="112" width="30" height="46"/>
+                    <rect x="466" y="128" width="22" height="30"/>
+                  </g>
+
+                  <g>
+                    <circle cx="126" cy="52" r="22" fill="#20b764"/>
+                    <path d="M118 52l7 7 16-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+                    <circle cx="396" cy="52" r="22" fill="#20b764"/>
+                    <path d="M388 52l7 7 16-17" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </g>
+
+                  <g>
+                    <path d="M88 138h324" stroke="#cfe1d6" stroke-width="4" stroke-linecap="round"/>
+
+                    <circle cx="130" cy="142" r="22" fill="#1e2430"/>
+                    <circle cx="130" cy="142" r="9" fill="#fff"/>
+                    <circle cx="340" cy="142" r="22" fill="#1e2430"/>
+                    <circle cx="340" cy="142" r="9" fill="#fff"/>
+
+                    <path d="M76 112h182l24-16h76l26 16v18H76v-18z" fill="#1ebd67"/>
+                    <path d="M92 96h170l20 16H72l20-16z" fill="#28b96f"/>
+                    <path d="M208 98h72l18 16h-92z" fill="#85e0b3"/>
+                    <path d="M144 100h62l16 18h-94z" fill="#77dca7"/>
+
+                    <path d="M114 114h100l18 22H92l22-22z" fill="#3cc77f"/>
+                    <path d="M218 104h96l20 20h-110z" fill="#6ed8a4"/>
+
+                    <path d="M92 110l-32 28" stroke="#20b764" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M334 110l32 28" stroke="#20b764" stroke-width="5" stroke-linecap="round"/>
+
+                    <path d="M230 78h25" stroke="#1d2430" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M214 78h16" stroke="#1d2430" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M208 78v14" stroke="#1d2430" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M254 78v14" stroke="#1d2430" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M230 68v16" stroke="#1d2430" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M214 64c12-12 33-12 44 0" fill="none" stroke="#1d2430" stroke-width="5" stroke-linecap="round"/>
+
+                    <circle cx="228" cy="62" r="12" fill="#f5d1a7"/>
+                    <path d="M220 62c4-10 19-14 26-6" fill="none" stroke="#1d2430" stroke-width="4" stroke-linecap="round"/>
+                    <path d="M220 70l-14 16" stroke="#1d2430" stroke-width="4" stroke-linecap="round"/>
+                    <path d="M236 70l18 18" stroke="#1d2430" stroke-width="4" stroke-linecap="round"/>
+                    <path d="M224 82h18" stroke="#1d2430" stroke-width="4" stroke-linecap="round"/>
+
+                    <path d="M282 92h44l12 18h-56z" fill="#17a55f"/>
+                    <path d="M316 92h46l16 18h-62z" fill="#79e0ac"/>
+                  </g>
+                </svg>
+              </div>
+              <div class="success-head">Delivered!</div>
+              <div id="deliveryMessage" class="success-sub">Great job! You have delivered the order successfully.</div>
+              <div id="deliveredSummary" class="order-summary"></div>
+              <button id="nextOrderBtn" class="big-cta">Back to Order List</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="completedScreen" class="screen">
+        <div class="device device-5">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="status-icons">
+              <span class="signal">▣</span>
+              <span class="wifi">◔</span>
+              <span class="battery">▭</span>
+            </div>
+          </div>
+          <div class="content">
+            <div class="backbar">
+              <div class="back-left">
+                <span class="arrow"></span>
+                <span>Order Completed</span>
+              </div>
+              <div class="top-mini-icons">
+                <span class="mini-dot"></span>
+                <span class="mini-dot"></span>
+                <span class="mini-dot"></span>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="done-card">
+                <div class="done-line">
+                  <span class="check">✓</span>
+                  <span>Delivery Completed</span>
+                </div>
+                <div id="completedOrderId" style="font-size: 12px; color: var(--muted); margin-left: 38px;">Order #4A1025</div>
+              </div>
+
+              <div class="done-balance">
+                <div class="summary-row"><span>Earnings</span><span id="earningsValue" class="value">₹22</span></div>
+                <div class="summary-row"><span>Total Order Value</span><span id="completedTotal" class="value">₹450</span></div>
+                <div class="summary-row"><span>Distance Travelled</span><span id="completedDistance" class="value">—</span></div>
+                <div class="summary-row"><span>Time Taken</span><span id="completedTime" class="value">—</span></div>
+              </div>
+
+              <div class="delivery-illustration" aria-label="Delivery completed scooter illustration">
+                <svg viewBox="0 0 280 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+                  <rect x="32" y="62" width="160" height="20" rx="10" fill="#dff2e6"/>
+                  <path d="M70 62h78l18-32h46c14 0 26 12 26 26v8H70V62z" fill="#2bb673"/>
+                  <circle cx="92" cy="84" r="18" fill="#1f2430"/>
+                  <circle cx="92" cy="84" r="8" fill="#fff"/>
+                  <circle cx="182" cy="84" r="18" fill="#1f2430"/>
+                  <circle cx="182" cy="84" r="8" fill="#fff"/>
+                  <path d="M136 62h32l18 22h-46l-4-22z" fill="#bfe8cf"/>
+                  <path d="M112 54h22l14 8h-36z" fill="#1cae61"/>
+                  <path d="M52 74h42" stroke="#1cae61" stroke-width="5" stroke-linecap="round"/>
+                  <path d="M165 74h22" stroke="#1cae61" stroke-width="5" stroke-linecap="round"/>
+                  <path d="M175 44l18 16h19" stroke="#1cae61" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                  <rect x="118" y="34" width="28" height="12" rx="5" fill="#7FDEB0"/>
+                  <circle cx="215" cy="76" r="14" fill="#d8f2df"/>
+                  <path d="M210 76h10" stroke="#1cae61" stroke-width="3" stroke-linecap="round"/>
+                  <path d="M215 71v10" stroke="#1cae61" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+              </div>
+
+              <button id="backToOrdersBtn" class="foot-btn" type="button">Back to Orders</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <script src="assets/js/app.js"></script>
   <script>
-    let watchId = null, sending = false, lastPos = null, timer = null, wakeLock = null;
-    let riderOrders = [];
-    const API = 'api/tracking.php';
+    let orders = [];
+    let trackingMap = {};
+    let productMap = {};
 
-    const riderAccount = getLoggedInUser();
-    if (!riderAccount || riderAccount.role !== 'rider' || riderAccount.backendRider !== true) {
-      window.location.replace('login?return=rider');
-    } else {
-      document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('rName').value = riderAccount.name || '';
-        document.getElementById('rMobile').value = riderAccount.mobile || '';
-        document.getElementById('rName').readOnly = true;
-        document.getElementById('rMobile').readOnly = true;
-      });
-    }
+    const state = {
+      screen: 'orders',
+      activeOrderId: null,
+      lastCompletedOrder: null,
+      mode: 'rider'
+    };
 
-    function setStatus(html, cls) {
-      const el = document.getElementById('rStatus');
-      el.className = 'rider-status ' + cls;
-      el.innerHTML = html;
-    }
+    function setMode(mode) {
+      state.mode = mode;
+      const isCustomer = mode === 'customer';
+      const roleLabel = document.getElementById('roleLabel');
+      const roleSubLabel = document.getElementById('roleSubLabel');
+      const modeToggle = document.getElementById('modeToggle');
+      const menuItem = document.getElementById('toggleModeMenuItem');
 
-    function riderEscapeHtml(value) {
-      return String(value == null ? '' : value).replace(/[&<>'"]/g, ch => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-      }[ch]));
-    }
-
-    function switchToCustomer() {
-      if (sending) stopShare();
-      const user = getLoggedInUser();
-      if (!user || user.backendRider !== true) return;
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', 'api/users.php', false);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.send(JSON.stringify({ action: 'switchMode', mode: 'customer' }));
-      const res = JSON.parse(xhr.responseText || '{}');
-      if (!res.success) { showToast(res.message || 'Mode change failed', 'error'); return; }
-      user.role = 'customer';
-      localStorage.setItem('4astore_user', JSON.stringify(user));
-      window.location.href = 'profile';
-    }
-
-    function logoutRider() {
-      if (sending) stopShare();
-      logoutUser();
-    }
-
-    async function ensureRiderMode() {
-      try {
-        const response = await fetch('api/users.php', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'switchMode', mode: 'rider' })
-        });
-        const result = await response.json().catch(() => ({}));
-        if (response.ok && result.success) return true;
-        setStatus('⚠️ Rider mode active nahi hai. Logout karke rider account se dobara login karein.', 'idle');
-        return false;
-      } catch (e) {
-        setStatus('⚠️ Rider session verify nahi ho saka. Internet/session check karein.', 'idle');
-        return false;
+      if (roleLabel) roleLabel.textContent = isCustomer ? 'Customer' : 'Rider';
+      if (roleSubLabel) roleSubLabel.textContent = isCustomer ? 'Rider' : 'Store';
+      if (modeToggle) {
+        modeToggle.classList.toggle('off', isCustomer);
+        modeToggle.setAttribute('aria-pressed', String(isCustomer));
+      }
+      if (menuItem) {
+        menuItem.textContent = isCustomer ? 'Switch to Rider' : 'Switch to Customer';
       }
     }
 
-    async function toggleShare() {
-      if (sending) { stopShare(); return; }
-      const order = document.getElementById('rOrder').value.trim();
-      const mobile = document.getElementById('rMobile').value.trim();
-      if (!order) { alert('Order ID daalein'); return; }
-      if (!navigator.geolocation) { alert('Is device me GPS/location support nahi hai'); return; }
-      if (mobile && !/^[6-9]\d{9}$/.test(mobile)) { alert('Sahi 10-digit mobile number daalein'); return; }
-      if (!await ensureRiderMode()) return;
-
-      sending = true;
-      requestRiderWakeLock();
-      document.getElementById('rBtn').textContent = '⏹ Stop Sharing';
-      document.getElementById('rBtn').className = 'rider-btn stop';
-      setStatus('<span class="dot"></span> Location share ho rahi hai...', 'live');
-
-      // Track continuously; push to server every 15s
-      watchId = navigator.geolocation.watchPosition(
-        p => { lastPos = { lat: p.coords.latitude, lng: p.coords.longitude }; },
-        e => setStatus('⚠️ Location error: ' + e.message + '. Permission allow karein.', 'idle'),
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
-      );
-      push();                       // immediate first push
-      timer = setInterval(push, 15000);
-    }
-
-    async function requestRiderWakeLock() {
-      if (!('wakeLock' in navigator) || !sending) return;
-      try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { wakeLock = null; }
-    }
-
-    document.addEventListener('visibilitychange', () => {
-      if (!sending) return;
-      if (document.visibilityState === 'visible') {
-        requestRiderWakeLock();
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            p => { lastPos = { lat: p.coords.latitude, lng: p.coords.longitude }; push(); },
-            () => {},
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-          );
+    function applyRoleMode(mode) {
+      const nextMode = mode === 'customer' ? 'customer' : 'rider';
+      const userKey = '4astore_user';
+      const rawUser = localStorage.getItem(userKey);
+      if (rawUser) {
+        try {
+          const user = JSON.parse(rawUser);
+          user.role = nextMode;
+          localStorage.setItem(userKey, JSON.stringify(user));
+        } catch (error) {
+          console.error('Unable to update saved user mode:', error);
         }
+      }
+
+      setMode(nextMode);
+      setTimeout(() => {
+        if (nextMode === 'customer') {
+          window.location.assign('index.html');
+        } else {
+          window.location.assign('rider.html');
+        }
+      }, 0);
+    }
+
+    const screens = {
+      orders: document.getElementById('ordersScreen'),
+      details: document.getElementById('detailsScreen'),
+      map: document.getElementById('mapScreen'),
+      delivered: document.getElementById('deliveredScreen'),
+      completed: document.getElementById('completedScreen')
+    };
+
+    function toNumber(value, fallback = 0) {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : fallback;
+    }
+
+    function toDistanceText(distance) {
+      const km = toNumber(distance, 0);
+      return `${km < 10 ? km.toFixed(1) : km.toFixed(0)} km`;
+    }
+
+    function haversineKm(lat1, lng1, lat2, lng2) {
+      const earthRadius = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function normalizeOrder(order, trackingData = {}) {
+      const customer = order.customer || {};
+      const riderLat = toNumber(trackingData.lat, null);
+      const riderLng = toNumber(trackingData.lng, null);
+      const destLat = toNumber(customer.deliveryLat ?? trackingData.destLat, null);
+      const destLng = toNumber(customer.deliveryLng ?? trackingData.destLng, null);
+      let distance = toNumber(order.distance, 0);
+
+      if (riderLat !== null && riderLng !== null && destLat !== null && destLng !== null) {
+        distance = haversineKm(riderLat, riderLng, destLat, destLng);
+      }
+
+      const itemList = Array.isArray(order.items)
+        ? order.items.map(item => {
+            const productId = Number(item.id || item.productId || item.product_id || 0);
+            const product = productMap[productId];
+            return {
+              id: productId,
+              name: item.name || 'Item',
+              image: product && product.image ? product.image : '',
+              price: Number(item.price || item.productPrice || 0)
+            };
+          })
+        : [{ id: 0, name: 'Groceries', image: '', price: 0 }];
+
+      return {
+        id: order.orderId || order.id || '#N/A',
+        customer: customer.name || 'Customer',
+        phone: customer.mobile || '+91 00000 00000',
+        address: [customer.address, customer.city, customer.pincode].filter(Boolean).join(', ') || 'Delivery address',
+        distance,
+        eta: Number(order.eta || Math.max(4, Math.ceil(distance * 4 + 1))),
+        amount: Number(order.totalAmount || order.amount || 0),
+        items: itemList,
+        status: order.orderStatus || order.status || 'Order Placed',
+        deliveredAt: order.deliveredAt || '12:24 PM',
+        earnings: Number(order.earnings || 22),
+        raw: order
+      };
+    }
+
+    function getActiveOrder() {
+      if (!orders.length) return null;
+      return orders.find(order => order.id === state.activeOrderId) || orders[0];
+    }
+
+    function formatPrice(value) {
+      return '₹' + Number(value || 0);
+    }
+
+    function renderOrders() {
+      const orderList = document.getElementById('orderList');
+      if (!orderList) return;
+
+      if (!orders.length) {
+        orderList.innerHTML = '<div class="order-item"><div class="item-top"><span class="order-id">No orders</span></div><div class="meta"><span class="loc">📍 No active rider orders found</span></div></div>';
+        return;
+      }
+
+      orderList.innerHTML = orders.map(order => `
+        <div class="order-item">
+          <div class="item-top">
+            <span class="order-id">${order.id}</span>
+            <span class="pill ${order.amount > 400 ? 'paid' : ''}">${formatPrice(order.amount)}</span>
+          </div>
+          <div class="shopper">
+            <div class="shopper-name">${order.customer}</div>
+          </div>
+          <div class="meta">
+            <span class="loc">📍 ${order.address}</span>
+            <span class="distance">${order.distance} km</span>
+          </div>
+          <button class="accept-btn" data-order-id="${order.id}">Accept</button>
+        </div>
+      `).join('');
+
+      document.querySelectorAll('.accept-btn').forEach(button => {
+        button.addEventListener('click', () => acceptOrder(button.dataset.orderId));
+      });
+    }
+
+    function renderDetails() {
+      const order = getActiveOrder();
+      const detailsStatus = document.getElementById('detailsStatus');
+      const detailsBox = document.getElementById('detailsBox');
+      const detailsSummary = document.getElementById('detailsSummary');
+
+      if (!order || !detailsStatus || !detailsBox || !detailsSummary) return;
+
+      detailsStatus.innerHTML = `
+        <span class="check">✓</span>
+        <span>Order Accepted</span>
+      `;
+
+      detailsBox.innerHTML = `
+        <div class="order-head">
+          <span style="font-weight: 800; font-size: 12px; color: var(--dark);">${order.id}</span>
+          <span class="dark-tag">UPI (Paid)</span>
+        </div>
+        <div class="customer-row">
+          <div class="avatar">${order.customer.charAt(0)}</div>
+          <div>
+            <div class="customer-name">${order.customer}</div>
+            <div class="phone-link">${order.phone}</div>
+          </div>
+        </div>
+        <div class="loc-row">
+          <span class="loc">📍 ${order.address}</span>
+          <span class="pin">${order.distance} km</span>
+        </div>
+      `;
+
+      const subtotal = Number(order.raw?.subtotal ?? order.amount ?? 0);
+      const discount = Number(order.raw?.discount ?? 0);
+      const deliveryCharge = Number(order.raw?.deliveryCharge ?? 0);
+      const totalAmount = Number(order.raw?.totalAmount ?? order.amount ?? 0);
+      const mrp = subtotal + discount;
+      const deliveryDisplay = deliveryCharge === 0 ? 'Free' : formatPrice(deliveryCharge);
+
+      detailsSummary.innerHTML = `
+        <div class="summary-head">
+          <span>Order Items (${order.items.length})</span>
+          <span>View Details</span>
+        </div>
+        <div class="summary-list">
+          ${order.items.map((item, index) => `
+            <div class="summary-row" style="justify-content:flex-start; gap:10px; align-items:center;">
+              <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#eef4ef,#dfeae0);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                ${item.image ? `<img src="${item.image}" alt="${item.name}" style="width:100%;height:100%;object-fit:cover;">` : `<span style="font-size:13px;font-weight:800;color:#2d7a47;">${(item.name || 'A').charAt(0).toUpperCase()}</span>`}
+              </div>
+              <span style="flex:1;">${index + 1}. ${item.name || 'Item'}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="summary-list" style="margin-top: 14px;">
+          <div class="summary-row"><span>MRP</span><strong>${formatPrice(mrp)}</strong></div>
+          <div class="summary-row"><span>Delivery Charge</span><strong>${deliveryDisplay}</strong></div>
+          <div class="summary-row"><span>Discount</span><strong>-${formatPrice(discount)}</strong></div>
+          <div class="summary-row total"><span>Total Amount</span><strong>${formatPrice(totalAmount)}</strong></div>
+        </div>
+      `;
+    }
+
+    function normalizeMapPoint(lat, lng) {
+      const mapEl = document.querySelector('.map-screen');
+      const rect = mapEl ? mapEl.getBoundingClientRect() : { width: 320, height: 500 };
+      const width = Math.max(rect.width, 240);
+      const height = Math.max(rect.height, 360);
+
+      const minLat = Math.min(lat, 28.5127, 28.5134) - 0.0005;
+      const maxLat = Math.max(lat, 28.5127, 28.5134) + 0.0005;
+      const minLng = Math.min(lng, 77.4109, 77.4116) - 0.0005;
+      const maxLng = Math.max(lng, 77.4109, 77.4116) + 0.0005;
+
+      const x = 30 + ((lng - minLng) / (Math.max(maxLng - minLng, 0.0001))) * (width - 60);
+      const y = height - 120 - ((lat - minLat) / (Math.max(maxLat - minLat, 0.0001))) * (height - 180);
+      return { x, y };
+    }
+
+    function getRouteCoordinates(order) {
+      const raw = order && order.raw ? order.raw : {};
+      const customer = raw.customer || {};
+      const mapTrack = trackingMap[raw.orderId || order.id] || {};
+
+      const riderLat = toNumber(mapTrack.lat, 28.51292);
+      const riderLng = toNumber(mapTrack.lng, 77.41112);
+      let destLat = toNumber(customer.deliveryLat ?? mapTrack.destLat, 28.51295);
+      let destLng = toNumber(customer.deliveryLng ?? mapTrack.destLng, 77.41126);
+
+      if (Math.abs(destLat - riderLat) < 0.00002 && Math.abs(destLng - riderLng) < 0.00002) {
+        destLat = riderLat + 0.00028;
+        destLng = riderLng + 0.00034;
+      }
+
+      return { riderLat, riderLng, destLat, destLng };
+    }
+
+    function renderMapRoute() {
+      const order = getActiveOrder();
+      if (!order) return;
+      const { riderLat, riderLng, destLat, destLng } = getRouteCoordinates(order);
+
+      const routeLine = document.querySelector('.route-line');
+      const mapPin = document.querySelector('.map-pin');
+      const routeOrigin = document.querySelector('.route-origin');
+      if (routeLine && mapPin && routeOrigin) {
+        const rider = normalizeMapPoint(riderLat, riderLng);
+        const dest = normalizeMapPoint(destLat, destLng);
+        const dx = dest.x - rider.x;
+        const dy = dest.y - rider.y;
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        const distance = Math.max(Math.hypot(dx, dy), 50);
+
+        routeOrigin.style.left = `${rider.x}px`;
+        routeOrigin.style.top = `${rider.y}px`;
+
+        routeLine.style.left = `${rider.x}px`;
+        routeLine.style.top = `${rider.y}px`;
+        routeLine.style.width = `${distance}px`;
+        routeLine.style.transform = `rotate(${angle}deg)`;
+
+        mapPin.style.left = `${dest.x}px`;
+        mapPin.style.top = `${dest.y}px`;
+      }
+    }
+
+    function callCustomer() {
+      const order = getActiveOrder();
+      if (!order) return;
+
+      const phone = String(order.phone || '').replace(/\s+/g, '').replace(/[^\d+]/g, '');
+      if (!phone) {
+        alert('Customer phone number is not available.');
+        return;
+      }
+
+      const telLink = `tel:${phone}`;
+      if (window.location.protocol === 'file:') {
+        window.open(telLink, '_self');
+      } else {
+        window.location.href = telLink;
+      }
+    }
+
+    function renderMap() {
+      const order = getActiveOrder();
+      if (!order) return;
+      document.getElementById('mapHeaderOrder').textContent = `Order ${order.id}`;
+      document.getElementById('mapCustomerName').textContent = order.customer;
+      document.getElementById('mapMeta').textContent = `${toDistanceText(order.distance)} • ETA ${order.eta} min`;
+      document.getElementById('mapDistance').textContent = toDistanceText(order.distance);
+      document.getElementById('mapEta').textContent = `${order.eta} min`;
+      renderMapRoute();
+    }
+
+    function renderDelivered() {
+      const order = getActiveOrder();
+      if (!order) return;
+      document.getElementById('deliveryMessage').textContent = 'Great job! You have delivered the order successfully.';
+      document.getElementById('deliveredSummary').innerHTML = `
+        <div class="summary-row--large"><span>Order ${order.id}</span><strong>${formatPrice(order.amount)}</strong></div>
+        <div class="summary-row--large"><span>${order.customer}</span><span class="status-pill">Delivered</span></div>
+        <div class="summary-row--large"><span>Delivered at ${order.deliveredAt}</span><span></span></div>
+      `;
+    }
+
+    function renderCompleted() {
+      const order = state.lastCompletedOrder || getActiveOrder();
+      if (!order) return;
+      document.getElementById('completedOrderId').textContent = `Order ${order.id}`;
+      document.getElementById('earningsValue').textContent = formatPrice(order.earnings);
+      document.getElementById('completedTotal').textContent = formatPrice(order.amount);
+      document.getElementById('completedDistance').textContent = `${order.distance} km`;
+      document.getElementById('completedTime').textContent = `${order.eta} min`;
+    }
+
+    function showScreen(name) {
+      state.screen = name;
+      Object.entries(screens).forEach(([key, screen]) => {
+        if (screen) screen.classList.toggle('active', key === name);
+      });
+    }
+
+    async function fetchJsonWithFallback(primaryUrl, fallbackUrl) {
+      try {
+        const response = await fetch(primaryUrl, { cache: 'no-store' });
+        const text = await response.text();
+
+        if (!response.ok) {
+          throw new Error(`Request failed for ${primaryUrl}`);
+        }
+
+        try {
+          return JSON.parse(text);
+        } catch (parseError) {
+          if (!fallbackUrl) throw parseError;
+          return fetchJsonWithFallback(fallbackUrl, null);
+        }
+      } catch (error) {
+        if (!fallbackUrl) throw error;
+        try {
+          const fallbackResponse = await fetch(fallbackUrl, { cache: 'no-store' });
+          if (!fallbackResponse.ok) {
+            throw new Error(`Fallback failed for ${fallbackUrl}`);
+          }
+          return fallbackResponse.json();
+        } catch (fallbackError) {
+          console.error('JSON fetch failed', { primaryUrl, fallbackUrl, error, fallbackError });
+          throw fallbackError;
+        }
+      }
+    }
+
+    async function loadProducts() {
+      try {
+        const response = await fetch('data/products.json', { cache: 'no-store' });
+        const list = await response.json();
+        productMap = Array.isArray(list) ? list.reduce((acc, product) => {
+          const id = Number(product.id || 0);
+          if (id) acc[id] = product;
+          return acc;
+        }, {}) : {};
+      } catch (error) {
+        console.error('Failed to load products', error);
+        productMap = {};
+      }
+    }
+
+    async function loadOrders() {
+      try {
+        await loadProducts();
+
+        const [payload, trackingPayload] = await Promise.all([
+          fetchJsonWithFallback('api/orders.php', 'data/orders.json'),
+          fetchJsonWithFallback('api/tracking.php', 'data/tracking.json')
+        ]);
+
+        const list = Array.isArray(payload.orders) ? payload.orders : (Array.isArray(payload) ? payload : []);
+        trackingMap = trackingPayload && trackingPayload.all ? trackingPayload.all : (trackingPayload && typeof trackingPayload === 'object' ? trackingPayload : {});
+
+        orders = list
+          .filter(order => {
+            const status = (order.orderStatus || order.status || '').trim();
+            return ['Order Placed', 'Confirmed', 'Packed', 'Out for Delivery'].includes(status);
+          })
+          .map(order => normalizeOrder(order, trackingMap[order.orderId] || {}));
+
+        if (!orders.length) {
+          state.activeOrderId = null;
+          renderOrders();
+          return;
+        }
+
+        if (!state.activeOrderId || !orders.some(order => order.id === state.activeOrderId)) {
+          state.activeOrderId = orders[0].id;
+        }
+
+        renderOrders();
+        renderDetails();
+        renderMap();
+        renderDelivered();
+        renderCompleted();
+      } catch (error) {
+        console.error('Failed to load orders', error);
+        orders = [];
+        renderOrders();
+      }
+    }
+
+    async function acceptOrder(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return;
+
+      state.activeOrderId = orderId;
+      try {
+        await fetch('api/orders.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'updateStatus', orderId: order.raw.orderId || order.id, status: 'Out for Delivery' })
+        });
+      } catch (error) {
+        console.error('Accept order failed', error);
+      }
+
+      renderDetails();
+      showScreen('details');
+    }
+
+    async function startNavigation() {
+      const order = getActiveOrder();
+      if (!order) return;
+      renderMap();
+      showScreen('map');
+    }
+
+    async function markDelivered() {
+      const order = getActiveOrder();
+      if (!order) return;
+
+      try {
+        await fetch('api/orders.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'updateStatus', orderId: order.raw.orderId || order.id, status: 'Delivered' })
+        });
+
+        await fetch('api/tracking.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'setStatus',
+            orderId: order.raw.orderId || order.id,
+            status: 'Delivered',
+            destLat: order.raw.customer && order.raw.customer.deliveryLat,
+            destLng: order.raw.customer && order.raw.customer.deliveryLng
+          })
+        });
+      } catch (error) {
+        console.error('Update delivered status failed', error);
+      }
+
+      order.status = 'Delivered';
+      order.deliveredAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      state.lastCompletedOrder = { ...order };
+      renderDelivered();
+      showScreen('delivered');
+    }
+
+    function goToNextOrder() {
+      const next = orders.find(order => order.id !== state.activeOrderId);
+      if (next) {
+        state.activeOrderId = next.id;
+        renderDetails();
+        showScreen('details');
+      } else {
+        const current = getActiveOrder();
+        if (current) {
+          renderCompleted();
+          showScreen('completed');
+        }
+      }
+    }
+
+    function backToOrders() {
+      orders = orders.filter(order => order.id !== (state.lastCompletedOrder && state.lastCompletedOrder.id));
+      state.lastCompletedOrder = null;
+      state.activeOrderId = orders[0] ? orders[0].id : null;
+      renderOrders();
+      showScreen('orders');
+    }
+
+    document.getElementById('startNavigationBtn').addEventListener('click', startNavigation);
+    document.getElementById('markDeliveredBtn').addEventListener('click', markDelivered);
+    document.getElementById('callCustomerBtn').addEventListener('click', callCustomer);
+    document.getElementById('nextOrderBtn').addEventListener('click', backToOrders);
+    document.getElementById('backToOrdersBtn').addEventListener('click', backToOrders);
+
+    document.getElementById('modeToggle').addEventListener('click', () => {
+      applyRoleMode(state.mode === 'rider' ? 'customer' : 'rider');
+    });
+
+    document.getElementById('toggleModeMenuItem').addEventListener('click', () => {
+      applyRoleMode(state.mode === 'rider' ? 'customer' : 'rider');
+      document.getElementById('headerMenu').classList.remove('open');
+    });
+
+    document.getElementById('logoutMenuItem').addEventListener('click', () => {
+      document.getElementById('headerMenu').classList.remove('open');
+      window.location.href = 'login.html';
+    });
+
+    document.getElementById('headerMenuButton').addEventListener('click', () => {
+      const menu = document.getElementById('headerMenu');
+      menu.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (event) => {
+      const menu = document.getElementById('headerMenu');
+      const button = document.getElementById('headerMenuButton');
+      if (!menu.contains(event.target) && !button.contains(event.target)) {
+        menu.classList.remove('open');
       }
     });
 
-    function push() {
-      if (!lastPos) return;
-      const order = document.getElementById('rOrder').value.trim();
-      const name = document.getElementById('rName').value.trim();
-      const mobile = document.getElementById('rMobile').value.trim();
-      fetch(API, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'updateLocation', orderId: order, lat: lastPos.lat, lng: lastPos.lng, riderName: name, riderMobile: mobile })
-      }).then(async response => {
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.success) {
-          if (response.status === 401 || response.status === 403) {
-            stopShare();
-            setStatus('⚠️ Rider mode/session expired. Switch to Rider mode karke dobara Start karein.', 'idle');
-          } else {
-            setStatus('⚠️ Location update nahi hui: ' + (result.message || 'server error'), 'idle');
-          }
-          return;
-        }
-        setStatus('<span class="dot"></span> Live • last update ' + new Date().toLocaleTimeString(), 'live');
-      }).catch(() => {});
-    }
-
-    function stopShare() {
-      sending = false;
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      if (timer) clearInterval(timer);
-      if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
-      document.getElementById('rBtn').textContent = '▶ Start Live Location';
-      document.getElementById('rBtn').className = 'rider-btn start';
-      setStatus('Location share band.', 'idle');
-    }
-
-    // Load real orders so the rider never has to type an ID (no mismatch)
-    function loadRiderOrders() {
-      const sel = document.getElementById('rOrderSelect');
-      fetch('api/orders.php?_=' + Date.now())
-        .then(r => r.json())
-        .then(res => {
-          const list = Array.isArray(res) ? res : (res.orders || []);
-          const active = list.filter(o => {
-            const st = o.orderStatus || o.status || '';
-            return st !== 'Delivered' && st !== 'Cancelled';
-          });
-          const rows = active.length ? active : list;
-          riderOrders = rows;
-          if (!rows.length) { sel.innerHTML = '<option value="">Koi order nahi mila</option>'; return; }
-          sel.innerHTML = '<option value="">-- Order chunein --</option>' + rows.map(o => {
-            const c = o.customer || {};
-            const label = o.orderId + '  |  ' + (c.name || '') + '  |  ' + (c.city || '') + '  |  ' + (o.orderStatus || o.status || '');
-            return '<option value="' + o.orderId + '">' + label + '</option>';
-          }).join('');
-          const linkedOrder = new URLSearchParams(location.search).get('orderId');
-          if (linkedOrder && [...sel.options].some(o => o.value === linkedOrder)) {
-            sel.value = linkedOrder;
-            showCustomerLocation(linkedOrder);
-          }
-          const typedOrder = document.getElementById('rOrder').value.trim();
-          if (typedOrder) showCustomerLocation(typedOrder);
-        })
-        .catch(() => { sel.innerHTML = '<option value="">Orders load nahi hue - ID type karein</option>'; });
-    }
-    function onOrderPick(v) {
-      if (v) {
-        document.getElementById('rOrder').value = v;
-        showCustomerLocation(v);
-      } else {
-        showCustomerLocation('');
-      }
-    }
-
-    function showCustomerLocation(orderId) {
-      const box = document.getElementById('customerLocationInfo');
-      if (!box) return;
-      const order = riderOrders.find(item => String(item.orderId) === String(orderId));
-      const customer = order && order.customer ? order.customer : {};
-      const savedLocation = customer.deliveryLocation || (order && order.deliveryLocation) || {};
-      const lat = Number(order && (order.deliveryLat ?? customer.deliveryLat ?? savedLocation.lat ?? savedLocation.latitude));
-      const lng = Number(order && (order.deliveryLng ?? customer.deliveryLng ?? savedLocation.lng ?? savedLocation.longitude));
-      const address = [customer.address, customer.landmark, customer.city, customer.pincode].filter(Boolean).join(', ');
-      if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        box.className = 'customer-location missing';
-        box.innerHTML = '⚠️ Customer location share nahi hui.' + (address ? '<br>📍 Address: ' + riderEscapeHtml(address) : '') + '<br>Customer se exact location confirm karein.';
-        return;
-      }
-      const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat + ',' + lng);
-      box.className = 'customer-location';
-      box.innerHTML = '📍 <strong>Customer delivery pin available</strong><br>Lat: ' + lat.toFixed(6) + ' · Lng: ' + lng.toFixed(6) + (address ? '<br>Address: ' + riderEscapeHtml(address) : '') + '<br><a href="' + mapsUrl + '" target="_blank" rel="noopener">🗺️ Open Customer Location</a>';
-    }
-    loadRiderOrders();
-
-    // Admin can open rider.html?orderId=4A123456 so the correct order is ready.
-    (function prefillOrderFromLink() {
-      const orderId = new URLSearchParams(location.search).get('orderId');
-      if (!orderId) return;
-      document.getElementById('rOrder').value = orderId;
-    })();
-
-    function markDelivered() {
-      const order = document.getElementById('rOrder').value.trim();
-      if (!order) { alert('Order ID daalein'); return; }
-      fetch(API, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'setStatus', orderId: order, status: 'Delivered' })
-      }).then(r => r.json()).then(res => {
-        if (res.success) { stopShare(); setStatus('✅ Order delivered mark ho gaya.', 'idle'); }
-      });
+    const savedUser = JSON.parse(localStorage.getItem('4astore_user') || 'null');
+    const currentMode = savedUser && savedUser.role === 'customer' ? 'customer' : 'rider';
+    setMode(currentMode);
+    if (currentMode === 'customer') {
+      window.location.href = 'index.html';
+    } else {
+      loadOrders();
+      showScreen('orders');
     }
   </script>
 </body>

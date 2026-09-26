@@ -9,30 +9,12 @@
         "lastLogin": "2026-08-26T09:19:48+02:00"
     },
     {
-        "id": 2,
-        "name": "Priya Devi",
-        "mobile": "8765432109",
-        "username": "priya",
-        "password": "priya123",
-        "registeredAt": "2026-07-20T14:00:00",
-        "lastLogin": "2026-08-17T16:45:00"
-    },
-    {
-        "id": 3,
-        "name": "Rahul Singh",
-        "mobile": "7654321098",
-        "username": "rahul",
-        "password": "rahul123",
-        "registeredAt": "2026-08-01T11:20:00",
-        "lastLogin": "2026-08-16T20:30:00"
-    },
-    {
         "id": 4,
         "name": "Akash",
         "mobile": "8002116652",
         "username": "akas800",
         "registeredAt": "2026-08-26T08:44:16+02:00",
-        "lastLogin": "2026-09-24T14:14:28+02:00",
+        "lastLogin": "2026-09-25T15:18:31+02:00",
         "customDelivery": 0,
         "role": "rider",
         "backendRider": true,

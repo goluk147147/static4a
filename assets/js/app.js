@@ -21,6 +21,28 @@ const STORE_CONFIG = {
 const LOGIN_SESSION_VERSION = '2026-09-24-session-reset-1';
 const LOGIN_SESSION_VERSION_KEY = '4astore_login_session_version';
 
+function openMapNavigation(destinationLat, destinationLng, label) {
+  const lat = Number(destinationLat);
+  const lng = Number(destinationLng);
+  if (window.AndroidApp && typeof window.AndroidApp.openMapDirections === 'function') {
+    try {
+      window.AndroidApp.openMapDirections(String(lat), String(lng), label || 'Destination');
+      return;
+    } catch (e) {
+      // Fall through to browser if the bridge fails.
+    }
+  }
+
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    const url = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(lat + ',' + lng) + '&travelmode=driving';
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
+  const fallback = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(label || 'Location');
+  window.open(fallback, '_blank', 'noopener,noreferrer');
+}
+
 function resetOldLoginSession() {
   const savedUser = localStorage.getItem('4astore_user');
   const savedVersion = localStorage.getItem(LOGIN_SESSION_VERSION_KEY);
@@ -352,7 +374,7 @@ function addToCart(productId) {
   }
   
   saveCart(cart);
-  showToast('✅ ' + product.name + ' added', 'success');
+  showToast(product.name + ' added', 'success');
   updateProductCardUI(productId);
 }
 

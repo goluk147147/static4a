@@ -32,6 +32,11 @@
     .profile-actions .action-logout:hover { background:#c62828; color:white; }
     .profile-actions .action-delete { background:#fff3e0; color:#a34b00; }
     .profile-actions .action-delete:hover { background:#a34b00; color:white; }
+    .profile-support { margin-top:6px; padding-top:16px; border-top:1px solid var(--border); }
+    .profile-support h3 { margin:0 0 8px; font-size:13px; color:var(--dark); }
+    .profile-support-links { display:grid; gap:8px; }
+    .profile-support-links a { display:flex; align-items:center; justify-content:space-between; padding:11px 12px; border-radius:9px; background:var(--light-gray); color:var(--dark); font-size:12px; font-weight:600; text-decoration:none; }
+    .profile-support-links a:hover { background:var(--primary-light); color:var(--primary-dark); }
     .profile-stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:20px; }
     .profile-stats .stat { text-align:center; padding:12px; background:var(--light-gray); border-radius:10px; }
     .profile-stats .stat .num { font-size:1.3rem; font-weight:800; color:var(--primary-dark); }
@@ -150,6 +155,15 @@
             ${isAdminUser(user) ? '<a href="admin" class="action-admin" style="background:#2C6FAD;color:white;">🔐 Admin Panel →</a>' : ''}
             <button class="action-logout" onclick="handleLogout()">🚪 Logout</button>
             <button class="action-delete" onclick="deleteMyAccount()">🗑️ Delete my account</button>
+            <div class="profile-support">
+              <h3>Help &amp; Legal</h3>
+              <div class="profile-support-links">
+                <a href="help-support.html">Help &amp; Support <span>›</span></a>
+                <a href="privacy-policy.html">Privacy Policy <span>›</span></a>
+                <a href="terms.html">Terms &amp; Conditions <span>›</span></a>
+                <a href="account-deletion.html">Account Deletion <span>›</span></a>
+              </div>
+            </div>
           </div>
         </div>
       `;

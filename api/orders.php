@@ -69,7 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Invalid order data']);
             exit;
         }
-        if (($viewer['role'] ?? '') !== 'superadmin' && ($order['customer']['mobile'] ?? '') !== ($viewer['mobile'] ?? '')) {
+        $customerMobile = preg_replace('/\D+/', '', (string) ($order['customer']['mobile'] ?? ''));
+        $viewerMobile = preg_replace('/\D+/', '', (string) ($viewer['mobile'] ?? ''));
+        if (($viewer['role'] ?? '') !== 'superadmin' && $customerMobile !== '' && $viewerMobile !== '' && $customerMobile !== $viewerMobile) {
             apiJson(['success' => false, 'message' => 'Order owner mismatch'], 403);
         }
 
