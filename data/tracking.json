@@ -1,21 +1,4 @@
 {
-    "4A815137": {
-        "orderId": "4A815137",
-        "status": "Delivered",
-        "lat": 28.512920140158606,
-        "lng": 77.41112314652958,
-        "updatedAt": "2026-09-22T10:51:23+02:00",
-        "riderName": "kill"
-    },
-    "4A383782": {
-        "orderId": "4A383782",
-        "status": "Delivered",
-        "lat": 28.51291748735146,
-        "lng": 77.4111256244883,
-        "updatedAt": "2026-09-25T13:31:45+02:00",
-        "riderName": "Akash",
-        "riderMobile": "8002116652"
-    },
     "4A916301": {
         "orderId": "4A916301",
         "status": "Out for Delivery",
@@ -48,16 +31,6 @@
         "updatedAt": "2026-09-24T15:28:23+02:00",
         "riderName": "Akash",
         "riderMobile": "8002116652"
-    },
-    "4A294811": {
-        "orderId": "4A294811",
-        "status": "Delivered",
-        "riderName": "Akash",
-        "riderMobile": "8002116652",
-        "destLat": 28.51292,
-        "destLng": 77.41112,
-        "assignedAt": "2026-09-26T12:52:58+02:00",
-        "updatedAt": "2026-09-26T14:27:45+02:00"
     },
     "4A216897": {
         "orderId": "4A216897",

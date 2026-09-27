@@ -94,6 +94,10 @@ a {
   z-index: 2;
 }
 
+.header-actions { order: 3; flex-shrink: 0; }
+.search-box { order: 2; }
+.header-content .logo { order: 1; flex-shrink: 0; margin-left: 0; margin-right: 0; }
+
 .logo {
   display: flex;
   align-items: center;
@@ -2390,10 +2394,11 @@ img {
     row-gap: 8px !important;
     align-items: center !important;
   }
-  .header-content .logo { flex: 0 0 auto; order: 1; }
+  .header-content .logo { flex: 0 0 auto; order: 1; margin: 0 auto 0 0; }
   .header-actions {
     flex: 0 0 auto;
     order: 2;
+    margin-left: auto;
     justify-content: flex-end;
     flex-shrink: 0;
     gap: 6px !important;
@@ -2419,11 +2424,13 @@ img {
     bottom: auto;
   }
   .header-actions a {
-    padding: 4px !important;
-    font-size: 20px !important;
+    padding: 2px !important;
+    font-size: 18px !important;
   }
-  #getAppBtn { font-size: 20px !important; }
-  .logo img { height: 40px !important; }
+  .header-content .header-actions a { padding: 2px !important; font-size: 18px !important; }
+  .header-content .header-actions .login-btn-area a { padding: 2px !important; }
+  #getAppBtn { font-size: 18px !important; }
+  .logo img { height: 34px !important; }
   .header-actions .badge { font-size: 9px; }
 }
 

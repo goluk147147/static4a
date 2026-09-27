@@ -141,10 +141,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $customer = is_array($order['customer'] ?? null) ? $order['customer'] : [];
-        if ((string) ($customer['pincode'] ?? '') !== '824301') {
+        $isCurrentLocation = ($customer['deliverySource'] ?? '') === 'current';
+        if (!$isCurrentLocation && (string) ($customer['pincode'] ?? '') !== '824301') {
             apiJson(['success' => false, 'message' => 'Delivery is available only in PIN code 824301'], 422);
         }
-        if (!serviceableVillage($customer['city'] ?? '')) {
+        if (!$isCurrentLocation && !serviceableVillage($customer['city'] ?? '')) {
             apiJson(['success' => false, 'message' => 'This village is outside the 4A Store delivery area. Please select a village from the available list.'], 422);
         }
         if (!currentLocationIsServiceable($customer)) {
@@ -220,6 +221,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             apiJson(['success' => false, 'message' => 'Order file is not writable on server'], 500);
         }
         apiJson(['success' => true, 'message' => 'Order created', 'order' => $order]);
+    }
+
+    if ($action === 'delete') {
+        requirePermission('orders');
+        $orderId = preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($input['orderId'] ?? ''));
+        if ($orderId === '')
+            apiJson(['success' => false, 'message' => 'Order ID required'], 422);
+
+        $orders = getOrders();
+        $remainingOrders = array_values(array_filter($orders, function ($order) use ($orderId) {
+            return (string) ($order['orderId'] ?? '') !== $orderId;
+        }));
+        if (count($remainingOrders) === count($orders))
+            apiJson(['success' => false, 'message' => 'Order not found'], 404);
+        if (!saveOrders($remainingOrders))
+            apiJson(['success' => false, 'message' => 'Order file is not writable on server'], 500);
+
+        $trackingFile = __DIR__ . '/../data/tracking.json';
+        if (file_exists($trackingFile)) {
+            $tracking = json_decode(file_get_contents($trackingFile), true);
+            if (is_array($tracking) && array_key_exists($orderId, $tracking)) {
+                unset($tracking[$orderId]);
+                file_put_contents($trackingFile, json_encode($tracking, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+            }
+        }
+
+        $screenshotDir = __DIR__ . '/../data/screenshots';
+        foreach (['jpg', 'jpeg', 'png', 'webp'] as $extension) {
+            $screenshot = $screenshotDir . '/' . $orderId . '.' . $extension;
+            if (is_file($screenshot))
+                @unlink($screenshot);
+        }
+
+        apiJson(['success' => true, 'message' => 'Order deleted']);
     }
 
     if ($action === 'updateStatus') {

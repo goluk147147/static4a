@@ -7,12 +7,18 @@ import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.InstallSourceInfo;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.speech.tts.TextToSpeech;
@@ -34,6 +40,7 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -74,6 +81,12 @@ public class MainActivity extends AppCompatActivity {
     private String cameraPhotoPath;
     private GeolocationPermissions.Callback pendingGeolocationCallback;
     private String pendingGeolocationOrigin;
+    private final Handler locationHandler = new Handler(Looper.getMainLooper());
+    private LocationManager locationManager;
+    private LocationListener locationListener;
+    private Runnable locationTimeout;
+    private Location bestLocation;
+    private String pendingNativeLocationCallback;
 
     private TextToSpeech tts;
     private boolean ttsReady = false;
@@ -107,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         setupWebView();
+        setupBackNavigation();
         setupSwipeRefresh();
 
         if (isNetworkAvailable()) {
@@ -124,7 +138,23 @@ public class MainActivity extends AppCompatActivity {
     // ==========================================================
     private static final String VERSION_URL = "https://4astore.webtoolsz.com/data/version.json";
 
+    private boolean isPlayStoreInstalled() {
+        try {
+            PackageManager packageManager = getPackageManager();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                InstallSourceInfo source = packageManager.getInstallSourceInfo(getPackageName());
+                return "com.android.vending".equals(source.getInstallingPackageName())
+                        || "com.android.vending".equals(source.getInitiatingPackageName());
+            }
+            return "com.android.vending".equals(packageManager.getInstallerPackageName(getPackageName()));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void checkForUpdate() {
+        if (isPlayStoreInstalled())
+            return;
         new Thread(() -> {
             try {
                 HttpURLConnection conn = (HttpURLConnection) new URL(VERSION_URL + "?t=" + System.currentTimeMillis())
@@ -516,6 +546,13 @@ public class MainActivity extends AppCompatActivity {
             checkForUpdate();
         }
 
+        @JavascriptInterface
+        public void requestCurrentLocation(String callbackId) {
+            if (callbackId == null || !callbackId.matches("[A-Za-z0-9_-]{1,80}"))
+                return;
+            runOnUiThread(() -> beginNativeLocationRequest(callbackId));
+        }
+
         // Speak Hindi text using the phone's native TTS (guaranteed in-app).
         @JavascriptInterface
         public void speak(String text) {
@@ -609,6 +646,147 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> Toast.makeText(MainActivity.this,
                         "Could not save file", Toast.LENGTH_SHORT).show());
             }
+        }
+    }
+
+    private void beginNativeLocationRequest(String callbackId) {
+        pendingNativeLocationCallback = callbackId;
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ContextCompat.checkSelfPermission(this,
+                        Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[] { Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION },
+                    LOCATION_PERMISSION_REQUEST_CODE);
+            return;
+        }
+        startNativeLocationUpdates(callbackId);
+    }
+
+    private void startNativeLocationUpdates(String callbackId) {
+        clearNativeLocationUpdates();
+        bestLocation = null;
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (locationManager == null) {
+            finishNativeLocationRequest(callbackId, null, 2);
+            return;
+        }
+
+        boolean requested = false;
+        try {
+            String[] providers = { LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER };
+            long now = System.currentTimeMillis();
+            for (String provider : providers) {
+                if (!locationManager.isProviderEnabled(provider))
+                    continue;
+                Location cached = locationManager.getLastKnownLocation(provider);
+                if (cached != null) {
+                    rememberBestLocation(cached);
+                    if (now - cached.getTime() >= 0 && now - cached.getTime() <= 60000) {
+                        finishNativeLocationRequest(callbackId, cached, 0);
+                        return;
+                    }
+                }
+            }
+
+            locationListener = new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    rememberBestLocation(location);
+                    if (location.hasAccuracy() && location.getAccuracy() <= 50) {
+                        finishNativeLocationRequest(callbackId, location, 0);
+                    }
+                }
+
+                @Override
+                public void onStatusChanged(String provider, int status, Bundle extras) {
+                }
+
+                @Override
+                public void onProviderEnabled(String provider) {
+                }
+
+                @Override
+                public void onProviderDisabled(String provider) {
+                }
+            };
+
+            for (String provider : providers) {
+                if (!locationManager.isProviderEnabled(provider))
+                    continue;
+                locationManager.requestLocationUpdates(provider, 1000, 0, locationListener, Looper.getMainLooper());
+                requested = true;
+            }
+        } catch (SecurityException e) {
+            finishNativeLocationRequest(callbackId, null, 1);
+            return;
+        } catch (Exception e) {
+            finishNativeLocationRequest(callbackId, bestLocation, 2);
+            return;
+        }
+
+        if (!requested) {
+            finishNativeLocationRequest(callbackId, bestLocation, 2);
+            return;
+        }
+        locationTimeout = () -> finishNativeLocationRequest(callbackId, bestLocation, 3);
+        locationHandler.postDelayed(locationTimeout, 15000);
+    }
+
+    private void rememberBestLocation(Location candidate) {
+        if (candidate == null)
+            return;
+        if (bestLocation == null
+                || (candidate.hasAccuracy()
+                        && (!bestLocation.hasAccuracy() || candidate.getAccuracy() < bestLocation.getAccuracy()))
+                || candidate.getTime() > bestLocation.getTime() + 3000) {
+            bestLocation = candidate;
+        }
+    }
+
+    private void finishNativeLocationRequest(String callbackId, Location location, int errorCode) {
+        if (callbackId == null || !callbackId.equals(pendingNativeLocationCallback))
+            return;
+        clearNativeLocationUpdates();
+        pendingNativeLocationCallback = null;
+        sendNativeLocationResult(callbackId, location, errorCode);
+    }
+
+    private void clearNativeLocationUpdates() {
+        if (locationTimeout != null) {
+            locationHandler.removeCallbacks(locationTimeout);
+            locationTimeout = null;
+        }
+        if (locationManager != null && locationListener != null) {
+            try {
+                locationManager.removeUpdates(locationListener);
+            } catch (SecurityException ignored) {
+            }
+            locationListener = null;
+        }
+    }
+
+    private void sendNativeLocationResult(String callbackId, Location location, int errorCode) {
+        try {
+            JSONObject result = new JSONObject();
+            if (location != null) {
+                result.put("success", true);
+                result.put("latitude", location.getLatitude());
+                result.put("longitude", location.getLongitude());
+                result.put("accuracy", location.hasAccuracy() ? location.getAccuracy() : JSONObject.NULL);
+            } else {
+                result.put("success", false);
+                result.put("errorCode", errorCode);
+            }
+            String script = "window.__receiveAndroidLocation && window.__receiveAndroidLocation("
+                    + JSONObject.quote(callbackId) + "," + JSONObject.quote(result.toString()) + ");";
+            runOnUiThread(() -> {
+                if (webView != null)
+                    webView.evaluateJavascript(script, null);
+            });
+        } catch (Exception ignored) {
+            // The checkout can still use browser geolocation or manual entry.
         }
     }
 
@@ -732,37 +910,52 @@ public class MainActivity extends AppCompatActivity {
 
     private long lastBackPress = 0;
 
-    @Override
-    public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            // Require a double back-press to exit (prevents accidental exit)
-            long now = System.currentTimeMillis();
-            if (now - lastBackPress < 2000) {
-                super.onBackPressed();
-            } else {
-                lastBackPress = now;
-                Toast.makeText(this, "Press back again to exit", Toast.LENGTH_SHORT).show();
+    private void setupBackNavigation() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (webView != null && webView.canGoBack()) {
+                    webView.goBack();
+                    lastBackPress = 0;
+                    return;
+                }
+
+                long now = System.currentTimeMillis();
+                if (now - lastBackPress < 2000) {
+                    finish();
+                } else {
+                    lastBackPress = now;
+                    Toast.makeText(MainActivity.this, "Press back again to exit", Toast.LENGTH_SHORT).show();
+                }
             }
-        }
+        });
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
             @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE && pendingGeolocationCallback != null) {
-            boolean granted = false;
-            for (int result : grantResults) {
-                if (result == PackageManager.PERMISSION_GRANTED) {
-                    granted = true;
-                    break;
-                }
+        if (requestCode != LOCATION_PERMISSION_REQUEST_CODE)
+            return;
+
+        boolean granted = false;
+        for (int result : grantResults) {
+            if (result == PackageManager.PERMISSION_GRANTED) {
+                granted = true;
+                break;
             }
+        }
+        if (pendingGeolocationCallback != null) {
             pendingGeolocationCallback.invoke(pendingGeolocationOrigin, granted, false);
             pendingGeolocationCallback = null;
             pendingGeolocationOrigin = null;
+        }
+        if (pendingNativeLocationCallback != null) {
+            String callbackId = pendingNativeLocationCallback;
+            if (granted)
+                startNativeLocationUpdates(callbackId);
+            else
+                finishNativeLocationRequest(callbackId, null, 1);
         }
     }
 }

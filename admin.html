@@ -28,6 +28,18 @@
       padding: 0 !important;      /* kill storefront mobile bottom-nav padding */
     }
     body.admin-login-page { min-height:100vh; height:100vh; overflow:hidden; background:#ff9800 !important; color:#17324d; }
+    #adminBootLoader { position:fixed; inset:0; z-index:20000; display:flex; align-items:center; justify-content:center; background:#f4f5f7; color:#31526d; font-size:14px; font-weight:700; }
+    #adminBootLoader[hidden] { display:none; }
+    .admin-boot-spinner { width:28px; height:28px; margin-right:12px; border:3px solid #f2d8bd; border-top-color:#ff7a00; border-radius:50%; animation:admin-boot-spin .8s linear infinite; }
+    @keyframes admin-boot-spin { to { transform:rotate(360deg); } }
+    .admin-confirm-overlay { position:fixed; inset:0; z-index:30000; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(17,31,47,.58); }
+    .admin-confirm-dialog { width:min(100%,420px); padding:22px; box-sizing:border-box; border-radius:14px; background:#fff; box-shadow:0 20px 60px rgba(0,0,0,.25); color:#17324d; }
+    .admin-confirm-dialog h2 { margin:0 0 10px; font-size:18px; color:#17324d; }
+    .admin-confirm-message { margin:0; color:#536779; font-size:14px; line-height:1.55; white-space:pre-wrap; }
+    .admin-confirm-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:22px; }
+    .admin-confirm-actions button { min-height:40px; padding:9px 15px; border:0; border-radius:7px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+    .admin-confirm-cancel { background:#edf1f4; color:#34495e; }
+    .admin-confirm-accept { background:#c62828; color:#fff; }
     .admin-login { width:min(100% - 32px, 1320px); height:100vh; margin:0 auto; padding:22px 0 16px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; text-align:center; }
     .admin-login .checkout-form { display:grid; grid-template-columns:1.08fr 1fr; height:min(570px, calc(100vh - 66px)); min-height:0; padding:0; overflow:hidden; background:#fff; border:0; border-radius:24px; box-shadow:0 22px 55px rgba(113,59,0,.22); }
     .admin-brand-lockup { display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; min-height:100%; padding:38px 42px; text-align:left; background:linear-gradient(145deg,#fffaf3 0%,#fff 70%); border-right:2px solid #ff9800; }
@@ -181,6 +193,9 @@
   </style>
 </head>
 <body class="admin-login-page">
+  <div id="adminBootLoader" role="status" aria-live="polite"><span class="admin-boot-spinner" aria-hidden="true"></span>Checking admin session...</div>
+  <div id="adminConfirmHost"></div>
+
   <!-- Admin Login -->
   <div id="adminLogin" class="admin-login">
     <div class="checkout-form">
@@ -338,17 +353,59 @@
   <script src="assets/js/app.js"></script>
   <script>
     const ADMIN_KEY = '4astore_admin_logged';
+    const ADMIN_TAB_KEY = '4astore_admin_active_tab';
 
     let currentAdmin = null;
     document.addEventListener('DOMContentLoaded', checkAdminSession);
 
     function checkAdminSession() {
-      fetch('api/users.php?action=session', { cache: 'no-store' }).then(r => r.json()).then(res => {
+      fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'include' }).then(r => r.json()).then(res => {
         if (res.success && res.user && ['owner', 'admin', 'superadmin'].includes(res.user.role)) {
           currentAdmin = res.user; showDashboard();
+        } else {
+          showAdminLogin();
         }
-      }).catch(() => {});
+      }).catch(showAdminLogin);
     }
+
+    function showAdminLogin() {
+      document.getElementById('adminDashboard').classList.add('hidden');
+      document.body.classList.remove('admin-active');
+      document.getElementById('adminLogin').style.display = 'flex';
+      document.getElementById('adminBootLoader').hidden = true;
+    }
+
+    function adminConfirm(message, options = {}) {
+      return new Promise(resolve => {
+        const host = document.getElementById('adminConfirmHost');
+        const previousFocus = document.activeElement;
+        const title = options.title || 'Please confirm';
+        const cancelText = options.cancelText || 'Cancel';
+        const confirmText = options.confirmText || 'Continue';
+        const overlay = document.createElement('div');
+        overlay.className = 'admin-confirm-overlay';
+        overlay.innerHTML = `<section class="admin-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="adminConfirmTitle" aria-describedby="adminConfirmMessage"><h2 id="adminConfirmTitle">${escapeHtml(title)}</h2><p class="admin-confirm-message" id="adminConfirmMessage">${escapeHtml(message)}</p><div class="admin-confirm-actions"><button type="button" class="admin-confirm-cancel">${escapeHtml(cancelText)}</button><button type="button" class="admin-confirm-accept">${escapeHtml(confirmText)}</button></div></section>`;
+        const finish = accepted => {
+          document.removeEventListener('keydown', onKeyDown);
+          overlay.remove();
+          if (previousFocus && previousFocus.isConnected) previousFocus.focus();
+          resolve(accepted);
+        };
+        const onKeyDown = event => {
+          if (event.key === 'Escape') finish(false);
+        };
+        overlay.addEventListener('click', event => {
+          if (event.target === overlay) finish(false);
+        });
+        overlay.querySelector('.admin-confirm-cancel').addEventListener('click', () => finish(false));
+        overlay.querySelector('.admin-confirm-accept').addEventListener('click', () => finish(true));
+        document.addEventListener('keydown', onKeyDown);
+        host.appendChild(overlay);
+        overlay.querySelector('.admin-confirm-accept').focus();
+      });
+    }
+
+    window.alert = message => showToast(escapeHtml(String(message)), 'info');
 
     document.getElementById('adminPass').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') adminLogin();
@@ -377,6 +434,7 @@
     function adminLogout() {
       fetch('api/users.php', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'logout'}) }).catch(() => {});
       sessionStorage.removeItem(ADMIN_KEY);
+      sessionStorage.removeItem(ADMIN_TAB_KEY);
       document.body.classList.remove('admin-active');
       document.getElementById('adminDashboard').classList.add('hidden');
       document.getElementById('adminLogin').style.display = 'block';
@@ -385,6 +443,8 @@
     }
 
     function showDashboard() {
+      const loader = document.getElementById('adminBootLoader');
+      loader.hidden = false;
       document.getElementById('adminLogin').style.display = 'none';
       document.getElementById('adminDashboard').classList.remove('hidden');
       document.body.classList.add('admin-active');
@@ -392,9 +452,11 @@
       loadAdminData().then(() => {
         loadStats();
         const firstTab = Object.keys(TAB_PERMISSIONS).find(tab => canAdmin(TAB_PERMISSIONS[tab]));
-        showTab(firstTab || 'dashboard');
+        const savedTab = sessionStorage.getItem(ADMIN_TAB_KEY);
+        const savedTabAllowed = savedTab && Object.prototype.hasOwnProperty.call(TAB_PERMISSIONS, savedTab) && canAdmin(TAB_PERMISSIONS[savedTab]);
+        showTab(savedTabAllowed ? savedTab : (firstTab || 'dashboard'));
         startOrderNotifications();
-      });
+      }).catch(() => showToast('Admin dashboard failed to load', 'error')).finally(() => { loader.hidden = true; });
     }
 
     async function loadAdminData() {
@@ -727,7 +789,8 @@
     }
 
     function showTab(tab) {
-      if (!canAdmin(TAB_PERMISSIONS[tab])) { showToast('You do not have permission for this section.', 'error'); return; }
+      if (!Object.prototype.hasOwnProperty.call(TAB_PERMISSIONS, tab) || !canAdmin(TAB_PERMISSIONS[tab])) { showToast('You do not have permission for this section.', 'error'); return; }
+      sessionStorage.setItem(ADMIN_TAB_KEY, tab);
       // Sync sidebar nav highlight
       document.querySelectorAll('.side-link').forEach(l => l.classList.toggle('active', l.getAttribute('data-tab') === tab));
 
@@ -812,8 +875,8 @@
       closeOrderDetail(); showToast('Permissions updated', 'success'); renderTeamTab();
     }
 
-    function deleteAdminAccount(id) {
-      if (!confirm('Delete this admin account?')) return;
+    async function deleteAdminAccount(id) {
+      if (!await adminConfirm('Delete this admin account?', { title: 'Delete admin account', confirmText: 'Delete' })) return;
       const xhr = new XMLHttpRequest(); xhr.open('POST', 'api/users.php', false); xhr.setRequestHeader('Content-Type', 'application/json'); xhr.send(JSON.stringify({ action:'adminDelete', id }));
       const res = JSON.parse(xhr.responseText || '{}');
       if (!res.success) { showToast(res.message || 'Delete failed', 'error'); return; }
@@ -1030,7 +1093,7 @@
                       <option value="Delivered" ${o.orderStatus==='Delivered'?'selected':''}>✅ Delivered</option>
                     </select>
                   </td>
-                  <td><button onclick="viewOrder('${o.orderId}')" style="padding:6px 12px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">👁️ View</button></td>
+                  <td style="white-space:nowrap;"><button onclick="viewOrder('${escapeHtml(o.orderId)}')" style="padding:6px 10px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">👁️ View</button> <button onclick="deleteAdminOrder('${escapeHtml(o.orderId)}')" title="Delete fake or test order" aria-label="Delete order ${escapeHtml(o.orderId)}" style="padding:6px 10px;background:#c62828;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🗑️ Delete</button></td>
                 </tr>
               `).join('') : '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--gray);">No customer found</td></tr>'}
             </tbody>
@@ -1041,6 +1104,38 @@
           <span style="font-size:12px;color:var(--gray);">Page ${adminOrdersPage} of ${pageCount}</span>
           <button onclick="setAdminOrdersPage(${adminOrdersPage + 1})" ${adminOrdersPage >= pageCount ? 'disabled' : ''} style="padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;">Next →</button>
         </div>`;
+    }
+
+    async function deleteAdminOrder(orderId) {
+      if (!canAdmin('orders')) {
+        showToast('You do not have permission to delete orders.', 'error');
+        return;
+      }
+      if (!await adminConfirm(`Permanently delete order #${orderId}? This also removes its tracking and payment screenshot.`, { title: 'Delete order', confirmText: 'Delete' })) return;
+      try {
+        const response = await fetch('api/orders.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ action: 'delete', orderId })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          showToast(result.message || 'Order could not be deleted.', 'error');
+          return;
+        }
+        const orders = getOrders().filter(order => String(order.orderId) !== String(orderId));
+        dbOrders = orders;
+        localStorage.setItem('4astore_orders', JSON.stringify(orders));
+        const screenshots = JSON.parse(localStorage.getItem('4astore_screenshots') || '{}');
+        delete screenshots[orderId];
+        localStorage.setItem('4astore_screenshots', JSON.stringify(screenshots));
+        loadStats();
+        renderOrdersTab();
+        showToast(`Order #${orderId} deleted.`, 'success');
+      } catch (error) {
+        showToast('Order could not be deleted. Please try again.', 'error');
+      }
     }
 
     let riderTrackingRefreshTimer = null;
@@ -1584,8 +1679,8 @@
     }
 
     // Delete single user
-    function deleteUser(mobile, name) {
-      if (!confirm(`Delete user "${name}" (${mobile})? This cannot be undone!`)) return;
+    async function deleteUser(mobile, name) {
+      if (!await adminConfirm(`Delete user "${name}" (${mobile})? This cannot be undone!`, { title: 'Delete user', confirmText: 'Delete' })) return;
       
       try {
         const xhr = new XMLHttpRequest();
@@ -1615,7 +1710,7 @@
     }
 
     // Delete all users inactive for 30+ days
-    function deleteInactiveUsers() {
+    async function deleteInactiveUsers() {
       const users = getUsers();
       const now = new Date();
       const inactiveUsers = users.filter(u => {
@@ -1629,7 +1724,7 @@
         return;
       }
 
-      if (!confirm(`Delete ${inactiveUsers.length} users who haven't logged in for 30+ days? This cannot be undone!`)) return;
+      if (!await adminConfirm(`Delete ${inactiveUsers.length} users who haven't logged in for 30+ days? This cannot be undone!`, { title: 'Delete inactive users', confirmText: 'Delete' })) return;
 
       try {
         const xhr = new XMLHttpRequest();
@@ -2014,8 +2109,8 @@
       editBanner(bannerDraft.length - 1);
     }
 
-    function deleteBanner(i) {
-      if (!confirm('Delete this banner from the draft?')) return;
+    async function deleteBanner(i) {
+      if (!await adminConfirm('Delete this banner from the draft?', { title: 'Delete banner', confirmText: 'Delete' })) return;
       bannerDraft.splice(i, 1);
       renderBannersTab();
     }
@@ -2197,8 +2292,8 @@
       document.body.appendChild(ov);
     }
 
-    function publishBanners() {
-      if (!confirm('Publish these banners to the live website?')) return;
+    async function publishBanners() {
+      if (!await adminConfirm('Publish these banners to the live website?', { title: 'Publish banners', confirmText: 'Publish' })) return;
       try {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', 'api/config.php', false);
@@ -2388,10 +2483,10 @@
       }
     }
 
-    function removeProduct(id) {
+    async function removeProduct(id) {
       const p = getProducts().find(pr => parseInt(pr.id, 10) === parseInt(id, 10));
       if (!p) return;
-      if (!confirm(`Delete product "${p.name}"? This cannot be undone!`)) return;
+      if (!await adminConfirm(`Delete product "${p.name}"? This cannot be undone!`, { title: 'Delete product', confirmText: 'Delete' })) return;
       const res = deleteProduct(id);
       if (res.success) {
         showToast('Product deleted', 'success');
@@ -2537,12 +2632,12 @@
       });
     }
 
-    function removeCategory(id) {
+    async function removeCategory(id) {
       const c = (categories || []).find(x => parseInt(x.id, 10) === parseInt(id, 10));
       if (!c) return;
       const prods = getProducts().filter(p => p.category === c.slug);
       const extra = prods.length ? `\n\n⚠️ ${prods.length} product(s) is category me hain. Delete karne se wo products bina category ke reh jayenge.` : '';
-      if (!confirm(`Delete category "${c.name}"?${extra}`)) return;
+      if (!await adminConfirm(`Delete category "${c.name}"?${extra}`, { title: 'Delete category', confirmText: 'Delete' })) return;
       categoryApi({ action: 'delete', id: parseInt(id, 10) }, res => {
         if (res && res.success) {
           showToast('Category deleted', 'success');
@@ -2733,9 +2828,9 @@
       });
     }
 
-    function removeAd(id) {
+    async function removeAd(id) {
       const a = adsList.find(x => x.id === id);
-      if (!confirm('Delete ad "' + (a ? a.name : '') + '"?')) return;
+      if (!await adminConfirm('Delete ad "' + (a ? a.name : '') + '"?', { title: 'Delete ad', confirmText: 'Delete' })) return;
       adsApi({ action: 'delete', id: id }, res => {
         if (res && res.success) { showToast('Ad deleted', 'success'); reloadAds(renderAdsTab); }
         else showToast((res && res.message) || 'Failed', 'error');
@@ -3311,13 +3406,30 @@
     }
 
     // --- Sub-module: Data (reset / export / import) ---
+    async function resetAdminOrders() {
+      if (!await adminConfirm('Clear cached orders and screenshots, then reload orders from the server?', { title: 'Reset orders', confirmText: 'Reset orders' })) return;
+      localStorage.removeItem('4astore_orders');
+      localStorage.removeItem('4astore_screenshots');
+      await loadData();
+      showToast('Orders reset to server data', 'info');
+      loadStats();
+    }
+
+    async function resetAdminUsers() {
+      if (!await adminConfirm('Clear cached users, then reload users from the server?', { title: 'Reset users', confirmText: 'Reset users' })) return;
+      localStorage.removeItem('4astore_users');
+      await loadData();
+      showToast('Users reset to server data', 'info');
+      loadStats();
+    }
+
     function settingsDataHtml() {
       return `
         <h4 style="margin-bottom:12px;">🗑️ Data Management</h4>
-        <button onclick="if(confirm('Clear all orders? This cannot be undone!')){localStorage.removeItem('4astore_orders');localStorage.removeItem('4astore_screenshots');loadData().then(()=>{showToast('Orders reset to JSON defaults','info');loadStats();})}" style="padding:10px 20px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; margin-right:8px;">
+        <button onclick="resetAdminOrders()" style="padding:10px 20px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; margin-right:8px;">
           🗑️ Reset Orders (from JSON)
         </button>
-        <button onclick="if(confirm('Clear all users? This cannot be undone!')){localStorage.removeItem('4astore_users');loadData().then(()=>{showToast('Users reset to JSON defaults','info');loadStats();})}" style="padding:10px 20px; background:#666; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
+        <button onclick="resetAdminUsers()" style="padding:10px 20px; background:#666; color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px;">
           🗑️ Reset Users (from JSON)
         </button>
 
@@ -4548,8 +4660,8 @@
 
     // Push a fresh build to all users: bump assetVersion so every browser
     // clears its cache and reloads the latest code on next visit.
-    function pushUpdate() {
-      if (!confirm('Sabhi users ko naya code / cache clear bhejein?')) return;
+    async function pushUpdate() {
+      if (!await adminConfirm('Sabhi users ko naya code / cache clear bhejein?', { title: 'Push site update', confirmText: 'Push update' })) return;
       try {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', 'api/bump-cache.php', false);

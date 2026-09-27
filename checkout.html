@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
     .checkout-page { max-width: 700px; margin: 16px auto; padding: 0 12px 32px; }
-    .checkout-form { padding: 18px; }
+    .checkout-form { padding: 18px; backdrop-filter:none; -webkit-backdrop-filter:none; }
     .checkout-form h3 { margin-bottom: 14px; padding-bottom: 8px; }
     .location-choice-card { background:#fffaf6; border:1px solid #f0d6bd; border-radius:12px; padding:13px; margin:8px 0 12px; }
     .location-choice-card > strong { display:block; color:var(--primary-dark); font-size:14px; margin-bottom:9px; }
@@ -20,32 +20,39 @@
     .location-choice-actions button { min-height:42px; border:1px solid var(--primary); border-radius:9px; background:#fff; color:var(--primary-dark); font-weight:800; cursor:pointer; padding:8px 10px; }
     .location-choice-actions button:last-child { border-color:var(--border); background:var(--primary-light); }
     #deliveryLocationStatus { margin-top:8px; color:var(--gray); font-size:12px; line-height:1.4; }
+    .village-dropdown { display:none; position:absolute; left:0; right:0; top:100%; z-index:50; max-height:220px; overflow-y:auto; padding:6px; background:#fff; border:1px solid var(--border); border-radius:9px; box-shadow:0 8px 24px rgba(0,0,0,.15); }
+    .village-dropdown.open { display:block; }
+    .village-option { display:block; width:100%; margin:3px 0; padding:10px 12px; border:1px solid #e8e0d9; border-radius:7px; background:#fff; color:#342923; text-align:left; font:inherit; cursor:pointer; }
+    .village-option:hover, .village-option:focus { outline:none; border-color:var(--primary); background:var(--primary-light); }
+    .village-empty { padding:11px 12px; color:#c62828; font-size:13px; }
     .location-progress-sheet h3 { border:0; margin:10px 0 6px; padding:0; }
     .location-progress-sheet p { color:var(--gray); font-size:13px; margin:0 0 16px; }
     .location-progress-sheet button { border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--gray); padding:8px 18px; cursor:pointer; }
-    .location-spinner { font-size:34px; animation:locationPulse 1.2s ease-in-out infinite; }
-    @keyframes locationPulse { 50% { transform:scale(1.15); opacity:.55; } }
+    .location-spinner { font-size:34px; }
     .address-summary { background:var(--primary-light); border:1px solid var(--border); border-radius:10px; padding:11px 12px; margin:10px 0 14px; }
     .address-summary-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
     .address-change-btn { border:0; background:none; color:var(--primary-dark); font-weight:800; cursor:pointer; padding:4px; }
-    .address-picker-modal { position:fixed; inset:0; z-index:5000; display:none; align-items:flex-start; justify-content:center; background:rgba(18,24,30,.5); padding:calc(env(safe-area-inset-top) + 18px) 10px 18px; backdrop-filter:blur(2px); }
+    .address-picker-modal { position:fixed; inset:0; z-index:5000; display:none; align-items:center; justify-content:center; background:rgba(18,24,30,.5); padding:calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 12px); backdrop-filter:blur(2px); }
     .address-picker-modal.open { display:flex; }
-    .address-picker-sheet { width:min(100%,520px); max-height:82vh; overflow:auto; background:#fff; border-radius:16px; padding:18px 14px calc(18px + env(safe-area-inset-bottom)); box-shadow:0 10px 30px rgba(0,0,0,.18); }
+    .address-picker-sheet { display:flex; flex-direction:column; width:min(100%,520px); max-height:min(82vh,720px); max-height:min(82dvh,720px); min-height:0; overflow:hidden; box-sizing:border-box; background:#fff; border-radius:16px; padding:18px 14px calc(12px + env(safe-area-inset-bottom)); box-shadow:0 10px 30px rgba(0,0,0,.18); }
     .address-picker-sheet h3 { border:0; margin:0 0 4px; padding:0; color:#2d211d; font-size:21px; }
     .address-picker-sheet::before { content:""; display:block; width:42px; height:4px; border-radius:5px; background:#d8c9c2; margin:0 auto 14px; }
+    .address-picker-list { min-height:0; max-height:min(34dvh,220px); overflow-y:auto; overscroll-behavior:contain; padding:0 2px; }
     .address-option { display:block; width:100%; text-align:left; border:1px solid var(--border); background:#fff; border-radius:9px; padding:11px; margin:7px 0; cursor:pointer; }
     .address-option.selected { border-color:var(--primary); background:var(--primary-light); }
     .address-search { width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:9px; font-size:14px; outline:none; margin:8px 0 10px; }
     .address-search:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(44,111,173,.12); }
     .address-new-btn { width:100%; border:1px dashed var(--primary); background:#fffaf6; border-radius:9px; padding:12px; color:var(--primary-dark); font-weight:800; cursor:pointer; margin-top:8px; }
     .address-new-btn:hover { background:var(--primary-light); }
-    .address-editor-modal { position:fixed; inset:0; z-index:5050; display:none; align-items:flex-start; justify-content:center; background:rgba(18,24,30,.5); padding:calc(env(safe-area-inset-top) + 18px) 10px 18px; backdrop-filter:blur(2px); }
+    .address-editor-modal { position:fixed; inset:0; z-index:5050; width:100%; height:100vh; height:100dvh; min-height:0; box-sizing:border-box; overflow:hidden; display:none; align-items:flex-start; justify-content:center; background:rgba(18,24,30,.5); padding:calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 12px); backdrop-filter:blur(2px); }
     .address-editor-modal.open { display:flex; }
-    .address-editor-sheet { width:min(100%,680px); max-height:84vh; overflow:auto; background:#fff; border-radius:16px; padding:18px 16px calc(20px + env(safe-area-inset-bottom)); box-shadow:0 10px 30px rgba(0,0,0,.2); }
+    .address-editor-sheet { display:flex; flex-direction:column; width:min(100%,680px); max-height:calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); min-height:0; overflow:hidden; background:#fff; border-radius:16px; padding:14px 16px calc(10px + env(safe-area-inset-bottom)); box-shadow:0 10px 30px rgba(0,0,0,.2); }
     .address-editor-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; }
     .address-editor-head h3 { border:0; margin:0; padding:0; color:#2d211d; }
     .address-editor-head p { color:var(--gray); font-size:12px; margin:3px 0 0; }
     .address-editor-head button { border:0; background:none; color:var(--gray); font-size:28px; line-height:1; cursor:pointer; }
+    .address-editor-content { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:0 2px; }
+    .address-editor-actions { flex:0 0 auto; padding-top:10px; background:#fff; }
     .address-label-options { border:0; padding:0; margin:4px 0 14px; display:flex; gap:8px; flex-wrap:wrap; }
     .address-label-options legend { width:100%; color:#555; font-size:13px; font-weight:700; margin-bottom:6px; }
     .address-label-options label { border:1px solid var(--border); border-radius:9px; padding:9px 12px; background:#fff; color:var(--primary-dark); font-size:13px; font-weight:700; cursor:pointer; }
@@ -74,7 +81,7 @@
     <div class="header-content">
       <a href="./" class="logo"><img src="assets/images/logo.svg" alt="4A Store" height="52"></a>
       <form class="search-box" onsubmit="handleSearch(event)">
-        <input type="text" placeholder="Search for groceries..." id="searchInput">
+        <input type="text" placeholder="Search for groceries / सामान खोजें" id="searchInput">
         <button type="submit">🔍</button>
       </form>
       <div class="header-actions">
@@ -88,59 +95,60 @@
 
   <!-- Step 1: Checkout Form -->
   <div class="checkout-page" id="checkoutPage">
-    <h2 style="margin-bottom:20px;">📝 Checkout</h2>
+    <h2 style="margin-bottom:20px;">📝 Checkout / ऑर्डर विवरण</h2>
     <div class="checkout-form">
-      <h3>🏠 Delivery Details</h3>
+      <h3>🏠 Delivery Details / डिलीवरी का विवरण</h3>
       <div class="location-choice-card">
-        <strong>डिलीवरी लोकेशन कैसे देना है?</strong>
+        <strong>डिलीवरी का पता कैसे चुनेंगे?</strong>
         <div class="location-choice-actions">
-          <button type="button" id="currentLocationOption" onclick="selectLocationMode('current')">📍 Current location लें</button>
-          <button type="button" id="manualLocationOption" onclick="selectLocationMode('manual')">✍️ Address manually डालें</button>
+          <button type="button" id="currentLocationOption" onclick="selectLocationMode('current')">📍 वर्तमान लोकेशन लें</button>
+          <button type="button" id="manualLocationOption" onclick="selectLocationMode('manual')">✍️ पता स्वयं भरें</button>
         </div>
-        <div id="deliveryLocationStatus">Current location से auto address भरें या saved/manual address चुनें।</div>
+        <div id="deliveryLocationStatus">वर्तमान लोकेशन लें या पता स्वयं भरें।</div>
       </div>
       <div id="savedAddressPanel" class="address-summary" style="display:none;">
-        <div class="address-summary-head"><strong>📍 Deliver to</strong><button type="button" class="address-change-btn" onclick="toggleAddressPicker()">Change ▾</button></div>
+        <div class="address-summary-head"><strong>📍 Deliver to / यहाँ डिलीवरी करें</strong><button type="button" id="changeSavedAddressButton" class="address-change-btn" onclick="toggleAddressPicker()">Change / बदलें ▾</button></div>
         <div id="selectedAddressText" style="font-size:13px;color:#555;"></div>
       </div>
       <div id="addressModal" class="address-picker-modal" onclick="if(event.target===this) closeAddressPicker()">
         <div class="address-picker-sheet">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><div><h3>Delivery Address चुनें</h3><p style="margin:0;color:var(--gray);font-size:12px;">Saved address चुनें या नया address जोड़ें</p></div><button type="button" aria-label="Close address selector" onclick="closeAddressPicker()" style="border:0;background:none;font-size:24px;color:var(--gray);cursor:pointer;">×</button></div>
-          <input id="addressSearch" class="address-search" type="search" placeholder="🔎 Search Home, Work, village..." oninput="filterSavedAddresses(this.value)">
-          <div id="addressPicker"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><div><h3>डिलीवरी का पता चुनें</h3><p style="margin:0;color:var(--gray);font-size:12px;">सहेजा हुआ पता चुनें या नया पता जोड़ें</p></div><button type="button" aria-label="पता सूची बंद करें" onclick="closeAddressPicker()" style="border:0;background:none;font-size:24px;color:var(--gray);cursor:pointer;">×</button></div>
+          <input id="addressSearch" class="address-search" type="search" placeholder="🔎 घर, काम या गाँव का पता खोजें" oninput="filterSavedAddresses(this.value)">
+          <div id="addressPicker" class="address-picker-list"></div>
         </div>
       </div>
       <div id="currentLocationModal" class="location-progress-modal" aria-live="polite">
         <div class="location-progress-sheet">
           <div class="location-spinner">📍</div>
-          <h3>Current location ली जा रही है</h3>
-          <p id="locationProgressText">कृपया location permission Allow करें...</p>
-          <button type="button" onclick="cancelCurrentLocation()">Cancel</button>
+          <h3>वर्तमान लोकेशन ली जा रही है</h3>
+          <p id="locationProgressText">कृपया लोकेशन की अनुमति दें...</p>
+          <button type="button" onclick="cancelCurrentLocation()">रद्द करें</button>
         </div>
       </div>
       <div id="addressEditorModal" class="address-editor-modal" onclick="if(event.target===this) closeAddressEditor()">
         <div class="address-editor-sheet">
-          <div class="address-editor-head"><div><h3>Delivery Address भरें</h3><p>Address save करके अगली बार जल्दी order करें</p></div><button type="button" onclick="closeAddressEditor()" aria-label="Close address form">×</button></div>
-      <div class="form-row">
+          <div class="address-editor-head"><div><h3>डिलीवरी का पता भरें</h3><p>पता सहेजें ताकि अगली बार जल्दी ऑर्डर कर सकें</p></div><button type="button" onclick="closeAddressEditor()" aria-label="पता फ़ॉर्म बंद करें">×</button></div>
+          <div class="address-editor-content">
+          <div class="form-row">
         <div class="form-group">
           <label>Full Name (पूरा नाम) *</label>
-          <input type="text" id="custName" placeholder="Enter your full name">
-          <div class="error-msg">Please enter your name</div>
+          <input type="text" id="custName" placeholder="Enter your full name / अपना पूरा नाम लिखें">
+          <div class="error-msg">Please enter your name / कृपया अपना नाम लिखें</div>
         </div>
         <div class="form-group">
           <label>Mobile Number (मोबाइल नंबर) *</label>
-          <input type="tel" id="custMobile" placeholder="10-digit mobile number" maxlength="10">
-          <div class="error-msg">Enter valid 10-digit mobile number</div>
+          <input type="tel" id="custMobile" placeholder="10-digit mobile number / 10 अंकों का मोबाइल नंबर" maxlength="10">
+          <div class="error-msg">Enter a valid 10-digit mobile number / कृपया सही 10 अंकों का मोबाइल नंबर लिखें</div>
         </div>
       </div>
       <div class="form-group">
         <label>Email Address (ईमेल)</label>
-        <input type="email" id="custEmail" placeholder="your@email.com (optional)">
+        <input type="email" id="custEmail" placeholder="Email (optional) / ईमेल (वैकल्पिक)">
       </div>
       <div class="form-group">
         <label>Complete Address (पूरा पता) *</label>
         <textarea id="custAddress" rows="3" placeholder="घर नंबर, टोला/मोहल्ला, गाँव और सड़क का पूरा पता लिखें"></textarea>
-        <div class="error-msg">Please enter your address</div>
+        <div class="error-msg">Please enter your address / कृपया अपना पूरा पता लिखें</div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -149,116 +157,112 @@
         </div>
         <div class="form-group" style="position:relative;">
           <label>Village (गाँव) *</label>
-          <input type="text" id="custCity" placeholder="गाँव का नाम टाइप करें या चुनें" autocomplete="off"
-                 oninput="villageSearch(this.value)" onfocus="villageSearch(this.value)">
-          <div id="villageDropdown" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:50; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.15); max-height:220px; overflow-y:auto;"></div>
-          <div class="error-msg">Please select your village</div>
+             <input type="text" id="custCity" placeholder="🔎 गाँव का नाम लिखें या सूची से चुनें" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="villageDropdown" aria-expanded="false"
+               oninput="villageSearch(this.value)" onfocus="villageSearch(this.value)" onkeydown="handleVillageSearchKeydown(event)">
+             <div id="villageDropdown" class="village-dropdown" role="listbox"></div>
+          <div class="error-msg">Please select your village / कृपया अपना गाँव चुनें</div>
         </div>
       </div>
       <div class="form-group">
         <label>PIN Code (पिन कोड) *</label>
-        <input type="text" id="custPincode" placeholder="6-digit PIN Code" maxlength="6" value="824301">
-        <div class="error-msg">Delivery available only for PIN Code 824301</div>
+        <input type="text" id="custPincode" placeholder="6-digit PIN Code / 6 अंकों का पिन कोड" maxlength="6" value="824301">
+        <div class="error-msg">Delivery is available only for PIN Code 824301 / डिलीवरी केवल पिन कोड 824301 पर उपलब्ध है</div>
       </div>
       <fieldset class="address-label-options">
-        <legend>Address label</legend>
-        <label><input type="radio" name="addressLabel" value="Home"> 🏠 Home</label>
-        <label><input type="radio" name="addressLabel" value="Work"> 🏢 Work</label>
-        <label><input type="radio" name="addressLabel" value="Other" checked> 📍 Other</label>
+        <legend>Address label / पते का प्रकार</legend>
+        <label><input type="radio" name="addressLabel" value="Home"> 🏠 Home / घर</label>
+        <label><input type="radio" name="addressLabel" value="Work"> 🏢 Work / काम</label>
+        <label><input type="radio" name="addressLabel" value="Other" checked> 📍 Other / अन्य</label>
       </fieldset>
-      <button type="button" class="save-address-btn" onclick="saveAddressFromEditor()">💾 Save Address</button>
+          </div>
+          <div class="address-editor-actions">
+            <button type="button" class="save-address-btn" onclick="saveAddressFromEditor()">💾 Save Address / पता सहेजें</button>
+          </div>
         </div>
       </div>
 
-      <h3 style="margin-top:24px;">💳 Payment – UPI Only</h3>
-      <div style="background:var(--primary-light); border:2px solid var(--primary); border-radius:12px; padding:20px; text-align:center; margin-top:12px;">
-        <p style="font-size:14px; color:var(--primary-dark); font-weight:600; margin-bottom:8px;">📱 Pay via UPI to complete your order</p>
-        <p style="font-size:13px; color:#666; margin-bottom:4px;">UPI ID: <strong style="color:var(--primary);" data-upi-id>goluk147147@ybl</strong></p>
-        <p style="font-size:13px; color:#666;">Name: <strong data-upi-name>4astore</strong></p>
-      </div>
-
       <div class="order-summary-checkout" id="orderSummaryCheckout" style="margin-top:20px;"></div>
-      <button class="btn-checkout" onclick="proceedToPayment()" style="margin-top:20px;">📱 Proceed to UPI Payment →</button>
+      <button class="btn-checkout" onclick="proceedToPayment()" style="margin-top:20px;">📱 Proceed to UPI Payment / UPI भुगतान जारी रखें →</button>
     </div>
   </div>
 
   <!-- Step 2: UPI Payment + Screenshot Upload Modal -->
   <div class="hidden" id="upiPaymentModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px;">
     <div style="background:white; border-radius:16px; padding:24px; max-width:420px; width:100%; text-align:center; max-height:95vh; overflow-y:auto;">
-      <h2 style="color:var(--primary); margin-bottom:6px;">📱 Pay via UPI</h2>
-      <p style="color:#666; font-size:13px; margin-bottom:14px;">Scan QR code below & pay the amount</p>
+      <h2 style="color:var(--primary); margin-bottom:6px;">📱 Pay via UPI / UPI से भुगतान करें</h2>
+      <p style="color:#666; font-size:13px; margin-bottom:14px;">Scan the QR code below and pay / नीचे दिया QR कोड स्कैन करके भुगतान करें</p>
       
       <div style="background:#f8f8f8; border-radius:12px; padding:16px; margin-bottom:14px;">
         <div id="qrCode" style="display:flex; justify-content:center; margin-bottom:10px;"></div>
-        <p style="font-size:12px; color:#666;">Scan with Google Pay, PhonePe, Paytm etc.</p>
+        <p style="font-size:12px; color:#666;">Scan with Google Pay, PhonePe or Paytm / Google Pay, PhonePe या Paytm से स्कैन करें</p>
       </div>
       
       <div style="background:var(--primary-light); padding:10px; border-radius:8px; margin-bottom:10px;">
-        <p style="font-size:11px; color:#666;">UPI ID</p>
+        <p style="font-size:11px; color:#666;">UPI ID / यूपीआई आईडी</p>
         <p style="font-size:15px; font-weight:700; color:var(--primary-dark);" data-upi-id>goluk147147@ybl</p>
-        <p style="font-size:11px; color:#666; margin-top:2px;">Name: <strong data-upi-name>4astore</strong></p>
+        <p style="font-size:11px; color:#666; margin-top:2px;">Name / नाम: <strong data-upi-name>4astore</strong></p>
       </div>
       
       <div style="background:#fff3e0; padding:12px; border-radius:8px; margin-bottom:14px;">
-        <p style="font-size:16px; font-weight:700; color:var(--primary-dark);">💰 Pay: ₹<span id="payAmount">0</span></p>
+        <p style="font-size:16px; font-weight:700; color:var(--primary-dark);">💰 Pay / भुगतान: ₹<span id="payAmount">0</span></p>
       </div>
 
       <!-- Merchant UPI: pay by scanning the QR or copying the UPI ID -->
       <button type="button" onclick="copyUpiId()" style="display:inline-block; padding:10px 24px; background:var(--primary); color:white; border:none; border-radius:30px; font-size:14px; font-weight:600; margin-bottom:8px; cursor:pointer;">
-        📋 Copy UPI ID
+        📋 Copy UPI ID / यूपीआई आईडी कॉपी करें
       </button>
-      <p id="upiHint" style="font-size:11px; color:#888; margin-bottom:14px;">Scan the QR, or copy the UPI ID and pay in your UPI app.</p>
+      <p id="upiHint" style="font-size:11px; color:#888; margin-bottom:14px;">Scan the QR or copy the UPI ID to pay / QR स्कैन करें या यूपीआई आईडी कॉपी करके भुगतान करें</p>
 
       <!-- Screenshot Upload Section -->
       <div style="border-top:2px solid var(--border); padding-top:16px; margin-top:8px;">
-        <h4 style="color:var(--primary-dark); margin-bottom:8px;">📸 Upload Payment Screenshot</h4>
-        <p style="font-size:12px; color:#666; margin-bottom:10px;">After paying, take a screenshot and upload it below for confirmation</p>
+        <h4 style="color:var(--primary-dark); margin-bottom:8px;">📸 Upload Payment Screenshot / भुगतान का स्क्रीनशॉट अपलोड करें</h4>
+        <p style="font-size:12px; color:#666; margin-bottom:10px;">After payment, upload a screenshot below / भुगतान के बाद स्क्रीनशॉट यहाँ अपलोड करें</p>
         
         <div class="screenshot-upload" id="screenshotUpload">
           <input type="file" accept="image/*" id="screenshotInput" onchange="handleScreenshot(this)">
           <div id="screenshotPlaceholder">
             <span style="font-size:2.5rem;">📷</span>
-            <p style="font-size:13px; color:var(--primary); font-weight:600; margin-top:8px;">Tap to upload payment screenshot</p>
-            <p style="font-size:11px; color:#999;">JPG, PNG supported</p>
+            <p style="font-size:13px; color:var(--primary); font-weight:600; margin-top:8px;">Tap to upload screenshot / स्क्रीनशॉट अपलोड करने के लिए टैप करें</p>
+            <p style="font-size:11px; color:#999;">JPG, PNG supported / JPG, PNG फ़ाइल स्वीकार हैं</p>
           </div>
           <img id="screenshotPreview" class="preview-img" alt="Payment screenshot preview" style="display:none;">
         </div>
       </div>
       
       <button class="btn-checkout" id="confirmBtn" onclick="confirmPayment()" style="background:var(--gray); cursor:not-allowed;" disabled>
-        ⬆️ Upload Screenshot to Confirm
+        ⬆️ Upload Screenshot to Confirm / पुष्टि के लिए स्क्रीनशॉट अपलोड करें
       </button>
       
-      <button onclick="closePaymentModal()" style="margin-top:10px; background:none; border:none; color:var(--gray); cursor:pointer; font-size:13px;">← Cancel</button>
+      <button onclick="closePaymentModal()" style="margin-top:10px; background:none; border:none; color:var(--gray); cursor:pointer; font-size:13px;">← Cancel / रद्द करें</button>
     </div>
   </div>
 
   <!-- Step 3: Order Success -->
   <div class="order-success hidden" id="orderSuccess">
     <div class="success-icon">🎉</div>
-    <h2>Order Successfully Placed!</h2>
+    <h2>Order Successfully Placed! / आपका ऑर्डर सफलतापूर्वक दर्ज हो गया!</h2>
     <p class="order-id" id="successOrderId"></p>
-    <p>Thank you for shopping with 4astore.</p>
-    <p>We will verify your payment and confirm shortly.</p>
-    <p id="emailStatus" style="margin-top:12px; font-size:13px; color:var(--primary);">✅ Order sent to store</p>
+    <p>Thank you for shopping with 4astore / 4A Store से खरीदारी करने के लिए धन्यवाद।</p>
+    <p>We will verify your payment and confirm shortly / हम भुगतान जाँचकर जल्द पुष्टि करेंगे।</p>
+    <p id="emailStatus" style="margin-top:12px; font-size:13px; color:var(--primary);">✅ Order sent to store / ऑर्डर स्टोर को भेजा गया</p>
 
-    <p style="margin-top:16px; font-size:13px; color:#666;">For faster confirmation, also send your order on WhatsApp:</p>
+    <p style="margin-top:16px; font-size:13px; color:#666;">For faster confirmation, send your order on WhatsApp too / जल्दी पुष्टि के लिए ऑर्डर WhatsApp पर भी भेजें:</p>
     <button onclick="sendOrderWhatsApp()" style="margin-top:8px; padding:12px 26px; background:#25D366; color:#fff; border:none; border-radius:30px; font-size:15px; font-weight:700; cursor:pointer;">
-      💬 Send Order on WhatsApp
+      💬 Send Order on WhatsApp / WhatsApp पर ऑर्डर भेजें
     </button>
 
     <div style="margin-top:20px;">
-      <a href="order-history" class="btn-primary" style="margin-right:10px;">View My Orders</a>
-      <a href="./" class="btn-primary" style="background:var(--secondary);">Continue Shopping</a>
+      <a href="order-history" class="btn-primary" style="margin-right:10px;">View My Orders / मेरे ऑर्डर देखें</a>
+      <a href="./" class="btn-primary" style="background:var(--secondary);">Continue Shopping / खरीदारी जारी रखें</a>
     </div>
   </div>
 
   <!-- Footer -->
   <footer class="site-footer">
     <div class="footer-grid">
-      <div class="footer-col"><h4>About 4astore</h4><p>Your local online grocery store serving Chandargarh and nearby areas.</p></div>
-      <div class="footer-col"><h4>Store Address</h4><p>Gajana Road, Chandargarh, Nabinagar, Bihar – 824301</p><p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p></div>
-      <div class="footer-col"><h4>Payment</h4><p>UPI Only: <strong data-upi-id>goluk147147@ybl</strong></p><span class="delivery-info-badge">📍 PIN Code – 824301</span></div>
+      <div class="footer-col"><h4>About 4astore / 4A Store के बारे में</h4><p>Your local online grocery store serving Chandargarh and nearby areas / चंद्रगढ़ और आसपास के क्षेत्रों की आपकी ऑनलाइन किराना दुकान।</p></div>
+      <div class="footer-col"><h4>Store Address / दुकान का पता</h4><p>Gajana Road, Chandargarh, Nabinagar, Bihar – 824301</p><p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p></div>
+      <div class="footer-col"><h4>Payment / भुगतान</h4><p>UPI Only / केवल UPI: <strong data-upi-id>goluk147147@ybl</strong></p><span class="delivery-info-badge">📍 PIN Code / पिन कोड – 824301</span></div>
     </div>
     <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
   </footer>
@@ -280,18 +284,29 @@
     let paymentScreenshot = null;
     let deliveryLocation = null;
     let locationMode = '';
+    let locationRequestSequence = 0;
+    let locationProgressOpenedAt = 0;
+    window.__nativeLocationCallbacks = Object.create(null);
+    window.__receiveAndroidLocation = (callbackId, resultJson) => {
+      const callback = window.__nativeLocationCallbacks[callbackId];
+      if (!callback) return;
+      delete window.__nativeLocationCallbacks[callbackId];
+      try { callback(JSON.parse(resultJson)); } catch (error) { callback({ success: false, errorCode: 2 }); }
+    };
 
     document.addEventListener('DOMContentLoaded', () => {
       if (!requireLogin()) return;
       const cart = getCart();
       if (cart.length === 0) {
         document.getElementById('checkoutPage').innerHTML = `
-          <div class="empty-cart"><div class="empty-icon">🛒</div><h3>Your cart is empty</h3>
-          <p>Add items to your cart before checkout.</p><a href="products" class="btn-primary">Browse Products →</a></div>`;
+          <div class="empty-cart"><div class="empty-icon">🛒</div><h3>Your cart is empty / आपका कार्ट खाली है</h3>
+          <p>Add items to your cart before checkout / चेकआउट से पहले कार्ट में सामान जोड़ें।</p><a href="products" class="btn-primary">Browse Products / सामान देखें →</a></div>`;
         return;
       }
       renderOrderSummary();
       loadSavedCustomer();
+      restorePendingAddressDraft();
+      restorePendingOrderConfirmation();
       loadSavedAddresses();
     });
 
@@ -313,17 +328,77 @@
       }
     }
 
+    function restorePendingAddressDraft() {
+      let draft;
+      try {
+        draft = JSON.parse(sessionStorage.getItem('4astore_pending_address_draft') || 'null');
+      } catch (error) {
+        sessionStorage.removeItem('4astore_pending_address_draft');
+        return;
+      }
+      if (!draft || !draft.customer) return;
+      const customer = draft.customer;
+      [['custName', customer.name], ['custMobile', customer.mobile], ['custEmail', customer.email], ['custAddress', customer.address], ['custLandmark', customer.landmark], ['custCity', customer.city], ['custPincode', customer.pincode]].forEach(([id, value]) => {
+        const field = document.getElementById(id);
+        if (field && value != null) field.value = value;
+      });
+      selectedAddressId = draft.addressId || null;
+      deliveryLocation = Number.isFinite(Number(customer.deliveryLat)) && Number.isFinite(Number(customer.deliveryLng))
+        ? { lat: Number(customer.deliveryLat), lng: Number(customer.deliveryLng) }
+        : null;
+      locationMode = customer.deliverySource === 'current' ? 'current' : 'manual';
+      const labelOption = document.querySelector(`input[name="addressLabel"][value="${draft.label || 'Other'}"]`);
+      if (labelOption) labelOption.checked = true;
+      openAddressEditor();
+    }
+
+    function restorePendingOrderConfirmation() {
+      let draft;
+      try {
+        draft = JSON.parse(sessionStorage.getItem('4astore_pending_order_confirmation') || 'null');
+      } catch (error) {
+        sessionStorage.removeItem('4astore_pending_order_confirmation');
+        return;
+      }
+      if (!draft || !draft.order) return;
+      orderData = draft.order;
+      customerInfo = draft.order.customer;
+      paymentScreenshot = draft.paymentScreenshot || null;
+      if (customerInfo) {
+        [['custName', customerInfo.name], ['custMobile', customerInfo.mobile], ['custEmail', customerInfo.email], ['custAddress', customerInfo.address], ['custLandmark', customerInfo.landmark], ['custCity', customerInfo.city], ['custPincode', customerInfo.pincode]].forEach(([id, value]) => {
+          const field = document.getElementById(id);
+          if (field && value != null) field.value = value;
+        });
+      }
+      if (paymentScreenshot) {
+        document.getElementById('screenshotPreview').src = paymentScreenshot;
+        document.getElementById('screenshotPreview').style.display = 'block';
+        document.getElementById('screenshotPlaceholder').style.display = 'none';
+        document.getElementById('screenshotUpload').classList.add('has-image');
+        const button = document.getElementById('confirmBtn');
+        button.disabled = false;
+        button.style.background = 'var(--primary)';
+        button.style.cursor = 'pointer';
+        button.textContent = '✅ Confirm Order & Send on WhatsApp / ऑर्डर पक्का करें और WhatsApp पर भेजें';
+      }
+      showPaymentModal(orderData.totalAmount, customerInfo && customerInfo.name);
+    }
+
     let savedAddresses = [];
     let selectedAddressId = null;
+    let savedAddressesLoaded = false;
 
-    function loadSavedAddresses() {
-      fetch('api/addresses.php?_=' + Date.now(), { cache: 'no-store', credentials: 'include' })
-        .then(response => response.json())
-        .then(result => {
-          if (!result.success || !Array.isArray(result.addresses) || !result.addresses.length) return;
-          savedAddresses = result.addresses;
-        })
-        .catch(() => {});
+    async function loadSavedAddresses() {
+      try {
+        const response = await fetch('api/addresses.php?_=' + Date.now(), { cache: 'no-store', credentials: 'include' });
+        const result = await response.json();
+        savedAddresses = result.success && Array.isArray(result.addresses) ? result.addresses : [];
+      } catch (error) {
+        savedAddresses = [];
+      }
+      savedAddressesLoaded = true;
+      const changeButton = document.getElementById('changeSavedAddressButton');
+      if (changeButton) changeButton.hidden = savedAddresses.length === 0;
     }
 
     function renderAddressPicker(searchTerm = '') {
@@ -331,7 +406,7 @@
       if (!picker) return;
       const query = String(searchTerm || '').trim().toLowerCase();
       const matches = savedAddresses.filter(address => !query || [address.label, address.full_address, address.landmark, address.city, address.pincode].some(value => String(value || '').toLowerCase().includes(query)));
-      picker.innerHTML = (matches.length ? matches.map(address => `<div class="address-option ${Number(address.id) === Number(selectedAddressId) ? 'selected' : ''}" role="button" tabindex="0" onclick="selectSavedAddress(${Number(address.id)})"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;"><span style="display:flex;gap:9px;align-items:flex-start;"><input type="radio" name="savedAddressChoice" ${Number(address.id) === Number(selectedAddressId) ? 'checked' : ''} onclick="event.stopPropagation(); selectSavedAddress(${Number(address.id)})" style="margin-top:3px;accent-color:var(--primary);"><span><strong>${checkoutEscapeHtml(address.label)}</strong><br><span style="font-size:12px;color:#666;">${checkoutEscapeHtml(address.full_address || address.address || '')}</span></span></span><button type="button" onclick="event.stopPropagation(); editSavedAddress(${Number(address.id)})" style="border:0;background:none;color:var(--primary-dark);font-weight:800;cursor:pointer;padding:2px;">Edit</button></div></div>`).join('') : '<div style="padding:14px;text-align:center;color:var(--gray);font-size:13px;">कोई matching address नहीं मिला।</div>') + '<button type="button" class="address-new-btn" onclick="clearSavedAddress()">＋ Add a new address</button>';
+      picker.innerHTML = (matches.length ? matches.map(address => `<div class="address-option ${Number(address.id) === Number(selectedAddressId) ? 'selected' : ''}" role="button" tabindex="0" onclick="selectSavedAddress(${Number(address.id)})"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;"><span style="display:flex;gap:9px;align-items:flex-start;"><input type="radio" name="savedAddressChoice" ${Number(address.id) === Number(selectedAddressId) ? 'checked' : ''} onclick="event.stopPropagation(); selectSavedAddress(${Number(address.id)})" style="margin-top:3px;accent-color:var(--primary);"><span><strong>${checkoutEscapeHtml(address.label)}</strong><br><span style="font-size:12px;color:#666;">${checkoutEscapeHtml(address.full_address || address.address || '')}</span></span></span><button type="button" onclick="event.stopPropagation(); editSavedAddress(${Number(address.id)})" style="border:0;background:none;color:var(--primary-dark);font-weight:800;cursor:pointer;padding:2px;">बदलें</button></div></div>`).join('') : '<div style="padding:14px;text-align:center;color:var(--gray);font-size:13px;">कोई मिलता-जुलता पता नहीं मिला।</div>') + '<button type="button" class="address-new-btn" onclick="clearSavedAddress()">＋ नया पता जोड़ें</button>';
     }
 
     function filterSavedAddresses(value) {
@@ -339,6 +414,10 @@
     }
 
     function toggleAddressPicker() {
+      if (!savedAddresses.length) {
+        clearSavedAddress();
+        return;
+      }
       const modal = document.getElementById('addressModal');
       if (!modal) return;
       const search = document.getElementById('addressSearch');
@@ -362,6 +441,15 @@
       if (modal) modal.classList.remove('open');
     }
 
+    function focusAddressField() {
+      const field = document.getElementById('custAddress');
+      const content = document.querySelector('.address-editor-content');
+      if (!field || !content) return;
+      const fieldTop = field.getBoundingClientRect().top - content.getBoundingClientRect().top + content.scrollTop;
+      content.scrollTo({ top: Math.max(0, fieldTop - 16), behavior: 'smooth' });
+      field.focus({ preventScroll: true });
+    }
+
     function selectSavedAddress(id) {
       const address = savedAddresses.find(candidate => Number(candidate.id) === Number(id));
       if (!address) return;
@@ -380,7 +468,7 @@
       closeAddressPicker();
     }
 
-    function clearSavedAddress() {
+    function clearSavedAddress(announce = true) {
       selectedAddressId = null;
       locationMode = 'manual';
       deliveryLocation = null;
@@ -391,15 +479,12 @@
       const pin = document.getElementById('custPincode');
       if (pin) pin.value = '824301';
       document.getElementById('selectedAddressText').textContent = 'नया address नीचे भरें';
-      document.getElementById('savedAddressPanel').style.display = 'block';
+      document.getElementById('savedAddressPanel').style.display = savedAddresses.length ? 'block' : 'none';
       closeAddressPicker();
       document.querySelector('input[name="addressLabel"][value="Other"]').checked = true;
       openAddressEditor();
-      setTimeout(() => {
-        const addressField = document.getElementById('custAddress');
-        if (addressField) { addressField.scrollIntoView({ behavior: 'smooth', block: 'center' }); addressField.focus(); }
-      }, 80);
-      showToast('नया delivery address भरें और order के साथ save करें।', 'info');
+      setTimeout(focusAddressField, 80);
+      if (announce) showToast('नया डिलीवरी पता भरें और ऑर्डर के साथ सहेजें।', 'info');
     }
 
     function editSavedAddress(id) {
@@ -419,13 +504,13 @@
       let city = document.getElementById('custCity').value.trim();
       const pincode = document.getElementById('custPincode').value.trim();
       if (!name || !/^[6-9]\d{9}$/.test(mobile) || !address || !city || pincode !== '824301') {
-        showToast('नाम, mobile, पूरा address, village और सही pincode भरें।', 'error');
+        showToast('Please fill in your name, mobile, full address, village and PIN code / कृपया नाम, मोबाइल, पूरा पता, गाँव और सही पिन कोड भरें।', 'error');
         return;
       }
       if (typeof verifyVillage === 'function') {
         const village = verifyVillage(city);
         if (village.status !== 'exact') {
-          showToast('Admin list में दिया हुआ village चुनें।', 'error');
+          showToast('Select a village from the available list / कृपया सूची में से गाँव चुनें।', 'error');
           return;
         }
         city = village.match;
@@ -438,33 +523,34 @@
       const result = await saveCheckoutAddress(customer, label);
       if (!result.success) {
         if (result.status === 401) {
-          localStorage.removeItem('4astore_user');
-          updateLoginUI();
-          showToast('Login session expired. Please log in again.', 'error');
-          setTimeout(() => { window.location.href = 'login?return=checkout'; }, 900);
+          sessionStorage.setItem('4astore_pending_address_draft', JSON.stringify({ customer, label, addressId: selectedAddressId }));
+          redirectToLogin();
           return;
         }
-        showToast(result.message || 'Address save नहीं हुआ।', 'error');
+        showToast((result.message || 'Address could not be saved') + ' / पता सहेजा नहीं जा सका।', 'error');
         return;
       }
+      sessionStorage.removeItem('4astore_pending_address_draft');
       customerInfo = customer;
+      sessionStorage.removeItem('4astore_pending_address_draft');
       selectedAddressId = result.address?.id || selectedAddressId;
       document.getElementById('selectedAddressText').innerHTML = `<strong>${checkoutEscapeHtml(label)}</strong><br>${checkoutEscapeHtml([address, city, pincode].join(', '))}`;
       document.getElementById('savedAddressPanel').style.display = 'block';
       closeAddressEditor();
       loadSavedAddresses();
-      showToast('Address successfully save हो गया।', 'success');
+      showToast('Address saved successfully / पता सफलतापूर्वक सहेजा गया।', 'success');
     }
 
-    function prepareManualAddressMode() {
+    async function prepareManualAddressMode() {
       const panel = document.getElementById('savedAddressPanel');
-      const picker = document.getElementById('addressPicker');
-      if (panel) panel.style.display = 'block';
+      if (!savedAddressesLoaded) await loadSavedAddresses();
       if (!savedAddresses.length) {
-        if (document.getElementById('selectedAddressText')) document.getElementById('selectedAddressText').textContent = 'कोई saved address नहीं है। नीचे नया address भरें।';
+        if (panel) panel.style.display = 'none';
         closeAddressPicker();
+        clearSavedAddress(false);
         return;
       }
+      if (panel) panel.style.display = 'block';
       const preferred = savedAddresses.find(address => Number(address.is_default) === 1) || savedAddresses[0];
       selectSavedAddress(preferred.id);
       renderAddressPicker();
@@ -481,13 +567,8 @@
     }
 
     function resolveDeliveryCoordinates(address, city, pincode) {
-      const configuredLat = Number(STORE_CONFIG.storeLatitude);
-      const configuredLng = Number(STORE_CONFIG.storeLongitude);
       const fallback = window.STORE_LOCATION_FALLBACK;
-      const defaultCoords = {
-        lat: Number.isFinite(configuredLat) ? configuredLat : fallback.latitude,
-        lng: Number.isFinite(configuredLng) ? configuredLng : fallback.longitude
-      };
+      const defaultCoords = getStoreCoordinates();
       const sourceText = `${address || ''} ${city || ''} ${pincode || ''}`.toLowerCase();
       const knownAreas = [
         { key: 'chandargarh', lat: defaultCoords.lat, lng: defaultCoords.lng },
@@ -514,12 +595,25 @@
 
     function distanceFromStoreKm(lat, lng) {
       const earthRadius = 6371;
-      const storeLat = Number.isFinite(Number(STORE_CONFIG.storeLatitude)) ? Number(STORE_CONFIG.storeLatitude) : STORE_LOCATION_FALLBACK.latitude;
-      const storeLng = Number.isFinite(Number(STORE_CONFIG.storeLongitude)) ? Number(STORE_CONFIG.storeLongitude) : STORE_LOCATION_FALLBACK.longitude;
+      const store = getStoreCoordinates();
+      const storeLat = store.lat;
+      const storeLng = store.lng;
       const latDelta = (Number(lat) - storeLat) * Math.PI / 180;
       const lngDelta = (Number(lng) - storeLng) * Math.PI / 180;
       const a = Math.sin(latDelta / 2) ** 2 + Math.cos(storeLat * Math.PI / 180) * Math.cos(Number(lat) * Math.PI / 180) * Math.sin(lngDelta / 2) ** 2;
       return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function getStoreCoordinates() {
+      const fallback = window.STORE_LOCATION_FALLBACK;
+      const latitude = STORE_CONFIG.storeLatitude;
+      const longitude = STORE_CONFIG.storeLongitude;
+      const hasConfiguredCoordinates = latitude !== null && latitude !== undefined && latitude !== ''
+        && longitude !== null && longitude !== undefined && longitude !== ''
+        && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
+      return hasConfiguredCoordinates
+        ? { lat: Number(latitude), lng: Number(longitude) }
+        : { lat: fallback.latitude, lng: fallback.longitude };
     }
 
     function isServiceableCurrentLocation(location) {
@@ -559,23 +653,26 @@
       const manual = document.getElementById('manualLocationOption');
       const status = document.getElementById('deliveryLocationStatus');
       if (locationMode === 'manual') {
+        locationRequestSequence++;
+        closeCurrentLocationModal();
+        if (current) { current.disabled = false; current.textContent = '📍 वर्तमान लोकेशन लें'; }
         deliveryLocation = null;
         if (current) current.style.background = '#fff';
         if (manual) manual.style.background = '#e8f5e9';
-        if (status) { status.textContent = 'Manual address use hoga. Rider ko yahi address diya jayega, GPS nahi.'; status.style.color = '#2e7d32'; }
-        prepareManualAddressMode();
-        return;
+        if (status) { status.textContent = 'आपके चुने हुए पते पर डिलीवरी होगी।'; status.style.color = '#2e7d32'; }
+        return prepareManualAddressMode();
       }
       clearManualDeliveryFieldsForCurrentLocation();
       if (manual) manual.style.background = '#fff';
       if (current) current.style.background = '#fff8e1';
-      if (status) { status.textContent = 'Aapki current GPS location lene ke liye permission Allow karein.'; status.style.color = 'var(--primary-dark)'; }
+      if (status) { status.textContent = 'वर्तमान लोकेशन लेने के लिए अनुमति दें।'; status.style.color = 'var(--primary-dark)'; }
       captureDeliveryLocation();
     }
 
     function openCurrentLocationModal(message) {
       const modal = document.getElementById('currentLocationModal');
       const text = document.getElementById('locationProgressText');
+      locationProgressOpenedAt = Date.now();
       if (text && message) text.textContent = message;
       if (modal) modal.classList.add('open');
     }
@@ -585,11 +682,26 @@
       if (modal) modal.classList.remove('open');
     }
 
+    async function finishLocationProgress(requestId) {
+      const remaining = 350 - (Date.now() - locationProgressOpenedAt);
+      if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining));
+      if (requestId !== locationRequestSequence || locationMode !== 'current') return false;
+      closeCurrentLocationModal();
+      return true;
+    }
+
     function cancelCurrentLocation() {
       closeCurrentLocationModal();
       const btn = document.getElementById('currentLocationOption');
-      if (btn) { btn.disabled = false; btn.textContent = '📍 Current location लें'; }
+      if (btn) { btn.disabled = false; btn.textContent = '📍 वर्तमान लोकेशन लें'; }
       selectLocationMode('manual');
+    }
+
+    async function fallbackToManualAddress(message) {
+      await selectLocationMode('manual');
+      const status = document.getElementById('deliveryLocationStatus');
+      if (status && message) { status.textContent = message; status.style.color = '#a65a00'; }
+      showToast('Current location is unavailable. Choose an address or add a new one / वर्तमान लोकेशन नहीं मिली। पता चुनें या नया पता जोड़ें।', 'info');
     }
 
     function clearManualDeliveryFieldsForCurrentLocation() {
@@ -601,63 +713,113 @@
         if (field) field.value = '';
       });
       const selectedText = document.getElementById('selectedAddressText');
-      if (selectedText) selectedText.textContent = 'Current location से पता भरा जाएगा।';
+      if (selectedText) selectedText.textContent = 'वर्तमान लोकेशन से पता भरा जाएगा।';
       closeAddressPicker();
     }
 
-    function captureDeliveryLocation() {
-      if (!navigator.geolocation) { showToast('इस डिवाइस में लोकेशन की सुविधा उपलब्ध नहीं है।', 'error'); return; }
+    async function captureDeliveryLocation() {
+      if (!navigator.geolocation) {
+        await fallbackToManualAddress('इस डिवाइस में लोकेशन सुविधा उपलब्ध नहीं है। नीचे पता चुनें या नया पता जोड़ें।');
+        return;
+      }
       const btn = document.getElementById('currentLocationOption');
+      if (btn && btn.disabled) return;
+      const requestId = ++locationRequestSequence;
+      let preciseRetryStarted = false;
+      let nativeLocationAttempted = false;
       const status = document.getElementById('deliveryLocationStatus');
       if (btn) {
         btn.disabled = true;
         btn.textContent = 'लोकेशन ली जा रही है...';
       }
-      if (status) { status.textContent = 'लोकेशन permission Allow करें, पता अपने-आप भर जाएगा।'; status.style.color = 'var(--gray)'; }
-      openCurrentLocationModal('GPS location ली जा रही है और आपका address खोजा जा रहा है...');
-      navigator.geolocation.getCurrentPosition(
-        async p => {
+      if (status) { status.textContent = 'लोकेशन की अनुमति दें, पता अपने-आप भर जाएगा।'; status.style.color = 'var(--gray)'; }
+      openCurrentLocationModal('वर्तमान लोकेशन और पता खोजा जा रहा है...');
+      const onLocationFound = async p => {
+          if (requestId !== locationRequestSequence || locationMode !== 'current') return;
           deliveryLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
           locationMode = 'current';
           if (!isServiceableCurrentLocation(deliveryLocation)) {
             const distance = Math.round(distanceFromStoreKm(deliveryLocation.lat, deliveryLocation.lng));
-            if (btn) { btn.disabled = false; btn.textContent = '📍 Current location लें'; }
-            if (status) { status.textContent = 'यह लोकेशन 4A Store delivery area से बाहर है। Manual पर जाकर Chandrargarh या admin list में दिए गए village चुनें।'; status.style.color = '#c62828'; }
-            closeCurrentLocationModal();
-            showToast('📍 Current location में 4A Store delivery उपलब्ध नहीं है (' + distance + ' km)। Manual पर जाकर Chandrargarh या admin list में दिए गए village चुनें।', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = '📍 वर्तमान लोकेशन लें'; }
+            if (!await finishLocationProgress(requestId)) return;
+            await fallbackToManualAddress('यह लोकेशन डिलीवरी क्षेत्र से बाहर (' + distance + ' किमी) है। डिलीवरी वाले गाँव का पता चुनें या नया पता जोड़ें।');
             return;
           }
           if (status) { status.textContent = 'आपका पता खोजा जा रहा है...'; status.style.color = 'var(--gray)'; }
           await reverseGeocodeDeliveryLocation(deliveryLocation.lat, deliveryLocation.lng);
-          if (btn) { btn.disabled = false; btn.textContent = '✅ Current location selected'; }
-          closeCurrentLocationModal();
+          if (requestId !== locationRequestSequence || locationMode !== 'current') return;
+          if (!await finishLocationProgress(requestId)) return;
+          if (btn) { btn.disabled = false; btn.textContent = '✅ वर्तमान लोकेशन चुनी गई'; }
           showDeliveryLocationSaved();
           selectedAddressId = null;
           document.querySelector('input[name="addressLabel"][value="Other"]').checked = true;
           openAddressEditor();
-        },
-        e => {
+        };
+      const onLocationFailed = async e => {
+          if (requestId !== locationRequestSequence || locationMode !== 'current') return;
+          if (!nativeLocationAttempted && e.code !== 1 && window.AndroidApp && typeof window.AndroidApp.requestCurrentLocation === 'function') {
+            nativeLocationAttempted = true;
+            if (status) {
+              status.textContent = 'फ़ोन के GPS से लोकेशन ली जा रही है...';
+              status.style.color = 'var(--gray)';
+            }
+            const progress = document.getElementById('locationProgressText');
+            if (progress) progress.textContent = 'फ़ोन के GPS और नेटवर्क से लोकेशन खोजी जा रही है...';
+            const callbackId = 'checkout-location-' + requestId;
+            window.__nativeLocationCallbacks[callbackId] = result => {
+              if (requestId !== locationRequestSequence || locationMode !== 'current') return;
+              if (result.success && Number.isFinite(Number(result.latitude)) && Number.isFinite(Number(result.longitude))) {
+                onLocationFound({ coords: { latitude: Number(result.latitude), longitude: Number(result.longitude) } });
+              } else {
+                onLocationFailed({ code: Number(result.errorCode) || 2 });
+              }
+            };
+            try {
+              window.AndroidApp.requestCurrentLocation(callbackId);
+              return;
+            } catch (error) {
+              delete window.__nativeLocationCallbacks[callbackId];
+            }
+          }
+          if (!preciseRetryStarted && e.code !== 1) {
+            preciseRetryStarted = true;
+            if (status) {
+              status.textContent = 'सामान्य लोकेशन नहीं मिली। अब GPS से दोबारा कोशिश कर रहे हैं...';
+              status.style.color = 'var(--gray)';
+            }
+            const progress = document.getElementById('locationProgressText');
+            if (progress) progress.textContent = 'GPS सिग्नल खोजा जा रहा है। कृपया प्रतीक्षा करें...';
+            navigator.geolocation.getCurrentPosition(onLocationFound, onLocationFailed, {
+              enableHighAccuracy: true,
+              timeout: 30000,
+              maximumAge: 60000
+            });
+            return;
+          }
           if (btn) {
             btn.disabled = false;
-            btn.textContent = '📍 Current location लें';
+            btn.textContent = '📍 वर्तमान लोकेशन लें';
           }
-          closeCurrentLocationModal();
+          if (!await finishLocationProgress(requestId)) return;
           const reason = e.code === 1
-            ? 'कृपया browser settings में इस site की location permission Allow करें, फिर दोबारा कोशिश करें।'
+            ? 'लोकेशन की अनुमति बंद है। फ़ोन की सेटिंग में 4A Store को लोकेशन की अनुमति दें।'
             : e.code === 3
-              ? 'Location मिलने में समय लग रहा है। खुले स्थान पर जाकर दोबारा कोशिश करें।'
-              : 'Location उपलब्ध नहीं है। कृपया दोबारा कोशिश करें।';
-          if (status) { status.textContent = reason; status.style.color = '#c62828'; }
-        },
-        { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
-      );
+              ? 'लोकेशन मिलने में समय लगा। फ़ोन की लोकेशन/GPS चालू करें; अब पता चुनें या नया पता जोड़ें।'
+              : 'फ़ोन की लोकेशन नहीं मिली। पता चुनें या नया पता जोड़ें।';
+          await fallbackToManualAddress(reason);
+        };
+      navigator.geolocation.getCurrentPosition(onLocationFound, onLocationFailed, {
+        enableHighAccuracy: false,
+        timeout: 12000,
+        maximumAge: 120000
+      });
     }
 
     function renderOrderSummary() {
       const cart = getCart();
       const totals = getCartTotal();
       document.getElementById('orderSummaryCheckout').innerHTML = `
-        <h4 style="margin-bottom:12px;">📦 Order Summary</h4>
+        <h4 style="margin-bottom:12px;">📦 Order Summary / ऑर्डर का सारांश</h4>
         ${cart.map(item => {
           const product = { id: item.id, name: item.name, category: '', weight: item.weight, image: item.image || '' };
           const catalogProduct = window.products && window.products.find(p => Number(p.id) === Number(item.id));
@@ -686,23 +848,52 @@
       const dd = document.getElementById('villageDropdown');
       if (!dd) return;
       const list = (typeof getServiceableVillages === 'function') ? getServiceableVillages() : [];
-      const t = (term || '').trim().toLowerCase();
-      const matches = t ? list.filter(v => v.toLowerCase().includes(t)) : list;
+      const t = (term || '').trim().toLocaleLowerCase();
+      const matches = t ? list.filter(v => v.toLocaleLowerCase().includes(t)) : list;
+      const input = document.getElementById('custCity');
+      if (input) input.setAttribute('aria-expanded', matches.length ? 'true' : 'false');
+      dd.replaceChildren();
       if (!matches.length) {
-        dd.innerHTML = `<div style="padding:12px;color:#c62828;font-size:13px;">❌ Ye gaon serviceable nahi hai</div>`;
-        dd.style.display = 'block';
+        const empty = document.createElement('div');
+        empty.className = 'village-empty';
+        empty.textContent = '❌ This village is not serviceable / इस गाँव में डिलीवरी उपलब्ध नहीं है';
+        dd.appendChild(empty);
+        dd.classList.add('open');
         return;
       }
-      dd.innerHTML = matches.map(v =>
-        `<div onclick="selectVillage('${v.replace(/'/g,"\\'")}')" style="padding:11px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;" onmouseover="this.style.background='#fff3e6'" onmouseout="this.style.background=''">📍 ${v}</div>`
-      ).join('');
-      dd.style.display = 'block';
+      matches.forEach(village => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.className = 'village-option';
+        option.setAttribute('role', 'option');
+        option.textContent = '📍 ' + village;
+        option.addEventListener('click', () => selectVillage(village));
+        dd.appendChild(option);
+      });
+      dd.classList.add('open');
+    }
+
+    function handleVillageSearchKeydown(event) {
+      const dropdown = document.getElementById('villageDropdown');
+      if (!dropdown || !dropdown.classList.contains('open')) return;
+      const options = [...dropdown.querySelectorAll('.village-option')];
+      if (event.key === 'ArrowDown' && options.length) {
+        event.preventDefault();
+        options[0].focus();
+      } else if (event.key === 'Enter' && options.length) {
+        event.preventDefault();
+        options[0].click();
+      } else if (event.key === 'Escape') {
+        dropdown.classList.remove('open');
+        event.currentTarget.setAttribute('aria-expanded', 'false');
+      }
     }
     function selectVillage(v) {
       const inp = document.getElementById('custCity');
       if (inp) inp.value = v;
       const dd = document.getElementById('villageDropdown');
-      if (dd) dd.style.display = 'none';
+      if (dd) dd.classList.remove('open');
+      if (inp) inp.setAttribute('aria-expanded', 'false');
       const fg = inp ? inp.parentElement : null;
       if (fg) fg.classList.remove('error');
     }
@@ -711,7 +902,10 @@
       const inp = document.getElementById('custCity');
       const dd = document.getElementById('villageDropdown');
       if (!dd || !inp) return;
-      if (ev.target !== inp && !dd.contains(ev.target)) dd.style.display = 'none';
+      if (ev.target !== inp && !dd.contains(ev.target)) {
+        dd.classList.remove('open');
+        inp.setAttribute('aria-expanded', 'false');
+      }
     });
 
     async function proceedToPayment() {
@@ -724,49 +918,61 @@
       const landmark = document.getElementById('custLandmark').value.trim();
       let city = document.getElementById('custCity').value.trim();
       const pincode = document.getElementById('custPincode').value.trim();
+      const isCurrentLocation = locationMode === 'current';
+
+      if (!address) {
+        const addressField = document.getElementById('custAddress');
+        addressField.parentElement.classList.add('error');
+        showToast('Please enter your full delivery address / कृपया डिलीवरी का पूरा पता भरें।', 'error');
+        openAddressEditor();
+        setTimeout(focusAddressField, 80);
+        return;
+      }
 
       if (!name) { document.getElementById('custName').parentElement.classList.add('error'); valid = false; }
       if (!mobile || !/^[6-9]\d{9}$/.test(mobile)) { document.getElementById('custMobile').parentElement.classList.add('error'); valid = false; }
-      if (!address) { document.getElementById('custAddress').parentElement.classList.add('error'); valid = false; }
-      if (!city) { document.getElementById('custCity').parentElement.classList.add('error'); valid = false; }
-      if (pincode !== '824301') { document.getElementById('custPincode').parentElement.classList.add('error'); showToast('🚀 Delivery only in PIN 824301', 'error'); valid = false; }
-      if (!valid) { showToast('Please fill all required fields', 'error'); return; }
+      if (!isCurrentLocation) {
+        if (!address) { document.getElementById('custAddress').parentElement.classList.add('error'); valid = false; }
+        if (!city) { document.getElementById('custCity').parentElement.classList.add('error'); valid = false; }
+        if (pincode !== '824301') { document.getElementById('custPincode').parentElement.classList.add('error'); showToast('🚀 Delivery is available only for PIN 824301 / डिलीवरी केवल पिन कोड 824301 पर उपलब्ध है।', 'error'); valid = false; }
+      }
+      if (!valid) { showToast('Please fill in all required fields / कृपया सभी ज़रूरी जानकारी भरें।', 'error'); return; }
       if (locationMode !== 'current' && locationMode !== 'manual') {
-        showToast('पहले Current location या Manual address चुनें।', 'error');
+        showToast('Choose current location or enter an address manually / कृपया वर्तमान लोकेशन चुनें या पता स्वयं भरें।', 'error');
         document.querySelector('.location-choice-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
       const hasGpsLocation = deliveryLocation && Number.isFinite(Number(deliveryLocation.lat)) && Number.isFinite(Number(deliveryLocation.lng));
       if (locationMode === 'current' && !hasGpsLocation) {
-        showToast('Current location nahi mili. Manual address choose karein ya GPS permission Allow karein.', 'error');
+        showToast('Current location was not found. Allow GPS access or enter your address manually / वर्तमान लोकेशन नहीं मिली। GPS की अनुमति दें या पता स्वयं भरें।', 'error');
         const status = document.getElementById('deliveryLocationStatus');
-        if (status) { status.textContent = 'GPS location nahi mili. Dobara Current location choose karein, ya manual address select karein.'; status.style.color = '#c62828'; }
+        if (status) { status.textContent = 'GPS location was not found. Retry or enter your address manually / GPS लोकेशन नहीं मिली। दोबारा कोशिश करें या पता स्वयं भरें।'; status.style.color = '#c62828'; }
         return;
       }
       if (locationMode === 'current' && !isServiceableCurrentLocation(deliveryLocation)) {
         const distance = distanceFromStoreKm(deliveryLocation.lat, deliveryLocation.lng);
-        showToast('📍 Current location 4A Store delivery area se bahar hai (' + Math.round(distance) + ' km). Manual address me Chandrargarh select karke order karein.', 'error');
+        showToast('📍 Current location is outside the delivery area (' + Math.round(distance) + ' km). Choose a serviceable village manually / वर्तमान लोकेशन डिलीवरी क्षेत्र से बाहर (' + Math.round(distance) + ' किमी) है। कृपया सूची में से डिलीवरी वाला गाँव चुनें।', 'error');
         const status = document.getElementById('deliveryLocationStatus');
         if (status) {
-          status.textContent = 'Aapki current location service area se bahar hai. Chandrargarh ka manual delivery address enter karein.';
+          status.textContent = 'Current location is outside the delivery area. Enter a serviceable address manually / वर्तमान लोकेशन डिलीवरी क्षेत्र से बाहर है। कृपया डिलीवरी वाला पता स्वयं भरें।';
           status.style.color = '#c62828';
         }
         return;
       }
 
       // ---- Village / gaon verification (spelling auto-detect + toast) ----
-      if (typeof verifyVillage === 'function') {
+      if (!isCurrentLocation && typeof verifyVillage === 'function') {
         const vr = verifyVillage(city);
         const cityEl = document.getElementById('custCity');
         if (vr.status === 'invalid') {
           const list = (typeof getServiceableVillages === 'function') ? getServiceableVillages().join(', ') : '';
           cityEl.parentElement.classList.add('error');
-          showToast('❌ "' + city + '" me delivery nahi hai. Hum yahan deliver karte hain: ' + list, 'error');
+          showToast('❌ Delivery is unavailable in "' + city + '". Available villages / "' + city + '" में डिलीवरी उपलब्ध नहीं है। डिलीवरी वाले गाँव: ' + list, 'error');
           return;
         }
         if (vr.status === 'suggest') {
           // Spelling mistake detected — auto-correct + ask to confirm
-          showToast('🔎 Kya aapka matlab "' + vr.match + '" hai? Sahi kar diya — dobara confirm karein.', 'info');
+          showToast('🔎 Did you mean "' + vr.match + '"? We corrected it; please confirm again / क्या आपका मतलब "' + vr.match + '" है? नाम ठीक किया है, कृपया फिर से पुष्टि करें।', 'info');
           cityEl.value = vr.match;   // auto-correct the spelling
           cityEl.parentElement.classList.add('error');
           return;   // user re-taps Proceed with corrected village -> becomes 'exact'
@@ -778,11 +984,11 @@
 
       // 18+ age confirmation if the cart has any age-restricted item
       if (typeof cartHasAgeRestricted === 'function' && cartHasAgeRestricted()) {
-        const ok = confirm('⚠️ Aapke cart me 18+ (age-restricted) product hai.\n\nTobacco/nasha se cancer hota hai.\n\nKya aap 18 saal ya usse zyada ke hain?');
-        if (!ok) { showToast('Order ke liye 18+ hona zaroori hai.', 'error'); return; }
+        const ok = confirm('⚠️ Your cart contains an age-restricted item. Tobacco causes cancer. Are you 18 or older? / आपके कार्ट में आयु-प्रतिबंधित सामान है। तंबाकू से कैंसर होता है। क्या आपकी उम्र 18 वर्ष या उससे अधिक है?');
+        if (!ok) { showToast('You must be 18 or older to order this item / इस सामान का ऑर्डर देने के लिए आपकी उम्र 18 वर्ष या उससे अधिक होनी चाहिए।', 'error'); return; }
       }
 
-      customerInfo = { name, mobile, email, address, landmark, city, pincode };
+      customerInfo = { name, mobile, email, address: isCurrentLocation ? (address || 'Current GPS location') : address, landmark, city, pincode };
       if (locationMode === 'current' && deliveryLocation) {
         customerInfo.deliveryLat = deliveryLocation.lat;
         customerInfo.deliveryLng = deliveryLocation.lng;
@@ -796,38 +1002,46 @@
         customerInfo.deliveryLng = manualCoords.lng;
         customerInfo.deliverySource = 'manual';
       }
-      const addressSave = await saveCheckoutAddress(customerInfo);
-      if (!addressSave.success && selectedAddressId) {
-        showToast('Saved address could not be updated. Please try again.', 'error');
-        return;
+      if (isCurrentLocation) {
+        customerInfo.deliveryAddress = {
+          label: 'Other',
+          receiver_name: name,
+          phone: mobile,
+          full_address: [address, city, pincode].filter(Boolean).join(', ') || 'Current GPS location',
+          city,
+          pincode,
+          latitude: deliveryLocation.lat,
+          longitude: deliveryLocation.lng
+        };
+      } else {
+        const addressSave = await saveCheckoutAddress(customerInfo);
+        if (!addressSave.success && selectedAddressId) {
+          showToast('Saved address could not be updated. Please try again / सहेजा हुआ पता अपडेट नहीं हुआ। कृपया फिर से कोशिश करें।', 'error');
+          return;
+        }
+        customerInfo.deliveryAddress = addressSave.address || (savedAddresses.find(a => Number(a.id) === Number(selectedAddressId)) || null);
       }
-      customerInfo.deliveryAddress = addressSave.address || (savedAddresses.find(a => Number(a.id) === Number(selectedAddressId)) || null);
       const totals = getCartTotal();
       
-      // Show payment modal
-      document.getElementById('payAmount').textContent = totals.total;
+      showPaymentModal(totals.total, name);
+    }
+
+    function showPaymentModal(total, name) {
+      document.getElementById('payAmount').textContent = total;
       document.getElementById('upiPaymentModal').classList.remove('hidden');
       document.getElementById('upiPaymentModal').style.display = 'flex';
-      
-      // UPI deep link (works on mobile devices with a UPI app installed)
       const cfg = (typeof getSettings === 'function') ? getSettings() : { upiId: 'goluk147147@ybl', upiName: '4astore' };
       const payee = cfg.upiId || 'goluk147147@ybl';
       const upiName = cfg.upiName || '4astore';
       const payeeName = encodeURIComponent(upiName);
       const note = encodeURIComponent(upiName + ' Order');
-      const amount = Number(totals.total).toFixed(2);
+      const amount = Number(total).toFixed(2);
       window.currentUpiId = payee;
       window.currentUpiLink = `upi://pay?pa=${payee}&pn=${payeeName}&am=${amount}&cu=INR&tn=${note}`;
-
-      // Update the displayed UPI ID / Name on the payment modal
       document.querySelectorAll('[data-upi-id]').forEach(el => el.textContent = payee);
       document.querySelectorAll('[data-upi-name]').forEach(el => el.textContent = upiName);
-
-      // Generate QR (library if available, else image-API fallback so it always shows)
       renderUpiQr(window.currentUpiLink);
-
-      // Play a dynamic Hindi voice guide for the payment step
-      speakPaymentGuide(name, totals.total);
+      speakPaymentGuide(name, total);
     }
 
     // ==========================================================
@@ -904,7 +1118,7 @@
     function copyUpiId() {
       const id = window.currentUpiId || (document.querySelector('[data-upi-id]') ? document.querySelector('[data-upi-id]').textContent : '');
       if (!id) return;
-      const done = () => showToast('✅ UPI ID copied: ' + id, 'success');
+      const done = () => showToast('✅ UPI ID copied: ' + id + ' / यूपीआई आईडी कॉपी हुई।', 'success');
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(id).then(done).catch(() => fallbackCopyId(id, done));
       } else {
@@ -938,7 +1152,7 @@
           btn.disabled = false;
           btn.style.background = 'var(--primary)';
           btn.style.cursor = 'pointer';
-          btn.textContent = '✅ Confirm Order & Send on WhatsApp';
+          btn.textContent = '✅ Confirm Order & Send on WhatsApp / ऑर्डर पक्का करें और WhatsApp पर भेजें';
         });
       };
       reader.readAsDataURL(file);
@@ -985,17 +1199,31 @@
 
     function confirmPayment() {
       if (!paymentScreenshot) {
-        showToast('📸 Please upload payment screenshot first', 'error');
+        showToast('📸 Please upload your payment screenshot first / कृपया पहले भुगतान का स्क्रीनशॉट अपलोड करें।', 'error');
         return;
       }
       
       // Place order with screenshot reference
-      orderData = placeOrder(customerInfo);
+      const retryOrder = orderData && !orderData.serverSaved ? orderData : null;
+      orderData = placeOrder(customerInfo, retryOrder);
 
       if (!orderData.serverSaved) {
-        showToast('Order save nahi hua: ' + (orderData.serverMessage || 'Please login again and retry.'), 'error');
+        if (orderData.serverStatus === 401 || /\blogin required\b/i.test(orderData.serverMessage)) {
+          const draft = { order: orderData, paymentScreenshot };
+          try {
+            sessionStorage.setItem('4astore_pending_order_confirmation', JSON.stringify(draft));
+          } catch (error) {
+            try {
+              sessionStorage.setItem('4astore_pending_order_confirmation', JSON.stringify({ order: orderData, paymentScreenshot: null }));
+            } catch (storageError) { }
+          }
+          redirectToLogin();
+          return;
+        }
+        showToast('Order could not be saved: ' + (orderData.serverMessage || 'Please log in and retry') + ' / ऑर्डर सहेजा नहीं जा सका। कृपया लॉगिन करके फिर कोशिश करें।', 'error');
         return;
       }
+      sessionStorage.removeItem('4astore_pending_order_confirmation');
 
       // Upload the payment screenshot to the SERVER so the admin can see it
       // from any device (not just this browser).
@@ -1011,8 +1239,8 @@
       // Show success
       document.getElementById('checkoutPage').classList.add('hidden');
       document.getElementById('orderSuccess').classList.remove('hidden');
-      document.getElementById('successOrderId').textContent = `Your Order ID: #${orderData.orderId}`;
-      showToast('🎉 Order placed successfully!', 'success');
+      document.getElementById('successOrderId').textContent = `Your Order ID / आपका ऑर्डर नंबर: #${orderData.orderId}`;
+      showToast('🎉 Order placed successfully / आपका ऑर्डर सफलतापूर्वक दर्ज हो गया!', 'success');
 
       // AUTO: email the order to the store (no user action needed)
       sendOrderEmail(orderData);
@@ -1035,8 +1263,8 @@
             try { ok = JSON.parse(xhr.responseText).success === true; } catch (e) {}
             if (statusEl) {
               statusEl.textContent = ok
-                ? '✅ Order emailed to store'
-                : '⚠️ Order saved. Please also send it on WhatsApp below.';
+                ? '✅ Order emailed to store / ऑर्डर स्टोर को ईमेल किया गया'
+                : '⚠️ Order saved. Please also send it on WhatsApp below / ऑर्डर सहेजा गया। कृपया नीचे WhatsApp पर भी भेजें।';
               statusEl.style.color = ok ? 'var(--primary)' : '#e65100';
             }
           }
@@ -1044,7 +1272,7 @@
         xhr.send(JSON.stringify({ order: order }));
       } catch (e) {
         if (statusEl) {
-          statusEl.textContent = '⚠️ Order saved. Please also send it on WhatsApp below.';
+          statusEl.textContent = '⚠️ Order saved. Please also send it on WhatsApp below / ऑर्डर सहेजा गया। कृपया नीचे WhatsApp पर भी भेजें।';
           statusEl.style.color = '#e65100';
         }
       }

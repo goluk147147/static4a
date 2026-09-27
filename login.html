@@ -176,13 +176,13 @@
     let pendingReturnUrl = '';
 
     document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
       // If already logged in, go to profile
-      if (getLoggedInUser()) {
+      if (getLoggedInUser() && params.get('forceLogin') !== '1') {
         const existingUser = getLoggedInUser();
         window.location.href = existingUser.role === 'rider' && existingUser.backendRider === true ? 'rider' : 'profile';
       }
       // Check if redirected from signup
-      const params = new URLSearchParams(window.location.search);
       if (params.get('tab') === 'signup') showAuthTab('signup');
     });
 

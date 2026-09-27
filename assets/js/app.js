@@ -318,11 +318,19 @@ function updateLoginUI() {
 function requireLogin() {
   const user = getLoggedInUser();
   if (!user) {
-    showToast('Please login first to continue', 'error');
-    const currentPage = window.location.pathname.split('/').pop();
-    setTimeout(() => { window.location.href = `login?return=${currentPage}`; }, 1000);
+    redirectToLogin();
     return false;
   }
+  return true;
+}
+
+function redirectToLogin() {
+  const pathname = window.location.pathname;
+  if (/\/(?:login|admin)(?:\.html)?$/i.test(pathname)) return false;
+  const currentPage = pathname.split('/').pop() || 'index.html';
+  const returnTo = currentPage + window.location.search + window.location.hash;
+  const basePath = pathname.substring(0, pathname.lastIndexOf('/') + 1);
+  window.location.href = basePath + 'login?forceLogin=1&return=' + encodeURIComponent(returnTo);
   return true;
 }
 
@@ -569,6 +577,7 @@ function checkPincode(pin) {
 // ============================================
 function showToast(message, type = 'success') {
   let container = document.querySelector('.toast-container');
+  if (/\blogin required\b/i.test(String(message)) && redirectToLogin()) return;
   if (!container) {
     container = document.createElement('div');
     container.className = 'toast-container';
@@ -613,12 +622,12 @@ function generateOrderId() {
   return '4A' + num;
 }
 
-function placeOrder(customerData) {
+function placeOrder(customerData, pendingOrder = null) {
   const cart = getCart();
   const totals = getCartTotal();
   const user = getLoggedInUser();
   
-  const order = {
+  const order = pendingOrder ? { ...pendingOrder, customer: customerData } : {
     orderId: generateOrderId(),
     userId: user ? getUserId(user.mobile) : null,
     customer: customerData,
@@ -637,8 +646,12 @@ function placeOrder(customerData) {
     orderStatus: 'Order Placed',
     orderDate: new Date().toISOString()
   };
+  delete order.serverSaved;
+  delete order.serverMessage;
+  delete order.serverStatus;
   
   let serverSave = { success: false, message: 'Order server par save nahi ho saka.' };
+  let serverStatus = 0;
 
   // Save to PHP API (server-side JSON) before showing order success.
   try {
@@ -646,6 +659,7 @@ function placeOrder(customerData) {
     xhr.open('POST', 'api/orders.php', false);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.send(JSON.stringify({ action: 'save', order: order }));
+    serverStatus = xhr.status;
     serverSave = JSON.parse(xhr.responseText || '{}');
     if (xhr.status !== 200 || serverSave.success !== true) {
       serverSave.success = false;
@@ -658,6 +672,7 @@ function placeOrder(customerData) {
 
   order.serverSaved = serverSave.success === true;
   order.serverMessage = serverSave.message || '';
+  order.serverStatus = serverStatus;
   if (!order.serverSaved) return order;
 
   // Also save to localStorage as cache

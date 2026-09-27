@@ -1,8 +1,8 @@
 {
-    "versionCode": 7,
-    "versionName": "1.6",
+    "versionCode": 12,
+    "versionName": "1.7.4",
     "url": "https://4astore.webtoolsz.com/4AStore.apk",
-    "message": "Naya update available hai. Behtar experience ke liye update karein.",
+    "message": "New update available. Older APK installs may need uninstalling first because the production signing key changed. / नया अपडेट उपलब्ध है। पुराने APK की signing key अलग होने के कारण पहले ऐप uninstall करना पड़ सकता है।",
     "forceUpdate": false,
-    "assetVersion": 11
+    "assetVersion": 12
 }
