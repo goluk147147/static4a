@@ -643,9 +643,11 @@ function placeOrder(customerData, pendingOrder = null) {
     deliveryCharge: totals.deliveryCharge,
     totalAmount: totals.total,
     paymentMethod: 'UPI',
+    paymentReference: String(customerData.paymentReference || ''),
     orderStatus: 'Order Placed',
     orderDate: new Date().toISOString()
   };
+  order.paymentReference = String(customerData.paymentReference || order.paymentReference || '');
   delete order.serverSaved;
   delete order.serverMessage;
   delete order.serverStatus;

@@ -134,6 +134,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Invalid order data']);
             exit;
         }
+        $paymentReference = preg_replace('/\D+/', '', (string) ($order['paymentReference'] ?? ''));
+        if (!preg_match('/^[0-9]{12}$/', $paymentReference)) {
+            apiJson(['success' => false, 'message' => 'A valid 12-digit payment reference is required'], 422);
+        }
+        $order['paymentReference'] = $paymentReference;
         $customerMobile = preg_replace('/\D+/', '', (string) ($order['customer']['mobile'] ?? ''));
         $viewerMobile = preg_replace('/\D+/', '', (string) ($viewer['mobile'] ?? ''));
         if (($viewer['role'] ?? '') !== 'superadmin' && $customerMobile !== '' && $viewerMobile !== '' && $customerMobile !== $viewerMobile) {
@@ -171,6 +176,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $order['delivery_longitude'] = $order['deliveryAddress']['longitude'];
 
         $orders = getOrders();
+
+        foreach ($orders as $existingOrder) {
+            if (
+                ($existingOrder['paymentReference'] ?? '') === $paymentReference
+                && (string) ($existingOrder['orderId'] ?? '') !== (string) $order['orderId']
+            ) {
+                apiJson(['success' => false, 'message' => 'This payment reference has already been used'], 409);
+            }
+        }
 
         // Check if order already exists (avoid duplicates)
         $exists = false;

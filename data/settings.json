@@ -1,8 +1,8 @@
 {
     "storeEmail": "online4astore@gmail.com",
-    "deliveryCharge": 1,
-    "freeDeliveryAbove": 200,
-    "upiId": "Q457415074@ybl",
+    "deliveryCharge": 10,
+    "freeDeliveryAbove": 500,
+    "upiId": "Q623952089@ybl",
     "upiName": "4A Store",
     "hideMrp": false,
     "storePhone": "7543888698",

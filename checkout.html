@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="assets/js/store-location.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     .checkout-page { max-width: 700px; margin: 16px auto; padding: 0 12px 32px; }
     .checkout-form { padding: 18px; backdrop-filter:none; -webkit-backdrop-filter:none; }
@@ -70,6 +72,16 @@
     .screenshot-upload input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; }
     .screenshot-upload .preview-img { max-width:200px; max-height:200px; border-radius:8px; margin-top:12px; }
     .screenshot-upload.has-image { border-color:var(--primary); background:var(--primary-light); }
+    .upi-pay-button { display:flex; width:100%; min-height:54px; align-items:center; justify-content:center; padding:12px; border-radius:11px; background:#0FA958; color:#fff; text-align:center; text-decoration:none; font-size:15px; font-weight:800; }
+    .upi-audio-button { width:100%; min-height:44px; border:1px solid #b7ebce; border-radius:9px; background:#effcf4; color:#087a3d; font-weight:750; }
+    .upi-launch-status { min-height:20px; margin:0 0 10px; color:#64748b; font-size:12px; line-height:1.45; }
+    .upi-launch-status.fallback { color:#9a5800; font-weight:700; }
+    .utr-status { min-height:24px; margin:8px 0; font-size:12px; color:var(--gray); text-align:left; }
+    .utr-status.success { color:#087a3d; font-weight:750; }
+    .utr-status.error { color:#b42318; font-weight:700; }
+    .payment-confirm-sticky { position:sticky; bottom:-10px; padding:10px 0 calc(8px + env(safe-area-inset-bottom)); background:#fff; }
+    .payment-modal-sheet { background:white; border-radius:16px; padding:20px; max-width:440px; width:100%; text-align:center; max-height:calc(100dvh - 24px); overflow-y:auto; }
+    @media (max-width:480px) { .payment-modal-sheet { padding:16px; } }
   </style>
 </head>
 <body>
@@ -188,52 +200,61 @@
 
   <!-- Step 2: UPI Payment + Screenshot Upload Modal -->
   <div class="hidden" id="upiPaymentModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px;">
-    <div style="background:white; border-radius:16px; padding:24px; max-width:420px; width:100%; text-align:center; max-height:95vh; overflow-y:auto;">
-      <h2 style="color:var(--primary); margin-bottom:6px;">📱 Pay via UPI / UPI से भुगतान करें</h2>
-      <p style="color:#666; font-size:13px; margin-bottom:14px;">Scan the QR code below and pay / नीचे दिया QR कोड स्कैन करके भुगतान करें</p>
+    <div class="payment-modal-sheet">
+      <h2 style="color:#111827; margin:0 0 4px;">4A Kirana Store</h2>
+      <p style="color:#64748b;font-size:12px;margin:0 0 12px;">📍 Chandargarh (824301)</p>
+      <div style="color:#64748b;font-size:13px;">Payable Amount / देय राशि</div>
+      <div style="color:#087a3d;font-size:30px;font-weight:850;margin-bottom:10px;">₹<span id="payAmount">0</span></div>
+      <button class="upi-audio-button" type="button" onclick="speakPaymentGuide()">🔊 निर्देश दोबारा सुनें</button>
+      <a class="upi-pay-button" id="upiIntentButton" href="#" onclick="launchUpiPayment(event)" style="margin:12px 0;">⚡ Pay via PhonePe / GPay / Any UPI</a>
+      <p class="upi-launch-status" id="upiLaunchStatus" role="status" aria-live="polite"></p>
+      <p style="color:#64748b;font-size:12px;margin:0 0 12px;">या दूसरे फ़ोन से नीचे दिया QR कोड स्कैन करें।</p>
       
-      <div style="background:#f8f8f8; border-radius:12px; padding:16px; margin-bottom:14px;">
-        <div id="qrCode" style="display:flex; justify-content:center; margin-bottom:10px;"></div>
-        <p style="font-size:12px; color:#666;">Scan with Google Pay, PhonePe or Paytm / Google Pay, PhonePe या Paytm से स्कैन करें</p>
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:12px;">
+        <div id="qrCode" style="display:flex; justify-content:center; margin-bottom:8px;"></div>
+        <p style="font-size:12px;color:#64748b;margin:0;">Merchant QR / दुकानदार का QR</p>
       </div>
       
       <div style="background:var(--primary-light); padding:10px; border-radius:8px; margin-bottom:10px;">
         <p style="font-size:11px; color:#666;">UPI ID / यूपीआई आईडी</p>
-        <p style="font-size:15px; font-weight:700; color:var(--primary-dark);" data-upi-id>goluk147147@ybl</p>
-        <p style="font-size:11px; color:#666; margin-top:2px;">Name / नाम: <strong data-upi-name>4astore</strong></p>
-      </div>
-      
-      <div style="background:#fff3e0; padding:12px; border-radius:8px; margin-bottom:14px;">
-        <p style="font-size:16px; font-weight:700; color:var(--primary-dark);">💰 Pay / भुगतान: ₹<span id="payAmount">0</span></p>
+        <p style="font-size:15px; font-weight:700; color:var(--primary-dark);" data-upi-id>Q623952089@ybl</p>
+        <p style="font-size:11px; color:#666; margin-top:2px;">Name / नाम: <strong data-upi-name>4A kirana store</strong></p>
       </div>
 
       <!-- Merchant UPI: pay by scanning the QR or copying the UPI ID -->
       <button type="button" onclick="copyUpiId()" style="display:inline-block; padding:10px 24px; background:var(--primary); color:white; border:none; border-radius:30px; font-size:14px; font-weight:600; margin-bottom:8px; cursor:pointer;">
         📋 Copy UPI ID / यूपीआई आईडी कॉपी करें
       </button>
-      <p id="upiHint" style="font-size:11px; color:#888; margin-bottom:14px;">Scan the QR or copy the UPI ID to pay / QR स्कैन करें या यूपीआई आईडी कॉपी करके भुगतान करें</p>
+      <p id="upiHint" style="font-size:11px; color:#888; margin-bottom:12px;">Scan the QR or copy the UPI ID to pay / QR स्कैन करें या यूपीआई आईडी कॉपी करके भुगतान करें</p>
 
       <!-- Screenshot Upload Section -->
       <div style="border-top:2px solid var(--border); padding-top:16px; margin-top:8px;">
         <h4 style="color:var(--primary-dark); margin-bottom:8px;">📸 Upload Payment Screenshot / भुगतान का स्क्रीनशॉट अपलोड करें</h4>
-        <p style="font-size:12px; color:#666; margin-bottom:10px;">After payment, upload a screenshot below / भुगतान के बाद स्क्रीनशॉट यहाँ अपलोड करें</p>
+        <p style="font-size:12px; color:#666; margin-bottom:10px;">स्क्रीनशॉट से 12 अंकों का UTR अपने-आप पढ़ा जाएगा। नंबर टाइप न करें।</p>
         
         <div class="screenshot-upload" id="screenshotUpload">
-          <input type="file" accept="image/*" id="screenshotInput" onchange="handleScreenshot(this)">
+          <input type="file" accept="image/*" capture="environment" id="screenshotInput" onchange="handleScreenshot(this)">
           <div id="screenshotPlaceholder">
             <span style="font-size:2.5rem;">📷</span>
-            <p style="font-size:13px; color:var(--primary); font-weight:600; margin-top:8px;">Tap to upload screenshot / स्क्रीनशॉट अपलोड करने के लिए टैप करें</p>
+            <p style="font-size:13px; color:var(--primary); font-weight:600; margin-top:8px;">Payment Screenshot Chunein (Auto UTR Detect) / भुगतान स्क्रीनशॉट चुनें (UTR अपने-आप पहचानें)</p>
             <p style="font-size:11px; color:#999;">JPG, PNG supported / JPG, PNG फ़ाइल स्वीकार हैं</p>
           </div>
           <img id="screenshotPreview" class="preview-img" alt="Payment screenshot preview" style="display:none;">
         </div>
       </div>
       
-      <button class="btn-checkout" id="confirmBtn" onclick="confirmPayment()" style="background:var(--gray); cursor:not-allowed;" disabled>
-        ⬆️ Upload Screenshot to Confirm / पुष्टि के लिए स्क्रीनशॉट अपलोड करें
-      </button>
-      
-      <button onclick="closePaymentModal()" style="margin-top:10px; background:none; border:none; color:var(--gray); cursor:pointer; font-size:13px;">← Cancel / रद्द करें</button>
+      <div class="form-group" style="margin:10px 0;text-align:left;">
+        <label for="utrNumber" style="display:block;font-size:13px;font-weight:700;margin-bottom:5px;">Detected UTR / मिला हुआ UTR नंबर</label>
+        <input id="utrNumber" name="utrNumber" type="text" inputmode="numeric" readonly aria-readonly="true" placeholder="12-digit UTR / 12 अंकों का UTR" style="width:100%;min-height:46px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:#f1f5f9;font-size:17px;font-weight:800;letter-spacing:1px;">
+        <p id="utrStatus" class="utr-status" role="status" aria-live="polite">स्क्रीनशॉट चुनने पर UTR अपने-आप खोजा जाएगा।</p>
+      </div>
+
+      <div class="payment-confirm-sticky">
+        <button class="btn-checkout" id="confirmBtn" onclick="confirmPayment()" style="background:var(--gray);cursor:not-allowed;" disabled>
+          ✅ Confirm Order / ऑर्डर पक्का करें
+        </button>
+        <button type="button" onclick="closePaymentModal()" style="margin-top:8px;background:none;border:0;color:var(--gray);cursor:pointer;font-size:13px;">← Cancel / रद्द करें</button>
+      </div>
     </div>
   </div>
 
@@ -282,6 +303,10 @@
     let orderData = null;
     let customerInfo = null;
     let paymentScreenshot = null;
+    let paymentUtr = '';
+    let paymentOcrSequence = 0;
+    const CHECKOUT_UPI_ID = 'Q623952089@ybl';
+    const CHECKOUT_UPI_NAME = '4A kirana store';
     let deliveryLocation = null;
     let locationMode = '';
     let locationRequestSequence = 0;
@@ -364,6 +389,9 @@
       orderData = draft.order;
       customerInfo = draft.order.customer;
       paymentScreenshot = draft.paymentScreenshot || null;
+      paymentUtr = String(draft.order.paymentReference || '').replace(/\D/g, '');
+      document.getElementById('utrNumber').value = paymentUtr;
+      if (paymentUtr) setUtrStatus('✅ UTR मिल गया: ' + paymentUtr, 'success');
       if (customerInfo) {
         [['custName', customerInfo.name], ['custMobile', customerInfo.mobile], ['custEmail', customerInfo.email], ['custAddress', customerInfo.address], ['custLandmark', customerInfo.landmark], ['custCity', customerInfo.city], ['custPincode', customerInfo.pincode]].forEach(([id, value]) => {
           const field = document.getElementById(id);
@@ -375,13 +403,27 @@
         document.getElementById('screenshotPreview').style.display = 'block';
         document.getElementById('screenshotPlaceholder').style.display = 'none';
         document.getElementById('screenshotUpload').classList.add('has-image');
-        const button = document.getElementById('confirmBtn');
-        button.disabled = false;
-        button.style.background = 'var(--primary)';
-        button.style.cursor = 'pointer';
-        button.textContent = '✅ Confirm Order & Send on WhatsApp / ऑर्डर पक्का करें और WhatsApp पर भेजें';
       }
+      setConfirmButtonReady(!!paymentScreenshot && /^\d{12}$/.test(paymentUtr));
       showPaymentModal(orderData.totalAmount, customerInfo && customerInfo.name);
+    }
+
+    function setUtrStatus(message, state = '') {
+      const status = document.getElementById('utrStatus');
+      if (!status) return;
+      status.textContent = message;
+      status.className = 'utr-status' + (state ? ' ' + state : '');
+    }
+
+    function setConfirmButtonReady(ready) {
+      const button = document.getElementById('confirmBtn');
+      if (!button) return;
+      button.disabled = !ready;
+      button.style.background = ready ? 'var(--primary)' : 'var(--gray)';
+      button.style.cursor = ready ? 'pointer' : 'not-allowed';
+      button.textContent = ready
+        ? '✅ Confirm Order / ऑर्डर पक्का करें'
+        : '⬆️ Screenshot से UTR की पुष्टि करें';
     }
 
     let savedAddresses = [];
@@ -1030,31 +1072,59 @@
       document.getElementById('payAmount').textContent = total;
       document.getElementById('upiPaymentModal').classList.remove('hidden');
       document.getElementById('upiPaymentModal').style.display = 'flex';
-      const cfg = (typeof getSettings === 'function') ? getSettings() : { upiId: 'goluk147147@ybl', upiName: '4astore' };
-      const payee = cfg.upiId || 'goluk147147@ybl';
-      const upiName = cfg.upiName || '4astore';
-      const payeeName = encodeURIComponent(upiName);
-      const note = encodeURIComponent(upiName + ' Order');
       const amount = Number(total).toFixed(2);
-      window.currentUpiId = payee;
-      window.currentUpiLink = `upi://pay?pa=${payee}&pn=${payeeName}&am=${amount}&cu=INR&tn=${note}`;
-      document.querySelectorAll('[data-upi-id]').forEach(el => el.textContent = payee);
-      document.querySelectorAll('[data-upi-name]').forEach(el => el.textContent = upiName);
+      const upiName = encodeURIComponent(CHECKOUT_UPI_NAME);
+      const upiId = encodeURIComponent(CHECKOUT_UPI_ID);
+      window.currentUpiId = CHECKOUT_UPI_ID;
+      window.currentUpiLink = `upi://pay?pa=${upiId}&pn=${upiName}&am=${amount}&cu=INR&tn=Order%20Payment`;
+      const intentButton = document.getElementById('upiIntentButton');
+      intentButton.href = window.currentUpiLink;
+      intentButton.innerHTML = `⚡ Pay ₹${Number(total).toFixed(0)} via PhonePe / GPay / Any UPI`;
+      document.querySelectorAll('[data-upi-id]').forEach(el => el.textContent = CHECKOUT_UPI_ID);
+      document.querySelectorAll('[data-upi-name]').forEach(el => el.textContent = CHECKOUT_UPI_NAME);
       renderUpiQr(window.currentUpiLink);
-      speakPaymentGuide(name, total);
+      setTimeout(() => speakPaymentGuide(), 450);
+    }
+
+    function launchUpiPayment(event) {
+      event.preventDefault();
+      const status = document.getElementById('upiLaunchStatus');
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (!window.AndroidApp && !isMobile) {
+        status.className = 'upi-launch-status fallback';
+        status.textContent = 'UPI app इस कंप्यूटर पर उपलब्ध नहीं है। नीचे QR कोड स्कैन करें या दूसरे फ़ोन से भुगतान करें।';
+        document.getElementById('qrCode').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      status.className = 'upi-launch-status';
+      status.textContent = 'UPI app खोली जा रही है...';
+      if (window.__upiLaunchTimeout) clearTimeout(window.__upiLaunchTimeout);
+      const handleReturn = () => {
+        if (document.hidden) {
+          clearTimeout(window.__upiLaunchTimeout);
+          status.textContent = 'भुगतान के बाद इसी पेज पर वापस आएँ और स्क्रीनशॉट चुनें।';
+          document.removeEventListener('visibilitychange', handleReturn);
+        }
+      };
+      document.addEventListener('visibilitychange', handleReturn);
+      window.__upiLaunchTimeout = setTimeout(() => {
+        document.removeEventListener('visibilitychange', handleReturn);
+        if (!document.hidden) {
+          status.className = 'upi-launch-status fallback';
+          status.textContent = 'UPI app नहीं खुली? नीचे QR कोड स्कैन करें या दूसरे फ़ोन से भुगतान करें।';
+          document.getElementById('qrCode').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 1800);
+
+      window.location.href = window.currentUpiLink;
     }
 
     // ==========================================================
     // HINDI VOICE GUIDE on the payment screen (dynamic name + amount)
     // ==========================================================
-    function speakPaymentGuide(name, amount) {
-      const firstName = (name || 'grahak').trim().split(' ')[0];
-      const msg = `Namaskar ${firstName} ji. Aapke order ki rashi ${amount} rupaye hai. `
-                + `Payment karne ke liye, niche diya gaya Q R code scan karein. `
-                + `Ya U P I ID copy karke, Google Pay, PhonePe ya Paytm se payment karein. `
-                + `Payment hone ke baad, uska screenshot niche upload karein. `
-                + `Uske baad, confirm button dabakar apna order confirm karein. `
-                + `4A Store me order karne ke liye dhanyavaad.`;
+    function speakPaymentGuide() {
+      const msg = 'हरे बटन से फ़ोनपे या गूगल पे में भुगतान करें। वापस आकर UTR साफ़ दिखने वाला स्क्रीनशॉट चुनें। UTR अपने-आप पढ़ा जाएगा। फिर ऑर्डर पक्का करें। भुगतान जाँचकर ऑर्डर भेजा जाएगा।';
 
       // Inside the Android app -> use the phone's native TTS (guaranteed).
       if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
@@ -1136,26 +1206,76 @@
     function handleScreenshot(input) {
       const file = input.files[0];
       if (!file) return;
-
+      const scanId = ++paymentOcrSequence;
+      paymentUtr = '';
+      document.getElementById('utrNumber').value = '';
+      setConfirmButtonReady(false);
+      setUtrStatus('Checking image... / तस्वीर जाँची जा रही है...');
       const reader = new FileReader();
       reader.onload = function(e) {
         // Downscale/compress the image so big phone photos (often >6MB) upload
         // reliably to the server. Falls back to the original if anything fails.
-        compressImage(e.target.result, 1000, 0.7, function(compressed) {
+        const originalImage = e.target.result;
+        compressImage(originalImage, 1000, 0.7, async function(compressed) {
+          if (scanId !== paymentOcrSequence) return;
           paymentScreenshot = compressed || e.target.result;
           document.getElementById('screenshotPreview').src = paymentScreenshot;
           document.getElementById('screenshotPreview').style.display = 'block';
           document.getElementById('screenshotPlaceholder').style.display = 'none';
           document.getElementById('screenshotUpload').classList.add('has-image');
-
-          const btn = document.getElementById('confirmBtn');
-          btn.disabled = false;
-          btn.style.background = 'var(--primary)';
-          btn.style.cursor = 'pointer';
-          btn.textContent = '✅ Confirm Order & Send on WhatsApp / ऑर्डर पक्का करें और WhatsApp पर भेजें';
+          await detectScreenshotUtr(paymentScreenshot, scanId);
         });
       };
+      reader.onerror = () => {
+        setUtrStatus('Image could not be read. Choose another screenshot / तस्वीर नहीं पढ़ी गई। दूसरा स्क्रीनशॉट चुनें।', 'error');
+      };
       reader.readAsDataURL(file);
+    }
+
+    async function detectScreenshotUtr(image, scanId) {
+      if (!window.Tesseract) {
+        setUtrStatus('OCR could not load. Check internet and choose the screenshot again / OCR लोड नहीं हुआ। इंटरनेट जाँचकर फिर से चुनें।', 'error');
+        return;
+      }
+      try {
+        const result = await Tesseract.recognize(image, 'eng', {
+          logger: progress => {
+            if (scanId === paymentOcrSequence && progress.status === 'recognizing text') {
+              setUtrStatus('Checking image... ' + Math.round((progress.progress || 0) * 100) + '% / तस्वीर जाँची जा रही है...');
+            }
+          }
+        });
+        if (scanId !== paymentOcrSequence) return;
+        const text = result.data.text || '';
+        const labeled = text.match(/(?:UPI\s*Ref|UTR|Ref|Txn\s*ID)[^\d]*(\d{12})/i);
+        const match = labeled ? labeled[1] : text.match(/\b\d{12}\b/)?.[0];
+        if (!match) {
+          setUtrStatus('UTR not found. Choose a clearer payment screenshot; do not type the number / UTR नहीं मिला। साफ़ स्क्रीनशॉट चुनें; नंबर टाइप न करें।', 'error');
+          return;
+        }
+        paymentUtr = match;
+        document.getElementById('utrNumber').value = paymentUtr;
+        setUtrStatus('✅ UTR मिल गया: ' + paymentUtr, 'success');
+        setConfirmButtonReady(!!paymentScreenshot && /^\d{12}$/.test(paymentUtr));
+        speakPaymentReferenceFound();
+      } catch (error) {
+        if (scanId === paymentOcrSequence) {
+          setUtrStatus('Could not read this image. Choose a clearer payment screenshot / तस्वीर पढ़ी नहीं जा सकी। साफ़ स्क्रीनशॉट चुनें।', 'error');
+        }
+      }
+    }
+
+    function speakPaymentReferenceFound() {
+      const message = 'आपका पेमेंट नंबर मिल गया है। अब ऑर्डर पक्का करें।';
+      if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
+        try { window.AndroidApp.speak(message); return; } catch (error) { }
+      }
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.lang = 'hi-IN';
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
     }
 
     // Resize an image data URI to max width/height and re-encode as JPEG.
@@ -1202,6 +1322,14 @@
         showToast('📸 Please upload your payment screenshot first / कृपया पहले भुगतान का स्क्रीनशॉट अपलोड करें।', 'error');
         return;
       }
+      const detectedUtr = document.getElementById('utrNumber').value.trim();
+      if (!/^\d{12}$/.test(detectedUtr)) {
+        setUtrStatus('A valid 12-digit UTR is required. Choose a clearer screenshot / सही 12 अंकों का UTR ज़रूरी है। साफ़ स्क्रीनशॉट चुनें।', 'error');
+        setConfirmButtonReady(false);
+        return;
+      }
+      paymentUtr = detectedUtr;
+      customerInfo.paymentReference = paymentUtr;
       
       // Place order with screenshot reference
       const retryOrder = orderData && !orderData.serverSaved ? orderData : null;
