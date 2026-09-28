@@ -56,9 +56,83 @@ let dbUsers = [];
 let dbOrders = [];
 let dbAdmin = null;
 
+// Session keep-alive mechanism for WebView (Android app)
+// Sends periodic requests to server to keep session alive
+let sessionKeepAliveInterval = null;
+
+function startSessionKeepAlive() {
+  // Only start if in app (webview)
+  if (!window.AndroidApp) return;
+
+  // Keep session alive every 2 minutes
+  if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
+  
+  sessionKeepAliveInterval = setInterval(() => {
+    const user = getLoggedInUser();
+    if (!user) {
+      clearInterval(sessionKeepAliveInterval);
+      return;
+    }
+
+    // Send a lightweight request to keep session active on server
+    fetch('api/users.php?action=session', { 
+      cache: 'no-store', 
+      credentials: 'same-origin',
+      keepalive: true  // Important for app - keeps connection alive
+    })
+      .then(r => r.json())
+      .then(result => {
+        if (!result.success || !result.user || !result.user.mobile) {
+          // Session lost
+          localStorage.removeItem('4astore_user');
+          updateLoginUI();
+        }
+      })
+      .catch(() => {
+        // Network error - don't logout, just keep trying
+      });
+  }, 120000); // 2 minutes
+}
+
+function stopSessionKeepAlive() {
+  if (sessionKeepAliveInterval) {
+    clearInterval(sessionKeepAliveInterval);
+    sessionKeepAliveInterval = null;
+  }
+}
+
 // ============================================
 // INITIALIZATION
 // ============================================
+document.addEventListener('DOMContentLoaded', () => {
+  checkAssetVersion();   // auto-refresh if admin pushed a new build
+  loadData();
+  updateCartBadge();
+  updateLoginUI();
+  showAppVersion();
+  updateUpiDisplays();
+  injectDownloadAppButton();
+  applyHideMode();                       // catalog-only mode: hide cart/buy UI
+  // Re-apply after settings finish loading from the server
+  window.addEventListener('dataLoaded', applyHideMode);
+  
+  // Async session sync - doesn't block page load
+  syncSessionWithServerAsync();
+  
+  // Start session keep-alive for app (WebView)
+  startSessionKeepAlive();
+  
+  // Listen for app coming back to foreground (WebView only)
+  if (window.AndroidApp) {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        // App came to foreground - verify session
+        console.log('App resumed - verifying session');
+        syncSessionWithServerAsync();
+      }
+    });
+  }
+});
 document.addEventListener('DOMContentLoaded', () => {
   checkAssetVersion();   // auto-refresh if admin pushed a new build
   loadData();
@@ -84,16 +158,25 @@ function syncSessionWithServerAsync() {
     .then(result => {
       if (result.success && result.user && result.user.mobile) {
         const serverUser = result.user;
+        // ALWAYS sync from server - server is source of truth
+        loginUser(serverUser.name, serverUser.mobile, serverUser.username, serverUser.mode || serverUser.role, serverUser.backendRider === true, false);
+      } else {
+        // Server says no session - only clear if NO local data exists
         const localUser = getLoggedInUser();
-        
-        if (!localUser || String(localUser.mobile) !== String(serverUser.mobile)) {
-          // Update localStorage to match server session
-          loginUser(serverUser.name, serverUser.mobile, serverUser.username, serverUser.mode || serverUser.role, serverUser.backendRider === true, false);
+        if (localUser) {
+          // Local session exists but server has no session
+          // This could be a network issue or cookie problem
+          // For WebView: retry after 5 seconds
+          if (window.AndroidApp) {
+            console.log('Server session mismatch - retrying in 5s');
+            setTimeout(syncSessionWithServerAsync, 5000);
+          }
         }
       }
     })
-    .catch(() => {
+    .catch((err) => {
       // Network error: keep localStorage as is
+      console.log('Session sync network error - keeping local session', err.message);
     });
 }
 
@@ -360,7 +443,7 @@ async function requireLogin() {
     const sessionUser = result.success && result.user;
     
     if (!sessionUser || !sessionUser.mobile) {
-      // No server session - clear local state only if needed
+      // No server session - only clear local if server explicitly says no
       if (localUser) {
         localStorage.removeItem('4astore_user');
       }
@@ -368,16 +451,19 @@ async function requireLogin() {
       return false;
     }
 
-    // Server session exists - sync localStorage
+    // Server session exists - ALWAYS sync and preserve
     const sessionMode = sessionUser.mode || sessionUser.role;
-    if (!localUser || String(localUser.mobile) !== String(sessionUser.mobile)
-      || localUser.role !== sessionMode || localUser.backendRider !== (sessionUser.backendRider === true)) {
-      loginUser(sessionUser.name, sessionUser.mobile, sessionUser.username, sessionMode, sessionUser.backendRider === true, false);
-    }
+    
+    // Always update localStorage from server (server is the source of truth)
+    loginUser(sessionUser.name, sessionUser.mobile, sessionUser.username, sessionMode, sessionUser.backendRider === true, false);
+    
     return true;
   } catch (e) {
-    // Network error - trust localStorage if it exists
-    if (localUser) return true;
+    // Network error - TRUST localStorage if it exists
+    if (localUser) {
+      console.log('Network error - keeping local session alive');
+      return true;
+    }
     redirectToLogin();
     return false;
   }

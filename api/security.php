@@ -5,6 +5,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     // This ensures user stays logged in across browser restarts and device reboots.
     ini_set('session.gc_maxlifetime', '31536000');
     ini_set('session.gc_probability', '0');  // Disable automatic garbage collection to preserve sessions
+    ini_set('session.cookie_lifetime', '31536000');  // 1 year cookie lifetime
     
     session_name('4astore_session');
     session_set_cookie_params([
@@ -27,6 +28,10 @@ if (!empty($_SESSION['user'])) {
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
+    
+    // Touch the session file to update its modification time (for garbage collection)
+    // This prevents the session from being garbage collected even if gc_probability is > 0
+    $_SESSION['_lastActivity'] = time();
 }
 
 header('Content-Type: application/json');
