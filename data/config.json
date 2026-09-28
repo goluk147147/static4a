@@ -27,7 +27,6 @@
             "active": true
         },
         {
-            "id": 3,
             "title": "🏷️ Daily Essentials at Best Prices",
             "subtitle": "Up to 25% OFF on rice, oil, dal and more",
             "btnText": "View Offers →",
@@ -36,8 +35,9 @@
                 "#bf360c",
                 "#ff7043"
             ],
-            "active": true,
-            "festival": ""
+            "image": "data/banners/banner_20260928_120421_2d580d18.webp",
+            "festival": "",
+            "active": true
         },
         {
             "id": 4,
@@ -170,7 +170,6 @@
             "festival": "chhath"
         },
         {
-            "id": 14,
             "title": "🚀 Fast Delivery in Chandargarh",
             "subtitle": "Order now, get delivered quick – only for 824301",
             "btnText": "Order Now →",
@@ -179,8 +178,9 @@
                 "#e65100",
                 "#fb8c00"
             ],
-            "active": true,
-            "festival": ""
+            "image": "data/banners/banner_20260928_120404_7fa70c9f.webp",
+            "festival": "",
+            "active": true
         }
     ],
     "festivalAds": {
