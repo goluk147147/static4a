@@ -10,8 +10,8 @@ android {
         applicationId "com.store4a.app"
         minSdk 24
         targetSdk 36
-        versionCode 14
-        versionName "1.7.6"
+        versionCode 17
+        versionName "1.7.9"
     }
 
     signingConfigs {

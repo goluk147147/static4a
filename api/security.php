@@ -6,11 +6,22 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_name('4astore_session');
     session_set_cookie_params([
         'lifetime' => 31536000,
+        'path' => '/',
         'httponly' => true,
         'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'samesite' => 'Lax'
     ]);
     session_start();
+}
+
+if (!empty($_SESSION['user'])) {
+    setcookie(session_name(), session_id(), [
+        'expires' => time() + 31536000,
+        'path' => '/',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
 }
 
 header('Content-Type: application/json');

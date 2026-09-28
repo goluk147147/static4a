@@ -1408,6 +1408,7 @@
     </div>
   </div>
 
+  <script src="assets/js/notifications.js"></script>
   <script>
     let orders = [];
     let storeLocation = { lat: STORE_LOCATION_FALLBACK.latitude, lng: STORE_LOCATION_FALLBACK.longitude };
@@ -1783,7 +1784,7 @@
 
       const phone = String(order.phone || '').replace(/\s+/g, '').replace(/[^\d+]/g, '');
       if (!phone) {
-        alert('Customer phone number is not available.');
+        showAppToast('Customer phone number is not available.', 'error');
         return;
       }
 
@@ -1948,7 +1949,7 @@
         }
       } catch (error) {
         console.error('Accept order failed', error);
-        alert(error.message || 'Order accept nahi hua. Please dobara try karein.');
+        showAppToast(error.message || 'Order accept nahi hua. Please dobara try karein.', 'error');
         return;
       }
 
@@ -1966,7 +1967,7 @@
         order.status = 'Out for Delivery';
         order.raw.orderStatus = 'Out for Delivery';
       } catch (error) {
-        alert(error.message || 'Delivery start nahi hua. Please dobara try karein.');
+        showAppToast(error.message || 'Delivery start nahi hua. Please dobara try karein.', 'error');
         return;
       }
       startRiderGps();
@@ -1979,7 +1980,10 @@
     async function markDelivered() {
       const order = getActiveOrder();
       if (!order) return;
-      if (!confirm(`Complete delivery for ${order.id}?`)) return;
+      const confirmed = await showAppConfirm(`Complete delivery for ${order.id}?`, {
+        title: 'Mark order delivered?', confirmText: 'Mark delivered'
+      });
+      if (!confirmed) return;
 
       stopRiderGps();
 
@@ -2005,7 +2009,7 @@
         if (!trackingResponse.ok) throw new Error('Tracking status update failed');
       } catch (error) {
         console.error('Update delivered status failed', error);
-        alert(error.message || 'Delivery status update failed. Please retry.');
+        showAppToast(error.message || 'Delivery status update failed. Please retry.', 'error');
         startRiderGps();
         return;
       }

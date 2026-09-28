@@ -201,14 +201,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'register') {
         $name = trim($input['name'] ?? '');
-        $mobile = trim($input['mobile'] ?? '');
+        $mobile = preg_replace('/\D+/', '', (string) ($input['mobile'] ?? ''));
         $username = strtolower(trim($input['username'] ?? ''));
+        $email = strtolower(trim((string) ($input['email'] ?? '')));
         $password = $input['password'] ?? '';
+        $emailProof = $_SESSION['signupEmailVerified'] ?? [];
 
-        // Validation
-        if (!$name || !$mobile || !$username || !$password) {
-            echo json_encode(['success' => false, 'message' => 'All fields are required']);
-            exit;
+        if (!$name || !preg_match('/^[6-9][0-9]{9}$/', $mobile) || !$username || strlen($password) < 4) {
+            apiJson(['success' => false, 'message' => 'Enter a name, valid 10-digit mobile, username and 4+ character password'], 422);
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strtolower((string) ($emailProof['email'] ?? '')) !== $email || (int) ($emailProof['expiresAt'] ?? 0) < time()) {
+            unset($_SESSION['signupEmailVerified']);
+            apiJson(['success' => false, 'message' => 'Verify your email before creating an account.'], 403);
         }
 
         $users = getUsers();
@@ -222,6 +226,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($user['mobile'] === $mobile) {
                 echo json_encode(['success' => false, 'message' => 'Mobile number already registered']);
                 exit;
+            }
+            $registeredEmails = [
+                strtolower((string) ($user['recoveryEmail'] ?? '')),
+                strtolower((string) ($user['email'] ?? ''))
+            ];
+            if (in_array($email, $registeredEmails, true)) {
+                apiJson(['success' => false, 'message' => 'Email already linked to another account'], 409);
             }
         }
 
@@ -238,6 +249,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'name' => $name,
             'mobile' => $mobile,
             'username' => $username,
+            'recoveryEmail' => $email,
+            'recoveryEmailVerified' => true,
+            'recoveryEmailVerifiedAt' => date('c'),
             'passwordHash' => password_hash($password, PASSWORD_DEFAULT),
             'registeredAt' => date('c'),
             'lastLogin' => date('c')
@@ -249,6 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sessionUser = safeUser($newUser);
         $sessionUser['mode'] = 'customer';
         $_SESSION['user'] = $sessionUser;
+        unset($_SESSION['signupEmailVerified'], $_SESSION['signupEmailOtp']);
         echo json_encode(['success' => true, 'user' => $sessionUser]);
         exit;
     }

@@ -198,6 +198,16 @@
       width: 40px;
       height: 40px;
     }
+    .dev-modal { position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(9,24,31,.62); }
+    .dev-modal.open { display:flex; }
+    .dev-modal-card { width:min(380px,100%); padding:22px; border-radius:12px; background:#fff; box-shadow:0 18px 55px rgba(0,0,0,.3); color:#19352a; }
+    .dev-modal-card h2 { margin-bottom:8px; font-size:20px; }
+    .dev-modal-card p { margin-bottom:14px; color:#64748b; font-size:13px; }
+    .dev-modal-card input { width:100%; min-height:44px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; }
+    .dev-modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+    .dev-modal-actions button { min-height:40px; padding:8px 14px; border:0; border-radius:7px; font-weight:700; cursor:pointer; }
+    .dev-modal-actions .cancel { background:#eef2f5; color:#334155; }
+    .dev-modal-actions .unlock { background:#217a55; color:#fff; }
 
     @media (max-width: 600px) {
       h1 { font-size: 2rem; }
@@ -284,7 +294,19 @@
 
   <!-- Secret Dev Access: Triple click bottom-right corner to go to main site -->
   <div class="dev-access" id="devAccess" title=""></div>
+  <div class="dev-modal" id="devAccessModal" aria-hidden="true" onclick="if(event.target===this) closeDevAccess()">
+    <section class="dev-modal-card" role="dialog" aria-modal="true" aria-labelledby="devAccessTitle">
+      <h2 id="devAccessTitle">Developer access</h2>
+      <p>Enter the access password to continue.</p>
+      <input id="devAccessPassword" type="password" autocomplete="current-password" aria-label="Access password">
+      <div class="dev-modal-actions">
+        <button class="cancel" type="button" onclick="closeDevAccess()">Cancel</button>
+        <button class="unlock" type="button" onclick="unlockDevAccess()">Continue</button>
+      </div>
+    </section>
+  </div>
 
+  <script src="assets/js/notifications.js"></script>
   <script>
     // Countdown to 16 September 2026, 3:00 PM IST
     const launchDate = new Date('2026-09-16T15:00:00+05:30').getTime();
@@ -322,15 +344,41 @@
     document.getElementById('devAccess').addEventListener('click', function() {
       clickCount++;
       if (clickCount === 3) {
-        // Show password prompt
-        const pass = prompt('Dev Access Password:');
-        if (pass === '4adev') {
-          window.location.href = './index.html?devmode=4adev';
-        }
+        openDevAccess();
         clickCount = 0;
       }
       clearTimeout(clickTimer);
       clickTimer = setTimeout(() => { clickCount = 0; }, 1000);
+    });
+
+    function openDevAccess() {
+      const modal = document.getElementById('devAccessModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      document.getElementById('devAccessPassword').focus();
+    }
+
+    function closeDevAccess() {
+      const modal = document.getElementById('devAccessModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.getElementById('devAccessPassword').value = '';
+    }
+
+    function unlockDevAccess() {
+      const input = document.getElementById('devAccessPassword');
+      if (input.value === '4adev') {
+        window.location.href = './index.html?devmode=4adev';
+        return;
+      }
+      showAppToast('Access password is incorrect.', 'error');
+      input.value = '';
+      input.focus();
+    }
+
+    document.getElementById('devAccessPassword').addEventListener('keydown', event => {
+      if (event.key === 'Enter') unlockDevAccess();
+      if (event.key === 'Escape') closeDevAccess();
     });
   </script>
 </body>

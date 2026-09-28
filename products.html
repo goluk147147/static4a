@@ -96,7 +96,7 @@
       <div class="header-actions">
         <div class="login-btn-area"></div>
         <a href="order-history">📋 <span class="action-text">Orders</span></a>
-        <a href="cart" class="cart-badge">🛒 <span class="action-text">Cart</span><span class="badge cart-count" style="display:none">0</span></a>
+        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span><span class="badge cart-count" style="display:none">0</span></a>
       </div>
     </div>
   </header>
@@ -173,8 +173,8 @@
     <div class="footer-grid">
       <div class="footer-col"><h4>About 4astore</h4><p>Local grocery store, Chandargarh.</p></div>
       <div class="footer-col"><h4>Store</h4><p>Gajana Road, Chandargarh, Bihar–824301</p><p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p></div>
-      <div class="footer-col"><h4>Links</h4><a href="./">Home</a><a href="products">Products</a><a href="cart">Cart</a><a href="order-history">Orders</a></div>
-      <div class="footer-col"><h4>Payment</h4><p>UPI: <strong data-upi-id>goluk147147@ybl</strong></p><span class="delivery-info-badge">📍 824301</span></div>
+      <div class="footer-col"><h4>Links</h4><a href="./">Home</a><a href="products">Products</a><a href="cart.html">Cart</a><a href="order-history">Orders</a></div>
+      <div class="footer-col"><h4>Payment</h4><p>UPI: <strong data-upi-id>Q623952089@ybl</strong></p><span class="delivery-info-badge">📍 824301</span></div>
     </div>
     <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
   </footer>
@@ -183,7 +183,7 @@
     <div class="nav-items">
       <a href="./" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
       <a href="products" class="nav-item active"><span class="nav-icon">📂</span>Categories</a>
-      <a href="cart" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
       <a href="order-history" class="nav-item"><span class="nav-icon">📦</span>Orders</a>
       <a href="profile" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
     </div>
@@ -197,7 +197,12 @@
     let midBannerHTML = '';
 
     window.addEventListener('dataLoaded', async () => {
-      try { siteConfig = await (await fetch('data/config.json')).json(); } catch(e) { siteConfig = {festivalAds:{}}; }
+      try {
+        const response = await fetch('api/config.php?t=' + Date.now(), { cache: 'no-store' });
+        if (!response.ok) throw new Error('Site configuration unavailable');
+        const result = await response.json();
+        siteConfig = result.success && result.config ? result.config : { festivalAds: {} };
+      } catch(e) { siteConfig = { festivalAds: {} }; }
 
       const params = new URLSearchParams(window.location.search);
       currentSearch = params.get('search') || '';

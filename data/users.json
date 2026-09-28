@@ -14,11 +14,15 @@
         "mobile": "8002116652",
         "username": "akas800",
         "registeredAt": "2026-08-26T08:44:16+02:00",
-        "lastLogin": "2026-09-26T17:31:12+02:00",
+        "lastLogin": "2026-09-27T16:17:37+02:00",
         "customDelivery": 0,
         "role": "rider",
         "backendRider": true,
-        "passwordHash": "$2y$10$Ky3GcKCdGU\/LKuizSN5Uf.NLrewPVnYWFs9JSoSJ0emJfJHF1c4Dy"
+        "passwordHash": "$2y$10$8P\/LMUfs9jOvriycOR8zKOM0uHorKqTE0EBcOQdFXpazkSCia2RXm",
+        "recoveryEmail": "goluk147147@gmail.com",
+        "recoveryEmailVerified": true,
+        "recoveryEmailVerifiedAt": "2026-09-27T16:17:23+02:00",
+        "passwordResetAt": "2026-09-27T16:17:23+02:00"
     },
     {
         "id": 5,
@@ -37,5 +41,18 @@
         "passwordHash": "$2y$10$sk4dgtGkqP4rBwYjOtPDJeyzTHVqWh1xpwVA1\/VfyrrN3O2HFSm3e",
         "registeredAt": "2026-09-26T12:48:36+02:00",
         "lastLogin": "2026-09-26T12:48:36+02:00"
+    },
+    {
+        "id": 7,
+        "name": "Akash kumar",
+        "mobile": "8002116659",
+        "username": "akash jii",
+        "recoveryEmail": "akashjii300@gmail.com",
+        "recoveryEmailVerified": true,
+        "recoveryEmailVerifiedAt": "2026-09-27T15:52:31+02:00",
+        "passwordHash": "$2y$10$vkgHSEyAzuZ.idzPeArFne7QngIKen0NGSK6GIVoeG4WpyiOIbyMy",
+        "registeredAt": "2026-09-27T15:52:31+02:00",
+        "lastLogin": "2026-09-27T15:54:34+02:00",
+        "passwordResetAt": "2026-09-27T15:54:19+02:00"
     }
 ]

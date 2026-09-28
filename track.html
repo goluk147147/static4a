@@ -7,6 +7,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
   <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/notifications.js"></script>
   <script src="assets/js/store-location.js"></script>
   <!-- Leaflet (free OpenStreetMap maps, no API key) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -102,7 +103,7 @@
 
     function startTracking() {
       const id = document.getElementById('orderInput').value.trim();
-      if (!id) { alert('Order ID daalein'); return; }
+      if (!id) { showAppToast('Order ID daalein', 'error'); return; }
       currentOrder = id;
       document.getElementById('statusCard').style.display = 'block';
       fetch('api/settings.php?_=' + Date.now(), { cache: 'no-store' })

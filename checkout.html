@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Checkout - 4A Store</title>
   <meta name="description" content="4A Store - Secure checkout with UPI payment. Quick and easy grocery ordering.">
   <meta name="robots" content="noindex, nofollow, noarchive">
@@ -11,8 +11,29 @@
   <script src="assets/js/store-location.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
+    html { -webkit-text-size-adjust: 100%; overflow-x:hidden; }
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      max-width: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: auto;
+      padding-top: max(0px, env(safe-area-inset-top));
+      padding-bottom: max(0px, env(safe-area-inset-bottom));
+      -webkit-tap-highlight-color: transparent;
+    }
+    @media (max-width:768px) {
+      body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+    }
+    body.in-app-webview .top-bar {
+      padding-top: calc(8px + env(safe-area-inset-top));
+    }
+    body.in-app-webview .main-header {
+      padding-top: calc(10px + env(safe-area-inset-top));
+    }
     .checkout-page { max-width: 700px; margin: 16px auto; padding: 0 12px 32px; }
     .checkout-form { padding: 18px; backdrop-filter:none; -webkit-backdrop-filter:none; }
     .checkout-form h3 { margin-bottom: 14px; padding-bottom: 8px; }
@@ -34,7 +55,7 @@
     .address-summary { background:var(--primary-light); border:1px solid var(--border); border-radius:10px; padding:11px 12px; margin:10px 0 14px; }
     .address-summary-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
     .address-change-btn { border:0; background:none; color:var(--primary-dark); font-weight:800; cursor:pointer; padding:4px; }
-    .address-picker-modal { position:fixed; inset:0; z-index:5000; display:none; align-items:center; justify-content:center; background:rgba(18,24,30,.5); padding:calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 12px); backdrop-filter:blur(2px); }
+    .address-picker-modal { position:fixed; inset:0; z-index:5000; display:none; align-items:center; justify-content:center; background:rgba(18,24,30,.5); padding:calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 12px); backdrop-filter:blur(2px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
     .address-picker-modal.open { display:flex; }
     .address-picker-sheet { display:flex; flex-direction:column; width:min(100%,520px); max-height:min(82vh,720px); max-height:min(82dvh,720px); min-height:0; overflow:hidden; box-sizing:border-box; background:#fff; border-radius:16px; padding:18px 14px calc(12px + env(safe-area-inset-bottom)); box-shadow:0 10px 30px rgba(0,0,0,.18); }
     .address-picker-sheet h3 { border:0; margin:0 0 4px; padding:0; color:#2d211d; font-size:21px; }
@@ -46,7 +67,7 @@
     .address-search:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(44,111,173,.12); }
     .address-new-btn { width:100%; border:1px dashed var(--primary); background:#fffaf6; border-radius:9px; padding:12px; color:var(--primary-dark); font-weight:800; cursor:pointer; margin-top:8px; }
     .address-new-btn:hover { background:var(--primary-light); }
-    .address-editor-modal { position:fixed; inset:0; z-index:5050; width:100%; height:100vh; height:100dvh; min-height:0; box-sizing:border-box; overflow:hidden; display:none; align-items:flex-start; justify-content:center; background:rgba(18,24,30,.5); padding:calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 12px); backdrop-filter:blur(2px); }
+    .address-editor-modal { position:fixed; inset:0; z-index:5050; width:100%; height:100vh; height:100dvh; min-height:0; box-sizing:border-box; overflow-y:auto; -webkit-overflow-scrolling:touch; display:none; align-items:flex-start; justify-content:center; background:rgba(18,24,30,.5); padding:calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 12px); backdrop-filter:blur(2px); }
     .address-editor-modal.open { display:flex; }
     .address-editor-sheet { display:flex; flex-direction:column; width:min(100%,680px); max-height:calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); min-height:0; overflow:hidden; background:#fff; border-radius:16px; padding:14px 16px calc(10px + env(safe-area-inset-bottom)); box-shadow:0 10px 30px rgba(0,0,0,.2); }
     .address-editor-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; }
@@ -62,23 +83,43 @@
     .address-label-options input { accent-color:var(--primary); }
     .save-address-btn { width:100%; border:0; border-radius:10px; padding:13px; background:var(--primary); color:#fff; font-size:15px; font-weight:800; cursor:pointer; }
     @media (min-width:700px) { .address-editor-modal { align-items:center; padding:16px; } .address-editor-sheet { border-radius:16px; } }
-    .location-progress-modal { position:fixed; inset:0; z-index:5100; display:none; align-items:flex-start; justify-content:center; background:rgba(18,24,30,.48); padding:calc(env(safe-area-inset-top) + 24px) 16px 16px; }
+    .location-progress-modal { position:fixed; inset:0; z-index:5100; display:none; align-items:flex-start; justify-content:center; background:rgba(18,24,30,.48); padding:calc(env(safe-area-inset-top) + 24px) 16px 16px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
     .location-progress-modal.open { display:flex; }
     .location-progress-sheet { width:min(100%,350px); background:#fff; border-radius:16px; padding:24px 18px; text-align:center; box-shadow:0 10px 32px rgba(0,0,0,.2); }
     @media (min-width:700px) { .address-picker-modal, .address-editor-modal, .location-progress-modal { align-items:center; padding:16px; } }
-    @media (max-width:600px) { .checkout-form { padding:14px; } .checkout-page h2 { font-size:20px; } .location-choice-actions { grid-template-columns:1fr; } }
+    @media (max-width:600px) {
+      .checkout-form { padding:14px; }
+      .checkout-page { padding-left:10px; padding-right:10px; }
+      .checkout-page h2 { font-size:20px; }
+      .location-choice-actions { grid-template-columns:1fr; }
+      .payment-modal-sheet { max-width:100%; }
+      .upi-app-actions { grid-template-columns:1fr; }
+    }
+    @media (max-width:420px) {
+      .checkout-page { margin-top:8px; }
+      .checkout-form { padding:12px; }
+      .payment-confirm-sticky { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+    }
     .screenshot-upload { border:2px dashed var(--primary); border-radius:12px; padding:24px; text-align:center; cursor:pointer; transition:var(--transition); margin:16px 0; position:relative; }
     .screenshot-upload:hover { background:var(--primary-light); }
     .screenshot-upload input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; }
     .screenshot-upload .preview-img { max-width:200px; max-height:200px; border-radius:8px; margin-top:12px; }
     .screenshot-upload.has-image { border-color:var(--primary); background:var(--primary-light); }
-    .upi-pay-button { display:flex; width:100%; min-height:54px; align-items:center; justify-content:center; padding:12px; border-radius:11px; background:#0FA958; color:#fff; text-align:center; text-decoration:none; font-size:15px; font-weight:800; }
+    .upi-app-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0; }
+    .upi-pay-button { display:flex; width:100%; min-height:54px; align-items:center; justify-content:center; padding:12px; border:0; border-radius:11px; background:#0FA958; color:#fff; text-align:center; text-decoration:none; font:inherit; font-size:15px; font-weight:800; cursor:pointer; }
+    .upi-gpay-button { background:#4285f4; }
     .upi-audio-button { width:100%; min-height:44px; border:1px solid #b7ebce; border-radius:9px; background:#effcf4; color:#087a3d; font-weight:750; }
     .upi-launch-status { min-height:20px; margin:0 0 10px; color:#64748b; font-size:12px; line-height:1.45; }
     .upi-launch-status.fallback { color:#9a5800; font-weight:700; }
     .utr-status { min-height:24px; margin:8px 0; font-size:12px; color:var(--gray); text-align:left; }
     .utr-status.success { color:#087a3d; font-weight:750; }
     .utr-status.error { color:#b42318; font-weight:700; }
+    .utr-progress { display:none; align-items:center; gap:10px; margin:8px 0 12px; color:var(--primary-dark); font-size:12px; text-align:left; }
+    .utr-progress.visible { display:flex; }
+    .utr-progress-track { flex:1; height:8px; overflow:hidden; border-radius:999px; background:#e5e7eb; }
+    .utr-progress-fill { width:0; height:100%; border-radius:inherit; background:var(--primary); transition:width .2s ease; }
+    .utr-progress-track.indeterminate .utr-progress-fill { width:35%; animation:utr-progress-loading 1.1s ease-in-out infinite; }
+    @keyframes utr-progress-loading { from { transform:translateX(-110%); } to { transform:translateX(310%); } }
     .payment-confirm-sticky { position:sticky; bottom:-10px; padding:10px 0 calc(8px + env(safe-area-inset-bottom)); background:#fff; }
     .payment-modal-sheet { background:white; border-radius:16px; padding:20px; max-width:440px; width:100%; text-align:center; max-height:calc(100dvh - 24px); overflow-y:auto; }
     @media (max-width:480px) { .payment-modal-sheet { padding:16px; } }
@@ -98,7 +139,7 @@
       </form>
       <div class="header-actions">
         <div class="login-btn-area"></div>
-        <a href="cart" class="cart-badge">🛒 <span class="action-text">Cart</span>
+        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span>
           <span class="badge cart-count" style="display:none">0</span>
         </a>
       </div>
@@ -199,20 +240,24 @@
   </div>
 
   <!-- Step 2: UPI Payment + Screenshot Upload Modal -->
-  <div class="hidden" id="upiPaymentModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px;">
+  <div class="hidden" id="upiPaymentModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px; overflow-y:auto; -webkit-overflow-scrolling:touch;">
     <div class="payment-modal-sheet">
-      <h2 style="color:#111827; margin:0 0 4px;">4A Kirana Store</h2>
+      <h2 data-store-name style="color:#111827; margin:0 0 4px;">4A Store</h2>
       <p style="color:#64748b;font-size:12px;margin:0 0 12px;">📍 Chandargarh (824301)</p>
       <div style="color:#64748b;font-size:13px;">Payable Amount / देय राशि</div>
       <div style="color:#087a3d;font-size:30px;font-weight:850;margin-bottom:10px;">₹<span id="payAmount">0</span></div>
       <button class="upi-audio-button" type="button" onclick="speakPaymentGuide()">🔊 निर्देश दोबारा सुनें</button>
-      <a class="upi-pay-button" id="upiIntentButton" href="#" onclick="launchUpiPayment(event)" style="margin:12px 0;">⚡ Pay via PhonePe / GPay / Any UPI</a>
+      <div class="upi-app-actions">
+        <button class="upi-pay-button" id="upiIntentButton" type="button" onclick="launchUpiPayment(event, 'phonepe')">🟣 PhonePe खोलें</button>
+        <button class="upi-pay-button upi-gpay-button" id="upiGooglePayButton" type="button" onclick="launchUpiPayment(event, 'gpay')">🟢 Google Pay खोलें</button>
+      </div>
       <p class="upi-launch-status" id="upiLaunchStatus" role="status" aria-live="polite"></p>
-      <p style="color:#64748b;font-size:12px;margin:0 0 12px;">या दूसरे फ़ोन से नीचे दिया QR कोड स्कैन करें।</p>
+      <p style="color:#64748b;font-size:12px;margin:0 0 12px;">पहले QR सेव करें, फिर UPI App में Scan QR → Gallery चुनें। कंप्यूटर पर दूसरे फ़ोन से QR स्कैन करें।</p>
       
       <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:12px;">
         <div id="qrCode" style="display:flex; justify-content:center; margin-bottom:8px;"></div>
         <p style="font-size:12px;color:#64748b;margin:0;">Merchant QR / दुकानदार का QR</p>
+        <button type="button" onclick="downloadUpiQr()" style="min-height:44px;margin-top:10px;padding:8px 14px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155;font-weight:700;cursor:pointer;">⬇️ Save QR to Phone / QR फ़ोन में सेव करें</button>
       </div>
       
       <div style="background:var(--primary-light); padding:10px; border-radius:8px; margin-bottom:10px;">
@@ -233,7 +278,7 @@
         <p style="font-size:12px; color:#666; margin-bottom:10px;">स्क्रीनशॉट से 12 अंकों का UTR अपने-आप पढ़ा जाएगा। नंबर टाइप न करें।</p>
         
         <div class="screenshot-upload" id="screenshotUpload">
-          <input type="file" accept="image/*" capture="environment" id="screenshotInput" onchange="handleScreenshot(this)">
+          <input type="file" accept="image/*" id="screenshotInput" onchange="handleScreenshot(this)">
           <div id="screenshotPlaceholder">
             <span style="font-size:2.5rem;">📷</span>
             <p style="font-size:13px; color:var(--primary); font-weight:600; margin-top:8px;">Payment Screenshot Chunein (Auto UTR Detect) / भुगतान स्क्रीनशॉट चुनें (UTR अपने-आप पहचानें)</p>
@@ -247,6 +292,10 @@
         <label for="utrNumber" style="display:block;font-size:13px;font-weight:700;margin-bottom:5px;">Detected UTR / मिला हुआ UTR नंबर</label>
         <input id="utrNumber" name="utrNumber" type="text" inputmode="numeric" readonly aria-readonly="true" placeholder="12-digit UTR / 12 अंकों का UTR" style="width:100%;min-height:46px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:#f1f5f9;font-size:17px;font-weight:800;letter-spacing:1px;">
         <p id="utrStatus" class="utr-status" role="status" aria-live="polite">स्क्रीनशॉट चुनने पर UTR अपने-आप खोजा जाएगा।</p>
+        <div id="utrProgressWrap" class="utr-progress" aria-live="polite">
+          <div id="utrProgressTrack" class="utr-progress-track" role="progressbar" aria-label="UTR पढ़ने की प्रगति" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="utrProgressFill" class="utr-progress-fill"></div></div>
+          <span id="utrProgressLabel">कृपया प्रतीक्षा करें...</span>
+        </div>
       </div>
 
       <div class="payment-confirm-sticky">
@@ -263,7 +312,7 @@
     <div class="success-icon">🎉</div>
     <h2>Order Successfully Placed! / आपका ऑर्डर सफलतापूर्वक दर्ज हो गया!</h2>
     <p class="order-id" id="successOrderId"></p>
-    <p>Thank you for shopping with 4astore / 4A Store से खरीदारी करने के लिए धन्यवाद।</p>
+    <p>4A Store परिवार की तरफ़ से धन्यवाद। हम आपके भुगतान की पुष्टि करके जल्द ऑर्डर पूरा करेंगे।</p>
     <p>We will verify your payment and confirm shortly / हम भुगतान जाँचकर जल्द पुष्टि करेंगे।</p>
     <p id="emailStatus" style="margin-top:12px; font-size:13px; color:var(--primary);">✅ Order sent to store / ऑर्डर स्टोर को भेजा गया</p>
 
@@ -283,7 +332,7 @@
     <div class="footer-grid">
       <div class="footer-col"><h4>About 4astore / 4A Store के बारे में</h4><p>Your local online grocery store serving Chandargarh and nearby areas / चंद्रगढ़ और आसपास के क्षेत्रों की आपकी ऑनलाइन किराना दुकान।</p></div>
       <div class="footer-col"><h4>Store Address / दुकान का पता</h4><p>Gajana Road, Chandargarh, Nabinagar, Bihar – 824301</p><p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p></div>
-      <div class="footer-col"><h4>Payment / भुगतान</h4><p>UPI Only / केवल UPI: <strong data-upi-id>goluk147147@ybl</strong></p><span class="delivery-info-badge">📍 PIN Code / पिन कोड – 824301</span></div>
+      <div class="footer-col"><h4>Payment / भुगतान</h4><p>UPI Only / केवल UPI: <strong data-upi-id>Q623952089@ybl</strong></p><span class="delivery-info-badge">📍 PIN Code / पिन कोड – 824301</span></div>
     </div>
     <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
   </footer>
@@ -293,11 +342,12 @@
       <a href="./" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
       <a href="products" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
       <a href="#" class="nav-item"><span class="nav-icon">🔍</span>Search</a>
-      <a href="cart" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
       <a href="order-history" class="nav-item"><span class="nav-icon">📋</span>Orders</a>
     </div>
   </nav>
 
+  <script src="assets/js/notifications.js"></script>
   <script src="assets/js/app.js"></script>
   <script>
     let orderData = null;
@@ -305,8 +355,16 @@
     let paymentScreenshot = null;
     let paymentUtr = '';
     let paymentOcrSequence = 0;
-    const CHECKOUT_UPI_ID = 'Q623952089@ybl';
-    const CHECKOUT_UPI_NAME = '4A kirana store';
+    let upiQrSaved = false;
+    let paymentGuideCustomerName = '';
+    let paymentGuideTotal = 0;
+    function getCheckoutUpiSettings() {
+      const settings = typeof getSettings === 'function' ? getSettings() : {};
+      return {
+        upiId: String(settings.upiId || 'Q623952089@ybl').trim(),
+        upiName: String(settings.upiName || '4A Store').trim()
+      };
+    }
     let deliveryLocation = null;
     let locationMode = '';
     let locationRequestSequence = 0;
@@ -319,8 +377,9 @@
       try { callback(JSON.parse(resultJson)); } catch (error) { callback({ success: false, errorCode: 2 }); }
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
-      if (!requireLogin()) return;
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (window.AndroidApp) document.body.classList.add('in-app-webview');
+      if (!await requireLogin()) return;
       const cart = getCart();
       if (cart.length === 0) {
         document.getElementById('checkoutPage').innerHTML = `
@@ -413,6 +472,31 @@
       if (!status) return;
       status.textContent = message;
       status.className = 'utr-status' + (state ? ' ' + state : '');
+    }
+
+    function setUtrProgress(progress, label = '') {
+      const wrapper = document.getElementById('utrProgressWrap');
+      const track = document.getElementById('utrProgressTrack');
+      const fill = document.getElementById('utrProgressFill');
+      const progressLabel = document.getElementById('utrProgressLabel');
+      if (!wrapper || !track || !fill || !progressLabel) return;
+      if (progress === false) {
+        wrapper.classList.remove('visible');
+        track.classList.remove('indeterminate');
+        return;
+      }
+      wrapper.classList.add('visible');
+      progressLabel.textContent = label || 'कृपया प्रतीक्षा करें...';
+      if (progress === null) {
+        track.classList.add('indeterminate');
+        track.removeAttribute('aria-valuenow');
+        fill.style.width = '';
+        return;
+      }
+      const percent = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
+      track.classList.remove('indeterminate');
+      track.setAttribute('aria-valuenow', String(percent));
+      fill.style.width = percent + '%';
     }
 
     function setConfirmButtonReady(ready) {
@@ -965,9 +1049,8 @@
       if (!address) {
         const addressField = document.getElementById('custAddress');
         addressField.parentElement.classList.add('error');
-        showToast('Please enter your full delivery address / कृपया डिलीवरी का पूरा पता भरें।', 'error');
-        openAddressEditor();
-        setTimeout(focusAddressField, 80);
+        await prepareManualAddressMode();
+        showToast('डिलीवरी का पता चुनें या नया पता जोड़ें।', 'info');
         return;
       }
 
@@ -980,9 +1063,13 @@
       }
       if (!valid) { showToast('Please fill in all required fields / कृपया सभी ज़रूरी जानकारी भरें।', 'error'); return; }
       if (locationMode !== 'current' && locationMode !== 'manual') {
-        showToast('Choose current location or enter an address manually / कृपया वर्तमान लोकेशन चुनें या पता स्वयं भरें।', 'error');
-        document.querySelector('.location-choice-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
+        if (address && city && pincode === '824301') {
+          locationMode = 'manual';
+        } else {
+          showToast('Choose current location or enter an address manually / कृपया वर्तमान लोकेशन चुनें या पता स्वयं भरें।', 'error');
+          document.querySelector('.location-choice-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
       }
       const hasGpsLocation = deliveryLocation && Number.isFinite(Number(deliveryLocation.lat)) && Number.isFinite(Number(deliveryLocation.lng));
       if (locationMode === 'current' && !hasGpsLocation) {
@@ -1026,7 +1113,9 @@
 
       // 18+ age confirmation if the cart has any age-restricted item
       if (typeof cartHasAgeRestricted === 'function' && cartHasAgeRestricted()) {
-        const ok = confirm('⚠️ Your cart contains an age-restricted item. Tobacco causes cancer. Are you 18 or older? / आपके कार्ट में आयु-प्रतिबंधित सामान है। तंबाकू से कैंसर होता है। क्या आपकी उम्र 18 वर्ष या उससे अधिक है?');
+        const ok = await showAppConfirm('Your cart contains an age-restricted item. Tobacco causes cancer. Are you 18 or older? / आपके कार्ट में आयु-प्रतिबंधित सामान है। तंबाकू से कैंसर होता है। क्या आपकी उम्र 18 वर्ष या उससे अधिक है?', {
+          title: 'Age confirmation', confirmText: 'Yes, continue'
+        });
         if (!ok) { showToast('You must be 18 or older to order this item / इस सामान का ऑर्डर देने के लिए आपकी उम्र 18 वर्ष या उससे अधिक होनी चाहिए।', 'error'); return; }
       }
 
@@ -1072,86 +1161,108 @@
       document.getElementById('payAmount').textContent = total;
       document.getElementById('upiPaymentModal').classList.remove('hidden');
       document.getElementById('upiPaymentModal').style.display = 'flex';
+      paymentGuideCustomerName = String(name || (customerInfo && customerInfo.name) || document.getElementById('custName').value || '').trim();
+      paymentGuideTotal = Number(total) || 0;
+      upiQrSaved = false;
+      const paymentSettings = getCheckoutUpiSettings();
       const amount = Number(total).toFixed(2);
-      const upiName = encodeURIComponent(CHECKOUT_UPI_NAME);
-      const upiId = encodeURIComponent(CHECKOUT_UPI_ID);
-      window.currentUpiId = CHECKOUT_UPI_ID;
+      const upiName = encodeURIComponent(paymentSettings.upiName);
+      const upiId = encodeURIComponent(paymentSettings.upiId);
+      window.currentUpiId = paymentSettings.upiId;
       window.currentUpiLink = `upi://pay?pa=${upiId}&pn=${upiName}&am=${amount}&cu=INR&tn=Order%20Payment`;
-      const intentButton = document.getElementById('upiIntentButton');
-      intentButton.href = window.currentUpiLink;
-      intentButton.innerHTML = `⚡ Pay ₹${Number(total).toFixed(0)} via PhonePe / GPay / Any UPI`;
-      document.querySelectorAll('[data-upi-id]').forEach(el => el.textContent = CHECKOUT_UPI_ID);
-      document.querySelectorAll('[data-upi-name]').forEach(el => el.textContent = CHECKOUT_UPI_NAME);
+      document.querySelectorAll('[data-upi-id]').forEach(el => el.textContent = paymentSettings.upiId);
+      document.querySelectorAll('[data-upi-name], [data-store-name]').forEach(el => el.textContent = paymentSettings.upiName);
       renderUpiQr(window.currentUpiLink);
       setTimeout(() => speakPaymentGuide(), 450);
     }
 
-    function launchUpiPayment(event) {
-      event.preventDefault();
+    function buildPaymentGuideMessage(name = paymentGuideCustomerName, total = paymentGuideTotal) {
+      const customerName = String(name || paymentGuideCustomerName || document.getElementById('custName').value || 'ग्राहक').trim();
+      const amount = Number(total || paymentGuideTotal || document.getElementById('payAmount').textContent || 0).toFixed(0);
+      const storeName = getCheckoutUpiSettings().upiName;
+      return `प्रिय ${customerName}, आपको ${storeName} को ₹${amount} का भुगतान करना है। पहले QR कोड फ़ोन में सेव करें, फिर PhonePe या Google Pay खोलकर Scan QR में Gallery से सेव किया QR चुनें। भुगतान के बाद इसी स्क्रीन पर लौटकर स्क्रीनशॉट अपलोड करें और ऑर्डर पक्का करें।`;
+    }
+
+    function speakCheckoutHindi(message) {
+      if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
+        try { window.AndroidApp.speak(message); return; } catch (error) { /* use browser voice */ }
+      }
+      if (!('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.lang = 'hi-IN';
+        utterance.rate = 0.9;
+        const voice = window.speechSynthesis.getVoices().find(item => (item.lang || '').toLowerCase().startsWith('hi'));
+        if (voice) utterance.voice = voice;
+        window.speechSynthesis.speak(utterance);
+      } catch (error) { /* speech not available */ }
+    }
+
+    function launchUpiPayment(event, app = 'phonepe') {
+      if (event) event.preventDefault();
       const status = document.getElementById('upiLaunchStatus');
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       if (!window.AndroidApp && !isMobile) {
         status.className = 'upi-launch-status fallback';
-        status.textContent = 'UPI app इस कंप्यूटर पर उपलब्ध नहीं है। नीचे QR कोड स्कैन करें या दूसरे फ़ोन से भुगतान करें।';
+        status.textContent = 'कंप्यूटर पर UPI App नहीं खुलेगा। QR सेव करके दूसरे फ़ोन से स्कैन करें।';
+        document.getElementById('qrCode').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (!upiQrSaved && !downloadUpiQr()) {
+        status.className = 'upi-launch-status fallback';
+        status.textContent = 'QR सेव नहीं हुआ। पहले QR दोबारा सेव करें, फिर UPI App खोलें।';
         document.getElementById('qrCode').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
 
+      const appName = app === 'gpay' ? 'Google Pay' : 'PhonePe';
       status.className = 'upi-launch-status';
-      status.textContent = 'UPI app खोली जा रही है...';
+      status.textContent = `QR सेव हो गया। ${appName} खुलने पर Scan QR → Gallery से QR चुनें।`;
+      if (window.AndroidApp && typeof window.AndroidApp.openPaymentApp === 'function') {
+        try {
+          window.AndroidApp.openPaymentApp(app);
+          status.textContent = `${appName} खोल रहे हैं। खुलने के बाद Scan QR → Gallery से सेव किया QR चुनें।`;
+          return;
+        } catch (error) { /* fall back to the browser URI handler */ }
+      }
       if (window.__upiLaunchTimeout) clearTimeout(window.__upiLaunchTimeout);
+      let appWasOpened = false;
       const handleReturn = () => {
         if (document.hidden) {
+          appWasOpened = true;
           clearTimeout(window.__upiLaunchTimeout);
-          status.textContent = 'भुगतान के बाद इसी पेज पर वापस आएँ और स्क्रीनशॉट चुनें।';
+          status.textContent = `${appName} खुल गया है। सेव किया QR Gallery से चुनकर भुगतान करें।`;
+          return;
+        }
+        if (appWasOpened) {
+          status.textContent = 'वापस आ गए हैं। भुगतान का स्क्रीनशॉट चुनें; UTR अपने-आप पढ़ा जाएगा।';
+          speakCheckoutHindi(`प्रिय ${paymentGuideCustomerName || 'ग्राहक'}, भुगतान के बाद वापस आने के लिए धन्यवाद। अब भुगतान का स्क्रीनशॉट चुनें। UTR अपने-आप पढ़ने के बाद ऑर्डर पक्का करें।`);
           document.removeEventListener('visibilitychange', handleReturn);
         }
       };
       document.addEventListener('visibilitychange', handleReturn);
       window.__upiLaunchTimeout = setTimeout(() => {
-        document.removeEventListener('visibilitychange', handleReturn);
         if (!document.hidden) {
           status.className = 'upi-launch-status fallback';
-          status.textContent = 'UPI app नहीं खुली? नीचे QR कोड स्कैन करें या दूसरे फ़ोन से भुगतान करें।';
+          status.textContent = `${appName} नहीं खुला? फ़ोन में App खोलकर Scan QR → Gallery से सेव किया QR चुनें।`;
           document.getElementById('qrCode').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          document.removeEventListener('visibilitychange', handleReturn);
         }
       }, 1800);
 
-      window.location.href = window.currentUpiLink;
+      const packageName = app === 'gpay'
+        ? 'com.google.android.apps.nbu.paisa.user'
+        : 'com.phonepe.app';
+      const fallbackUrl = `https://play.google.com/store/apps/details?id=${packageName}`;
+      window.location.href = `intent://launch#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${packageName};S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
     }
 
     // ==========================================================
     // HINDI VOICE GUIDE on the payment screen (dynamic name + amount)
     // ==========================================================
-    function speakPaymentGuide() {
-      const msg = 'हरे बटन से फ़ोनपे या गूगल पे में भुगतान करें। वापस आकर UTR साफ़ दिखने वाला स्क्रीनशॉट चुनें। UTR अपने-आप पढ़ा जाएगा। फिर ऑर्डर पक्का करें। भुगतान जाँचकर ऑर्डर भेजा जाएगा।';
-
-      // Inside the Android app -> use the phone's native TTS (guaranteed).
-      if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
-        try { window.AndroidApp.speak(msg); return; } catch (e) { /* fall through */ }
-      }
-
-      // Web browsers -> Web Speech API
-      if (!('speechSynthesis' in window)) return;
-      try {
-        window.speechSynthesis.cancel();
-        const speak = () => {
-          const u = new SpeechSynthesisUtterance(msg);
-          u.lang = 'hi-IN';
-          u.rate = 0.9;
-          u.pitch = 1;
-          const voices = window.speechSynthesis.getVoices();
-          const hi = voices.find(v => v.lang === 'hi-IN' || (v.lang || '').toLowerCase().startsWith('hi'));
-          if (hi) u.voice = hi;
-          window.speechSynthesis.speak(u);
-        };
-        if (window.speechSynthesis.getVoices().length === 0) {
-          window.speechSynthesis.onvoiceschanged = () => { speak(); window.speechSynthesis.onvoiceschanged = null; };
-          setTimeout(speak, 400);
-        } else {
-          setTimeout(speak, 300);
-        }
-      } catch (e) { /* speech not available */ }
+    function speakPaymentGuide(name = paymentGuideCustomerName, total = paymentGuideTotal) {
+      speakCheckoutHindi(buildPaymentGuideMessage(name, total));
     }
 
     // Render the UPI QR. Uses the qrcodejs library when loaded, otherwise
@@ -1174,14 +1285,88 @@
       img.height = 180;
       img.alt = 'UPI QR Code';
       img.style.borderRadius = '8px';
+      img.crossOrigin = 'anonymous';
       img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(upiLink);
       img.onerror = function () {
-        const idText = (window.currentUpiId || 'goluk147147@ybl');
+        const idText = (window.currentUpiId || 'Q623952089@ybl');
         qrDiv.innerHTML = '<div style="width:180px;height:180px;border:3px solid var(--primary);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;margin:0 auto;">'
           + '<span style="font-size:2rem;">📱</span>'
           + '<span style="font-size:11px;color:var(--primary);font-weight:600;">' + idText + '</span></div>';
       };
       qrDiv.appendChild(img);
+    }
+
+    function createBrandedUpiQrImage(qr, storeName, upiId, amount) {
+      if (!qr || (qr.tagName === 'IMG' && (!qr.complete || !qr.naturalWidth))) return '';
+      try {
+        const qrSize = 720;
+        const quietZone = 72;
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = 1000;
+        exportCanvas.height = 1300;
+        const context = exportCanvas.getContext('2d');
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        context.strokeStyle = '#0FA958';
+        context.lineWidth = 12;
+        context.strokeRect(12, 12, 976, 1276);
+        context.fillStyle = '#F5A623';
+        context.fillRect(30, 240, 12, 864);
+        context.fillRect(958, 240, 12, 864);
+
+        context.textAlign = 'center';
+        context.fillStyle = '#111827';
+        context.font = 'bold 58px system-ui, sans-serif';
+        context.fillText(storeName || '4A Store', 500, 120);
+        context.fillStyle = '#0FA958';
+        context.font = 'bold 26px system-ui, sans-serif';
+        context.fillText('UPI PAYMENT', 500, 170);
+
+        context.imageSmoothingEnabled = false;
+        context.drawImage(qr, 68, 240, qrSize + quietZone * 2, qrSize + quietZone * 2);
+
+        context.fillStyle = '#111827';
+        context.font = 'bold 38px system-ui, sans-serif';
+        context.fillText('Pay ' + new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(amount) || 0), 500, 1170);
+        context.fillStyle = '#6B7280';
+        context.font = '24px system-ui, sans-serif';
+        context.fillText(upiId, 500, 1220);
+        return exportCanvas.toDataURL('image/png');
+      } catch (error) { return ''; }
+    }
+
+    function downloadUpiQr() {
+      const qrDiv = document.getElementById('qrCode');
+      const qr = qrDiv && qrDiv.querySelector('canvas, img');
+      const paymentSettings = getCheckoutUpiSettings();
+      const imageData = createBrandedUpiQrImage(qr, paymentSettings.upiName, paymentSettings.upiId, document.getElementById('payAmount').textContent);
+
+      if (!imageData) {
+        showToast('QR save nahi ho saka. Internet check karke QR dobara kholen / QR सेव नहीं हुआ।', 'error');
+        return false;
+      }
+
+      const amount = String(document.getElementById('payAmount').textContent || '').replace(/\D/g, '');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = '4A-Store-UPI-QR-' + (amount || 'payment') + '-' + timestamp + '.png';
+      if (window.AndroidApp && typeof window.AndroidApp.saveBase64File === 'function') {
+        try {
+          window.AndroidApp.saveBase64File(imageData, fileName, 'image/png');
+          upiQrSaved = true;
+          showToast('QR सेव हुआ। PhonePe/GPay में Scan QR → Gallery/Downloads चुनें।');
+          return true;
+        } catch (error) { /* fall back to browser download */ }
+      }
+
+      const link = document.createElement('a');
+      link.href = imageData;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      upiQrSaved = true;
+      showToast('UPI QR डाउनलोड हो गया / QR saved to Downloads.', 'success');
+      return true;
     }
 
     // Copy the UPI ID so the user can paste it in their UPI app (merchant-safe)
@@ -1210,7 +1395,9 @@
       paymentUtr = '';
       document.getElementById('utrNumber').value = '';
       setConfirmButtonReady(false);
-      setUtrStatus('Checking image... / तस्वीर जाँची जा रही है...');
+      document.getElementById('confirmBtn').textContent = '⏳ UTR पढ़ा जा रहा है...';
+      setUtrStatus('स्क्रीनशॉट से UTR पढ़ा जा रहा है। कृपया प्रतीक्षा करें...');
+      setUtrProgress(null, 'तस्वीर पढ़ी जा रही है...');
       const reader = new FileReader();
       reader.onload = function(e) {
         // Downscale/compress the image so big phone photos (often >6MB) upload
@@ -1227,6 +1414,9 @@
         });
       };
       reader.onerror = () => {
+        if (scanId !== paymentOcrSequence) return;
+        setUtrProgress(false);
+        setConfirmButtonReady(false);
         setUtrStatus('Image could not be read. Choose another screenshot / तस्वीर नहीं पढ़ी गई। दूसरा स्क्रीनशॉट चुनें।', 'error');
       };
       reader.readAsDataURL(file);
@@ -1234,6 +1424,8 @@
 
     async function detectScreenshotUtr(image, scanId) {
       if (!window.Tesseract) {
+        setUtrProgress(false);
+        setConfirmButtonReady(false);
         setUtrStatus('OCR could not load. Check internet and choose the screenshot again / OCR लोड नहीं हुआ। इंटरनेट जाँचकर फिर से चुनें।', 'error');
         return;
       }
@@ -1241,15 +1433,19 @@
         const result = await Tesseract.recognize(image, 'eng', {
           logger: progress => {
             if (scanId === paymentOcrSequence && progress.status === 'recognizing text') {
-              setUtrStatus('Checking image... ' + Math.round((progress.progress || 0) * 100) + '% / तस्वीर जाँची जा रही है...');
+              const percent = Math.round((progress.progress || 0) * 100);
+              setUtrProgress(percent, 'UTR पढ़ा जा रहा है... ' + percent + '%');
+              setUtrStatus('UTR पहचान रहे हैं। कृपया प्रतीक्षा करें...');
             }
           }
         });
         if (scanId !== paymentOcrSequence) return;
+        setUtrProgress(false);
         const text = result.data.text || '';
         const labeled = text.match(/(?:UPI\s*Ref|UTR|Ref|Txn\s*ID)[^\d]*(\d{12})/i);
         const match = labeled ? labeled[1] : text.match(/\b\d{12}\b/)?.[0];
         if (!match) {
+          setConfirmButtonReady(false);
           setUtrStatus('UTR not found. Choose a clearer payment screenshot; do not type the number / UTR नहीं मिला। साफ़ स्क्रीनशॉट चुनें; नंबर टाइप न करें।', 'error');
           return;
         }
@@ -1260,6 +1456,8 @@
         speakPaymentReferenceFound();
       } catch (error) {
         if (scanId === paymentOcrSequence) {
+          setUtrProgress(false);
+          setConfirmButtonReady(false);
           setUtrStatus('Could not read this image. Choose a clearer payment screenshot / तस्वीर पढ़ी नहीं जा सकी। साफ़ स्क्रीनशॉट चुनें।', 'error');
         }
       }
@@ -1267,15 +1465,7 @@
 
     function speakPaymentReferenceFound() {
       const message = 'आपका पेमेंट नंबर मिल गया है। अब ऑर्डर पक्का करें।';
-      if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
-        try { window.AndroidApp.speak(message); return; } catch (error) { }
-      }
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(message);
-      utterance.lang = 'hi-IN';
-      utterance.rate = 0.9;
-      window.speechSynthesis.speak(utterance);
+      speakCheckoutHindi(message);
     }
 
     // Resize an image data URI to max width/height and re-encode as JPEG.
@@ -1369,6 +1559,7 @@
       document.getElementById('orderSuccess').classList.remove('hidden');
       document.getElementById('successOrderId').textContent = `Your Order ID / आपका ऑर्डर नंबर: #${orderData.orderId}`;
       showToast('🎉 Order placed successfully / आपका ऑर्डर सफलतापूर्वक दर्ज हो गया!', 'success');
+      speakCheckoutHindi('4A Store परिवार की तरफ़ से धन्यवाद। आपका भुगतान और ऑर्डर सफलतापूर्वक दर्ज हो गया है।');
 
       // AUTO: email the order to the store (no user action needed)
       sendOrderEmail(orderData);

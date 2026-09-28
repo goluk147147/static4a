@@ -40,7 +40,7 @@
         <button type="submit">🔍</button>
       </form>
       <div class="header-actions">
-        <a href="cart" class="cart-badge">🛒 <span class="action-text">Cart</span>
+        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span>
           <span class="badge cart-count" style="display:none">0</span>
         </a>
       </div>
@@ -85,6 +85,22 @@
 
       <!-- SIGNUP FORM -->
       <div class="auth-form hidden" id="signupForm">
+        <div id="signupEmailStep">
+          <div class="form-group">
+            <label>Email Address *</label>
+            <input type="email" id="signupEmail" autocomplete="email" placeholder="you@example.com" oninput="handleSignupEmailChange()">
+            <div class="error-msg">Enter a valid email address</div>
+          </div>
+          <button type="button" id="signupSendCodeButton" class="btn-checkout" onclick="sendSignupEmailCode()">✉️ Send email code</button>
+          <p id="signupEmailStatus" role="status" aria-live="polite" style="min-height:18px;margin:9px 0 0;font-size:12px;color:var(--gray);"></p>
+        </div>
+        <div id="signupOtpStep" style="display:none;margin:14px 0;">
+          <label for="signupEmailOtp" style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">6-digit email code</label>
+          <input type="text" id="signupEmailOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="width:100%;padding:12px 13px;border:2px solid var(--border);border-radius:9px;font-size:16px;letter-spacing:3px;">
+          <button type="button" onclick="verifySignupEmailCode()" class="btn-checkout" style="margin-top:9px;">Verify email</button>
+        </div>
+        <div id="signupAccountFields" style="display:none;">
+          <p style="margin:0 0 14px;color:#087a3d;font-size:12px;"><span id="signupVerifiedEmailLabel"></span> <button type="button" onclick="changeSignupEmail()" style="border:0;background:none;color:var(--primary);text-decoration:underline;cursor:pointer;">Change</button></p>
         <div class="form-group">
           <label>Full Name *</label>
           <input type="text" id="signupName" placeholder="Enter your full name">
@@ -120,22 +136,40 @@
         <p style="margin-top:14px; font-size:12px; color:var(--gray); text-align:center;">
           Already have an account? <a href="#" onclick="showAuthTab('login')" style="color:var(--primary); font-weight:600;">Login</a>
         </p>
+        </div>
       </div>
     </div>
   </div>
 
   <div id="forgotPasswordModal" class="hidden" style="position:fixed;inset:0;z-index:10000;background:rgba(18,30,42,.65);display:flex;align-items:center;justify-content:center;padding:16px;">
-    <div style="width:min(420px,100%);background:#fff;border-radius:16px;padding:24px;box-shadow:0 16px 50px rgba(0,0,0,.25);">
+    <div style="width:min(420px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 16px 50px rgba(0,0,0,.25);">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-        <div><div style="font-size:30px;margin-bottom:4px;">🔒</div><h3 style="margin:0;color:var(--primary-dark);">Forgot Password?</h3></div>
+        <div><div style="font-size:30px;margin-bottom:4px;">🔒</div><h3 style="margin:0;color:var(--primary-dark);">Reset Password</h3></div>
         <button type="button" onclick="closeForgotPassword()" aria-label="Close" style="border:0;background:transparent;font-size:24px;color:var(--gray);cursor:pointer;line-height:1;">×</button>
       </div>
-      <p style="margin:12px 0 16px;color:var(--gray);font-size:13px;line-height:1.5;">Username ya registered mobile number bhejein. Support WhatsApp par verify karke password reset karega.</p>
-      <label for="forgotIdentifier" style="display:block;font-size:13px;font-weight:600;color:#334;margin-bottom:6px;">Username / Mobile</label>
-      <input id="forgotIdentifier" type="text" inputmode="text" autocomplete="username" placeholder="Enter username or mobile number" style="width:100%;padding:12px 13px;border:2px solid var(--border);border-radius:9px;font-size:14px;outline:none;">
+      <p style="margin:12px 0 16px;color:var(--gray);font-size:13px;line-height:1.5;">Verified recovery email ho to code usi par jayega. Email linked na ho to yahan apna email add karke OTP verify karein; OTP pass hone par email aur password dono update honge.</p>
+      <label for="forgotMobile" style="display:block;font-size:13px;font-weight:600;color:#334;margin-bottom:6px;">Registered mobile number</label>
+      <input id="forgotMobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="10-digit mobile number" style="width:100%;padding:12px 13px;border:2px solid var(--border);border-radius:9px;font-size:14px;outline:none;">
+      <div id="resetNewEmailRow" style="display:none;margin-top:12px;">
+        <label for="resetNewEmail" style="display:block;font-size:13px;font-weight:600;color:#334;margin-bottom:6px;">Email address</label>
+        <input id="resetNewEmail" type="email" autocomplete="email" placeholder="Enter your email" style="width:100%;padding:12px 13px;border:2px solid var(--border);border-radius:9px;font-size:14px;outline:none;">
+      </div>
+      <button id="sendResetCodeButton" type="button" onclick="sendPasswordResetCode()" style="width:100%;margin-top:10px;padding:11px;border:0;background:var(--primary);color:#fff;border-radius:8px;font-weight:700;cursor:pointer;">Continue</button>
+      <div id="resetOtpStep" style="display:none;margin-top:16px;">
+        <label for="resetOtp" style="display:block;font-size:13px;font-weight:600;color:#334;margin-bottom:6px;">6-digit email code</label>
+        <input id="resetOtp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="width:100%;padding:12px 13px;border:2px solid var(--border);border-radius:9px;font-size:16px;letter-spacing:3px;">
+        <button type="button" onclick="verifyPasswordResetCode()" style="width:100%;margin-top:9px;padding:11px;border:0;background:#087a3d;color:#fff;border-radius:8px;font-weight:700;cursor:pointer;">Verify code</button>
+      </div>
+      <div id="resetPasswordStep" style="display:none;margin-top:16px;">
+        <label for="resetNewPassword" style="display:block;font-size:13px;font-weight:600;color:#334;margin-bottom:6px;">New password (8+ characters)</label>
+        <input id="resetNewPassword" type="password" autocomplete="new-password" minlength="8" placeholder="New password" style="width:100%;padding:12px 13px;border:2px solid var(--border);border-radius:9px;font-size:14px;">
+        <label for="resetConfirmPassword" style="display:block;font-size:13px;font-weight:600;color:#334;margin:12px 0 6px;">Confirm new password</label>
+        <input id="resetConfirmPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Confirm new password" style="width:100%;padding:12px 13px;border:2px solid var(--border);border-radius:9px;font-size:14px;">
+        <button type="button" onclick="saveResetPassword()" style="width:100%;margin-top:12px;padding:11px;border:0;background:var(--primary);color:#fff;border-radius:8px;font-weight:700;cursor:pointer;">Update password</button>
+      </div>
+      <p id="forgotPasswordStatus" role="status" aria-live="polite" style="min-height:18px;margin:10px 0 0;color:var(--gray);font-size:12px;"></p>
       <div style="display:flex;gap:9px;margin-top:16px;flex-wrap:wrap;">
         <button type="button" onclick="closeForgotPassword()" style="flex:1;min-width:120px;padding:11px;border:1px solid var(--border);background:#fff;color:var(--gray);border-radius:9px;font-weight:600;cursor:pointer;">Cancel</button>
-        <button type="button" onclick="sendForgotPasswordRequest()" style="flex:1;min-width:160px;padding:11px;border:0;background:#25D366;color:#fff;border-radius:9px;font-weight:700;cursor:pointer;">💬 Open WhatsApp</button>
       </div>
     </div>
   </div>
@@ -164,7 +198,7 @@
     <div class="nav-items">
       <a href="./" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
       <a href="products" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
-      <a href="cart" class="nav-item"><span class="nav-icon">🛒</span>Cart</a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart</a>
       <a href="login" class="nav-item active"><span class="nav-icon">👤</span>Account</a>
     </div>
   </nav>
@@ -237,26 +271,17 @@
 
         completeLogin(res.user);
       } catch(e) {
-        // Fallback to local
-        const user = findUser(username, password);
-        if (!user) {
-          const users = getUsers();
-          const exists = users.find(u => u.username === username || u.mobile === username);
-          if (exists) {
-            showToast('Incorrect password. Please try again.', 'error');
-          } else {
-            showToast('Account not found. Please sign up first.', 'error');
-          }
-          return;
-        }
-        completeLogin(user);
+        showToast('Login server se verify nahi ho saka. Internet check karke phir koshish karein.', 'error');
       }
     }
 
+    let passwordResetMobile = '';
+
     function handleForgotPassword(event) {
       if (event) event.preventDefault();
-      const input = document.getElementById('forgotIdentifier');
-      if (input) input.value = document.getElementById('loginUsername').value.trim();
+      const loginValue = document.getElementById('loginUsername').value.trim();
+      const input = document.getElementById('forgotMobile');
+      if (input) input.value = /^\d{10}$/.test(loginValue) ? loginValue : '';
       const modal = document.getElementById('forgotPasswordModal');
       if (modal) modal.classList.remove('hidden');
       setTimeout(() => input && input.focus(), 50);
@@ -265,19 +290,122 @@
     function closeForgotPassword() {
       const modal = document.getElementById('forgotPasswordModal');
       if (modal) modal.classList.add('hidden');
+      fetch('api/password-recovery.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancelPasswordReset' }) }).catch(() => {});
+      passwordResetMobile = '';
+      ['resetOtp', 'resetNewPassword', 'resetConfirmPassword'].forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('resetNewEmail').value = '';
+      document.getElementById('resetNewEmailRow').style.display = 'none';
+      document.getElementById('sendResetCodeButton').textContent = 'Continue';
+      document.getElementById('resetOtpStep').style.display = 'none';
+      document.getElementById('resetPasswordStep').style.display = 'none';
+      document.getElementById('forgotPasswordStatus').textContent = '';
     }
 
-    function sendForgotPasswordRequest() {
-      const input = document.getElementById('forgotIdentifier');
-      const identifier = input ? input.value.trim() : '';
-      if (!identifier) {
-        showToast('Username ya mobile number zaroor likhein.', 'error');
+    async function sendPasswordResetCode() {
+      const mobile = document.getElementById('forgotMobile').value.trim().replace(/\D/g, '');
+      const status = document.getElementById('forgotPasswordStatus');
+      const newEmailRow = document.getElementById('resetNewEmailRow');
+      const newEmail = document.getElementById('resetNewEmail').value.trim().toLowerCase();
+      if (!/^[6-9]\d{9}$/.test(mobile)) {
+        status.textContent = 'Enter a valid 10-digit registered mobile number.';
+        status.style.color = '#b42318';
         return;
       }
-      document.getElementById('loginUsername').value = identifier;
-      const message = `Namaste, mujhe apne 4A Store account ka password reset karwana hai. Username/Mobile: ${identifier}`;
-      closeForgotPassword();
-      window.open('https://wa.me/' + STORE_CONFIG.whatsappNumber + '?text=' + encodeURIComponent(message), '_blank');
+      if (newEmailRow.style.display !== 'none' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+        status.textContent = 'Enter a valid email address to receive the code.';
+        status.style.color = '#b42318';
+        return;
+      }
+      const button = document.getElementById('sendResetCodeButton');
+      button.disabled = true;
+      status.textContent = 'Requesting email code...';
+      status.style.color = 'var(--gray)';
+      try {
+        const response = await fetch('api/password-recovery.php', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'sendPasswordResetCode', mobile, email: newEmail })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Could not request a code.');
+        passwordResetMobile = mobile;
+        if (result.mode === 'add_email') {
+          newEmailRow.style.display = 'block';
+          button.textContent = 'Send code to this email';
+          status.textContent = 'Is account mein verified email nahi hai. Apna email enter karke code mangayein.';
+          status.style.color = 'var(--gray)';
+          document.getElementById('resetNewEmail').focus();
+          return;
+        }
+        document.getElementById('resetOtpStep').style.display = 'block';
+        status.textContent = result.mode === 'new_email'
+          ? 'Code sent. Verify it to update both your email and password.'
+          : 'Code sent to the registered recovery email. Check your inbox and spam folder.';
+        status.style.color = '#087a3d';
+        document.getElementById('resetOtp').focus();
+      } catch (error) {
+        status.textContent = error.message || 'Could not request a code. Try again later.';
+        status.style.color = '#b42318';
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function verifyPasswordResetCode() {
+      const status = document.getElementById('forgotPasswordStatus');
+      const otp = document.getElementById('resetOtp').value.trim();
+      if (!passwordResetMobile || !/^\d{6}$/.test(otp)) {
+        status.textContent = 'Enter the 6-digit code sent to your verified email.';
+        status.style.color = '#b42318';
+        return;
+      }
+      try {
+        const response = await fetch('api/password-recovery.php', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'verifyPasswordResetCode', mobile: passwordResetMobile, otp })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Code verification failed.');
+        document.getElementById('resetOtpStep').style.display = 'none';
+        document.getElementById('resetPasswordStep').style.display = 'block';
+        status.textContent = 'Email verified. Set your new password.';
+        status.style.color = '#087a3d';
+      } catch (error) {
+        status.textContent = error.message || 'Code verification failed.';
+        status.style.color = '#b42318';
+      }
+    }
+
+    async function saveResetPassword() {
+      const password = document.getElementById('resetNewPassword').value;
+      const confirmPassword = document.getElementById('resetConfirmPassword').value;
+      const status = document.getElementById('forgotPasswordStatus');
+      if (password.length < 8) {
+        status.textContent = 'New password must contain at least 8 characters.';
+        status.style.color = '#b42318';
+        return;
+      }
+      if (password !== confirmPassword) {
+        status.textContent = 'Passwords do not match.';
+        status.style.color = '#b42318';
+        return;
+      }
+      try {
+        const response = await fetch('api/password-recovery.php', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'resetPassword', mobile: passwordResetMobile, password, confirmPassword })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Password could not be updated.');
+        const mobile = passwordResetMobile;
+        passwordResetMobile = '';
+        closeForgotPassword();
+        document.getElementById('loginUsername').value = mobile;
+        showToast('Password updated. Ab naye password se login karein.', 'success');
+        document.getElementById('loginPassword').focus();
+      } catch (error) {
+        status.textContent = error.message || 'Password could not be updated. Try again.';
+        status.style.color = '#b42318';
+      }
     }
 
     function completeLogin(user) {
@@ -314,8 +442,91 @@
       setTimeout(() => { window.location.href = destination; }, 500);
     }
 
+    let signupPendingEmail = '';
+    let signupVerifiedEmail = '';
+
+    function handleSignupEmailChange() {
+      const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+      if (email === signupVerifiedEmail) return;
+      signupVerifiedEmail = '';
+      document.getElementById('signupAccountFields').style.display = 'none';
+      document.getElementById('signupOtpStep').style.display = signupPendingEmail ? 'block' : 'none';
+      document.getElementById('signupEmailStatus').textContent = signupPendingEmail && email !== signupPendingEmail
+        ? 'Email changed. Send a new code for this address.' : '';
+    }
+
+    function changeSignupEmail() {
+      signupVerifiedEmail = '';
+      document.getElementById('signupAccountFields').style.display = 'none';
+      document.getElementById('signupEmailStep').style.display = 'block';
+      document.getElementById('signupOtpStep').style.display = 'none';
+      document.getElementById('signupEmail').focus();
+    }
+
+    async function sendSignupEmailCode() {
+      const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+      const status = document.getElementById('signupEmailStatus');
+      const button = document.getElementById('signupSendCodeButton');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        status.textContent = 'Enter a valid email address.';
+        status.style.color = '#b42318';
+        return;
+      }
+      button.disabled = true;
+      status.textContent = 'Sending code...';
+      status.style.color = 'var(--gray)';
+      try {
+        const response = await fetch('api/password-recovery.php', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'sendSignupEmailCode', email })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Could not send the code.');
+        signupPendingEmail = email;
+        document.getElementById('signupOtpStep').style.display = 'block';
+        status.textContent = 'Code sent. Check your inbox and spam folder.';
+        status.style.color = '#087a3d';
+        document.getElementById('signupEmailOtp').focus();
+      } catch (error) {
+        status.textContent = error.message || 'Could not send the code. Try again.';
+        status.style.color = '#b42318';
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function verifySignupEmailCode() {
+      const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+      const otp = document.getElementById('signupEmailOtp').value.trim();
+      const status = document.getElementById('signupEmailStatus');
+      if (!signupPendingEmail || email !== signupPendingEmail || !/^\d{6}$/.test(otp)) {
+        status.textContent = 'Use the email you requested the code for and enter its 6 digits.';
+        status.style.color = '#b42318';
+        return;
+      }
+      try {
+        const response = await fetch('api/password-recovery.php', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'verifySignupEmailCode', otp })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Code verification failed.');
+        signupVerifiedEmail = email;
+        signupPendingEmail = '';
+        document.getElementById('signupEmailStep').style.display = 'none';
+        document.getElementById('signupOtpStep').style.display = 'none';
+        document.getElementById('signupAccountFields').style.display = 'block';
+        document.getElementById('signupVerifiedEmailLabel').textContent = '✅ Verified: ' + email;
+        status.textContent = '';
+      } catch (error) {
+        status.textContent = error.message || 'Code verification failed.';
+        status.style.color = '#b42318';
+      }
+    }
+
     function handleSignup() {
       document.querySelectorAll('#signupForm .form-group').forEach(fg => fg.classList.remove('error'));
+      const email = document.getElementById('signupEmail').value.trim().toLowerCase();
       const name = document.getElementById('signupName').value.trim();
       const mobile = document.getElementById('signupMobile').value.trim();
       const username = document.getElementById('signupUsername').value.trim().toLowerCase();
@@ -323,6 +534,14 @@
       const confirm = document.getElementById('signupConfirm').value;
       let valid = true;
 
+      if (!email || email !== signupVerifiedEmail) {
+        document.getElementById('signupEmailStatus').textContent = 'Verify your email before creating the account.';
+        document.getElementById('signupEmailStatus').style.color = '#b42318';
+        document.getElementById('signupEmailStep').style.display = 'block';
+        document.getElementById('signupOtpStep').style.display = signupPendingEmail ? 'block' : 'none';
+        document.getElementById('signupAccountFields').style.display = 'none';
+        return;
+      }
       if (!name) { document.getElementById('signupName').parentElement.classList.add('error'); valid = false; }
       if (!mobile || !/^[6-9]\d{9}$/.test(mobile)) { document.getElementById('signupMobile').parentElement.classList.add('error'); valid = false; }
       if (!username || username.length < 3) { document.getElementById('signupUsername').parentElement.classList.add('error'); valid = false; }
@@ -338,7 +557,7 @@
       }
 
       // Register user using JSON DB system
-      const result = registerUser({ name, mobile, username, password });
+      const result = registerUser({ name, mobile, username, password, email });
 
       if (!result.success) {
         if (result.message.includes('already')) {
@@ -348,12 +567,13 @@
           showToast('This account already exists. Please log in.', 'info');
           return;
         }
-        if (result.message.includes('Username')) {
+        const errorMessage = String(result.message || 'Account creation failed');
+        if (errorMessage.toLowerCase().includes('username')) {
           document.getElementById('signupUsername').parentElement.classList.add('error');
-        } else {
+        } else if (errorMessage.toLowerCase().includes('mobile')) {
           document.getElementById('signupMobile').parentElement.classList.add('error');
         }
-        showToast(result.message, 'error');
+        showToast(errorMessage, 'error');
         return;
       }
 

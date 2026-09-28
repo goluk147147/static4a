@@ -52,6 +52,8 @@
 
     <!-- Allow UPI and payment app intents -->
     <queries>
+        <package android:name="com.phonepe.app" />
+        <package android:name="com.google.android.apps.nbu.paisa.user" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="upi" />

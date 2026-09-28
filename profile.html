@@ -57,7 +57,7 @@
       </form>
       <div class="header-actions">
         <div class="login-btn-area"></div>
-        <a href="cart" class="cart-badge">🛒 <span class="action-text">Cart</span>
+        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span>
           <span class="badge cart-count" style="display:none">0</span>
         </a>
       </div>
@@ -82,21 +82,100 @@
     <div class="nav-items">
       <a href="./" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
       <a href="products" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
-      <a href="cart" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
       <a href="profile" class="nav-item active"><span class="nav-icon">👤</span>Profile</a>
     </div>
   </nav>
 
+  <script src="assets/js/notifications.js"></script>
   <script src="assets/js/app.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!await requireLogin()) return;
       const user = getLoggedInUser();
-      if (!user) {
-        window.location.href = 'login';
+      renderProfile(user);
+      loadRecoveryEmail();
+    });
+
+    let pendingRecoveryEmail = '';
+
+    async function loadRecoveryEmail() {
+      try {
+        const response = await fetch('api/password-recovery.php?action=profileEmail', { credentials: 'include', cache: 'no-store' });
+        const result = await response.json();
+        if (!result.success) return;
+        const emailInput = document.getElementById('recoveryEmail');
+        emailInput.value = result.email || '';
+        emailInput.readOnly = false;
+        document.querySelector('button[onclick="sendRecoveryEmailCode()"]').textContent = result.verified ? 'Update recovery email' : 'Send verification code';
+        document.getElementById('recoveryEmailStatus').textContent = result.verified ? '✅ Current recovery email verified. A new email replaces it only after OTP verification.' : 'No verified recovery email yet.';
+        document.getElementById('recoveryEmailStatus').style.color = result.verified ? '#087a3d' : 'var(--gray)';
+      } catch (error) {
+        document.getElementById('recoveryEmailStatus').textContent = 'Could not load recovery email status.';
+      }
+    }
+
+    async function sendRecoveryEmailCode() {
+      const email = document.getElementById('recoveryEmail').value.trim().toLowerCase();
+      const status = document.getElementById('recoveryEmailStatus');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        status.textContent = 'Enter a valid email address.';
+        status.style.color = '#b42318';
         return;
       }
-      renderProfile(user);
-    });
+      status.textContent = 'Sending verification code...';
+      status.style.color = 'var(--gray)';
+      try {
+        const response = await fetch('api/password-recovery.php', {
+          method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'sendProfileEmailCode', email })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Could not send code.');
+        if (result.alreadyVerified) {
+          status.textContent = '✅ This recovery email is already verified.';
+          status.style.color = '#087a3d';
+          document.getElementById('recoveryEmailCodeRow').style.display = 'none';
+          return;
+        }
+        pendingRecoveryEmail = email;
+        document.getElementById('recoveryEmailCodeRow').style.display = 'block';
+        status.textContent = 'Code sent. Check your inbox and spam folder.';
+        status.style.color = '#087a3d';
+        document.getElementById('recoveryEmailCode').focus();
+      } catch (error) {
+        status.textContent = error.message || 'Could not send code. Try again.';
+        status.style.color = '#b42318';
+      }
+    }
+
+    async function verifyRecoveryEmailCode() {
+      const status = document.getElementById('recoveryEmailStatus');
+      const email = document.getElementById('recoveryEmail').value.trim().toLowerCase();
+      const otp = document.getElementById('recoveryEmailCode').value.trim();
+      if (!pendingRecoveryEmail || email !== pendingRecoveryEmail) {
+        status.textContent = 'Email changed. Send a new verification code.';
+        status.style.color = '#b42318';
+        return;
+      }
+      try {
+        const response = await fetch('api/password-recovery.php', {
+          method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'verifyProfileEmailCode', otp })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Code verification failed.');
+        pendingRecoveryEmail = '';
+        document.getElementById('recoveryEmailCodeRow').style.display = 'none';
+        document.getElementById('recoveryEmailCode').value = '';
+        status.textContent = '✅ Recovery email verified and saved.';
+        status.style.color = '#087a3d';
+        await loadRecoveryEmail();
+      } catch (error) {
+        status.textContent = error.message || 'Code verification failed.';
+        status.style.color = '#b42318';
+      }
+    }
 
     function renderProfile(user) {
       const orders = getOrders();
@@ -147,11 +226,29 @@
             </div>
           </div>
 
+          <section style="margin:0 0 20px;padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);text-align:left;">
+            <h3 style="margin:0 0 5px;font-size:15px;color:var(--dark);">Password recovery email</h3>
+            <p style="margin:0 0 12px;font-size:12px;color:var(--gray);">Verify an email address to receive password reset codes.</p>
+            <label for="recoveryEmail" style="display:block;margin-bottom:5px;font-size:13px;font-weight:700;">Email address</label>
+            <input id="recoveryEmail" type="email" autocomplete="email" placeholder="you@example.com" style="width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font:inherit;">
+            <div style="display:flex;gap:8px;margin-top:9px;">
+              <button type="button" onclick="sendRecoveryEmailCode()" style="flex:1;min-height:42px;padding:9px 12px;border:0;border-radius:8px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer;">Send verification code</button>
+            </div>
+            <p id="recoveryEmailStatus" role="status" aria-live="polite" style="min-height:18px;margin:8px 0 0;font-size:12px;color:var(--gray);"></p>
+            <div id="recoveryEmailCodeRow" style="display:none;margin-top:8px;">
+              <label for="recoveryEmailCode" style="display:block;margin-bottom:5px;font-size:13px;font-weight:700;">6-digit email code</label>
+              <div style="display:flex;gap:8px;">
+                <input id="recoveryEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="flex:1;min-width:0;min-height:42px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font:inherit;letter-spacing:2px;">
+                <button type="button" onclick="verifyRecoveryEmailCode()" style="min-height:42px;padding:9px 12px;border:0;border-radius:8px;background:#087a3d;color:#fff;font-weight:700;cursor:pointer;">Verify</button>
+              </div>
+            </div>
+          </section>
+
           <!-- Actions -->
           <div class="profile-actions">
             <a href="order-history" class="action-orders">📦 My Orders <span style="margin-left:auto; font-size:12px;">${userOrders.length} orders →</span></a>
-            <a href="cart" class="action-cart">🛒 My Cart <span style="margin-left:auto; font-size:12px;">${cartCount} items →</span></a>
-            <a href="checkout" class="action-address">🏠 Delivery Address</a>
+            <a href="cart.html" class="action-cart">🛒 My Cart <span style="margin-left:auto; font-size:12px;">${cartCount} items →</span></a>
+            <a href="checkout.html" class="action-address">🏠 Delivery Address</a>
             ${isAdminUser(user) ? '<a href="admin" class="action-admin" style="background:#2C6FAD;color:white;">🔐 Admin Panel →</a>' : ''}
             <button class="action-logout" onclick="handleLogout()">🚪 Logout</button>
             <button class="action-delete" onclick="deleteMyAccount()">🗑️ Delete my account</button>
@@ -169,14 +266,18 @@
       `;
     }
 
-    function handleLogout() {
-      if (confirm('Are you sure you want to logout?')) {
-        logoutUser();
-      }
+    async function handleLogout() {
+      const confirmed = await showAppConfirm('Are you sure you want to logout?', {
+        title: 'Log out?', confirmText: 'Log out'
+      });
+      if (confirmed) logoutUser();
     }
 
-    function deleteMyAccount() {
-      if (!confirm('Delete your account permanently? Your account details will be removed. Existing order records may be retained for legal and store records.')) return;
+    async function deleteMyAccount() {
+      const confirmed = await showAppConfirm('Your account details will be removed. Existing order records may be retained for legal and store records.', {
+        title: 'Delete your account?', confirmText: 'Delete account', danger: true
+      });
+      if (!confirmed) return;
       const xhr = new XMLHttpRequest();
       xhr.open('POST', 'api/users.php', false);
       xhr.setRequestHeader('Content-Type', 'application/json');
@@ -190,8 +291,8 @@
       const user = getLoggedInUser();
       const cartKey = typeof getCartStorageKey === 'function' ? getCartStorageKey(user) : '4astore_cart';
       ['4astore_user', '4astore_customer', cartKey, '4astore_cart_guest', '4astore_cart', '4astore_orders'].forEach(key => localStorage.removeItem(key));
-      alert('Your account has been deleted.');
-      window.location.href = 'account-deletion';
+      showAppToast('Your account has been deleted.', 'success');
+      setTimeout(() => { window.location.href = 'account-deletion'; }, 900);
     }
 
     function isAdminUser(user) {

@@ -14,8 +14,8 @@ const STORE_CONFIG = {
   deliveryCharge: 30,
   freeDeliveryAbove: 500,
   whatsappNumber: "918210874123",
-  upiId: "goluk147147@ybl",
-  upiName: "4astore",
+  upiId: "Q623952089@ybl",
+  upiName: "4A kirana store",
   adminPassword: "",
   storeEmail: "4astorewale@gmail.com"
 };
@@ -262,7 +262,12 @@ async function loadData() {
 // USER LOGIN / AUTH (LocalStorage based)
 // ============================================
 function getLoggedInUser() {
-  return JSON.parse(localStorage.getItem('4astore_user')) || null;
+  try {
+    return JSON.parse(localStorage.getItem('4astore_user')) || null;
+  } catch (e) {
+    localStorage.removeItem('4astore_user');
+    return null;
+  }
 }
 
 function getCartStorageKey(user = getLoggedInUser()) {
@@ -271,7 +276,7 @@ function getCartStorageKey(user = getLoggedInUser()) {
   return '4astore_cart_' + identity;
 }
 
-function loginUser(name, mobile, username, role, backendRider) {
+function loginUser(name, mobile, username, role, backendRider, announce = true) {
   const user = { name, mobile, username: username || mobile, role: role || 'customer', backendRider: backendRider === true, loggedInAt: new Date().toISOString() };
   localStorage.removeItem('4astore_cart');
   const guestCart = JSON.parse(localStorage.getItem('4astore_cart_guest') || '[]');
@@ -282,23 +287,35 @@ function loginUser(name, mobile, username, role, backendRider) {
   }
   localStorage.setItem('4astore_user', JSON.stringify(user));
   localStorage.setItem(LOGIN_SESSION_VERSION_KEY, LOGIN_SESSION_VERSION);
+  try {
+    if (window.AndroidApp && typeof window.AndroidApp.flushSessionCookies === 'function') {
+      window.AndroidApp.flushSessionCookies();
+    }
+  } catch (e) { /* native cookie persistence is best-effort */ }
   updateLoginUI();
-  showToast(`🙏 Welcome, ${name}!`, 'success');
+  if (announce) showToast(`🙏 Welcome, ${name}!`, 'success');
   return user;
 }
 
 function logoutUser() {
+  let serverLogoutConfirmed = false;
   try {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', 'api/users.php', false);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.send(JSON.stringify({ action: 'logout' }));
-  } catch (e) { /* clear local state even if the server is unavailable */ }
+    const result = JSON.parse(xhr.responseText || '{}');
+    serverLogoutConfirmed = xhr.status === 200 && result.success === true;
+  } catch (e) { /* retain local state if the server could not confirm logout */ }
+  if (!serverLogoutConfirmed) {
+    showToast('Logout server se confirm nahi ho saka. Internet check karke phir koshish karein.', 'error');
+    return;
+  }
   localStorage.removeItem('4astore_user');
   localStorage.removeItem(LOGIN_SESSION_VERSION_KEY);
   updateLoginUI();
   showToast('Logged out successfully', 'info');
-  window.location.href = 'login';
+  setTimeout(() => { window.location.href = 'login'; }, 900);
 }
 
 function updateLoginUI() {
@@ -315,13 +332,34 @@ function updateLoginUI() {
   });
 }
 
-function requireLogin() {
-  const user = getLoggedInUser();
-  if (!user) {
+async function requireLogin() {
+  const localUser = getLoggedInUser();
+  try {
+    const response = await fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'same-origin' });
+    if (!response.ok) throw new Error('Unable to verify login session');
+    const result = await response.json();
+    const sessionUser = result.success && result.user;
+    if (!sessionUser || !sessionUser.mobile) {
+      if (localUser) {
+        localStorage.removeItem('4astore_user');
+        localStorage.removeItem(LOGIN_SESSION_VERSION_KEY);
+        updateLoginUI();
+      }
+      redirectToLogin();
+      return false;
+    }
+
+    const sessionMode = sessionUser.mode || sessionUser.role;
+    if (!localUser || String(localUser.mobile) !== String(sessionUser.mobile)
+      || localUser.role !== sessionMode || localUser.backendRider !== (sessionUser.backendRider === true)) {
+      loginUser(sessionUser.name, sessionUser.mobile, sessionUser.username, sessionMode, sessionUser.backendRider === true, false);
+    }
+    return true;
+  } catch (e) {
+    if (localUser) return true;
     redirectToLogin();
     return false;
   }
-  return true;
 }
 
 function redirectToLogin() {
@@ -576,6 +614,10 @@ function checkPincode(pin) {
 // TOAST NOTIFICATIONS
 // ============================================
 function showToast(message, type = 'success') {
+  if (typeof window.showAppToast === 'function') {
+    window.showAppToast(message, type);
+    return;
+  }
   let container = document.querySelector('.toast-container');
   if (/\blogin required\b/i.test(String(message)) && redirectToLogin()) return;
   if (!container) {
@@ -737,40 +779,20 @@ function getUserId(mobile) {
   return user ? (user.id || null) : null;
 }
 
-function findUser(usernameOrMobile, password) {
-  // Try PHP API first
+function registerUser(userData) {
   try {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', 'api/users.php', false);
     xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify({ action: 'login', username: usernameOrMobile, password: password }));
-    const res = JSON.parse(xhr.responseText);
-    if (res.success) return res.user;
-    return null;
-  } catch(e) {
-    // Fallback to localStorage
-    const users = getUsers();
-    return users.find(u => 
-      (u.username === usernameOrMobile || u.mobile === usernameOrMobile) && u.password === password
-    );
-  }
-}
-
-function registerUser(userData) {
-  // Sync call to PHP API
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', 'api/users.php', false); // synchronous
-  xhr.setRequestHeader('Content-Type', 'application/json');
-  xhr.send(JSON.stringify({
-    action: 'register',
-    name: userData.name,
-    mobile: userData.mobile,
-    username: userData.username,
-    password: userData.password
-  }));
-  
-  try {
-    const res = JSON.parse(xhr.responseText);
+    xhr.send(JSON.stringify({
+      action: 'register',
+      name: userData.name,
+      mobile: userData.mobile,
+      username: userData.username,
+      password: userData.password,
+      email: userData.email
+    }));
+    const res = JSON.parse(xhr.responseText || '{}');
     if (res.success) {
       // Also update local cache
       const users = getUsers();
@@ -780,20 +802,7 @@ function registerUser(userData) {
     }
     return res;
   } catch(e) {
-    // Fallback to local-only
-    const users = getUsers();
-    if (users.find(u => u.username === userData.username)) {
-      return { success: false, message: 'Username already taken' };
-    }
-    if (users.find(u => u.mobile === userData.mobile)) {
-      return { success: false, message: 'Mobile number already registered' };
-    }
-    const maxId = users.reduce((max, u) => Math.max(max, u.id || 0), 0);
-    const newUser = { id: maxId + 1, ...userData, registeredAt: new Date().toISOString(), lastLogin: new Date().toISOString() };
-    users.push(newUser);
-    localStorage.setItem('4astore_users', JSON.stringify(users));
-    dbUsers = users;
-    return { success: true, user: newUser };
+    return { success: false, message: 'Server se connection nahi ho saka. Internet check karke phir koshish karein.' };
   }
 }
 
@@ -921,9 +930,9 @@ function applyHideMode() {
   const hide = shouldHideMrp();
   const sel = [
     '.cart-badge',                       // header cart icon
-    '.bottom-nav a[href="cart"]',        // bottom-nav cart
-    '.bottom-nav .nav-item[href="cart"]',
-    '.footer-col a[href="cart"]'         // footer "My Cart" link
+    '.bottom-nav a[href="cart.html"]',        // bottom-nav cart
+    '.bottom-nav .nav-item[href="cart.html"]',
+    '.footer-col a[href="cart.html"]'         // footer "My Cart" link
   ];
   document.querySelectorAll(sel.join(',')).forEach(el => {
     el.style.display = hide ? 'none' : '';

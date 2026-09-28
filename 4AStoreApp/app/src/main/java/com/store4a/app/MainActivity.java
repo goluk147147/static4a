@@ -262,10 +262,17 @@ public class MainActivity extends AppCompatActivity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
 
+                if (url.startsWith("phonepe://")) {
+                    launchPaymentApp("com.phonepe.app", "PhonePe");
+                    return true;
+                }
+                if (url.startsWith("tez://") || url.startsWith("gpay://")) {
+                    launchPaymentApp("com.google.android.apps.nbu.paisa.user", "Google Pay");
+                    return true;
+                }
+
                 // Handle UPI payments
-                if (url.startsWith("upi://") || url.startsWith("intent://") ||
-                        url.startsWith("phonepe://") || url.startsWith("gpay://") ||
-                        url.startsWith("paytmmp://") || url.startsWith("tez://")) {
+                if (url.startsWith("upi://") || url.startsWith("intent://") || url.startsWith("paytmmp://")) {
                     try {
                         Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
                         if (intent.resolveActivity(getPackageManager()) != null) {
@@ -524,11 +531,47 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void launchPaymentApp(String packageName, String appName) {
+        try {
+            Intent launchIntent = getPackageManager().getLaunchIntentForPackage(packageName);
+            if (launchIntent == null) {
+                Toast.makeText(this, appName + " is not installed. Scan the saved QR with another UPI app.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            startActivity(launchIntent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open " + appName + ". Scan the saved QR with another UPI app.",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
     // ==========================================================
     // JS BRIDGE: lets the web app save a base64 file to the phone.
     // Called from JS as: AndroidApp.saveBase64File(base64, filename, mime)
     // ==========================================================
     public class AndroidBridge {
+        @JavascriptInterface
+        public void flushSessionCookies() {
+            CookieManager.getInstance().flush();
+        }
+
+        @JavascriptInterface
+        public void openPaymentApp(String app) {
+            final String packageName;
+            final String appName;
+            if ("phonepe".equalsIgnoreCase(app)) {
+                packageName = "com.phonepe.app";
+                appName = "PhonePe";
+            } else if ("gpay".equalsIgnoreCase(app) || "googlepay".equalsIgnoreCase(app)) {
+                packageName = "com.google.android.apps.nbu.paisa.user";
+                appName = "Google Pay";
+            } else {
+                return;
+            }
+            runOnUiThread(() -> launchPaymentApp(packageName, appName));
+        }
+
         // Returns the installed app version so the web page can display it.
         @JavascriptInterface
         public String getAppVersion() {
@@ -610,15 +653,23 @@ public class MainActivity extends AppCompatActivity {
                     clean = clean.substring(comma + 1);
                 }
                 final byte[] bytes = Base64.decode(clean, Base64.DEFAULT);
+                final boolean isImage = mimeType != null && mimeType.startsWith("image/");
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    // Android 10+ : save via MediaStore Downloads (no permission needed)
+                    // Save images to Pictures so UPI apps can find them in Gallery.
                     ContentValues values = new ContentValues();
-                    values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
-                    values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
-                    values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                    values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
+                    values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
+                    Uri collection;
+                    if (isImage) {
+                        values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/4A Store");
+                        collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                    } else {
+                        values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                        collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+                    }
                     ContentResolver resolver = getContentResolver();
-                    Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    Uri uri = resolver.insert(collection, values);
                     if (uri != null) {
                         OutputStream os = resolver.openOutputStream(uri);
                         if (os != null) {
@@ -627,11 +678,11 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 } else {
-                    // Older Android: use app-specific Downloads storage without broad storage
-                    // permission.
-                    File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                    // Older Android: use app-specific storage without broad permissions.
+                    File dir = getExternalFilesDir(
+                            isImage ? Environment.DIRECTORY_PICTURES : Environment.DIRECTORY_DOWNLOADS);
                     if (dir == null)
-                        throw new IOException("Downloads directory unavailable");
+                        throw new IOException("Export directory unavailable");
                     if (!dir.exists())
                         dir.mkdirs();
                     File outFile = new File(dir, fileName);
@@ -640,8 +691,10 @@ public class MainActivity extends AppCompatActivity {
                     fos.close();
                 }
 
+                String savedLocation = isImage && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? "Gallery"
+                        : "Downloads";
                 runOnUiThread(() -> Toast.makeText(MainActivity.this,
-                        "Saved to Downloads: " + fileName, Toast.LENGTH_LONG).show());
+                        "Saved to " + savedLocation + ": " + fileName, Toast.LENGTH_LONG).show());
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(MainActivity.this,
                         "Could not save file", Toast.LENGTH_SHORT).show());
@@ -896,6 +949,12 @@ public class MainActivity extends AppCompatActivity {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
         return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+    }
+
+    @Override
+    protected void onPause() {
+        CookieManager.getInstance().flush();
+        super.onPause();
     }
 
     @Override

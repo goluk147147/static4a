@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0FA958" />
+  <title>4A Store - Payment</title>
+  <script>
+    if (new URLSearchParams(window.location.search).get('preview') !== '1') {
+      window.location.replace(new URL('checkout.html', window.location.href).href);
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    :root {
+      --primary-green: #0FA958;
+      --primary-green-deep: #0B8D4A;
+      --warm-orange: #FF9F1C;
+      --dark-slate: #111827;
+      --background: #F8FAFC;
+      --card: #FFFFFF;
+      --success: #16A34A;
+      --error: #DC2626;
+      --muted: #6B7280;
+      --border: #E5E7EB;
+      --shadow: 0 10px 26px rgba(17, 24, 39, 0.08);
+      --radius-large: 22px;
+      --radius-medium: 16px;
+      --radius-small: 12px;
+      --button-height: 58px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--background);
+      color: var(--dark-slate);
+      min-height: 100vh;
+      line-height: 1.5;
+      padding-bottom: calc(90px + var(--safe-bottom));
+    }
+
+    button, input, label { font: inherit; }
+    img { max-width: 100%; display: block; }
+    a { color: inherit; text-decoration: none; }
+
+    .app-shell {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      background: var(--background);
+      position: relative;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(248, 250, 252, 0.96);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+      padding: 12px 16px 10px;
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 46px;
+    }
+
+    .cart-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(15, 169, 88, 0.12);
+      font-size: 20px;
+    }
+
+    .brand-wrap {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+      flex: 1;
+    }
+
+    .brand-name {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    .brand-location {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 16px 16px 18px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius-large);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(17, 24, 39, 0.04);
+      padding: 18px 16px;
+      margin-bottom: 18px;
+    }
+
+    .amount-card {
+      padding: 22px 18px 18px;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .amount-value {
+      font-size: clamp(2rem, 7vw, 3.2rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      color: var(--dark-slate);
+      line-height: 1.1;
+      margin: 6px 0 10px;
+    }
+
+    .amount-subtext {
+      font-size: 1rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .voice-button {
+      width: 100%;
+      border: 1px solid rgba(15, 169, 88, 0.2);
+      background: rgba(15, 169, 88, 0.04);
+      color: var(--dark-slate);
+      min-height: 52px;
+      border-radius: 14px;
+      font-size: 1.02rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .voice-button:hover, .voice-button:focus-visible,
+    .primary-action:hover, .primary-action:focus-visible,
+    .secondary-action:hover, .secondary-action:focus-visible,
+    .payment-button:hover, .payment-button:focus-visible,
+    .small-button:hover, .small-button:focus-visible,
+    .file-button:hover, .file-button:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
+      outline: none;
+    }
+
+    .section-title {
+      margin: 0 0 6px;
+      font-size: clamp(1.2rem, 3.8vw, 1.6rem);
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-subtitle {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.96rem;
+      font-weight: 600;
+    }
+
+    .payment-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .payment-button {
+      width: 100%;
+      min-height: var(--button-height);
+      border: 0;
+      border-radius: var(--radius-medium);
+      padding: 14px 16px;
+      color: #fff;
+      font-size: 1.04rem;
+      font-weight: 800;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .payment-button .left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .gpay { background: linear-gradient(135deg, #1DAE5B, #0FA958); }
+    .paytm { background: linear-gradient(135deg, #0E8BD8, #0F6EDB); }
+    .phonepe { background: linear-gradient(135deg, #8B5CF6, #6D28D9); }
+
+    .qr-card {
+      padding: 18px 16px;
+    }
+
+    .qr-image-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #fff;
+      border: 1px solid rgba(17, 24, 39, 0.06);
+      border-radius: 18px;
+      padding: 14px;
+      margin: 8px 0 12px;
+      box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.02);
+    }
+
+    .qr-image {
+      width: min(100%, 250px);
+      height: auto;
+      border-radius: 12px;
+      border: 3px solid #F3F4F6;
+      background: #fff;
+    }
+
+    #merchantQrCode { width: 240px; height: 240px; display: grid; place-items: center; }
+    #merchantQrCode canvas, #merchantQrCode img { display: block; width: 240px; height: 240px; max-width: 100%; image-rendering: pixelated; }
+
+    .payment-note {
+      font-size: 0.94rem;
+      color: var(--muted);
+      margin: 0 0 12px;
+      text-align: center;
+    }
+
+    .payment-address {
+      text-align: center;
+      font-weight: 700;
+      color: var(--dark-slate);
+      margin: 0;
+    }
+
+    .upi-id {
+      text-align: center;
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.96rem;
+      word-break: break-all;
+      font-weight: 700;
+    }
+
+    .secondary-action {
+      width: 100%;
+      min-height: 52px;
+      border-radius: 12px;
+      background: rgba(17, 24, 39, 0.04);
+      border: 1px solid rgba(17, 24, 39, 0.08);
+      color: var(--dark-slate);
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .small-button {
+      min-height: 48px;
+      border-radius: 12px;
+      border: 0;
+      padding: 10px 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .small-button.secondary {
+      background: rgba(17, 24, 39, 0.04);
+      color: var(--dark-slate);
+    }
+
+    .small-button.primary {
+      background: var(--primary-green);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(15, 169, 88, 0.25);
+    }
+
+    .phonepe-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .after-payment-card {
+      padding-top: 18px;
+    }
+
+    .status-box {
+      background: rgba(22, 163, 74, 0.06);
+      border: 1px solid rgba(22, 163, 74, 0.14);
+      color: var(--success);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .upload-box {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .file-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      min-height: var(--button-height);
+      border-radius: var(--radius-medium);
+      background: linear-gradient(135deg, #111827, #1f2937);
+      color: #fff;
+      padding: 12px 16px;
+      font-size: 1.04rem;
+      font-weight: 800;
+      cursor: pointer;
+      border: 0;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      box-shadow: 0 10px 20px rgba(17, 24, 39, 0.12);
+    }
+
+    .file-input { display: none; }
+
+    .upload-hint {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 2px 0 0;
+      font-weight: 600;
+    }
+
+    .preview-box {
+      display: none;
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .preview-box.active { display: block; }
+
+    .preview-box img {
+      width: 100%;
+      max-height: 260px;
+      object-fit: contain;
+      background: #fff;
+    }
+
+    .ocr-status {
+      margin-top: 10px;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: 1px solid rgba(17, 24, 39, 0.06);
+      background: rgba(17, 24, 39, 0.02);
+      color: var(--dark-slate);
+    }
+
+    .ocr-status.success {
+      background: rgba(22, 163, 74, 0.08);
+      border-color: rgba(22, 163, 74, 0.14);
+      color: var(--success);
+    }
+
+    .ocr-status.warning {
+      background: rgba(220, 38, 38, 0.05);
+      border-color: rgba(220, 38, 38, 0.12);
+      color: var(--error);
+    }
+
+    .utr-panel {
+      margin-top: 12px;
+      display: none;
+    }
+
+    .utr-panel.visible { display: block; }
+
+    .utr-field {
+      width: 100%;
+      min-height: 52px;
+      padding: 14px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(17, 24, 39, 0.12);
+      background: #fff;
+      font-size: 1.06rem;
+      font-weight: 800;
+      color: var(--dark-slate);
+      letter-spacing: 0.08em;
+    }
+
+    .utr-field:read-only {
+      background: rgba(15, 169, 88, 0.04);
+      color: var(--dark-slate);
+      border-color: rgba(15, 169, 88, 0.2);
+    }
+
+    .manual-utrs {
+      display: none;
+      margin-top: 12px;
+      border-top: 1px solid rgba(17, 24, 39, 0.06);
+      padding-top: 12px;
+    }
+
+    .manual-utrs.visible { display: block; }
+
+    .manual-note {
+      font-size: 0.82rem;
+      color: var(--error);
+      font-weight: 700;
+      margin: 0 0 10px;
+    }
+
+    .helper-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .retry-button {
+      width: 100%;
+      min-height: 52px;
+      border: 1px solid rgba(220, 38, 38, 0.18);
+      border-radius: 12px;
+      background: rgba(220, 38, 38, 0.04);
+      color: var(--error);
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 12px;
+      display: none;
+    }
+
+    .retry-button.visible { display: block; }
+
+    .hidden { display: none !important; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 108px;
+      transform: translateX(-50%) translateY(20px);
+      max-width: min(88vw, 360px);
+      background: rgba(17, 24, 39, 0.94);
+      color: #fff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      text-align: center;
+      box-shadow: 0 18px 30px rgba(17, 24, 39, 0.22);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 60;
+      white-space: pre-line;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .sticky-action-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(248, 250, 252, 0.92);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid rgba(17, 24, 39, 0.06);
+      padding: 12px 16px calc(12px + var(--safe-bottom));
+      z-index: 50;
+    }
+
+    .action-inner {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .primary-action {
+      width: 100%;
+      min-height: 62px;
+      border: 0;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--primary-green), var(--primary-green-deep));
+      color: #fff;
+      padding: 12px 18px;
+      font-size: 1.08rem;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      box-shadow: 0 16px 24px rgba(15, 169, 88, 0.26);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    }
+
+    .primary-action:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .primary-action .small-text {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      opacity: 0.9;
+      margin-top: 2px;
+      letter-spacing: 0.02em;
+    }
+
+    .success-screen,
+    .failure-screen {
+      display: none;
+      padding: 28px 16px 16px;
+    }
+
+    .success-screen.visible,
+    .failure-screen.visible {
+      display: block;
+    }
+
+    .success-hero,
+    .failure-hero {
+      font-size: clamp(2rem, 8vw, 2.6rem);
+      margin: 0 0 14px;
+      text-align: center;
+    }
+
+    .success-copy,
+    .failure-copy {
+      margin: 0 0 18px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .summary-box {
+      background: #fff;
+      border-radius: var(--radius-medium);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+      font-size: 0.96rem;
+    }
+
+    .summary-row:last-child { border-bottom: 0; }
+
+    .summary-row strong { font-weight: 800; }
+
+    .ghost-button {
+      width: 100%;
+      min-height: 52px;
+      border: 0;
+      border-radius: 12px;
+      background: rgba(15, 169, 88, 0.08);
+      color: var(--primary-green-deep);
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" aria-label="Store header">
+      <div class="topbar-inner">
+        <div class="cart-badge" aria-hidden="true">🛒</div>
+        <div class="brand-wrap">
+          <div class="brand-name">4A Kirana Store</div>
+          <div class="brand-location">📍 Chandargarh (824301)</div>
+        </div>
+      </div>
+    </header>
+
+    <main id="checkoutView" class="content" aria-live="polite">
+      <section class="card amount-card" aria-label="Payable amount card">
+        <span class="label">कुल भुगतान</span>
+        <div id="amountValue" class="amount-value" aria-live="polite">₹185</div>
+        <p class="amount-subtext" id="amountText">आपको कुल ₹185 का भुगतान करना है।</p>
+      </section>
+
+      <div style="margin-bottom: 18px;">
+        <button id="voiceButton" class="voice-button" type="button" aria-label="आवाज़ सुनें">🔊 आवाज़ सुनें</button>
+      </div>
+
+      <section class="card" aria-label="Payment methods">
+        <h2 class="section-title">💳 Payment करें</h2>
+        <p class="section-subtitle">अपना पसंदीदा UPI App चुनें</p>
+
+        <div class="payment-list">
+          <button class="payment-button gpay" type="button" data-method="googlepay" aria-label="Google Pay खोलें">
+            <span class="left"><span aria-hidden="true">🟢</span> Google Pay खोलें · QR Scan करें</span>
+            <span aria-hidden="true">→</span>
+          </button>
+
+          <button class="payment-button paytm" type="button" data-method="paytm" aria-label="Paytm खोलें">
+            <span class="left"><span aria-hidden="true">🔵</span> Paytm खोलें · QR Scan करें</span>
+            <span aria-hidden="true">→</span>
+          </button>
+
+          <button class="payment-button phonepe" type="button" data-method="phonepe" aria-label="PhonePe खोलें">
+            <span class="left"><span aria-hidden="true">🟣</span> PhonePe खोलें · QR Scan करें</span>
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="card qr-card" aria-label="QR Code payment card">
+        <h2 class="section-title">📷 QR Code से Payment करें</h2>
+        <p class="section-subtitle">पहले QR सेव करें, फिर UPI App में Scan QR → Gallery से इसे चुनें।</p>
+
+        <div class="qr-image-wrap">
+          <div id="merchantQrCode" role="img" aria-label="4A Store का amount वाला UPI QR"></div>
+        </div>
+
+        <p class="payment-note">4A kirana store</p>
+        <p class="upi-id" aria-label="Merchant UPI ID">Q623952089@ybl</p>
+
+        <div style="margin-top: 14px;">
+          <button id="saveQrButton" class="secondary-action" type="button" aria-label="QR फ़ोन में सेव करें">📥 1. QR Code फ़ोन में Save करें</button>
+        </div>
+
+        <div class="phonepe-actions hidden" id="phonepeFallbackActions">
+          <button id="phonepeTryOpen" class="small-button primary" type="button" aria-label="PhonePe खोलने की कोशिश करें">📱 PhonePe खोलने की कोशिश करें</button>
+          <button id="phonepeSaveAgain" class="small-button secondary" type="button" aria-label="QR फिर से सेव करें">📷 QR फिर से सेव करें</button>
+        </div>
+      </section>
+
+      <section class="card after-payment-card" aria-label="After payment section">
+        <h2 class="section-title">✅ Payment कर दिया?</h2>
+        <p class="section-subtitle">अब Payment का Screenshot चुनें।</p>
+
+        <div class="status-box" aria-live="polite">
+          आपको Payment Number खुद Type नहीं करना है।<br>हम Screenshot से अपने-आप खोजेंगे।
+        </div>
+
+        <div class="upload-box">
+          <label class="file-button" id="screenshotLabel" for="paymentScreenshot" aria-label="Payment Screenshot चुनें">📸 Payment Screenshot चुनें</label>
+          <input id="paymentScreenshot" class="file-input" type="file" accept="image/*" aria-label="Payment Screenshot" />
+          <div class="upload-hint">Screenshot से UTR अपने-आप खोजा जाएगा</div>
+        </div>
+
+        <button id="retryScreenshotBtn" class="retry-button" type="button" aria-label="दूसरा Screenshot चुनें">📸 दूसरा Screenshot चुनें</button>
+
+        <div id="previewBox" class="preview-box" aria-live="polite">
+          <img id="screenshotPreview" alt="Selected payment screenshot preview" />
+        </div>
+
+        <div id="ocrStatus" class="ocr-status" aria-live="polite">
+          Screenshot चुनें और हम Payment Number खोजेंगे।
+        </div>
+
+        <div class="utr-panel" id="utrPanel">
+          <label class="label" for="utrNumber" style="margin-bottom: 8px;">UPI Reference Number</label>
+          <input id="utrNumber" class="utr-field" type="text" readonly aria-label="Automatically detected UTR number" />
+        </div>
+
+        <div class="manual-utrs" id="manualUtrWrap">
+          <p class="manual-note">⚠️ केवल तब इस्तेमाल करें जब Screenshot से UTR नहीं मिल रहा हो।</p>
+          <label class="label" for="manualUtrInput">UTR खुद भरें</label>
+          <input id="manualUtrInput" class="utr-field" type="text" inputmode="numeric" maxlength="12" placeholder="12 digit UTR" aria-label="Manual UTR entry" />
+          <div class="helper-row">
+            <span>UTR नहीं मिल रहा?</span>
+            <button id="applyManualUtr" class="small-button secondary" type="button" aria-label="UTR लगाएं">UTR लगाएं</button>
+          </div>
+        </div>
+
+        <div style="margin-top: 12px;">
+          <button id="manualToggleButton" class="secondary-action" type="button" aria-label="UTR नहीं मिल रहा?">UTR नहीं मिल रहा?</button>
+        </div>
+      </section>
+    </main>
+
+    <section id="successView" class="success-screen" aria-live="polite">
+      <h2 class="success-hero">🎉 ऑर्डर पक्का हो गया!</h2>
+      <p class="success-copy">आपका Payment verify हो गया है।<br>आपका सामान जल्द आपके घर पहुँचाया जाएगा।</p>
+
+      <div class="summary-box">
+        <div class="summary-row"><span>Order ID</span><strong id="successOrderId">-</strong></div>
+        <div class="summary-row"><span>₹ Amount</span><strong id="successAmount">₹0</strong></div>
+        <div class="summary-row"><span>Payment Reference</span><strong id="successUtr">-</strong></div>
+        <div class="summary-row"><span>4A Kirana Store</span><strong>Chandargarh</strong></div>
+      </div>
+
+      <button id="backToStore" class="secondary-action" type="button" aria-label="दुकान पर वापस जाएँ">🛒 दुकान पर वापस जाएँ</button>
+      <button id="whatsappOrder" class="ghost-button" type="button" aria-label="WhatsApp पर Order Details भेजें">📱 WhatsApp पर Order Details भेजें</button>
+    </section>
+
+    <section id="failureView" class="failure-screen" aria-live="polite">
+      <h2 class="failure-hero" style="color: var(--error);">⚠️ अभी Order Confirm नहीं हो पाया।</h2>
+      <p class="failure-copy">Internet connection चेक करें और दोबारा कोशिश करें।</p>
+      <div class="summary-box">
+        <div class="summary-row"><span>Order ID</span><strong id="failureOrderId">-</strong></div>
+        <div class="summary-row"><span>Payment Reference</span><strong id="failureUtr">-</strong></div>
+      </div>
+      <button id="retryOrder" class="secondary-action" type="button" aria-label="दोबारा कोशिश करें">🔁 दोबारा कोशिश करें</button>
+    </section>
+
+    <div class="sticky-action-bar" aria-label="Confirm order action bar">
+      <div class="action-inner">
+        <button id="confirmOrderBtn" class="primary-action" type="button" disabled aria-label="Confirm order">
+          ✅ ऑर्डर पक्का करें
+          <span class="small-text">Confirm Order</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" aria-live="assertive" role="status"></div>
+
+  <script>
+    const requestedAmount = Number(new URLSearchParams(window.location.search).get('amount'));
+    const payableAmount = Number.isFinite(requestedAmount) && requestedAmount > 0 ? requestedAmount : 185.00;
+    const isPaymentPreview = new URLSearchParams(window.location.search).get('preview') === '1';
+    const merchantUpiId = 'Q623952089@ybl';
+    const merchantName = '4A kirana store';
+    const ORDER_API_URL = 'api/orders.php';
+
+    const amountValue = document.getElementById('amountValue');
+    const amountText = document.getElementById('amountText');
+    const voiceButton = document.getElementById('voiceButton');
+    const paymentScreenshot = document.getElementById('paymentScreenshot');
+    const ocrStatus = document.getElementById('ocrStatus');
+    const retryScreenshotBtn = document.getElementById('retryScreenshotBtn');
+    const screenshotLabel = document.getElementById('screenshotLabel');
+    const previewBox = document.getElementById('previewBox');
+    const screenshotPreview = document.getElementById('screenshotPreview');
+    const utrNumber = document.getElementById('utrNumber');
+    const utrPanel = document.getElementById('utrPanel');
+    const manualUtrWrap = document.getElementById('manualUtrWrap');
+    const manualUtrInput = document.getElementById('manualUtrInput');
+    const manualToggleButton = document.getElementById('manualToggleButton');
+    const confirmOrderBtn = document.getElementById('confirmOrderBtn');
+    const toast = document.getElementById('toast');
+    const checkoutView = document.getElementById('checkoutView');
+    const successView = document.getElementById('successView');
+    const failureView = document.getElementById('failureView');
+    const retryOrder = document.getElementById('retryOrder');
+    const merchantQrCode = document.getElementById('merchantQrCode');
+
+    let orderId = '4A-' + Date.now().toString().slice(-8);
+    let detectedUtr = '';
+    let isSubmitting = false;
+    let activeImageUrl = '';
+    let ocrBusy = false;
+    let merchantQrSaved = false;
+
+    function formatINR(value) {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
+      }).format(value);
+    }
+
+    function updateAmountDisplay() {
+      const amountLabel = formatINR(payableAmount);
+      amountValue.textContent = amountLabel;
+      amountText.textContent = `आपको कुल ${amountLabel} का भुगतान करना है।`;
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast.timeoutId);
+      showToast.timeoutId = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2600);
+    }
+
+    function speakHindi(message) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.lang = 'hi-IN';
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function buildUpiQrPayload() {
+      return `upi://pay?pa=${encodeURIComponent(merchantUpiId)}&pn=${encodeURIComponent(merchantName)}&am=${payableAmount.toFixed(2)}&cu=INR`;
+    }
+
+    function renderMerchantQr() {
+      merchantQrCode.replaceChildren();
+      const payload = buildUpiQrPayload();
+      if (window.QRCode) {
+        new QRCode(merchantQrCode, { text: payload, width: 240, height: 240, colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+        return;
+      }
+
+      const image = document.createElement('img');
+      image.alt = '4A Store UPI QR';
+      image.width = 240;
+      image.height = 240;
+      image.crossOrigin = 'anonymous';
+      image.src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(payload);
+      merchantQrCode.appendChild(image);
+    }
+
+    function setOcrStatus(message, kind = '') {
+      ocrStatus.textContent = message;
+      ocrStatus.classList.remove('success', 'warning');
+      if (kind) ocrStatus.classList.add(kind);
+      retryScreenshotBtn.classList.toggle('visible', kind === 'warning');
+      if (kind === 'warning') {
+        screenshotLabel.textContent = '📸 दूसरा Screenshot चुनें';
+      } else {
+        screenshotLabel.textContent = '📸 Payment Screenshot चुनें';
+      }
+    }
+
+    function updateConfirmButton() {
+      const valid = /^\d{12}$/.test(detectedUtr);
+      confirmOrderBtn.disabled = !valid || isSubmitting;
+      confirmOrderBtn.setAttribute('aria-disabled', String(!valid || isSubmitting));
+    }
+
+    function releasePreviewUrl() {
+      if (activeImageUrl) {
+        URL.revokeObjectURL(activeImageUrl);
+        activeImageUrl = '';
+      }
+    }
+
+    function createScannableQrImage(container, amount, upiId) {
+      const qr = container.querySelector('canvas, img');
+      if (!qr || (qr.tagName === 'IMG' && (!qr.complete || !qr.naturalWidth))) return '';
+      try {
+        const qrSize = 720;
+        const quietZone = 72;
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = 1000;
+        exportCanvas.height = 1300;
+        const context = exportCanvas.getContext('2d');
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        context.strokeStyle = '#0FA958';
+        context.lineWidth = 12;
+        context.strokeRect(12, 12, 976, 1276);
+        context.fillStyle = '#FF9F1C';
+        context.fillRect(30, 240, 12, 864);
+        context.fillRect(958, 240, 12, 864);
+
+        context.textAlign = 'center';
+        context.fillStyle = '#111827';
+        context.font = 'bold 58px system-ui, sans-serif';
+        context.fillText('4A Store', 500, 120);
+        context.fillStyle = '#0B8D4A';
+        context.font = 'bold 26px system-ui, sans-serif';
+        context.fillText('UPI PAYMENT', 500, 170);
+
+        context.imageSmoothingEnabled = false;
+        context.drawImage(qr, 68, 240, qrSize + quietZone * 2, qrSize + quietZone * 2);
+
+        context.fillStyle = '#111827';
+        context.font = 'bold 38px system-ui, sans-serif';
+        context.fillText(formatINR(amount), 500, 1170);
+        context.fillStyle = '#6B7280';
+        context.font = '24px system-ui, sans-serif';
+        context.fillText(upiId, 500, 1220);
+        return exportCanvas.toDataURL('image/png');
+      } catch (error) { return ''; }
+    }
+
+    function saveMerchantQR() {
+      const imageData = createScannableQrImage(merchantQrCode, payableAmount, merchantUpiId);
+
+      if (!imageData) {
+        showToast('QR अभी तैयार नहीं है। Internet चालू करके QR दोबारा कोशिश करें।');
+        return false;
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = '4A-Store-UPI-QR-' + payableAmount.toFixed(0) + '-' + timestamp + '.png';
+      if (window.AndroidApp && typeof window.AndroidApp.saveBase64File === 'function') {
+        try {
+          window.AndroidApp.saveBase64File(imageData, fileName, 'image/png');
+          merchantQrSaved = true;
+          showToast('QR Gallery में सेव हुआ। PhonePe → Scan QR → Gallery से चुनें।');
+          return true;
+        } catch (error) { /* use a browser download if the bridge fails */ }
+      }
+
+      const link = document.createElement('a');
+      link.href = imageData;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      merchantQrSaved = true;
+      showToast('QR डाउनलोड हुआ। PhonePe → Scan QR → Gallery/Downloads से चुनें।');
+      return true;
+    }
+
+    function openUpiApp(scheme, appName) {
+      if (!merchantQrSaved && !saveMerchantQR()) return;
+      const paymentApp = scheme === 'phonepe://' ? 'phonepe' : (scheme === 'tez://' ? 'gpay' : '');
+      if (paymentApp && window.AndroidApp && typeof window.AndroidApp.openPaymentApp === 'function') {
+        try {
+          window.AndroidApp.openPaymentApp(paymentApp);
+          showToast(appName + ' खोल रहे हैं। खुलने के बाद Scan QR → Gallery से सेव किया QR चुनें।');
+          return;
+        } catch (error) { /* fall back to the browser URI handler */ }
+      }
+      if (paymentApp) {
+        const packageName = paymentApp === 'phonepe'
+          ? 'com.phonepe.app'
+          : 'com.google.android.apps.nbu.paisa.user';
+        const fallbackUrl = `https://play.google.com/store/apps/details?id=${packageName}`;
+        window.location.href = `intent://launch#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${packageName};S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
+      } else {
+        window.location.href = scheme;
+      }
+      setTimeout(() => showToast(appName + ' नहीं खुला? App खोलें → Scan QR → Gallery से सेव किया QR चुनें।'), 800);
+    }
+
+    function triggerGooglePay() {
+      openUpiApp('tez://', 'Google Pay');
+    }
+
+    function triggerPaytm() {
+      openUpiApp('paytmmp://', 'Paytm');
+    }
+
+    function showPhonePeGuidance() {
+      const fallbackBox = document.getElementById('phonepeFallbackActions');
+      fallbackBox.classList.remove('hidden');
+      openUpiApp('phonepe://', 'PhonePe');
+    }
+
+    function handlePhonePeFlow() {
+      showPhonePeGuidance();
+    }
+
+    function detectUtrFromText(text) {
+      const patterns = [
+        /(?:UTR|Ref|UPI Ref|Txn ID)[^\d]*(\d{12})/i,
+        /\b\d{12}\b/
+      ];
+
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+          const found = (match[1] || match[0]).replace(/\D/g, '').trim();
+          if (/^\d{12}$/.test(found)) return found;
+        }
+      }
+
+      return '';
+    }
+
+    function validateUtrInput(value) {
+      const trimmed = (value || '').trim();
+      return /^\d{12}$/.test(trimmed) ? trimmed : '';
+    }
+
+    function setDetectedUtr(value) {
+      const valid = validateUtrInput(value);
+      detectedUtr = valid;
+      utrNumber.value = valid;
+      utrPanel.classList.toggle('visible', !!valid);
+      updateConfirmButton();
+
+      if (valid) {
+        setOcrStatus('✅ Payment Number मिल गया', 'success');
+        speakHindi('आपका पेमेंट नंबर मिल गया है। अब ऑर्डर कन्फर्म करें।');
+      }
+    }
+
+    async function runOcrOnFile(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      if (ocrBusy) return;
+
+      ocrBusy = true;
+      paymentScreenshot.disabled = true;
+      setOcrStatus('⏳ Screenshot देख रहे हैं...', '');
+
+      const currentUrl = URL.createObjectURL(file);
+      releasePreviewUrl();
+      activeImageUrl = currentUrl;
+      screenshotPreview.src = currentUrl;
+      previewBox.classList.add('active');
+
+      try {
+        if (!window.Tesseract || !window.Tesseract.recognize) {
+          throw new Error('OCR unavailable');
+        }
+
+        const { data } = await window.Tesseract.recognize(file, 'eng+hin', {
+          logger: () => {}
+        });
+
+        const found = detectUtrFromText(data.text || '');
+
+        if (found) {
+          setDetectedUtr(found);
+          return;
+        }
+
+        detectedUtr = '';
+        utrNumber.value = '';
+        utrPanel.classList.remove('visible');
+        setOcrStatus('⚠️ Payment Number नहीं मिला\nकृपया Payment का साफ़ Screenshot चुनें।', 'warning');
+        showToast('⚠️ Payment Number नहीं मिला\nकृपया Payment का साफ़ Screenshot चुनें।');
+        showToast('Screenshot में UTR / Ref / Transaction ID साफ़ दिखाई देना चाहिए।');
+      } catch (error) {
+        detectedUtr = '';
+        utrNumber.value = '';
+        utrPanel.classList.remove('visible');
+        setOcrStatus('⚠️ Payment Number नहीं मिला\nकृपया Payment का साफ़ Screenshot चुनें।', 'warning');
+        showToast('⚠️ Payment Number नहीं मिला\nकृपया Payment का साफ़ Screenshot चुनें।');
+      } finally {
+        ocrBusy = false;
+        paymentScreenshot.disabled = false;
+        updateConfirmButton();
+      }
+    }
+
+    function handleScreenshotSelection(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      runOcrOnFile(file);
+    }
+
+    function toggleManualEntry() {
+      const shouldShow = !manualUtrWrap.classList.contains('visible');
+      manualUtrWrap.classList.toggle('visible', shouldShow);
+      if (shouldShow) {
+        manualUtrInput.focus();
+      }
+    }
+
+    function applyManualUtr() {
+      const value = validateUtrInput(manualUtrInput.value);
+      if (!value) {
+        showToast('कृपया 12-digit UTR दर्ज करें।');
+        return;
+      }
+      manualUtrInput.value = value;
+      setDetectedUtr(value);
+      manualUtrWrap.classList.remove('visible');
+      showToast('UTR दर्ज हो गया है।');
+    }
+
+    async function submitOrder(orderPayload) {
+      try {
+        const response = await fetch(ORDER_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(orderPayload)
+        });
+
+        if (!response.ok) {
+          throw new Error('Order API failed');
+        }
+
+        const result = await response.json().catch(() => ({ success: true }));
+        if (result && result.success === false) {
+          throw new Error('Backend verification failed');
+        }
+
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function showFailureScreen() {
+      document.getElementById('failureOrderId').textContent = orderId;
+      document.getElementById('failureUtr').textContent = detectedUtr || '—';
+      checkoutView.classList.add('hidden');
+      successView.classList.remove('visible');
+      failureView.classList.add('visible');
+    }
+
+    function showSuccessScreen() {
+      document.getElementById('successOrderId').textContent = orderId;
+      document.getElementById('successAmount').textContent = formatINR(payableAmount);
+      document.getElementById('successUtr').textContent = detectedUtr;
+      checkoutView.classList.add('hidden');
+      failureView.classList.remove('visible');
+      successView.classList.add('visible');
+    }
+
+    async function confirmOrder() {
+      if (isSubmitting) return;
+      if (isPaymentPreview) {
+        showToast('यह QR/OCR preview है। असली order checkout page से confirm करें।');
+        return;
+      }
+
+      const validUtr = validateUtrInput(detectedUtr || utrNumber.value || manualUtrInput.value || '');
+      if (!validUtr) {
+        showToast('पहले Payment Screenshot चुनें और Payment Number प्राप्त करें।');
+        return;
+      }
+
+      detectedUtr = validUtr;
+      setDetectedUtr(validUtr);
+      isSubmitting = true;
+      confirmOrderBtn.disabled = true;
+      confirmOrderBtn.innerHTML = '⏳ Order Confirm हो रहा है...<span class="small-text">Please wait</span>';
+
+      const orderPayload = {
+        orderId,
+        payableAmount,
+        paymentMethod: 'UPI',
+        merchantUpiId,
+        merchantName,
+        utrNumber: validUtr,
+        timestamp: new Date().toISOString()
+      };
+
+      const ok = await submitOrder(orderPayload);
+
+      if (ok) {
+        showSuccessScreen();
+      } else {
+        showFailureScreen();
+      }
+
+      isSubmitting = false;
+      updateConfirmButton();
+      confirmOrderBtn.innerHTML = '✅ ऑर्डर पक्का करें<span class="small-text">Confirm Order</span>';
+    }
+
+    function prepareReferences() {
+      updateAmountDisplay();
+      renderMerchantQr();
+      updateConfirmButton();
+      utrPanel.classList.toggle('visible', !!detectedUtr);
+      if (detectedUtr) utrNumber.value = detectedUtr;
+    }
+
+    paymentScreenshot.addEventListener('change', handleScreenshotSelection);
+    retryScreenshotBtn.addEventListener('click', () => {
+      paymentScreenshot.value = '';
+      paymentScreenshot.click();
+    });
+    voiceButton.addEventListener('click', () => {
+    speakHindi('पेमेंट करने के लिए क्यूआर कोड गैलरी में सेव करें, फिर फ़ोन पे या गूगल पे खोलकर गैलरी से स्कैन करें।');
+    });
+
+    document.querySelector('[data-method="googlepay"]').addEventListener('click', triggerGooglePay);
+    document.querySelector('[data-method="paytm"]').addEventListener('click', triggerPaytm);
+    document.querySelector('[data-method="phonepe"]').addEventListener('click', handlePhonePeFlow);
+
+    document.getElementById('saveQrButton').addEventListener('click', saveMerchantQR);
+    document.getElementById('phonepeTryOpen').addEventListener('click', () => {
+      window.location.href = 'phonepe://';
+      setTimeout(() => {
+        showToast('PhonePe अपने-आप नहीं खुला?\nPhonePe खोलें → Scan QR → Gallery → 4A Store QR चुनें।');
+      }, 800);
+    });
+    document.getElementById('phonepeSaveAgain').addEventListener('click', saveMerchantQR);
+
+    manualToggleButton.addEventListener('click', toggleManualEntry);
+    document.getElementById('applyManualUtr').addEventListener('click', applyManualUtr);
+    confirmOrderBtn.addEventListener('click', confirmOrder);
+    retryOrder.addEventListener('click', () => {
+      failureView.classList.remove('visible');
+      checkoutView.classList.remove('hidden');
+      confirmOrderBtn.disabled = false;
+      isSubmitting = false;
+      updateConfirmButton();
+    });
+    document.getElementById('backToStore').addEventListener('click', () => window.location.reload());
+    document.getElementById('whatsappOrder').addEventListener('click', () => {
+      const whatsappText = encodeURIComponent(
+        `4A Kirana Store\nOrder ID: ${orderId}\nAmount: ${formatINR(payableAmount)}\nPayment Ref: ${detectedUtr}\nLocation: Chandargarh, Bihar`
+      );
+      window.open(`https://wa.me/?text=${whatsappText}`, '_blank');
+    });
+
+    prepareReferences();
+  </script>
+</body>
+</html>
