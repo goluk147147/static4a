@@ -154,10 +154,10 @@
       <div class="location-choice-card">
         <strong>डिलीवरी का पता कैसे चुनेंगे?</strong>
         <div class="location-choice-actions">
-          <button type="button" id="currentLocationOption" onclick="selectLocationMode('current')">📍 वर्तमान लोकेशन लें</button>
+          <button type="button" id="currentLocationOption" onclick="selectLocationMode('current')" style="display:none;">📍 वर्तमान लोकेशन लें</button>
           <button type="button" id="manualLocationOption" onclick="selectLocationMode('manual')">✍️ पता स्वयं भरें</button>
         </div>
-        <div id="deliveryLocationStatus">वर्तमान लोकेशन लें या पता स्वयं भरें।</div>
+        <div id="deliveryLocationStatus">पता स्वयं भरें।</div>
       </div>
       <div id="savedAddressPanel" class="address-summary" style="display:none;">
         <div class="address-summary-head"><strong>📍 Deliver to / यहाँ डिलीवरी करें</strong><button type="button" id="changeSavedAddressButton" class="address-change-btn" onclick="toggleAddressPicker()">Change / बदलें ▾</button></div>
@@ -392,6 +392,8 @@
       restorePendingAddressDraft();
       restorePendingOrderConfirmation();
       loadSavedAddresses();
+      // Default to manual address entry (current location is hidden)
+      selectLocationMode('manual');
     });
 
     // Re-render the order summary once backend settings (delivery fee etc.) load
