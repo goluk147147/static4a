@@ -1,17 +1,15 @@
 <?php
 // Shared API security helpers. Sessions are the source of truth for identity and role.
 if (session_status() !== PHP_SESSION_ACTIVE) {
-    // Keep the authenticated API session alive for 1 year (unless explicitly logged out)
-    // This ensures user stays logged in across browser restarts and device reboots.
+    // Keep sessions alive for 1 year
     ini_set('session.gc_maxlifetime', '31536000');
-    ini_set('session.gc_probability', '0');  // Disable automatic garbage collection to preserve sessions
-    ini_set('session.cookie_lifetime', '31536000');  // 1 year cookie lifetime
+    ini_set('session.gc_probability', '0');
+    ini_set('session.cookie_lifetime', '31536000');
     
     session_name('4astore_session');
     session_set_cookie_params([
-        'lifetime' => 31536000,  // 1 year
+        'lifetime' => 31536000,
         'path' => '/',
-        'domain' => '',  // Use default domain
         'httponly' => true,
         'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'samesite' => 'Lax'
@@ -19,24 +17,21 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-// Extend session cookie lifetime on every request
+// Extend session on every request
 if (!empty($_SESSION['user'])) {
     setcookie(session_name(), session_id(), [
-        'expires' => time() + 31536000,  // 1 year
+        'expires' => time() + 31536000,
         'path' => '/',
         'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
-    
-    // Touch the session file to update its modification time (for garbage collection)
-    // This prevents the session from being garbage collected even if gc_probability is > 0
-    $_SESSION['_lastActivity'] = time();
 }
 
 header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store');
+header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);

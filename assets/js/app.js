@@ -56,7 +56,24 @@ let dbUsers = [];
 let dbOrders = [];
 let dbAdmin = null;
 
-// Session keep-alive mechanism for WebView (Android app)
+// ============================================
+// TOKEN-BASED SESSION (WebView Fallback)
+// ============================================
+// Simple localStorage for session persistence
+
+function getSessionToken() {
+  return localStorage.getItem('4astore_session_token');
+}
+
+function setSessionToken(token) {
+  if (token) {
+    localStorage.setItem('4astore_session_token', token);
+  }
+}
+
+function clearSessionToken() {
+  localStorage.removeItem('4astore_session_token');
+}
 // Sends periodic requests to server to keep session alive
 let sessionKeepAliveInterval = null;
 
@@ -149,34 +166,20 @@ document.addEventListener('DOMContentLoaded', () => {
   syncSessionWithServerAsync();
 });
 
-// Async sync user state from server without clearing localStorage on mismatch
-// Purpose: If server session exists, preserve it in localStorage; 
-// only logout if user explicitly calls logoutUser()
+// Async sync user state from server without blocking
+// If server has session, sync it; otherwise keep localStorage
 function syncSessionWithServerAsync() {
   fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'same-origin' })
     .then(r => r.json())
     .then(result => {
       if (result.success && result.user && result.user.mobile) {
-        const serverUser = result.user;
-        // ALWAYS sync from server - server is source of truth
-        loginUser(serverUser.name, serverUser.mobile, serverUser.username, serverUser.mode || serverUser.role, serverUser.backendRider === true, false);
-      } else {
-        // Server says no session - only clear if NO local data exists
-        const localUser = getLoggedInUser();
-        if (localUser) {
-          // Local session exists but server has no session
-          // This could be a network issue or cookie problem
-          // For WebView: retry after 5 seconds
-          if (window.AndroidApp) {
-            console.log('Server session mismatch - retrying in 5s');
-            setTimeout(syncSessionWithServerAsync, 5000);
-          }
-        }
+        // Server session exists - sync it
+        loginUser(result.user.name, result.user.mobile, result.user.username, result.user.mode || result.user.role, result.user.backendRider === true, false);
       }
+      // If no server session but we have local, keep it (don't clear)
     })
-    .catch((err) => {
-      // Network error: keep localStorage as is
-      console.log('Session sync network error - keeping local session', err.message);
+    .catch(() => {
+      // Network error - keep existing session
     });
 }
 
@@ -383,6 +386,18 @@ function loginUser(name, mobile, username, role, backendRider, announce = true) 
     localStorage.removeItem('4astore_cart_guest');
   }
   localStorage.setItem('4astore_user', JSON.stringify(user));
+  
+  // Generate and store session token for WebView
+  if (window.AndroidApp) {
+    const token = btoa(JSON.stringify({ 
+      mobile, 
+      username: username || mobile, 
+      timestamp: Date.now(),
+      salt: Math.random().toString(36).substr(2, 9)
+    }));
+    setSessionToken(token);
+  }
+  
   try {
     if (window.AndroidApp && typeof window.AndroidApp.flushSessionCookies === 'function') {
       window.AndroidApp.flushSessionCookies();
@@ -409,6 +424,7 @@ function logoutUser() {
   
   // Always clear local session, even if server fails
   localStorage.removeItem('4astore_user');
+  clearSessionToken();  // Clear token for WebView
   updateLoginUI();
   
   if (serverLogoutConfirmed) {
@@ -436,37 +452,37 @@ function updateLoginUI() {
 
 async function requireLogin() {
   const localUser = getLoggedInUser();
-  try {
-    const response = await fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'same-origin' });
-    if (!response.ok) throw new Error('Unable to verify login session');
-    const result = await response.json();
-    const sessionUser = result.success && result.user;
-    
-    if (!sessionUser || !sessionUser.mobile) {
-      // No server session - only clear local if server explicitly says no
-      if (localUser) {
-        localStorage.removeItem('4astore_user');
-      }
-      redirectToLogin();
-      return false;
-    }
-
-    // Server session exists - ALWAYS sync and preserve
-    const sessionMode = sessionUser.mode || sessionUser.role;
-    
-    // Always update localStorage from server (server is the source of truth)
-    loginUser(sessionUser.name, sessionUser.mobile, sessionUser.username, sessionMode, sessionUser.backendRider === true, false);
+  
+  // If user is already logged in locally, allow them in
+  if (localUser && localUser.mobile) {
+    // Try to sync with server in background, but don't block
+    fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'same-origin' })
+      .catch(() => {}); // Silent fail - we'll use localStorage
     
     return true;
-  } catch (e) {
-    // Network error - TRUST localStorage if it exists
-    if (localUser) {
-      console.log('Network error - keeping local session alive');
+  }
+  
+  // No local user - try to fetch from server
+  try {
+    const response = await fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'same-origin' });
+    const result = await response.json();
+    
+    if (result.success && result.user && result.user.mobile) {
+      // Server has session - sync it
+      const sessionMode = result.user.mode || result.user.role;
+      loginUser(result.user.name, result.user.mobile, result.user.username, sessionMode, result.user.backendRider === true, false);
       return true;
     }
-    redirectToLogin();
-    return false;
+  } catch (e) {
+    // Network error - if we have local user, allow them
+    if (localUser && localUser.mobile) {
+      return true;
+    }
   }
+  
+  // No session found - redirect to login
+  redirectToLogin();
+  return false;
 }
 
 function redirectToLogin() {
