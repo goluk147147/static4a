@@ -16,6 +16,7 @@
     body {
       min-height: 100vh;
       min-height: 100dvh;
+      width: 100%;
       max-width: 100%;
       overflow-x: hidden;
       overflow-y: auto;
@@ -24,7 +25,9 @@
       padding-top: max(0px, env(safe-area-inset-top));
       padding-bottom: max(0px, env(safe-area-inset-bottom));
       -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
     }
+    body.modal-open { overflow: hidden; }
     @media (max-width:768px) {
       body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
     }
@@ -55,26 +58,28 @@
     .address-summary { background:var(--primary-light); border:1px solid var(--border); border-radius:10px; padding:11px 12px; margin:10px 0 14px; }
     .address-summary-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
     .address-change-btn { border:0; background:none; color:var(--primary-dark); font-weight:800; cursor:pointer; padding:4px; }
-    .address-picker-modal { position:fixed; inset:0; z-index:5000; display:none; align-items:center; justify-content:center; background:rgba(18,24,30,.5); padding:calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 12px); backdrop-filter:blur(2px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .address-picker-modal { position:fixed; inset:0; z-index:5000; display:none; align-items:center; justify-content:center; background:rgba(18,24,30,.5); padding:0; backdrop-filter:blur(2px); overflow-y:auto; -webkit-overflow-scrolling:touch; -webkit-user-select: none; user-select: none; }
     .address-picker-modal.open { display:flex; }
-    .address-picker-sheet { display:flex; flex-direction:column; width:min(100%,520px); max-height:min(82vh,720px); max-height:min(82dvh,720px); min-height:0; overflow:hidden; box-sizing:border-box; background:#fff; border-radius:16px; padding:18px 14px calc(12px + env(safe-area-inset-bottom)); box-shadow:0 10px 30px rgba(0,0,0,.18); }
+    .address-picker-modal * { -webkit-user-select: text; user-select: text; }
+    .address-picker-sheet { display:flex; flex-direction:column; width:min(100%,520px); max-height:min(82vh,720px); max-height:min(82dvh,720px); min-height:0; overflow:hidden; box-sizing:border-box; background:#fff; border-radius:16px; padding:18px 14px calc(12px + env(safe-area-inset-bottom)); box-shadow:0 10px 30px rgba(0,0,0,.18); -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); }
     .address-picker-sheet h3 { border:0; margin:0 0 4px; padding:0; color:#2d211d; font-size:21px; }
     .address-picker-sheet::before { content:""; display:block; width:42px; height:4px; border-radius:5px; background:#d8c9c2; margin:0 auto 14px; }
-    .address-picker-list { min-height:0; max-height:min(34dvh,220px); overflow-y:auto; overscroll-behavior:contain; padding:0 2px; }
+    .address-picker-list { min-height:0; max-height:min(34dvh,220px); overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:0 2px; }
     .address-option { display:block; width:100%; text-align:left; border:1px solid var(--border); background:#fff; border-radius:9px; padding:11px; margin:7px 0; cursor:pointer; }
     .address-option.selected { border-color:var(--primary); background:var(--primary-light); }
     .address-search { width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:9px; font-size:14px; outline:none; margin:8px 0 10px; }
     .address-search:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(44,111,173,.12); }
     .address-new-btn { width:100%; border:1px dashed var(--primary); background:#fffaf6; border-radius:9px; padding:12px; color:var(--primary-dark); font-weight:800; cursor:pointer; margin-top:8px; }
     .address-new-btn:hover { background:var(--primary-light); }
-    .address-editor-modal { position:fixed; inset:0; z-index:5050; width:100%; height:100vh; height:100dvh; min-height:0; box-sizing:border-box; overflow-y:auto; -webkit-overflow-scrolling:touch; display:none; align-items:flex-start; justify-content:center; background:rgba(18,24,30,.5); padding:calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 12px); backdrop-filter:blur(2px); }
+    .address-editor-modal { position:fixed; inset:0; z-index:5050; width:100%; height:100vh; height:100dvh; min-height:0; box-sizing:border-box; overflow-y:auto; -webkit-overflow-scrolling:touch; display:none; align-items:center; justify-content:center; background:rgba(18,24,30,.5); padding:0; backdrop-filter:blur(2px); -webkit-user-select: none; user-select: none; }
+    .address-editor-modal * { -webkit-user-select: text; user-select: text; }
     .address-editor-modal.open { display:flex; }
-    .address-editor-sheet { display:flex; flex-direction:column; width:min(100%,680px); max-height:calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); min-height:0; overflow:hidden; background:#fff; border-radius:16px; padding:14px 16px calc(10px + env(safe-area-inset-bottom)); box-shadow:0 10px 30px rgba(0,0,0,.2); }
+    .address-editor-sheet { display:flex; flex-direction:column; width:min(100%,680px); max-height:calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); min-height:0; overflow:hidden; background:#fff; border-radius:16px; padding:14px 16px calc(10px + env(safe-area-inset-bottom)); box-shadow:0 10px 30px rgba(0,0,0,.2); -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); }
     .address-editor-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; }
     .address-editor-head h3 { border:0; margin:0; padding:0; color:#2d211d; }
     .address-editor-head p { color:var(--gray); font-size:12px; margin:3px 0 0; }
     .address-editor-head button { border:0; background:none; color:var(--gray); font-size:28px; line-height:1; cursor:pointer; }
-    .address-editor-content { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:0 2px; }
+    .address-editor-content { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:0 2px; }
     .address-editor-actions { flex:0 0 auto; padding-top:10px; background:#fff; }
     .address-label-options { border:0; padding:0; margin:4px 0 14px; display:flex; gap:8px; flex-wrap:wrap; }
     .address-label-options legend { width:100%; color:#555; font-size:13px; font-weight:700; margin-bottom:6px; }
@@ -83,7 +88,7 @@
     .address-label-options input { accent-color:var(--primary); }
     .save-address-btn { width:100%; border:0; border-radius:10px; padding:13px; background:var(--primary); color:#fff; font-size:15px; font-weight:800; cursor:pointer; }
     @media (min-width:700px) { .address-editor-modal { align-items:center; padding:16px; } .address-editor-sheet { border-radius:16px; } }
-    .location-progress-modal { position:fixed; inset:0; z-index:5100; display:none; align-items:flex-start; justify-content:center; background:rgba(18,24,30,.48); padding:calc(env(safe-area-inset-top) + 24px) 16px 16px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .location-progress-modal { position:fixed; inset:0; z-index:5100; display:none; align-items:center; justify-content:center; background:rgba(18,24,30,.48); padding:16px; overflow-y:auto; -webkit-overflow-scrolling:touch; -webkit-user-select: none; user-select: none; }
     .location-progress-modal.open { display:flex; }
     .location-progress-sheet { width:min(100%,350px); background:#fff; border-radius:16px; padding:24px 18px; text-align:center; box-shadow:0 10px 32px rgba(0,0,0,.2); }
     @media (min-width:700px) { .address-picker-modal, .address-editor-modal, .location-progress-modal { align-items:center; padding:16px; } }
@@ -380,6 +385,10 @@
     document.addEventListener('DOMContentLoaded', async () => {
       if (window.AndroidApp) document.body.classList.add('in-app-webview');
       if (!await requireLogin()) return;
+      
+      // Delay to ensure session synced on server before loading protected resources
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       const cart = getCart();
       if (cart.length === 0) {
         document.getElementById('checkoutPage').innerHTML = `
@@ -391,9 +400,27 @@
       loadSavedCustomer();
       restorePendingAddressDraft();
       restorePendingOrderConfirmation();
-      loadSavedAddresses();
-      // Default to manual address entry (current location is hidden)
-      selectLocationMode('manual');
+      
+      // Load saved addresses first, then decide layout
+      loadSavedAddresses().then(() => {
+        // Check if we have saved addresses
+        if (savedAddresses && savedAddresses.length > 0) {
+          // Show saved address picker
+          const panel = document.getElementById('savedAddressPanel');
+          if (panel) {
+            const preferred = savedAddresses.find(a => Number(a.is_default) === 1) || savedAddresses[0];
+            selectSavedAddress(preferred.id);
+            panel.style.display = 'block';
+            renderAddressPicker();
+          }
+        } else {
+          // No saved addresses - go to manual mode
+          selectLocationMode('manual');
+        }
+      }).catch(() => {
+        // Error loading - default to manual
+        selectLocationMode('manual');
+      });
     });
 
     // Re-render the order summary once backend settings (delivery fee etc.) load
@@ -518,15 +545,54 @@
 
     async function loadSavedAddresses() {
       try {
-        const response = await fetch('api/addresses.php?_=' + Date.now(), { cache: 'no-store', credentials: 'include' });
-        const result = await response.json();
-        savedAddresses = result.success && Array.isArray(result.addresses) ? result.addresses : [];
+        // First try with normal fetch (includes cookies)
+        const response = await fetch('api/addresses.php?_=' + Date.now(), { 
+          cache: 'no-store', 
+          credentials: 'same-origin'
+        });
+        
+        // If 401, user session lost - try to restore from server
+        if (response.status === 401) {
+          const localUser = getLoggedInUser();
+          if (localUser && localUser.mobile) {
+            // User is logged in locally, but server session lost
+            // Try to sync session
+            try {
+              const syncRes = await fetch('api/users.php?action=session', { 
+                cache: 'no-store',
+                credentials: 'same-origin'
+              });
+              const syncData = await syncRes.json();
+              if (syncData.success && syncData.user) {
+                // Session restored, retry addresses
+                const retryRes = await fetch('api/addresses.php?_=' + Date.now(), { 
+                  cache: 'no-store',
+                  credentials: 'same-origin'
+                });
+                const retryData = await retryRes.json();
+                savedAddresses = retryData.success && Array.isArray(retryData.addresses) ? retryData.addresses : [];
+              } else {
+                savedAddresses = [];
+              }
+            } catch (e) {
+              // If sync fails, default to empty
+              savedAddresses = [];
+            }
+          } else {
+            savedAddresses = [];
+          }
+        } else {
+          const result = await response.json();
+          savedAddresses = result.success && Array.isArray(result.addresses) ? result.addresses : [];
+        }
       } catch (error) {
+        console.error('Error loading saved addresses:', error);
         savedAddresses = [];
       }
       savedAddressesLoaded = true;
       const changeButton = document.getElementById('changeSavedAddressButton');
       if (changeButton) changeButton.hidden = savedAddresses.length === 0;
+      return savedAddresses;
     }
 
     function renderAddressPicker(searchTerm = '') {
@@ -552,21 +618,31 @@
       if (search) search.value = '';
       renderAddressPicker();
       modal.classList.add('open');
+      document.body.classList.add('modal-open');
     }
 
     function closeAddressPicker() {
       const modal = document.getElementById('addressModal');
-      if (modal) modal.classList.remove('open');
+      if (modal) {
+        modal.classList.remove('open');
+        document.body.classList.remove('modal-open');
+      }
     }
 
     function openAddressEditor() {
       const modal = document.getElementById('addressEditorModal');
-      if (modal) modal.classList.add('open');
+      if (modal) {
+        modal.classList.add('open');
+        document.body.classList.add('modal-open');
+      }
     }
 
     function closeAddressEditor() {
       const modal = document.getElementById('addressEditorModal');
-      if (modal) modal.classList.remove('open');
+      if (modal) {
+        modal.classList.remove('open');
+        document.body.classList.remove('modal-open');
+      }
     }
 
     function focusAddressField() {
@@ -1163,6 +1239,7 @@
       document.getElementById('payAmount').textContent = total;
       document.getElementById('upiPaymentModal').classList.remove('hidden');
       document.getElementById('upiPaymentModal').style.display = 'flex';
+      document.body.classList.add('modal-open');
       paymentGuideCustomerName = String(name || (customerInfo && customerInfo.name) || document.getElementById('custName').value || '').trim();
       paymentGuideTotal = Number(total) || 0;
       upiQrSaved = false;
@@ -1491,6 +1568,7 @@
     function closePaymentModal() {
       document.getElementById('upiPaymentModal').classList.add('hidden');
       document.getElementById('upiPaymentModal').style.display = 'none';
+      document.body.classList.remove('modal-open');
     }
 
     // Upload the payment screenshot to the server (async, non-blocking)
@@ -1528,19 +1606,8 @@
       orderData = placeOrder(customerInfo, retryOrder);
 
       if (!orderData.serverSaved) {
-        if (orderData.serverStatus === 401 || /\blogin required\b/i.test(orderData.serverMessage)) {
-          const draft = { order: orderData, paymentScreenshot };
-          try {
-            sessionStorage.setItem('4astore_pending_order_confirmation', JSON.stringify(draft));
-          } catch (error) {
-            try {
-              sessionStorage.setItem('4astore_pending_order_confirmation', JSON.stringify({ order: orderData, paymentScreenshot: null }));
-            } catch (storageError) { }
-          }
-          redirectToLogin();
-          return;
-        }
-        showToast('Order could not be saved: ' + (orderData.serverMessage || 'Please log in and retry') + ' / ऑर्डर सहेजा नहीं जा सका। कृपया लॉगिन करके फिर कोशिश करें।', 'error');
+        // Server error - show message but don't force logout
+        showToast('Order could not be saved: ' + (orderData.serverMessage || 'Please try again') + ' / ऑर्डर सहेजा नहीं जा सका। कृपया फिर कोशिश करें।', 'error');
         return;
       }
       sessionStorage.removeItem('4astore_pending_order_confirmation');

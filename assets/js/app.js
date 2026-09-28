@@ -464,7 +464,7 @@ async function requireLogin() {
   
   // No local user - try to fetch from server
   try {
-    const response = await fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'same-origin' });
+    const response = await fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'same-origin', timeout: 5000 });
     const result = await response.json();
     
     if (result.success && result.user && result.user.mobile) {
@@ -474,10 +474,12 @@ async function requireLogin() {
       return true;
     }
   } catch (e) {
-    // Network error - if we have local user, allow them
+    // Network error or timeout - if we have local user, allow them
     if (localUser && localUser.mobile) {
       return true;
     }
+    // Network error and no local session - don't redirect, just reject
+    console.warn('Session verification failed (network error):', e.message);
   }
   
   // No session found - redirect to login

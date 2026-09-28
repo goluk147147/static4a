@@ -53,8 +53,12 @@ function sessionUser()
 function requireSessionUser()
 {
     $user = sessionUser();
-    if (!$user)
+    if (!$user) {
+        // Session lost - if in WebView and user is in client localStorage,
+        // we can't verify here but we'll let JavaScript handle the recovery
+        // Just return 401 and let JS sync session
         apiJson(['success' => false, 'message' => 'Login required'], 401);
+    }
     return $user;
 }
 

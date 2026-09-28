@@ -14,15 +14,15 @@
         "mobile": "8002116652",
         "username": "akas800",
         "registeredAt": "2026-08-26T08:44:16+02:00",
-        "lastLogin": "2026-09-27T16:17:37+02:00",
+        "lastLogin": "2026-09-28T18:55:44+02:00",
         "customDelivery": 0,
         "role": "rider",
         "backendRider": true,
-        "passwordHash": "$2y$10$8P\/LMUfs9jOvriycOR8zKOM0uHorKqTE0EBcOQdFXpazkSCia2RXm",
+        "passwordHash": "$2y$10$ouNI2TvChquD53rwkI2NzeaPRynu\/0gZz8kGcZN6LXdeIfALd1NA6",
         "recoveryEmail": "goluk147147@gmail.com",
         "recoveryEmailVerified": true,
         "recoveryEmailVerifiedAt": "2026-09-27T16:17:23+02:00",
-        "passwordResetAt": "2026-09-27T16:17:23+02:00"
+        "passwordResetAt": "2026-09-28T18:55:40+02:00"
     },
     {
         "id": 5,
