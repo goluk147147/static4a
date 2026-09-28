@@ -1,12 +1,16 @@
 <?php
 // Shared API security helpers. Sessions are the source of truth for identity and role.
 if (session_status() !== PHP_SESSION_ACTIVE) {
-    // Keep the authenticated API session alive across browser/app restarts.
+    // Keep the authenticated API session alive for 1 year (unless explicitly logged out)
+    // This ensures user stays logged in across browser restarts and device reboots.
     ini_set('session.gc_maxlifetime', '31536000');
+    ini_set('session.gc_probability', '0');  // Disable automatic garbage collection to preserve sessions
+    
     session_name('4astore_session');
     session_set_cookie_params([
-        'lifetime' => 31536000,
+        'lifetime' => 31536000,  // 1 year
         'path' => '/',
+        'domain' => '',  // Use default domain
         'httponly' => true,
         'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'samesite' => 'Lax'
@@ -14,9 +18,10 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+// Extend session cookie lifetime on every request
 if (!empty($_SESSION['user'])) {
     setcookie(session_name(), session_id(), [
-        'expires' => time() + 31536000,
+        'expires' => time() + 31536000,  // 1 year
         'path' => '/',
         'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'httponly' => true,

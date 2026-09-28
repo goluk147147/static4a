@@ -9,22 +9,22 @@
                 "#ff6600",
                 "#ff9800"
             ],
-            "image": "data/banners/banner_20260925_194840_d51eb737.png",
+            "image": "data/banners/banner_20260928_114255_ac474c0b.webp",
             "festival": "",
             "active": true
         },
         {
-            "id": 2,
-            "title": "🍎 Fresh Fruits & Vegetables",
-            "subtitle": "Farm fresh produce delivered daily to your home",
+            "title": "🍎 ताज़े फल और सब्ज़ियाँ",
+            "subtitle": "हर दिन ताज़गी, स्वाद और सेहत का भरोसा।",
             "btnText": "Explore →",
             "btnLink": "products.html?category=fruits-vegetables",
             "gradient": [
                 "#e55b00",
                 "#ffb74d"
             ],
-            "active": true,
-            "festival": ""
+            "image": "data/banners/banner_20260928_114318_d7cfcfd4.webp",
+            "festival": "",
+            "active": true
         },
         {
             "id": 3,

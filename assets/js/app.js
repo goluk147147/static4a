@@ -20,8 +20,12 @@ const STORE_CONFIG = {
   storeEmail: "4astorewale@gmail.com"
 };
 
-const LOGIN_SESSION_VERSION = '2026-09-24-session-reset-1';
-const LOGIN_SESSION_VERSION_KEY = '4astore_login_session_version';
+// Session Configuration - NO automatic logout on page reload
+const SESSION_CONFIG = {
+  // Never auto-logout. User remains logged in until explicit logout.
+  // Server-side PHP session is persistent via cookies.
+  persistentLogin: true
+};
 
 function openMapNavigation(destinationLat, destinationLng, label) {
   const lat = Number(destinationLat);
@@ -45,20 +49,6 @@ function openMapNavigation(destinationLat, destinationLng, label) {
   window.open(fallback, '_blank', 'noopener,noreferrer');
 }
 
-function resetOldLoginSession() {
-  const savedUser = localStorage.getItem('4astore_user');
-  const savedVersion = localStorage.getItem(LOGIN_SESSION_VERSION_KEY);
-  if (!savedUser) {
-    localStorage.setItem(LOGIN_SESSION_VERSION_KEY, LOGIN_SESSION_VERSION);
-    return;
-  }
-
-  // Asset updates must not log a customer out. PHP keeps the authenticated
-  // session in its persistent cookie; only an explicit user logout should
-  // clear that session and local identity.
-  localStorage.setItem(LOGIN_SESSION_VERSION_KEY, LOGIN_SESSION_VERSION);
-}
-
 // State
 let products = [];
 let categories = [];
@@ -70,7 +60,6 @@ let dbAdmin = null;
 // INITIALIZATION
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-  resetOldLoginSession();
   checkAssetVersion();   // auto-refresh if admin pushed a new build
   loadData();
   updateCartBadge();
@@ -81,7 +70,32 @@ document.addEventListener('DOMContentLoaded', () => {
   applyHideMode();                       // catalog-only mode: hide cart/buy UI
   // Re-apply after settings finish loading from the server
   window.addEventListener('dataLoaded', applyHideMode);
+  
+  // Async session sync - doesn't block page load
+  syncSessionWithServerAsync();
 });
+
+// Async sync user state from server without clearing localStorage on mismatch
+// Purpose: If server session exists, preserve it in localStorage; 
+// only logout if user explicitly calls logoutUser()
+function syncSessionWithServerAsync() {
+  fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(result => {
+      if (result.success && result.user && result.user.mobile) {
+        const serverUser = result.user;
+        const localUser = getLoggedInUser();
+        
+        if (!localUser || String(localUser.mobile) !== String(serverUser.mobile)) {
+          // Update localStorage to match server session
+          loginUser(serverUser.name, serverUser.mobile, serverUser.username, serverUser.mode || serverUser.role, serverUser.backendRider === true, false);
+        }
+      }
+    })
+    .catch(() => {
+      // Network error: keep localStorage as is
+    });
+}
 
 // Show a "Download App" button in the header — ONLY in a web browser
 // (hidden inside the Android app, where installing the app is pointless).
@@ -286,7 +300,6 @@ function loginUser(name, mobile, username, role, backendRider, announce = true) 
     localStorage.removeItem('4astore_cart_guest');
   }
   localStorage.setItem('4astore_user', JSON.stringify(user));
-  localStorage.setItem(LOGIN_SESSION_VERSION_KEY, LOGIN_SESSION_VERSION);
   try {
     if (window.AndroidApp && typeof window.AndroidApp.flushSessionCookies === 'function') {
       window.AndroidApp.flushSessionCookies();
@@ -298,6 +311,7 @@ function loginUser(name, mobile, username, role, backendRider, announce = true) 
 }
 
 function logoutUser() {
+  // Try to notify server first
   let serverLogoutConfirmed = false;
   try {
     const xhr = new XMLHttpRequest();
@@ -306,15 +320,20 @@ function logoutUser() {
     xhr.send(JSON.stringify({ action: 'logout' }));
     const result = JSON.parse(xhr.responseText || '{}');
     serverLogoutConfirmed = xhr.status === 200 && result.success === true;
-  } catch (e) { /* retain local state if the server could not confirm logout */ }
-  if (!serverLogoutConfirmed) {
-    showToast('Logout server se confirm nahi ho saka. Internet check karke phir koshish karein.', 'error');
-    return;
+  } catch (e) {
+    // Continue anyway - still clear local state even if server fails
   }
+  
+  // Always clear local session, even if server fails
   localStorage.removeItem('4astore_user');
-  localStorage.removeItem(LOGIN_SESSION_VERSION_KEY);
   updateLoginUI();
-  showToast('Logged out successfully', 'info');
+  
+  if (serverLogoutConfirmed) {
+    showToast('Logged out successfully', 'info');
+  } else {
+    showToast('Logged out (offline mode)', 'info');
+  }
+  
   setTimeout(() => { window.location.href = 'login'; }, 900);
 }
 
@@ -339,16 +358,17 @@ async function requireLogin() {
     if (!response.ok) throw new Error('Unable to verify login session');
     const result = await response.json();
     const sessionUser = result.success && result.user;
+    
     if (!sessionUser || !sessionUser.mobile) {
+      // No server session - clear local state only if needed
       if (localUser) {
         localStorage.removeItem('4astore_user');
-        localStorage.removeItem(LOGIN_SESSION_VERSION_KEY);
-        updateLoginUI();
       }
       redirectToLogin();
       return false;
     }
 
+    // Server session exists - sync localStorage
     const sessionMode = sessionUser.mode || sessionUser.role;
     if (!localUser || String(localUser.mobile) !== String(sessionUser.mobile)
       || localUser.role !== sessionMode || localUser.backendRider !== (sessionUser.backendRider === true)) {
@@ -356,6 +376,7 @@ async function requireLogin() {
     }
     return true;
   } catch (e) {
+    // Network error - trust localStorage if it exists
     if (localUser) return true;
     redirectToLogin();
     return false;
