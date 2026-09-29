@@ -393,6 +393,21 @@
           <p>Add items to your cart before checkout / चेकआउट से पहले कार्ट में सामान जोड़ें।</p><a href="products" class="btn-primary">Browse Products / सामान देखें →</a></div>`;
         return;
       }
+      
+      // ✅ Start session keep-alive (same as home page)
+      // This keeps user logged in even if they stay on checkout page for a while
+      startSessionKeepAlive();
+      
+      // ✅ Listen for app coming back to foreground
+      if (window.AndroidApp) {
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) {
+            console.log('Checkout: App resumed - verifying session');
+            syncSessionWithServerAsync();
+          }
+        });
+      }
+      
       renderOrderSummary();
       loadSavedCustomer();
       restorePendingAddressDraft();
