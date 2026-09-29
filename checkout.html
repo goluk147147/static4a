@@ -386,9 +386,6 @@
       if (window.AndroidApp) document.body.classList.add('in-app-webview');
       if (!await requireLogin()) return;
       
-      // Delay to ensure session synced on server before loading protected resources
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
       const cart = getCart();
       if (cart.length === 0) {
         document.getElementById('checkoutPage').innerHTML = `

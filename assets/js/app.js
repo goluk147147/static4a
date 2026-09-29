@@ -456,15 +456,29 @@ async function requireLogin() {
   // If user is already logged in locally, allow them in
   if (localUser && localUser.mobile) {
     // Try to sync with server in background, but don't block
-    fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'same-origin' })
+    // This is non-blocking - we don't wait for server response
+    fetch('api/users.php?action=session', { 
+      cache: 'no-store', 
+      credentials: 'same-origin',
+      signal: AbortSignal.timeout(3000) // 3 second max timeout
+    })
       .catch(() => {}); // Silent fail - we'll use localStorage
     
-    return true;
+    return true; // Allow immediately based on localStorage
   }
   
   // No local user - try to fetch from server
   try {
-    const response = await fetch('api/users.php?action=session', { cache: 'no-store', credentials: 'same-origin', timeout: 5000 });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+    
+    const response = await fetch('api/users.php?action=session', { 
+      cache: 'no-store', 
+      credentials: 'same-origin',
+      signal: controller.signal 
+    });
+    clearTimeout(timeoutId);
+    
     const result = await response.json();
     
     if (result.success && result.user && result.user.mobile) {
@@ -478,8 +492,7 @@ async function requireLogin() {
     if (localUser && localUser.mobile) {
       return true;
     }
-    // Network error and no local session - don't redirect, just reject
-    console.warn('Session verification failed (network error):', e.message);
+    console.warn('Session verification failed:', e.message);
   }
   
   // No session found - redirect to login
