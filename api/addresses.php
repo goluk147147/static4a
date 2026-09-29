@@ -20,7 +20,8 @@ function writeAddresses($addresses)
 
 function addressOwner($user)
 {
-    return (string) ($user['id'] ?? $user['mobile'] ?? '');
+    // Use mobile as the unique identifier (matching how addresses are stored)
+    return (string) ($user['mobile'] ?? '');
 }
 
 function cleanAddress($input, $user, $id = null)

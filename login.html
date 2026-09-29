@@ -211,13 +211,36 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
-      // If already logged in, go to profile
-      if (getLoggedInUser() && params.get('forceLogin') !== '1') {
-        const existingUser = getLoggedInUser();
-        window.location.href = existingUser.role === 'rider' && existingUser.backendRider === true ? 'rider' : 'profile';
+      const forceLogin = params.get('forceLogin') === '1';
+      const returnTo = params.get('return') || '';
+      
+      // ✅ Check if user is already logged in
+      const loggedInUser = getLoggedInUser();
+      
+      if (loggedInUser && loggedInUser.mobile && !forceLogin) {
+        // User is already logged in - redirect them immediately
+        console.log('User already logged in:', loggedInUser.name);
+        
+        // If there's a return URL, go there
+        if (returnTo) {
+          window.location.href = returnTo;
+          return;
+        }
+        
+        // Otherwise go to their profile/dashboard
+        if (loggedInUser.role === 'rider' && loggedInUser.backendRider === true) {
+          window.location.href = 'rider';
+        } else {
+          window.location.href = 'profile';
+        }
+        return;
       }
+      
       // Check if redirected from signup
       if (params.get('tab') === 'signup') showAuthTab('signup');
+      
+      // Store pending return URL for after login
+      pendingReturnUrl = returnTo || '';
     });
 
     // Wait for JSON data (users.json) to be loaded before allowing login

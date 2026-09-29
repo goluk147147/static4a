@@ -78,13 +78,10 @@ function clearSessionToken() {
 let sessionKeepAliveInterval = null;
 
 function startSessionKeepAlive() {
-  // Only start if in app (webview)
-  if (!window.AndroidApp) return;
-
-  // Keep session alive every 2 minutes
+  // Keep session alive (works in both app and browser)
   if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
   
-  sessionKeepAliveInterval = setInterval(() => {
+  const pingServer = () => {
     const user = getLoggedInUser();
     if (!user) {
       clearInterval(sessionKeepAliveInterval);
@@ -101,14 +98,24 @@ function startSessionKeepAlive() {
       .then(result => {
         if (!result.success || !result.user || !result.user.mobile) {
           // Session lost
+          console.warn('⚠️ Session lost on server - logging out');
           localStorage.removeItem('4astore_user');
           updateLoginUI();
+        } else {
+          console.log('✅ Session keep-alive: server confirmed user logged in');
         }
       })
-      .catch(() => {
+      .catch(err => {
         // Network error - don't logout, just keep trying
+        console.warn('🔄 Session keep-alive ping failed (network error), will retry:', err.message);
       });
-  }, 120000); // 2 minutes
+  };
+  
+  // Ping immediately on first call
+  pingServer();
+  
+  // Then ping every 60 seconds (1 minute) to keep session very fresh
+  sessionKeepAliveInterval = setInterval(pingServer, 60000); // 1 minute
 }
 
 function stopSessionKeepAlive() {
@@ -502,10 +509,23 @@ async function requireLogin() {
 
 function redirectToLogin() {
   const pathname = window.location.pathname;
+  
+  // ✅ Check if user is already logged in
+  const loggedInUser = getLoggedInUser();
+  if (loggedInUser && loggedInUser.mobile) {
+    // User is logged in - don't redirect!
+    console.log('User is logged in, not redirecting to login');
+    return false;
+  }
+  
+  // Only redirect if NOT on login/admin pages
   if (/\/(?:login|admin)(?:\.html)?$/i.test(pathname)) return false;
+  
   const currentPage = pathname.split('/').pop() || 'index.html';
   const returnTo = currentPage + window.location.search + window.location.hash;
   const basePath = pathname.substring(0, pathname.lastIndexOf('/') + 1);
+  
+  // Redirect to login with forceLogin=1 and return URL
   window.location.href = basePath + 'login?forceLogin=1&return=' + encodeURIComponent(returnTo);
   return true;
 }

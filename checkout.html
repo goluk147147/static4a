@@ -398,6 +398,9 @@
       // This keeps user logged in even if they stay on checkout page for a while
       startSessionKeepAlive();
       
+      // ✅ Update logout button in header
+      updateCheckoutLoginUI();
+      
       // ✅ Listen for app coming back to foreground
       if (window.AndroidApp) {
         document.addEventListener('visibilitychange', () => {
@@ -773,13 +776,77 @@
       toggleAddressPicker();
     }
 
+    function updateCheckoutLoginUI() {
+      const user = typeof getLoggedInUser === 'function' ? getLoggedInUser() : null;
+      const loginArea = document.querySelector('.login-btn-area');
+      if (!loginArea) return;
+      
+      if (user && user.mobile) {
+        // Show logout button
+        loginArea.innerHTML = `
+          <button onclick="handleCheckoutLogout()" style="border:0; background:#ffebee; color:#c62828; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:700; font-size:13px;">
+            🚪 Logout
+          </button>
+        `;
+      } else {
+        // Show login button
+        loginArea.innerHTML = `
+          <a href="login.html" style="border:0; background:#e3f2fd; color:#1976d2; padding:8px 12px; border-radius:6px; text-decoration:none; font-weight:700; font-size:13px; display:inline-block;">
+            🔐 Login
+          </a>
+        `;
+      }
+    }
+
+    function handleCheckoutLogout() {
+      if (typeof logoutUser === 'function') {
+        logoutUser();
+      } else {
+        // Fallback if app.js not loaded
+        localStorage.removeItem('4astore_user');
+        showToast('Logged out successfully', 'info');
+        setTimeout(() => { window.location.href = 'login'; }, 900);
+      }
+    }
+
     function saveCheckoutAddress(customer, labelOverride) {
       const parts = customer.address.split(',').map(part => part.trim()).filter(Boolean);
-      return fetch('api/addresses.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({
-        action: selectedAddressId ? 'update' : 'create', id: selectedAddressId, label: labelOverride || (selectedAddressId ? (savedAddresses.find(a => Number(a.id) === Number(selectedAddressId)) || {}).label : 'Other'),
-        receiver_name: customer.name, phone: customer.mobile, house_no: parts[0] || customer.address, street: parts[1] || '', area: parts[2] || customer.city, landmark: customer.landmark, city: customer.city, district: 'Aurangabad', state: 'Bihar', pincode: customer.pincode,
-        latitude: customer.deliveryLat, longitude: customer.deliveryLng, full_address: [customer.address, customer.city, customer.pincode].filter(Boolean).join(', ')
-      }) }).then(async response => ({ ...await response.json(), status: response.status })).catch(() => ({ success: false }));
+      const payload = {
+        action: selectedAddressId ? 'update' : 'create', 
+        id: selectedAddressId, 
+        label: labelOverride || (selectedAddressId ? (savedAddresses.find(a => Number(a.id) === Number(selectedAddressId)) || {}).label : 'Other'),
+        receiver_name: customer.name, 
+        phone: customer.mobile, 
+        house_no: parts[0] || customer.address, 
+        street: parts[1] || '', 
+        area: parts[2] || customer.city, 
+        landmark: customer.landmark, 
+        city: customer.city, 
+        district: 'Aurangabad', 
+        state: 'Bihar', 
+        pincode: customer.pincode,
+        latitude: customer.deliveryLat, 
+        longitude: customer.deliveryLng, 
+        full_address: [customer.address, customer.city, customer.pincode].filter(Boolean).join(', ')
+      };
+      
+      console.log('💾 Saving address:', payload);
+      
+      return fetch('api/addresses.php?_=' + Date.now(), { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        credentials: 'same-origin',
+        body: JSON.stringify(payload)
+      })
+        .then(async response => {
+          const data = await response.json();
+          console.log('📦 Save response:', data, 'Status:', response.status);
+          return { ...data, status: response.status };
+        })
+        .catch(err => {
+          console.error('❌ Save error:', err);
+          return { success: false, message: err.message };
+        });
     }
 
     function resolveDeliveryCoordinates(address, city, pincode) {
