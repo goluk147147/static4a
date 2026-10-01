@@ -84,7 +84,7 @@ export default function Home() {
               getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
               onMomentumScrollEnd={(e) => setSlide(Math.round(e.nativeEvent.contentOffset.x / width))}
               renderItem={({ item: b }) => {
-                const g = Array.isArray(b.gradient) ? b.gradient : ['#ff6600', '#ff9800'];
+                const g: readonly [string, string, ...string[]] = Array.isArray(b.gradient) && b.gradient.length >= 2 ? (b.gradient as [string, string]) : ['#ff6600', '#ff9800'];
                 const content = (
                   <View style={[s.slideContent, b.image ? { alignItems: 'flex-start' } : null]}>
                     {!!b.title && <Text style={s.slideTitle}>{b.title}</Text>}
@@ -102,7 +102,7 @@ export default function Home() {
                       <View style={{ flex: 1 }}>
                         <Image source={{ uri: absoluteUrl(b.image) }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                         {!!(b.title || b.subtitle || b.btnText) && (
-                          <LinearGradient colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill}>
+                          <LinearGradient colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0)'] as const} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill}>
                             {content}
                           </LinearGradient>
                         )}

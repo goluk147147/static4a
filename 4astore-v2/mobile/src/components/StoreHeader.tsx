@@ -23,7 +23,7 @@ export default function StoreHeader({ back, title, hideSearch }: { back?: boolea
 
   return (
     <View style={{ backgroundColor: colors.glass }}>
-      <LinearGradient colors={topBarGradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ paddingTop: insets.top }}>
+      <LinearGradient colors={topBarGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ paddingTop: insets.top }}>
         <Text style={styles.topBar} numberOfLines={1}>📍 Delivering in Chandargarh – 824301 | ☎️ 7543888698</Text>
       </LinearGradient>
 
@@ -73,7 +73,7 @@ export default function StoreHeader({ back, title, hideSearch }: { back?: boolea
             accessibilityLabel="Search products"
           />
           <Pressable onPress={submit} style={styles.searchBtn} accessibilityRole="button" accessibilityLabel="Search">
-            <LinearGradient colors={warmGradient as unknown as string[]} style={styles.searchGrad}>
+            <LinearGradient colors={warmGradient} style={styles.searchGrad}>
               <Text style={{ fontSize: 15 }}>🔍</Text>
             </LinearGradient>
           </Pressable>

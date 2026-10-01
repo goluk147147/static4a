@@ -60,7 +60,7 @@ export default function AnnouncementPopup() {
     <Modal visible transparent animationType="fade" onRequestClose={close}>
       <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close offer">
         <Pressable style={styles.sheet} onPress={() => null} accessibilityViewIsModal>
-          <LinearGradient colors={offerGradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.head}>
+          <LinearGradient colors={offerGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.head}>
             <Text style={styles.headText}>🎉 Special Offer</Text>
             <Pressable onPress={close} style={styles.close} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8}>
               <Text style={{ color: '#fff', fontSize: 18 }}>×</Text>
@@ -79,7 +79,7 @@ export default function AnnouncementPopup() {
                 }}
                 accessibilityRole="button"
               >
-                <LinearGradient colors={offerGradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
+                <LinearGradient colors={offerGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
                   <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>{ann.ctaText} →</Text>
                 </LinearGradient>
               </Pressable>

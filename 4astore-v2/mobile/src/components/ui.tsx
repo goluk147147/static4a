@@ -43,7 +43,7 @@ export function GradientButton({
       accessibilityState={{ disabled: !!(disabled || loading) }}
       style={({ pressed }) => [{ opacity: disabled ? 0.55 : pressed ? 0.85 : 1, borderRadius: radius.pill, overflow: 'hidden' }, style]}
     >
-      <LinearGradient colors={warmGradient as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradBtn}>
+      <LinearGradient colors={warmGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradBtn}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.gradText, textStyle]}>{title}</Text>}
       </LinearGradient>
     </Pressable>

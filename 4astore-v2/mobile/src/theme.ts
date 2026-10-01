@@ -18,10 +18,13 @@ export const colors = {
   admin: '#2C6FAD',
 };
 
+// expo-linear-gradient wants a readonly [color, color, ...] tuple.
+export type Gradient = readonly [string, string, ...string[]];
+
 /** Animated warm gradient used by .btn-primary / search button / top bar on the web. */
-export const warmGradient = ['#ef233c', '#ff7a00', '#ffd166', '#ff7a00', '#ef233c'] as const;
-export const topBarGradient = ['#ef233c', '#ff7a00', '#ffd166'] as const;
-export const offerGradient = ['#ff6a00', '#f107a3'] as const;
+export const warmGradient: Gradient = ['#ef233c', '#ff7a00', '#ffd166', '#ff7a00', '#ef233c'];
+export const topBarGradient: Gradient = ['#ef233c', '#ff7a00', '#ffd166'];
+export const offerGradient: Gradient = ['#ff6a00', '#f107a3'];
 
 export const radius = { sm: 8, md: 12, lg: 18, pill: 30 };
 

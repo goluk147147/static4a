@@ -35,7 +35,7 @@ export default function ProductImage({ name, weight, category, image, height = 1
 
   const p = placeholderStyle(name, category);
   return (
-    <LinearGradient colors={[p.bg, p.accent]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[{ height, borderRadius: 12, alignItems: 'center', justifyContent: 'center', padding: 6 }, style]}>
+    <LinearGradient colors={[p.bg, p.accent] as const} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[{ height, borderRadius: 12, alignItems: 'center', justifyContent: 'center', padding: 6 }, style]}>
       <View style={{ backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 999, width: height * 0.45, height: height * 0.45, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ fontSize: height * 0.24 }} accessibilityLabel={name}>{p.emoji}</Text>
       </View>

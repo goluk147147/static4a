@@ -129,12 +129,7 @@ export default function Products() {
             <Text style={{ color: colors.gray }}>Try different filter</Text>
           </View>
         )}
-        renderItem={({ item, index }) => (
-          <View>
-            <ProductCard product={item} width={cardW} />
-            {index === 7 && festInfo && festAds?.midBanner ? null : null}
-          </View>
-        )}
+        renderItem={({ item }) => <ProductCard product={item} width={cardW} />}
         ListFooterComponent={festInfo && festAds?.midBanner ? (
           <Pressable onPress={() => openLink(router, festAds.midBanner!.link)}>
             <LinearGradient colors={festAds.midBanner.bgGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.mid}>
