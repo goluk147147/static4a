@@ -1,0 +1,99 @@
+import React, { useEffect } from 'react';
+import { Stack, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AppState } from 'react-native';
+import { queryClient } from '../src/queries';
+import { useAuth } from '../src/store/auth';
+import { ensureChannels, listenForeground, listenNotificationTaps, listenTokenRotation, registerForPush } from '../src/push';
+import { legacyToRoute } from '../src/links';
+import { showToast } from '../src/store/ui';
+import OfflineGate from '../src/components/OfflineGate';
+import Overlays from '../src/components/Overlays';
+import UpdateCheck from '../src/components/UpdateCheck';
+import StaffOrderWatcher from '../src/components/StaffOrderWatcher';
+
+SplashScreen.preventAutoHideAsync().catch(() => null);
+SplashScreen.setOptions?.({ duration: 400, fade: true });
+
+export default function RootLayout() {
+  const router = useRouter();
+  const bootstrap = useAuth((s) => s.bootstrap);
+  const reloadSession = useAuth((s) => s.reloadSession);
+  const ready = useAuth((s) => s.ready);
+  const userId = useAuth((s) => s.user?.id);
+  const role = useAuth((s) => s.user?.role);
+
+  useEffect(() => {
+    void ensureChannels();
+    void bootstrap();
+  }, [bootstrap]);
+
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync().catch(() => null);
+  }, [ready]);
+
+  // (Re)register the device token whenever the user or role changes → correct topics
+  // (admins / riders / customers) so role changes made by the owner take effect.
+  useEffect(() => {
+    if (userId) void registerForPush();
+  }, [userId, role]);
+
+  useEffect(() => listenTokenRotation(), []);
+
+  // Coming back to the app: refresh session (picks up a newly assigned role) and data.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active' && useAuth.getState().user) {
+        void reloadSession();
+        void queryClient.invalidateQueries({ queryKey: ['all-orders'] });
+      }
+    });
+    return () => sub.remove();
+  }, [reloadSession]);
+
+  // Tap on a push → deep link (new order → admin order detail, status → tracking, …).
+  useEffect(
+    () =>
+      listenNotificationTaps((link) => {
+        const to = legacyToRoute(link, '/');
+        if (!/^[a-z]+:/i.test(to)) setTimeout(() => router.push(to as never), 300);
+      }),
+    [router]
+  );
+
+  // Foreground push → refresh lists + in-app toast.
+  useEffect(
+    () =>
+      listenForeground((data, title) => {
+        if (data.type === 'new_order' || data.type === 'order_reminder') {
+          void queryClient.invalidateQueries({ queryKey: ['all-orders'] });
+        }
+        if (data.type === 'order_status' && data.orderId) {
+          void queryClient.invalidateQueries({ queryKey: ['orders'] });
+          void queryClient.invalidateQueries({ queryKey: ['track', data.orderId] });
+        }
+        if (data.type !== 'new_order_local') showToast(title, 'info');
+      }),
+    []
+  );
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <StatusBar style="light" />
+          <OfflineGate>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fffaf3' }, animation: 'slide_from_right' }} />
+          </OfflineGate>
+          <StaffOrderWatcher />
+          <UpdateCheck />
+          <Overlays />
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}

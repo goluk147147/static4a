@@ -1,0 +1,255 @@
+import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import { z } from 'zod';
+import { prisma } from '../db';
+import { ok, fail } from '../utils/http';
+import { config } from '../config';
+import {
+  signAccessToken,
+  generateRefreshToken,
+  hashRefreshToken,
+  AccessClaims,
+} from '../auth/jwt';
+import { requireAuth } from '../auth/middleware';
+import { sendMail } from '../utils/mailer';
+
+const router = Router();
+
+const REFRESH_COOKIE = 'refresh_token';
+const ACCESS_COOKIE = 'access_token';
+
+function cookieOpts(maxAgeMs: number) {
+  return {
+    httpOnly: true,
+    secure: config.env === 'production',
+    sameSite: 'lax' as const,
+    maxAge: maxAgeMs,
+    path: '/',
+  };
+}
+
+function toClaims(user: {
+  id: bigint;
+  role: string;
+  mobile: string;
+  username: string;
+  name: string;
+  permissions: unknown;
+  backend_rider: boolean;
+}): AccessClaims {
+  const perms = Array.isArray(user.permissions) ? (user.permissions as string[]) : [];
+  return {
+    sub: Number(user.id),
+    role: user.role,
+    mobile: user.mobile,
+    username: user.username,
+    name: user.name,
+    permissions: perms,
+    mode: user.role === 'rider' && user.backend_rider ? 'rider' : 'customer',
+  };
+}
+
+/** Native app (no cookies) sends `X-Client: mobile` and keeps the refresh token in secure storage. */
+function isMobileClient(req: Request): boolean {
+  return String(req.headers['x-client'] || '').toLowerCase() === 'mobile';
+}
+
+function safeUser(user: Record<string, unknown>) {
+  const { password, ...rest } = user;
+  void password;
+  return rest;
+}
+
+/** Issue access + refresh tokens and set them as HttpOnly cookies (life-long login). */
+async function issueTokens(res: Response, user: Parameters<typeof toClaims>[0], deviceLabel?: string) {
+  const claims = toClaims(user);
+  const accessToken = signAccessToken(claims);
+  const { token: refreshToken, hash, expiresAt } = generateRefreshToken();
+
+  await prisma.refreshToken.create({
+    data: { user_id: BigInt(claims.sub), token_hash: hash, device_label: deviceLabel, expires_at: expiresAt },
+  });
+
+  res.cookie(ACCESS_COOKIE, accessToken, cookieOpts(15 * 60 * 1000));
+  res.cookie(REFRESH_COOKIE, refreshToken, cookieOpts(config.refreshTokenTtlDays * 24 * 60 * 60 * 1000));
+  return { accessToken, refreshToken, claims };
+}
+
+// ---------- POST /api/users/register ----------
+const registerSchema = z.object({
+  name: z.string().min(1),
+  mobile: z.string().regex(/^[6-9]\d{9}$/),
+  username: z.string().min(3).max(32),
+  email: z.string().email(),
+  password: z.string().min(4),
+  otp: z.string().min(4),
+});
+
+router.post('/register', async (req: Request, res: Response) => {
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 'Enter a name, valid 10-digit mobile, username, email and 4+ char password', 422);
+  const { name, mobile, username, email, password, otp } = parsed.data;
+
+  // Verify email OTP.
+  const otpRow = await prisma.emailOtp.findFirst({
+    where: { email: email.toLowerCase(), purpose: 'signup', consumed: false, expires_at: { gt: new Date() } },
+    orderBy: { id: 'desc' },
+  });
+  if (!otpRow || otpRow.otp !== otp) return fail(res, 'Verify your email before creating an account.', 403);
+
+  const dupUser = await prisma.user.findFirst({
+    where: { OR: [{ username: username.toLowerCase() }, { mobile }] },
+  });
+  if (dupUser) {
+    return fail(res, dupUser.mobile === mobile ? 'Mobile number already registered' : 'Username already taken', 409);
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      name,
+      mobile,
+      username: username.toLowerCase(),
+      recovery_email: email.toLowerCase(),
+      recovery_email_verified: true,
+      password: bcrypt.hashSync(password, 10),
+      role: 'customer',
+      registered_at: new Date(),
+      last_login: new Date(),
+    },
+  });
+  await prisma.emailOtp.update({ where: { id: otpRow.id }, data: { consumed: true } });
+
+  const { accessToken, refreshToken } = await issueTokens(res, user, isMobileClient(req) ? 'mobile-app' : undefined);
+  return ok(res, { user: safeUser(user), token: accessToken, ...(isMobileClient(req) ? { refreshToken } : {}) });
+});
+
+// ---------- POST /api/users/login ----------
+const loginSchema = z.object({
+  username: z.string().min(1), // username OR mobile
+  password: z.string().min(1),
+});
+
+router.post('/login', async (req: Request, res: Response) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 'Username and password required', 422);
+  const { username, password } = parsed.data;
+
+  const user = await prisma.user.findFirst({
+    where: { OR: [{ username: username.toLowerCase() }, { mobile: username }] },
+  });
+  if (!user) return fail(res, 'Account not found. Please sign up first.', 404);
+
+  const valid = bcrypt.compareSync(password, user.password);
+  if (!valid) return fail(res, 'Incorrect password. Please try again.', 401);
+
+  if (user.role === 'rider' && !user.backend_rider) {
+    return fail(res, 'Rider account must be created by admin', 403);
+  }
+
+  await prisma.user.update({ where: { id: user.id }, data: { last_login: new Date() } });
+  const { accessToken, refreshToken } = await issueTokens(res, user, isMobileClient(req) ? 'mobile-app' : undefined);
+  return ok(res, { user: safeUser(user), token: accessToken, ...(isMobileClient(req) ? { refreshToken } : {}) });
+});
+
+// ---------- POST /api/users/refresh (silent refresh keeps login alive ~1 year) ----------
+router.post('/refresh', async (req: Request, res: Response) => {
+  const token = (req.cookies?.[REFRESH_COOKIE] as string) || (req.body?.refreshToken as string);
+  if (!token) return fail(res, 'No refresh token', 401);
+
+  const row = await prisma.refreshToken.findUnique({ where: { token_hash: hashRefreshToken(token) } });
+  if (!row || row.revoked || row.expires_at < new Date()) return fail(res, 'Refresh token invalid or expired', 401);
+
+  const user = await prisma.user.findUnique({ where: { id: row.user_id } });
+  if (!user) return fail(res, 'User not found', 404);
+
+  const accessToken = signAccessToken(toClaims(user));
+  res.cookie(ACCESS_COOKIE, accessToken, cookieOpts(15 * 60 * 1000));
+  return ok(res, { token: accessToken, user: safeUser(user) });
+});
+
+// ---------- GET/POST /api/users/session ----------
+router.get('/session', requireAuth, async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: BigInt(req.user!.sub) } });
+  return ok(res, { user: user ? safeUser(user) : null });
+});
+
+// ---------- POST /api/users/logout (revokes refresh token) ----------
+router.post('/logout', async (req: Request, res: Response) => {
+  const token = (req.cookies?.[REFRESH_COOKIE] as string | undefined) || (req.body?.refreshToken as string | undefined);
+  if (token) {
+    await prisma.refreshToken.updateMany({ where: { token_hash: hashRefreshToken(token) }, data: { revoked: true } });
+  }
+  res.clearCookie(ACCESS_COOKIE, { path: '/' });
+  res.clearCookie(REFRESH_COOKIE, { path: '/' });
+  return ok(res);
+});
+
+// ---------- POST /api/users/deleteSelf ----------
+router.post('/deleteSelf', requireAuth, async (req: Request, res: Response) => {
+  await prisma.user.delete({ where: { id: BigInt(req.user!.sub) } }).catch(() => null);
+  res.clearCookie(ACCESS_COOKIE, { path: '/' });
+  res.clearCookie(REFRESH_COOKIE, { path: '/' });
+  return ok(res, { message: 'Account deleted' });
+});
+
+// ---------- Password-recovery email (profile page) ----------
+// Mirrors the original password-recovery.php profileEmail / sendProfileEmailCode / verifyProfileEmailCode.
+
+// GET /api/users/recovery-email → { email, verified }
+router.get('/recovery-email', requireAuth, async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: BigInt(req.user!.sub) } });
+  if (!user) return fail(res, 'User not found', 404);
+  return ok(res, { email: user.recovery_email || '', verified: !!user.recovery_email_verified });
+});
+
+const emailSchema = z.object({ email: z.string().trim().toLowerCase().email() });
+
+// POST /api/users/recovery-email/send { email } → emails a 6-digit code (10 min)
+router.post('/recovery-email/send', requireAuth, async (req: Request, res: Response) => {
+  const parsed = emailSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 'Enter a valid email address.', 422);
+  const { email } = parsed.data;
+  const userId = BigInt(req.user!.sub);
+
+  const me = await prisma.user.findUnique({ where: { id: userId } });
+  if (!me) return fail(res, 'User not found', 404);
+  if (me.recovery_email === email && me.recovery_email_verified) return ok(res, { alreadyVerified: true });
+
+  const taken = await prisma.user.findFirst({
+    where: { id: { not: userId }, OR: [{ recovery_email: email }, { email }] },
+  });
+  if (taken) return fail(res, 'Email already linked to another account', 409);
+
+  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  await prisma.emailOtp.create({
+    data: { email, otp, purpose: 'recovery', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
+  });
+  await sendMail(email, '4A Store recovery email code', `Your 4A Store verification code is ${otp}. It expires in 10 minutes.`).catch(() => null);
+  return ok(res, { message: 'Code sent', devOtp: config.env !== 'production' ? otp : undefined });
+});
+
+const verifySchema = z.object({ email: z.string().trim().toLowerCase().email(), otp: z.string().trim().regex(/^\d{6}$/) });
+
+// POST /api/users/recovery-email/verify { email, otp } → saves the verified email
+router.post('/recovery-email/verify', requireAuth, async (req: Request, res: Response) => {
+  const parsed = verifySchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 'Enter the 6-digit code.', 422);
+  const { email, otp } = parsed.data;
+
+  const row = await prisma.emailOtp.findFirst({
+    where: { email, purpose: 'recovery', consumed: false, expires_at: { gt: new Date() } },
+    orderBy: { id: 'desc' },
+  });
+  if (!row || row.otp !== otp) return fail(res, 'Invalid or expired code.', 422);
+
+  await prisma.$transaction([
+    prisma.emailOtp.update({ where: { id: row.id }, data: { consumed: true } }),
+    prisma.user.update({
+      where: { id: BigInt(req.user!.sub) },
+      data: { recovery_email: email, recovery_email_verified: true },
+    }),
+  ]);
+  return ok(res, { message: 'Recovery email verified' });
+});
+
+export default router;

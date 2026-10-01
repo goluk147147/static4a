@@ -1,0 +1,19 @@
+/* Styles from the original privacy-policy / terms / help-support / account-deletion pages. */
+.legal-wrap { max-width: 860px; margin: 24px auto; padding: 0 18px 60px; }
+.legal-wrap h1 { color: var(--primary-dark); font-size: 1.7rem; margin-bottom: 6px; }
+.legal-wrap .updated { color: var(--gray); font-size: 13px; margin-bottom: 22px; }
+.legal-wrap h2 { color: var(--primary-dark); font-size: 1.15rem; margin: 22px 0 8px; }
+.legal-wrap p, .legal-wrap li { font-size: 14px; line-height: 1.7; color: #333; }
+.legal-wrap ul, .legal-wrap ol { padding-left: 20px; margin: 6px 0; }
+.legal-wrap a { color: var(--primary); }
+.legal-wrap img { max-width: 100%; height: auto; }
+.legal-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; box-shadow: var(--shadow); margin-bottom: 16px; }
+.legal-back { display: inline-block; margin: 16px 0; color: var(--primary); font-weight: 600; text-decoration: none; }
+.legal-next { display: flex; gap: 16px; flex-wrap: wrap; }
+.legal-wrap .request-link { display: inline-block; margin-top: 8px; padding: 12px 18px; border-radius: 8px; background: var(--primary); color: #fff; font-weight: 700; }
+.legal-wrap .contact-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.legal-wrap .contact-btns a { padding: 12px 20px; border-radius: 10px; color: #fff; font-weight: 700; text-decoration: none; font-size: 14px; }
+.legal-wrap .faq q { display: block; font-weight: 700; color: var(--primary-dark); margin-top: 14px; }
+.legal-wrap .faq q::before, .legal-wrap .faq q::after { content: none; }
+/* Content without its own .legal-card wrapper still gets the card look. */
+.legal-body:not(:has(.legal-card)) { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; box-shadow: var(--shadow); }

@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.com.store4a.app",
+        "paths": ["/p/*", "/c/*", "/track/*", "/festival/*", "/l/*"]
+      }
+    ]
+  }
+}

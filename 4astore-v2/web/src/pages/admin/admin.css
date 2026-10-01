@@ -1,0 +1,191 @@
+/* Ported verbatim from the original admin.html <style> block.
+   The bare 'body {' rule was scoped to body.admin-body so the storefront keeps its colours. */
+    /* ===== Admin theme: BHAGWA (saffron) — scoped so storefront stays unchanged ===== */
+    :root {
+      --adm-saffron: #FF7A00;
+      --adm-saffron-dark: #E85D00;
+      --adm-saffron-deep: #C24E00;
+      --adm-saffron-light: #FFF3E6;
+    }
+    /* Remap the primary vars ONLY on the admin page (this file), so every
+       admin element that uses --primary turns saffron without touching style.css */
+    body.admin-body {
+      --primary: #FF7A00;
+      --primary-dark: #C24E00;
+      --primary-light: #FFF3E6;
+      --secondary: #F5A623;
+      margin: 0 !important;
+      padding: 0 !important;      /* kill storefront mobile bottom-nav padding */
+    }
+    body.admin-login-page { min-height:100vh; height:100vh; overflow:hidden; background:#ff9800 !important; color:#17324d; }
+    #adminBootLoader { position:fixed; inset:0; z-index:20000; display:flex; align-items:center; justify-content:center; background:#f4f5f7; color:#31526d; font-size:14px; font-weight:700; }
+    #adminBootLoader[hidden] { display:none; }
+    .admin-boot-spinner { width:28px; height:28px; margin-right:12px; border:3px solid #f2d8bd; border-top-color:#ff7a00; border-radius:50%; animation:admin-boot-spin .8s linear infinite; }
+    @keyframes admin-boot-spin { to { transform:rotate(360deg); } }
+    .admin-confirm-overlay { position:fixed; inset:0; z-index:30000; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(17,31,47,.58); }
+    .admin-confirm-dialog { width:min(100%,420px); padding:22px; box-sizing:border-box; border-radius:14px; background:#fff; box-shadow:0 20px 60px rgba(0,0,0,.25); color:#17324d; }
+    .admin-confirm-dialog h2 { margin:0 0 10px; font-size:18px; color:#17324d; }
+    .admin-confirm-message { margin:0; color:#536779; font-size:14px; line-height:1.55; white-space:pre-wrap; }
+    .admin-confirm-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:22px; }
+    .admin-confirm-actions button { min-height:40px; padding:9px 15px; border:0; border-radius:7px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+    .admin-confirm-cancel { background:#edf1f4; color:#34495e; }
+    .admin-confirm-accept { background:#c62828; color:#fff; }
+    .admin-login { width:min(100% - 32px, 1320px); height:100vh; margin:0 auto; padding:22px 0 16px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; text-align:center; }
+    .admin-login .checkout-form { display:grid; grid-template-columns:1.08fr 1fr; height:min(570px, calc(100vh - 66px)); min-height:0; padding:0; overflow:hidden; background:#fff; border:0; border-radius:24px; box-shadow:0 22px 55px rgba(113,59,0,.22); }
+    .admin-brand-lockup { display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; min-height:100%; padding:38px 42px; text-align:left; background:linear-gradient(145deg,#fffaf3 0%,#fff 70%); border-right:2px solid #ff9800; }
+    .admin-brand-top { display:flex; align-items:center; gap:18px; }
+    .admin-brand-mark { width:92px; height:92px; flex:0 0 92px; padding:11px; box-sizing:border-box; border-radius:24px; background:linear-gradient(145deg,#fff3e6,#eaf5ff); box-shadow:0 12px 24px rgba(38,91,129,.16); }
+    .admin-brand-name { margin:0; color:#111f2f; font-size:clamp(30px,3.3vw,54px); line-height:1; letter-spacing:-1px; }
+    .admin-brand-tagline { margin:10px 0 0; color:#f07800; font-size:clamp(12px,1.2vw,18px); font-weight:800; letter-spacing:1.8px; text-transform:uppercase; }
+    .admin-grocery-hero { width:100%; margin:10px 0 0; padding:20px 22px; box-sizing:border-box; border-radius:18px; background:#fff; border:1px solid #f7dfbd; box-shadow:0 10px 24px rgba(141,83,16,.08); }
+    .admin-grocery-hero .grocery-icon { display:inline-flex; align-items:center; justify-content:center; width:54px; height:54px; margin-bottom:14px; border-radius:16px; background:#eaf7ee; font-size:30px; }
+    .admin-grocery-hero strong { display:block; color:#17324d; font-size:18px; line-height:1.2; }
+    .admin-grocery-hero p { margin:7px 0 0; color:#708295; font-size:12px; line-height:1.5; }
+    .admin-ops-pills { display:flex; flex-wrap:wrap; gap:7px; width:100%; }
+    .admin-ops-pills span { padding:7px 10px; border-radius:8px; background:#fff; border:1px solid #e7edf1; color:#456176; font-size:10px; font-weight:800; }
+    .admin-login-form { display:flex; flex-direction:column; justify-content:center; width:min(100% - 76px, 400px); margin:0 auto; text-align:left; }
+    .admin-login-heading { margin:0 0 6px; color:#111f2f; font-size:34px; font-weight:800; text-align:left; }
+    .admin-login-subtitle { margin:0 0 22px; color:#708295; font-size:13px; text-align:left; }
+    .admin-login .form-group { text-align:left; margin-bottom:14px; }
+    .admin-login .form-group label { display:block; margin-bottom:6px; color:#31526d; font-size:12px; font-weight:800; }
+    .admin-login input { width:100%; box-sizing:border-box; padding:13px 14px; border:1px solid #d6e5f0; border-radius:11px; background:#fbfdff; color:#17324d; font-size:14px; outline:none; transition:border-color .2s, box-shadow .2s; }
+    .admin-login input:focus { border-color:#ff7a00; box-shadow:0 0 0 4px rgba(255,122,0,.12); }
+    .admin-login .btn-checkout { width:100%; margin-top:10px; border-radius:9px; background:#ff9800; box-shadow:none; }
+    .admin-login .login-note { margin:18px 0 0; color:#8292a1; font-size:11px; }
+    .admin-login-footer { margin:10px 0 0; color:#fff; font-size:11px; font-weight:600; }
+    /* Full-bleed background when the dashboard is on screen. A body class
+       (added by JS in showDashboard) is used instead of :has() so it works
+       in every browser, including older WebViews on the server. */
+    body.admin-active { background: #f4f5f7 !important; overflow: hidden !important; }
+
+    /* ===== Modern sidebar dashboard layout =====
+       Shell is FIXED to the viewport so it never inherits stray width/margins
+       from storefront wrappers on the server. */
+    #adminDashboard.admin-shell {
+      position: fixed; inset: 0;               /* top:0 right:0 bottom:0 left:0 */
+      max-width: none; margin: 0; padding: 0;
+      display: flex; align-items: stretch;
+      width: 100vw; height: 100vh;
+      background: #f4f5f7; overflow: hidden; z-index: 1;
+    }
+
+    /* Sidebar — fixed-width full-height column, never scrolls with content */
+    .admin-sidebar { width: 240px; min-width: 240px; max-width: 240px; flex: 0 0 240px; background: linear-gradient(180deg, var(--adm-saffron-deep), var(--adm-saffron)); color: #fff; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+    .admin-sidebar .side-brand { display: flex; align-items: center; gap: 10px; padding: 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+    .admin-sidebar .side-brand img { width:36px; height:36px; background:#fff; padding:4px; border-radius:10px; }
+    .admin-sidebar .side-brand-copy { display:flex; flex-direction:column; min-width:0; line-height:1.05; }
+    .admin-sidebar .side-brand-copy strong { font-size:16px; letter-spacing:.2px; }
+    .admin-sidebar .side-brand-copy small { margin-top:4px; font-size:8px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; opacity:.8; white-space:nowrap; }
+    .admin-sidebar .side-brand .brand-tag { font-size: 10px; font-weight: 700; letter-spacing: .5px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 20px; }
+    /* Nav scrolls only if it truly overflows; scrollbar hidden for a clean look */
+    .admin-sidebar nav { flex: 1 1 auto; min-height: 0; padding: 10px 10px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+    .admin-sidebar nav::-webkit-scrollbar { width: 0; height: 0; display: none; }
+    .side-link { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: none; color: rgba(255,255,255,0.85); padding: 10px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transition); margin-bottom: 1px; }
+    .side-link .side-ic { font-size: 18px; width: 22px; text-align: center; }
+    .side-link:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .side-link.active { background: #fff; color: var(--primary-dark); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .admin-sidebar .side-foot { padding: 12px 14px; border-top: 1px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; gap: 8px; }
+    .admin-sidebar .side-foot a, .admin-sidebar .side-foot button { color: rgba(255,255,255,0.9); background: none; border: none; text-align: left; font-size: 13px; cursor: pointer; text-decoration: none; padding: 6px 4px; border-radius: 6px; }
+    .admin-sidebar .side-foot a:hover, .admin-sidebar .side-foot button:hover { color:#fff; }
+
+    /* Main area — this is the ONLY scrollable region */
+    .admin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; overflow-y: auto; }
+    .admin-topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 50; }
+    .admin-topbar .page-title { font-size: 1.25rem; font-weight: 800; color: var(--primary-dark); }
+    .admin-topbar .topbar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+    .admin-content { padding: 22px 24px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: white; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); text-align: left; border: 1px solid var(--border); border-left: 4px solid var(--primary); }
+    .stat-card .stat-icon { font-size: 1.6rem; margin-bottom: 6px; }
+    .stat-card .stat-value { font-size: 1.7rem; font-weight: 800; color: var(--primary-dark); }
+    .stat-card .stat-label { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+    /* Hidden legacy tab bar (kept in DOM for JS that toggles .active) */
+    .admin-tabs { display: none !important; }
+    .tab-content { background: white; border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border); padding: 20px; }
+
+    /* Mobile: collapsible sidebar */
+    .side-toggle { display: none; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--primary-dark); }
+    .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 60; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .admin-table th { background: var(--primary-light); color: var(--primary-dark); padding: 12px 10px; text-align: left; font-weight: 700; white-space: nowrap; }
+    .admin-table td { padding: 10px; border-bottom: 1px solid var(--border); }
+    .admin-table tr:hover { background: #fffaf5; }
+    .status-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .logout-btn { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .order-detail-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .order-detail-modal .modal-body { background: white; border-radius: 16px; padding: 24px; max-width: 500px; width: min(100%, 500px); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing:border-box; }
+    .admin-invoice-actions { display:flex; gap:8px; margin-top:16px; }
+    .admin-invoice-actions button { flex:1; min-width:0; }
+    .prod-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .prod-form-grid .full { grid-column: 1 / -1; }
+    .prod-form-grid label { display: block; font-size: 12px; font-weight: 600; color: var(--primary-dark); margin-bottom: 4px; }
+    .prod-form-grid input, .prod-form-grid select, .prod-form-grid textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; }
+    .prod-form-grid textarea { resize: vertical; min-height: 60px; }
+    .btn-add-product { padding: 10px 18px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .prod-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); background:#f5f5f5; }
+    .stock-badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .stock-in { background:#e8f5e9; color:#2e7d32; }
+    .stock-out { background:#ffebee; color:#c62828; }
+
+    /* ===== Ads & Social Media module ===== */
+    .ad-editor-wrap { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,420px); gap: 18px; align-items: start; }
+    .ad-controls { display: flex; flex-direction: column; gap: 14px; }
+    .ad-panel { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .ad-panel h5 { margin: 0 0 10px; font-size: 14px; color: var(--primary-dark); }
+    .ad-panel label { display: block; font-size: 12px; font-weight: 600; color: var(--primary-dark); margin: 8px 0 3px; }
+    .ad-panel input[type=text], .ad-panel input[type=number], .ad-panel select, .ad-panel textarea {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; box-sizing: border-box;
+    }
+    .ad-mini { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; background: #eef1f4; color: #333; }
+    .ad-preview-col { min-width: 0; }
+    .ad-preview-sticky { position: sticky; top: 14px; background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+    .ad-actions-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+    .ad-act { flex: 1; min-width: 70px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--primary-dark); }
+    .ad-act-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .ad-share-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .ad-share { flex: 1; min-width: 90px; padding: 9px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: #fff; }
+    @media (max-width: 860px) {
+      .ad-editor-wrap { grid-template-columns: 1fr; }
+      .ad-preview-col { order: -1; }   /* preview on top on mobile */
+      .ad-preview-sticky { position: static; }
+    }
+
+    @media (max-width: 600px) { .prod-form-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .admin-table { font-size: 11px; }
+      .admin-table th, .admin-table td { padding: 8px 6px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .admin-content { padding: 16px 14px; }
+      .admin-topbar { padding: 12px 14px; }
+      .side-toggle { display: block; }
+      .admin-sidebar { position: fixed; left: 0; top: 0; z-index: 70; transform: translateX(-100%); transition: transform .25s ease; }
+      #adminDashboard.admin-shell.sidebar-open .admin-sidebar { transform: translateX(0); }
+      #adminDashboard.admin-shell.sidebar-open .sidebar-backdrop { display: block; }
+      .admin-login { padding:12px 0; }
+      .admin-login .checkout-form { grid-template-columns:1fr; height:calc(100vh - 52px); border-radius:20px; }
+      .admin-brand-lockup { min-height:170px; padding:20px; border-right:0; border-bottom:2px solid #ff9800; justify-content:center; gap:12px; }
+      .admin-brand-top { gap:12px; }
+      .admin-brand-mark { width:76px; height:76px; flex-basis:76px; padding:9px; border-radius:20px; }
+      .admin-brand-name { font-size:32px; }
+      .admin-brand-tagline { font-size:10px; letter-spacing:1px; }
+      .admin-grocery-hero { margin:0; padding:12px 14px; }
+      .admin-grocery-hero .grocery-icon { width:38px; height:38px; margin-bottom:5px; font-size:22px; }
+      .admin-grocery-hero strong { font-size:14px; }
+      .admin-grocery-hero p, .admin-ops-pills { display:none; }
+      .admin-login-form { width:calc(100% - 40px); padding:22px 0 26px; }
+      .admin-login-heading { font-size:28px; }
+      .order-detail-modal { padding:12px; align-items:center; }
+      .order-detail-modal .modal-body { padding:18px 14px; border-radius:13px; max-height:calc(100vh - 24px); }
+      .admin-invoice-actions { flex-direction:column; }
+    }
+
+/* ---- React additions (not in the original file) ---- */
+/* Sidebar items are router <a> links instead of <button>s. */
+.admin-sidebar a.side-link { text-decoration: none; box-sizing: border-box; }
+.admin-sidebar .side-foot a { display: block; }
+.admin-pager { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.admin-pager button { padding: 7px 12px; border: 1px solid var(--border); border-radius: 7px; background: #fff; cursor: pointer; }
+.admin-pager button:disabled { opacity: .5; cursor: not-allowed; }
+.admin-pending { padding: 30px; text-align: center; background: #fff8e1; border: 1px dashed #f0c36d; border-radius: 12px; color: #8d5d00; }

@@ -1,0 +1,467 @@
+{
+  "info": {
+    "name": "4AStore v2 API",
+    "_postman_id": "4a5t0re-v2-collection-0001",
+    "description": "4AStore v2 API collection.\n\n- **Node API** (customer/rider/public): base = {{nodeUrl}} (default http://localhost:4000)\n- **Laravel admin API**: base = {{laravelUrl}} (default http://localhost:8000)\n\nAuth: login/register set {{accessToken}} automatically (via test scripts). Send it as Bearer on protected requests.\n\nDefaults: owner login is owner / admin1234.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "nodeUrl", "value": "http://localhost:4000" },
+    { "key": "laravelUrl", "value": "http://localhost:8000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "orderId", "value": "" },
+    { "key": "otp", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health & Public",
+      "item": [
+        {
+          "name": "Health",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/health" }
+        },
+        {
+          "name": "Products",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/products" }
+        },
+        {
+          "name": "Product by id",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/products/1" }
+        },
+        {
+          "name": "Categories",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/categories" }
+        },
+        {
+          "name": "Settings",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/settings" }
+        },
+        {
+          "name": "Config (banners/ads)",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/config" }
+        },
+        {
+          "name": "Announcement",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/announcement" }
+        },
+        {
+          "name": "App version",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/version" }
+        }
+      ]
+    },
+    {
+      "name": "Auth (Node)",
+      "item": [
+        {
+          "name": "Send signup OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.devOtp) { pm.collectionVariables.set('otp', String(j.devOtp)); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/otp/send",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"test@example.com\"\n}" }
+          }
+        },
+        {
+          "name": "Register (needs OTP)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.token) { pm.collectionVariables.set('accessToken', j.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/users/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"mobile\": \"9876543210\",\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"pass123\",\n  \"otp\": \"{{otp}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login (owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.token) { pm.collectionVariables.set('accessToken', j.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/users/login",
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"owner\",\n  \"password\": \"admin1234\"\n}" }
+          }
+        },
+        {
+          "name": "Login (username or mobile)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.token) { pm.collectionVariables.set('accessToken', j.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/users/login",
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"9876543210\",\n  \"password\": \"pass123\"\n}" }
+          }
+        },
+        {
+          "name": "Refresh token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.token) { pm.collectionVariables.set('accessToken', j.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/users/refresh",
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        },
+        {
+          "name": "Session (me)",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/users/session" }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/users/logout",
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        },
+        {
+          "name": "Delete my account",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/users/deleteSelf",
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders (Node)",
+      "item": [
+        {
+          "name": "My / all orders",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/orders?mobile=9876543210" }
+        },
+        {
+          "name": "Place order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.order && j.order.order_id) { pm.collectionVariables.set('orderId', j.order.order_id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/orders",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": {\n    \"customer\": {\n      \"name\": \"Test User\",\n      \"mobile\": \"9876543210\",\n      \"address\": \"Main Road\",\n      \"city\": \"Chandragarh\",\n      \"pincode\": \"824301\",\n      \"deliverySource\": \"manual\"\n    },\n    \"items\": [\n      { \"id\": 1, \"name\": \"Aashirvaad Atta\", \"weight\": \"5 Kg\", \"price\": 200, \"quantity\": 2 }\n    ],\n    \"subtotal\": 400,\n    \"discount\": 0,\n    \"deliveryCharge\": 10,\n    \"totalAmount\": 410,\n    \"paymentMethod\": \"UPI\",\n    \"paymentReference\": \"123456789012\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Rider: accept order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/orders/accept",
+            "body": { "mode": "raw", "raw": "{\n  \"orderId\": \"{{orderId}}\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tracking (Node)",
+      "item": [
+        {
+          "name": "Get tracking by orderId",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/tracking?orderId={{orderId}}" }
+        },
+        {
+          "name": "Get all tracking (staff/rider)",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/tracking" }
+        },
+        {
+          "name": "Rider: update location",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/tracking/location",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"latitude\": 24.585,\n  \"longitude\": 84.118,\n  \"accuracy\": 12,\n  \"speed\": 8\n}"
+            }
+          }
+        },
+        {
+          "name": "Rider: set status",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/tracking/status",
+            "body": { "mode": "raw", "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"status\": \"Out for Delivery\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Push (Node)",
+      "item": [
+        {
+          "name": "Register device token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/push/register",
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"dev-device-token-123\",\n  \"platform\": \"web\"\n}" }
+          }
+        },
+        {
+          "name": "Unregister device token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/push/unregister",
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"dev-device-token-123\"\n}" }
+          }
+        },
+        {
+          "name": "Send broadcast (staff)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/push/send",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"customers\",\n  \"title\": \"Diwali Sale\",\n  \"body\": \"Flat 20% off today!\",\n  \"link\": \"/products?festival=diwali\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin (Node)",
+      "item": [
+        {
+          "name": "List users",
+          "request": { "method": "GET", "url": "{{nodeUrl}}/api/admin/users" }
+        },
+        {
+          "name": "Assign role by mobile",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/admin/assignRole",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"9876543210\",\n  \"role\": \"admin\",\n  \"permissions\": [\"orders\", \"riderTracking\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Add product",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/admin/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"add\",\n  \"product\": {\n    \"name\": \"Amul Ghee\",\n    \"brand\": \"Amul\",\n    \"category\": \"oil-ghee\",\n    \"weight\": \"1 L\",\n    \"mrp\": 600,\n    \"price\": 520,\n    \"inStock\": true\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Update product",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/admin/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"update\",\n  \"product\": {\n    \"id\": 1,\n    \"name\": \"Aashirvaad Atta\",\n    \"category\": \"rice-atta-dal\",\n    \"mrp\": 280,\n    \"price\": 195\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete product",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/admin/products",
+            "body": { "mode": "raw", "raw": "{\n  \"action\": \"delete\",\n  \"id\": 99\n}" }
+          }
+        },
+        {
+          "name": "Category add/update/delete",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/admin/categories",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"add\",\n  \"category\": {\n    \"name\": \"Frozen Foods\",\n    \"slug\": \"frozen-foods\",\n    \"icon\": \"🧊\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Update settings",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/admin/settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliveryCharge\": 10,\n  \"freeDeliveryAbove\": 500,\n  \"hideMrp\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Save banners",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/admin/banners",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"banners\": [\n    { \"title\": \"Fresh groceries delivered fast\", \"btnText\": \"Shop Now\", \"gradient\": [\"#0FA958\", \"#0b8a47\"], \"active\": true }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Save announcement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/admin/announcement",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"20% off on vegetables today!\",\n  \"target\": \"all\",\n  \"ctaText\": \"Buy now\",\n  \"ctaLink\": \"/products\",\n  \"enabled\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Update order status",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{nodeUrl}}/api/admin/orders/status",
+            "body": { "mode": "raw", "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"status\": \"Confirmed\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin (Laravel)",
+      "item": [
+        {
+          "name": "List orders",
+          "request": { "method": "GET", "url": "{{laravelUrl}}/api/admin/orders" }
+        },
+        {
+          "name": "Update order status",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{laravelUrl}}/api/admin/orders/status",
+            "body": { "mode": "raw", "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"status\": \"Confirmed\"\n}" }
+          }
+        },
+        {
+          "name": "Products (add/update/delete)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{laravelUrl}}/api/admin/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"add\",\n  \"product\": { \"name\": \"Amul Ghee\", \"category\": \"oil-ghee\", \"mrp\": 600, \"price\": 520 }\n}"
+            }
+          }
+        },
+        {
+          "name": "List users",
+          "request": { "method": "GET", "url": "{{laravelUrl}}/api/admin/users" }
+        },
+        {
+          "name": "Assign role by mobile",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{laravelUrl}}/api/admin/assignRole",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"9876543210\",\n  \"role\": \"admin\",\n  \"permissions\": [\"orders\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Send push broadcast",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{laravelUrl}}/api/admin/push/send",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"customers\",\n  \"title\": \"Hello\",\n  \"body\": \"From Laravel admin\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

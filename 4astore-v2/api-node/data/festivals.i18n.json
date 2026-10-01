@@ -1,0 +1,101 @@
+{
+  "_note": "Hindi (Devanagari) and English text for each festival in festivals.seed.json. Blank = use the main Hinglish text. Editable in Admin → Video Ads → Festival Calendar.",
+  "translations": {
+    "new-year": {
+      "hindi": { "name": "नया साल", "greeting": "नए साल की शुभकामनाएँ!", "subText": "नया साल, नई खुशियाँ — 4astore के साथ", "defaultOffer": "नए साल का स्पेशल — हर ऑर्डर पर बचत" },
+      "english": { "name": "New Year", "greeting": "Happy New Year!", "subText": "A new year of joy — with 4astore", "defaultOffer": "New Year special — savings on every order" }
+    },
+    "makar-sankranti": {
+      "hindi": { "name": "मकर संक्रांति", "greeting": "मकर संक्रांति की शुभकामनाएँ", "subText": "तिल-गुड़ खाओ, मीठा-मीठा बोलो", "defaultOffer": "तिल, गुड़, चूड़ा-दही — सब एक जगह" },
+      "english": { "name": "Makar Sankranti", "greeting": "Happy Makar Sankranti!", "subText": "Sweet til-gud and warm wishes", "defaultOffer": "Til, jaggery, chura-dahi — all in one place" }
+    },
+    "republic-day": {
+      "hindi": { "name": "गणतंत्र दिवस", "greeting": "गणतंत्र दिवस की शुभकामनाएँ", "subText": "जय हिंद! देश पर गर्व है", "defaultOffer": "गणतंत्र दिवस ऑफ़र" },
+      "english": { "name": "Republic Day", "greeting": "Happy Republic Day!", "subText": "Jai Hind! Proud of our nation", "defaultOffer": "Republic Day offer" }
+    },
+    "basant-panchami": {
+      "hindi": { "name": "बसंत पंचमी", "greeting": "बसंत पंचमी की शुभकामनाएँ", "subText": "माँ सरस्वती का आशीर्वाद आप पर बना रहे", "defaultOffer": "पूजा सामग्री और मिठाई पर ऑफ़र" },
+      "english": { "name": "Basant Panchami", "greeting": "Happy Basant Panchami!", "subText": "May Maa Saraswati bless you always", "defaultOffer": "Offers on pooja items and sweets" }
+    },
+    "maha-shivratri": {
+      "hindi": { "name": "महाशिवरात्रि", "greeting": "हर हर महादेव!", "subText": "महाशिवरात्रि की शुभकामनाएँ", "defaultOffer": "व्रत का सामान — घर पर डिलीवरी" },
+      "english": { "name": "Maha Shivratri", "greeting": "Har Har Mahadev!", "subText": "Happy Maha Shivratri", "defaultOffer": "Fasting essentials — delivered home" }
+    },
+    "holi": {
+      "hindi": { "name": "होली", "greeting": "होली की शुभकामनाएँ!", "subText": "रंगों भरी होली की हार्दिक शुभकामनाएँ", "defaultOffer": "गुजिया, रंग और नमकीन पर ऑफ़र" },
+      "english": { "name": "Holi", "greeting": "Happy Holi!", "subText": "Wishing you a colourful Holi", "defaultOffer": "Offers on gujiya, colours and snacks" }
+    },
+    "chaitra-navratri": {
+      "hindi": { "name": "चैत्र नवरात्रि", "greeting": "चैत्र नवरात्रि की शुभकामनाएँ", "subText": "माँ दुर्गा आपकी हर मनोकामना पूरी करें", "defaultOffer": "व्रत स्पेशल — कुट्टू आटा, साबूदाना, मखाना" },
+      "english": { "name": "Chaitra Navratri", "greeting": "Happy Chaitra Navratri!", "subText": "May Maa Durga fulfil all your wishes", "defaultOffer": "Fasting specials — kuttu atta, sabudana, makhana" }
+    },
+    "ram-navami": {
+      "hindi": { "name": "राम नवमी", "greeting": "जय श्री राम!", "subText": "राम नवमी की शुभकामनाएँ", "defaultOffer": "पूजा सामग्री पर ऑफ़र" },
+      "english": { "name": "Ram Navami", "greeting": "Jai Shri Ram!", "subText": "Happy Ram Navami", "defaultOffer": "Offers on pooja items" }
+    },
+    "eid-ul-fitr": {
+      "hindi": { "name": "ईद उल-फ़ित्र", "greeting": "ईद मुबारक!", "subText": "ईद की ढेर सारी खुशियाँ आपको", "defaultOffer": "सेवई, ड्राई फ्रूट्स और दूध पर ऑफ़र" },
+      "english": { "name": "Eid ul-Fitr", "greeting": "Eid Mubarak!", "subText": "Wishing you a joyful Eid", "defaultOffer": "Offers on sewai, dry fruits and milk" }
+    },
+    "akshaya-tritiya": {
+      "hindi": { "name": "अक्षय तृतीया", "greeting": "अक्षय तृतीया की शुभकामनाएँ", "subText": "सुख, समृद्धि और खुशियाँ बनी रहें", "defaultOffer": "शुभ दिन पर खास बचत" },
+      "english": { "name": "Akshaya Tritiya", "greeting": "Happy Akshaya Tritiya!", "subText": "Wishing you lasting prosperity", "defaultOffer": "Special savings on this auspicious day" }
+    },
+    "eid-ul-adha": {
+      "hindi": { "name": "ईद उल-अज़हा", "greeting": "ईद उल-अज़हा मुबारक!", "subText": "बकरीद की दिली शुभकामनाएँ", "defaultOffer": "मसाले, चावल और ड्राई फ्रूट्स पर ऑफ़र" },
+      "english": { "name": "Eid ul-Adha", "greeting": "Eid ul-Adha Mubarak!", "subText": "Warm wishes on Bakrid", "defaultOffer": "Offers on spices, rice and dry fruits" }
+    },
+    "raksha-bandhan": {
+      "hindi": { "name": "रक्षा बंधन", "greeting": "रक्षा बंधन की शुभकामनाएँ!", "subText": "भाई-बहन के प्यार का त्योहार", "defaultOffer": "मिठाई और चॉकलेट पर ऑफ़र" },
+      "english": { "name": "Raksha Bandhan", "greeting": "Happy Raksha Bandhan!", "subText": "Celebrating the bond of siblings", "defaultOffer": "Offers on sweets and chocolates" }
+    },
+    "independence-day": {
+      "hindi": { "name": "स्वतंत्रता दिवस", "greeting": "स्वतंत्रता दिवस की शुभकामनाएँ!", "subText": "जय हिंद! आज़ादी का जश्न", "defaultOffer": "फ्रीडम सेल — हर ऑर्डर पर बचत" },
+      "english": { "name": "Independence Day", "greeting": "Happy Independence Day!", "subText": "Jai Hind! Celebrating freedom", "defaultOffer": "Freedom Sale — savings on every order" }
+    },
+    "janmashtami": {
+      "hindi": { "name": "जन्माष्टमी", "greeting": "जन्माष्टमी की शुभकामनाएँ!", "subText": "नंद के आनंद भयो, जय कन्हैया लाल की", "defaultOffer": "माखन, मिश्री और व्रत का सामान" },
+      "english": { "name": "Janmashtami", "greeting": "Happy Janmashtami!", "subText": "May Lord Krishna bless you", "defaultOffer": "Makhan, mishri and fasting essentials" }
+    },
+    "ganesh-chaturthi": {
+      "hindi": { "name": "गणेश चतुर्थी", "greeting": "गणपति बप्पा मोरया!", "subText": "गणेश चतुर्थी की शुभकामनाएँ", "defaultOffer": "मोदक, लड्डू और पूजा सामग्री" },
+      "english": { "name": "Ganesh Chaturthi", "greeting": "Ganpati Bappa Morya!", "subText": "Happy Ganesh Chaturthi", "defaultOffer": "Modak, laddoo and pooja items" }
+    },
+    "navratri-durga-puja": {
+      "hindi": { "name": "नवरात्रि / दुर्गा पूजा", "greeting": "शुभ नवरात्रि!", "subText": "माँ दुर्गा का आशीर्वाद सदा बना रहे", "defaultOffer": "व्रत स्पेशल — फल, साबूदाना, मखाना" },
+      "english": { "name": "Navratri / Durga Puja", "greeting": "Happy Navratri!", "subText": "May Maa Durga always bless you", "defaultOffer": "Fasting specials — fruits, sabudana, makhana" }
+    },
+    "dussehra": {
+      "hindi": { "name": "दशहरा", "greeting": "दशहरा की शुभकामनाएँ!", "subText": "बुराई पर अच्छाई की जीत का त्योहार", "defaultOffer": "दशहरा धमाका ऑफ़र" },
+      "english": { "name": "Dussehra", "greeting": "Happy Dussehra!", "subText": "Celebrating the victory of good over evil", "defaultOffer": "Dussehra Dhamaka offer" }
+    },
+    "karwa-chauth": {
+      "hindi": { "name": "करवा चौथ", "greeting": "करवा चौथ की शुभकामनाएँ", "subText": "सदा सुहागन रहो", "defaultOffer": "सरगी और पूजा का सामान" },
+      "english": { "name": "Karwa Chauth", "greeting": "Happy Karwa Chauth!", "subText": "Wishing you a lifetime of togetherness", "defaultOffer": "Sargi and pooja essentials" }
+    },
+    "dhanteras": {
+      "hindi": { "name": "धनतेरस", "greeting": "शुभ धनतेरस!", "subText": "आपके घर सुख और समृद्धि आए", "defaultOffer": "धनतेरस स्पेशल ऑफ़र" },
+      "english": { "name": "Dhanteras", "greeting": "Happy Dhanteras!", "subText": "May prosperity fill your home", "defaultOffer": "Dhanteras special offer" }
+    },
+    "diwali": {
+      "hindi": { "name": "दीपावली", "greeting": "दीपावली की शुभकामनाएँ!", "subText": "दीपावली की हार्दिक शुभकामनाएँ", "defaultOffer": "दिवाली धमाका — मिठाई, ड्राई फ्रूट्स, पूजा सामग्री" },
+      "english": { "name": "Diwali", "greeting": "Happy Diwali!", "subText": "Wishing you a bright and joyful Diwali", "defaultOffer": "Diwali Dhamaka — sweets, dry fruits, pooja items" }
+    },
+    "bhai-dooj": {
+      "hindi": { "name": "भाई दूज", "greeting": "भाई दूज की शुभकामनाएँ!", "subText": "भाई-बहन का अटूट रिश्ता", "defaultOffer": "मिठाई और गिफ्ट पैक पर ऑफ़र" },
+      "english": { "name": "Bhai Dooj", "greeting": "Happy Bhai Dooj!", "subText": "Celebrating an unbreakable bond", "defaultOffer": "Offers on sweets and gift packs" }
+    },
+    "chhath-puja": {
+      "hindi": { "name": "छठ पूजा", "greeting": "छठ पूजा की शुभकामनाएँ", "subText": "छठी मइया सबकी मनोकामना पूरी करें", "defaultOffer": "छठ सामग्री — ठेकुआ का सामान, फल, सूप" },
+      "english": { "name": "Chhath Puja", "greeting": "Happy Chhath Puja!", "subText": "May Chhathi Maiya fulfil everyone's wishes", "defaultOffer": "Chhath essentials — thekua items, fruits, soop" }
+    },
+    "guru-nanak-jayanti": {
+      "hindi": { "name": "गुरु नानक जयंती", "greeting": "गुरु नानक जयंती की लख-लख बधाइयाँ", "subText": "गुरपुरब दी वधाइयाँ", "defaultOffer": "लंगर और प्रसाद का सामान" },
+      "english": { "name": "Guru Nanak Jayanti", "greeting": "Happy Gurpurab!", "subText": "Warm wishes on Guru Nanak Jayanti", "defaultOffer": "Langar and prasad essentials" }
+    },
+    "christmas": {
+      "hindi": { "name": "क्रिसमस", "greeting": "मेरी क्रिसमस!", "subText": "खुशियों और प्यार भरा क्रिसमस", "defaultOffer": "केक, चॉकलेट और स्नैक्स पर ऑफ़र" },
+      "english": { "name": "Christmas", "greeting": "Merry Christmas!", "subText": "Wishing you joy and love this Christmas", "defaultOffer": "Offers on cakes, chocolates and snacks" }
+    }
+  }
+}
