@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchAdminSettings, saveAdminSettings, fetchAnnouncement, saveAnnouncement, saveFestival, bumpCache, downloadText,
-  AdminSettings as SettingsT,
+  saveFeatures, saveSeo, saveProduct, AdminSettings as SettingsT,
 } from '../../lib/admin';
 import { apiError } from '../../lib/api';
 import { useConfig, useProducts, useSettings } from '../../lib/queries';
-import { usePages } from '../../lib/pages';
+import { FEATURE_KEYS, FEATURE_LABELS, isFeatureOn } from '../../lib/features';
+import { usePages, savePage, fetchAdminPages } from '../../lib/pages';
+import { applyTitleTemplate, deriveProductSeo } from '../../lib/seo';
+import type { SeoConfig } from '../../types';
 import { resolveFooter, saveFooter, resetFooter, FooterConfig } from '../../lib/footer';
 import { FooterView } from '../../components/SiteFooter';
 import { showToast } from '../../store/toast';
@@ -18,6 +21,8 @@ const SUBS = [
   { key: 'announce', label: '📢 Announcement' },
   { key: 'footer', label: '🦶 Footer' },
   { key: 'festival', label: '🎉 Festival' },
+  { key: 'features', label: '🧩 Features' },
+  { key: 'seo', label: '🔎 SEO' },
   { key: 'cache', label: '🔄 Cache / Update' },
   { key: 'data', label: '💾 Data' },
 ] as const;
@@ -487,6 +492,356 @@ function DataSettings() {
   );
 }
 
+// Feature flags — reads config.features (GET /api/config), saves via POST
+// /admin/features. A flag is ON unless explicitly saved false (older API /
+// absent column defaults every flag ON). The storefront + mobile read the same
+// flags so toggling here changes behaviour everywhere after the config refetch.
+function FeaturesSettings() {
+  const qc = useQueryClient();
+  const configQ = useConfig();
+  const [flags, setFlags] = useState<Record<string, boolean> | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!configQ.data) return;
+    const src = configQ.data.features;
+    const next: Record<string, boolean> = {};
+    for (const k of FEATURE_KEYS) next[k] = isFeatureOn(src, k);
+    setFlags(next);
+  }, [configQ.data]);
+
+  if (configQ.isLoading || !flags) return <p style={{ color: 'var(--gray)' }}>Loading features...</p>;
+  const set = (k: string, v: boolean) => setFlags((c) => (c ? { ...c, [k]: v } : c));
+
+  async function save() {
+    setBusy(true);
+    try {
+      await saveFeatures(flags!);
+      showToast('Features saved — web + app par lagu ho jayega', 'success');
+      qc.invalidateQueries({ queryKey: ['config'] });
+    } catch (e) {
+      showToast(apiError(e) || 'Failed to save features', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <h4 style={{ marginBottom: 6 }}>🧩 Features (On / Off)</h4>
+      <p style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 16, maxWidth: 560 }}>
+        Yeh toggles web storefront aur mobile app dono me features on/off karte hain. Default sab ON — kisi feature ko band karne ke liye uska toggle off karein (build dubara bhejne ki zaroorat nahi).
+      </p>
+      <div style={{ maxWidth: 520, display: 'grid', gap: 10 }}>
+        {FEATURE_KEYS.map((k) => (
+          <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 600, color: 'var(--primary-dark)', background: '#f8fafc', border: '1px solid var(--border)', padding: 12, borderRadius: 8 }}>
+            <input type="checkbox" checked={!!flags[k]} onChange={(e) => set(k, e.target.checked)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
+            {FEATURE_LABELS[k]}
+          </label>
+        ))}
+        <button type="button" onClick={save} disabled={busy} style={{ justifySelf: 'start', padding: '11px 26px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          💾 {busy ? 'Saving…' : 'Save Features'}
+        </button>
+      </div>
+    </>
+  );
+}
+
+// SEO module — manages global SEO defaults + LocalBusiness info (POST /admin/seo),
+// per-product SEO (POST /admin/products) and per-CMS-page keywords (POST /admin/pages).
+// Google-snippet + social-card previews mirror what crawlers see. Bilingual copy.
+function SeoSettings() {
+  const qc = useQueryClient();
+  const configQ = useConfig();
+  const products = useProducts().data ?? [];
+  // Admin pages carry metaKeywords (public list query omits it) — read the admin list.
+  const adminPagesQ = useQuery({ queryKey: ['admin-pages'], queryFn: fetchAdminPages });
+  const pages = adminPagesQ.data ?? [];
+
+  const [seo, setSeo] = useState<SeoConfig | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [prodSearch, setProdSearch] = useState('');
+  const [prodId, setProdId] = useState<number | null>(null);
+  const [pageId, setPageId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (configQ.data?.seo && !seo) setSeo(configQ.data.seo);
+  }, [configQ.data, seo]);
+
+  if (configQ.isLoading || !seo) return <p style={{ color: 'var(--gray)' }}>Loading SEO…</p>;
+
+  const set = <K extends keyof SeoConfig>(k: K, v: SeoConfig[K]) => setSeo((c) => (c ? { ...c, [k]: v } : c));
+  const setBiz = <K extends keyof SeoConfig['business']>(k: K, v: SeoConfig['business'][K]) =>
+    setSeo((c) => (c ? { ...c, business: { ...c.business, [k]: v } } : c));
+  const setGeo = (k: 'lat' | 'lng', v: number) =>
+    setSeo((c) => (c ? { ...c, business: { ...c.business, geo: { ...c.business.geo, [k]: v } } } : c));
+  const setSocial = (k: keyof SeoConfig['social'], v: string) =>
+    setSeo((c) => (c ? { ...c, social: { ...c.social, [k]: v } } : c));
+
+  async function saveGlobal() {
+    setBusy(true);
+    try {
+      await saveSeo({ seo: seo! });
+      showToast('SEO settings saved — web + app par lagu / applied', 'success');
+      qc.invalidateQueries({ queryKey: ['config'] });
+    } catch (e) {
+      showToast(apiError(e) || 'Failed to save SEO settings', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const box: React.CSSProperties = { background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 18 };
+  const btn = (bg = 'var(--primary)'): React.CSSProperties => ({ padding: '10px 22px', background: bg, color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' });
+
+  // ---- Per-product SEO panel ----
+  const filtered = prodSearch.trim()
+    ? products.filter((p) => p.name.toLowerCase().includes(prodSearch.trim().toLowerCase()))
+    : products.slice(0, 20);
+  const selProd = products.find((p) => p.id === prodId) || null;
+
+  function ProductSeoPanel() {
+    const [t, setT] = useState('');
+    const [d, setD] = useState('');
+    const [kw, setKw] = useState('');
+    const [og, setOg] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+      if (!selProd) return;
+      setT(selProd.seo_title || '');
+      setD(selProd.seo_description || '');
+      setKw(selProd.seo_keywords || '');
+      setOg(selProd.og_image || '');
+    }, [selProd?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    if (!selProd) return <p style={hint}>Upar list se ek product chunein / Pick a product above to edit its SEO.</p>;
+    const derived = deriveProductSeo(selProd);
+
+    async function save() {
+      setSaving(true);
+      try {
+        await saveProduct('update', {
+          id: selProd!.id,
+          seoTitle: t.trim(),
+          seoDescription: d.trim(),
+          seoKeywords: kw.trim(),
+          ogImage: og.trim(),
+        });
+        showToast(`SEO saved for ${selProd!.name}`, 'success');
+        qc.invalidateQueries({ queryKey: ['products'] });
+      } catch (e) {
+        showToast(apiError(e) || 'Failed to save product SEO', 'error');
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    const previewTitle = t.trim() || derived.title;
+    const previewDesc = d.trim() || derived.description;
+    return (
+      <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+        <div>
+          <label style={albl} htmlFor="seo_p_title">SEO Title (खाली = auto)</label>
+          <input id="seo_p_title" value={t} onChange={(e) => setT(e.target.value)} placeholder={derived.title} style={inp} />
+        </div>
+        <div>
+          <label style={albl} htmlFor="seo_p_desc">Meta Description (खाली = auto, ~160 chars)</label>
+          <textarea id="seo_p_desc" rows={2} value={d} onChange={(e) => setD(e.target.value)} placeholder={derived.description} style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }} />
+        </div>
+        <div>
+          <label style={albl} htmlFor="seo_p_kw">Keywords (comma se alag)</label>
+          <input id="seo_p_kw" value={kw} onChange={(e) => setKw(e.target.value)} placeholder={derived.keywords} style={inp} />
+        </div>
+        <div>
+          <label style={albl} htmlFor="seo_p_og">OG Image URL (खाली = auto share card)</label>
+          <input id="seo_p_og" value={og} onChange={(e) => setOg(e.target.value)} placeholder="https://… (optional)" style={inp} />
+        </div>
+        {/* Google snippet preview */}
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, background: '#fafafa' }}>
+          <div style={{ fontSize: 12, color: 'var(--gray)', marginBottom: 4 }}>🔎 Google preview</div>
+          <div style={{ color: '#1a0dab', fontSize: 17, lineHeight: 1.3 }}>{applyTitleTemplate(previewTitle, seo!)}</div>
+          <div style={{ color: '#006621', fontSize: 13 }}>{`${(typeof window !== 'undefined' ? window.location.origin : '')}/product/${selProd.id}`}</div>
+          <div style={{ color: '#545454', fontSize: 13 }}>{previewDesc}</div>
+        </div>
+        {/* Social card preview */}
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--gray)', marginBottom: 4 }}>🖼️ Social card (share image)</div>
+          <img src={`/api/og/image/product/${selProd.id}`} alt="Share preview" style={{ maxWidth: 320, width: '100%', border: '1px solid var(--border)', borderRadius: 8 }} />
+        </div>
+        <button type="button" onClick={save} disabled={saving} style={{ ...btn(), justifySelf: 'start' }}>💾 {saving ? 'Saving…' : 'Save Product SEO'}</button>
+      </div>
+    );
+  }
+
+  // ---- Per-page SEO panel ----
+  const selPage = pages.find((p) => p.id === pageId) || null;
+  function PageSeoPanel() {
+    const [kw, setKw] = useState('');
+    const [saving, setSaving] = useState(false);
+    useEffect(() => { if (selPage) setKw(selPage.metaKeywords || ''); }, [selPage?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!selPage) return <p style={hint}>Ek CMS page chunein / Pick a page to edit its keywords.</p>;
+
+    async function save() {
+      setSaving(true);
+      try {
+        await savePage('update', {
+          id: selPage!.id,
+          slug: selPage!.slug,
+          title: selPage!.title,
+          metaDescription: selPage!.metaDescription,
+          metaKeywords: kw.trim(),
+          content: selPage!.content,
+          showInFooter: selPage!.showInFooter,
+          published: selPage!.published,
+          sortOrder: selPage!.sortOrder,
+        });
+        showToast(`Keywords saved for ${selPage!.title}`, 'success');
+        qc.invalidateQueries({ queryKey: ['admin-pages'] });
+        qc.invalidateQueries({ queryKey: ['pages'] });
+        qc.invalidateQueries({ queryKey: ['page', selPage!.slug] });
+      } catch (e) {
+        showToast(apiError(e) || 'Failed to save page keywords', 'error');
+      } finally {
+        setSaving(false);
+      }
+    }
+    return (
+      <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+        <div>
+          <label style={albl} htmlFor="seo_pg_kw">Meta Keywords (comma se alag)</label>
+          <input id="seo_pg_kw" value={kw} onChange={(e) => setKw(e.target.value)} placeholder="about, 4a store, grocery" style={inp} />
+          <p style={hint}>Title/description Admin → 📄 Pages se badlein. Yahan sirf keywords.</p>
+        </div>
+        <button type="button" onClick={save} disabled={saving} style={{ ...btn(), justifySelf: 'start' }}>💾 {saving ? 'Saving…' : 'Save Page Keywords'}</button>
+      </div>
+    );
+  }
+
+  const sitemapUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/sitemap.xml`;
+
+  return (
+    <>
+      <h4 style={{ marginBottom: 6 }}>🔎 SEO (Search Engine Optimization)</h4>
+      <p style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 16, maxWidth: 620 }}>
+        Yahan se store ke SEO defaults, LocalBusiness details, per-product aur per-page SEO manage karein. Ye title, description, keywords aur schema.org data search engines + social share (WhatsApp/Facebook) ko dikhata hai.
+      </p>
+
+      {/* --- Global SEO defaults + LocalBusiness --- */}
+      <div style={box}>
+        <strong style={{ fontSize: 14, color: 'var(--primary-dark)' }}>🌐 Global defaults &amp; LocalBusiness</strong>
+        <div style={{ display: 'grid', gap: 12, marginTop: 12, maxWidth: 640 }}>
+          <div>
+            <label style={albl} htmlFor="seo_tpl">Title template (<code>%s</code> = page title)</label>
+            <input id="seo_tpl" value={seo.titleTemplate} onChange={(e) => set('titleTemplate', e.target.value)} placeholder="%s | 4A Store" style={inp} />
+          </div>
+          <div>
+            <label style={albl} htmlFor="seo_desc">Default description</label>
+            <textarea id="seo_desc" rows={2} value={seo.defaultDescription} onChange={(e) => set('defaultDescription', e.target.value)} style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }} />
+          </div>
+          <div>
+            <label style={albl} htmlFor="seo_kw">Default keywords (comma se alag)</label>
+            <input id="seo_kw" value={seo.defaultKeywords} onChange={(e) => set('defaultKeywords', e.target.value)} style={inp} />
+          </div>
+          <div>
+            <label style={albl} htmlFor="seo_ogimg">Default OG image URL</label>
+            <input id="seo_ogimg" value={seo.defaultOgImage} onChange={(e) => set('defaultOgImage', e.target.value)} style={inp} />
+          </div>
+
+          <strong style={{ fontSize: 13, color: 'var(--primary-dark)', marginTop: 6 }}>🏪 LocalBusiness</strong>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <label style={albl} htmlFor="seo_bname">Business name</label>
+              <input id="seo_bname" value={seo.business.name} onChange={(e) => setBiz('name', e.target.value)} style={inp} />
+            </div>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <label style={albl} htmlFor="seo_bphone">Phone</label>
+              <input id="seo_bphone" value={seo.business.phone} onChange={(e) => setBiz('phone', e.target.value)} style={inp} />
+            </div>
+          </div>
+          <div>
+            <label style={albl} htmlFor="seo_baddr">Address</label>
+            <input id="seo_baddr" value={seo.business.address} onChange={(e) => setBiz('address', e.target.value)} style={inp} />
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <label style={albl} htmlFor="seo_blat">Latitude</label>
+              <input id="seo_blat" type="number" step="0.000001" value={seo.business.geo.lat} onChange={(e) => setGeo('lat', Number(e.target.value))} style={inp} />
+            </div>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <label style={albl} htmlFor="seo_blng">Longitude</label>
+              <input id="seo_blng" type="number" step="0.000001" value={seo.business.geo.lng} onChange={(e) => setGeo('lng', Number(e.target.value))} style={inp} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: 2, minWidth: 180 }}>
+              <label style={albl} htmlFor="seo_bhours">Opening hours</label>
+              <input id="seo_bhours" value={seo.business.openingHours} onChange={(e) => setBiz('openingHours', e.target.value)} placeholder="Mo-Su 07:00-21:00" style={inp} />
+            </div>
+            <div style={{ flex: 1, minWidth: 100 }}>
+              <label style={albl} htmlFor="seo_bprice">Price range</label>
+              <input id="seo_bprice" value={seo.business.priceRange} onChange={(e) => setBiz('priceRange', e.target.value)} placeholder="₹" style={inp} />
+            </div>
+          </div>
+          <div>
+            <label style={albl} htmlFor="seo_barea">Area served (comma se alag)</label>
+            <input id="seo_barea" value={seo.business.areaServed.join(', ')} onChange={(e) => setBiz('areaServed', e.target.value.split(',').map((x) => x.trim()).filter(Boolean))} style={inp} />
+          </div>
+
+          <strong style={{ fontSize: 13, color: 'var(--primary-dark)', marginTop: 6 }}>🔗 Social</strong>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <label style={albl} htmlFor="seo_wa">WhatsApp</label>
+              <input id="seo_wa" value={seo.social.whatsapp} onChange={(e) => setSocial('whatsapp', e.target.value)} style={inp} />
+            </div>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <label style={albl} htmlFor="seo_ig">Instagram</label>
+              <input id="seo_ig" value={seo.social.instagram} onChange={(e) => setSocial('instagram', e.target.value)} style={inp} />
+            </div>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <label style={albl} htmlFor="seo_fb">Facebook</label>
+              <input id="seo_fb" value={seo.social.facebook} onChange={(e) => setSocial('facebook', e.target.value)} style={inp} />
+            </div>
+          </div>
+
+          <div>
+            <label style={albl} htmlFor="seo_robots">robots.txt extra lines (admin-editable)</label>
+            <textarea id="seo_robots" rows={2} value={seo.robotsExtra} onChange={(e) => set('robotsExtra', e.target.value)} placeholder="Disallow: /checkout" style={{ ...inp, fontFamily: 'monospace', resize: 'vertical' }} />
+            <p style={hint}>Har line ek rule. Ye /api/robots.txt me jud jaate hain. Sitemap: <a href={sitemapUrl} target="_blank" rel="noreferrer">🗺️ view sitemap.xml</a></p>
+          </div>
+
+          <button type="button" onClick={saveGlobal} disabled={busy} style={{ ...btn(), justifySelf: 'start' }}>💾 {busy ? 'Saving…' : 'Save SEO Defaults'}</button>
+        </div>
+      </div>
+
+      {/* --- Per-product SEO --- */}
+      <div style={box}>
+        <strong style={{ fontSize: 14, color: 'var(--primary-dark)' }}>📦 Per-product SEO</strong>
+        <div style={{ marginTop: 10, maxWidth: 640 }}>
+          <input value={prodSearch} onChange={(e) => setProdSearch(e.target.value)} placeholder="🔍 Product search by name…" style={inp} aria-label="Search products" />
+          <select value={prodId ?? ''} onChange={(e) => setProdId(e.target.value ? Number(e.target.value) : null)} aria-label="Select product" style={{ ...inp, marginTop: 8 }}>
+            <option value="">— Select product ({filtered.length} shown) —</option>
+            {filtered.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <ProductSeoPanel />
+        </div>
+      </div>
+
+      {/* --- Per-CMS-page SEO --- */}
+      <div style={box}>
+        <strong style={{ fontSize: 14, color: 'var(--primary-dark)' }}>📄 Per-page SEO (CMS)</strong>
+        <div style={{ marginTop: 10, maxWidth: 640 }}>
+          <select value={pageId ?? ''} onChange={(e) => setPageId(e.target.value ? Number(e.target.value) : null)} aria-label="Select page" style={inp}>
+            <option value="">— Select CMS page —</option>
+            {pages.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+          </select>
+          <PageSeoPanel />
+        </div>
+      </div>
+    </>
+  );
+}
+
 // Port of the original renderSettingsTab() with its 5 sub-modules.
 export default function AdminSettings() {
   const [sub, setSub] = useState<SubKey>(lastSub);
@@ -513,6 +868,8 @@ export default function AdminSettings() {
         {sub === 'announce' && <AnnouncementSettings />}
         {sub === 'footer' && <FooterSettings />}
         {sub === 'festival' && <FestivalSettings />}
+        {sub === 'features' && <FeaturesSettings />}
+        {sub === 'seo' && <SeoSettings />}
         {sub === 'cache' && <CacheSettings />}
         {sub === 'data' && <DataSettings />}
       </div>
