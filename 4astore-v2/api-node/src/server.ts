@@ -16,6 +16,8 @@ import addressesRouter from './routes/addresses';
 import imgProxyRouter from './routes/imgProxy';
 import pagesRouter from './routes/pages';
 import videosRouter from './routes/videos';
+import ogRouter from './routes/og';
+import seoRouter from './routes/seo';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { timing } from './middleware/timing';
@@ -49,6 +51,8 @@ app.use('/api/admin', adminRouter);
 app.use('/api/addresses', addressesRouter);
 app.use('/api/img-proxy', imgProxyRouter);
 app.use('/api/pages', pagesRouter);
+app.use('/api/og', ogRouter); // social share HTML + compressed OG images (crawler-rewritten in nginx)
+app.use('/api', seoRouter); // /api/sitemap.xml + /api/robots.txt (crawler infra — never flag-gated)
 // Public banner images only (payment screenshots stay private in uploads/screenshots).
 app.use(
   '/api/uploads/banners',

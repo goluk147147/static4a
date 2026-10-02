@@ -9,6 +9,8 @@ import bcrypt from 'bcryptjs';
 import { requireAuth, requireStaff, hasPermission } from '../auth/middleware';
 import { notifyCustomerStatus } from '../services/push';
 import { toPage, PageRow } from './pages';
+import { FEATURE_KEYS, mergeFeatures } from '../utils/features';
+import { mergeSeoConfig, type SettingsRow } from '../seo/localSeo';
 
 const router = Router();
 
@@ -32,6 +34,11 @@ const productSchema = z.object({
   features: z.array(z.string()).optional().default([]),
   inStock: z.boolean().optional().default(true),
   featured: z.boolean().optional().default(false), // daily "Aaj ka Special" video
+  // Optional per-product SEO overrides (ADD-only — unset falls back to derived defaults).
+  seoTitle: z.string().max(255).optional(),
+  seoDescription: z.string().max(5000).optional(),
+  seoKeywords: z.string().max(500).optional(),
+  ogImage: z.string().max(500).optional(),
 });
 
 router.post('/products', requireAuth, requireStaff('products'), async (req: Request, res: Response) => {
@@ -54,6 +61,10 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
       features: p.features,
       in_stock: p.inStock,
       featured: p.featured,
+      seo_title: p.seoTitle || null,
+      seo_description: p.seoDescription || null,
+      seo_keywords: p.seoKeywords || null,
+      og_image: p.ogImage || null,
     };
     if (action === 'add') {
       const product = await prisma.product.create({ data });
@@ -683,6 +694,7 @@ const pageSchema = z.object({
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(80),
   title: z.string().trim().min(1).max(200),
   metaDescription: z.string().trim().max(300).optional().default(''),
+  metaKeywords: z.string().trim().max(500).optional().default(''),
   // HTML; sanitised again with DOMPurify wherever it is rendered.
   content: z.string().max(200_000).optional().default(''),
   showInFooter: z.boolean().optional().default(true),
@@ -721,16 +733,16 @@ router.post('/pages', requireAuth, requireStaff('settings'), async (req: Request
   const clash = await prisma.$queryRawUnsafe<Array<{ id: number }>>('SELECT id FROM pages WHERE slug = ?', p.slug);
   if (clash[0] && (action === 'add' || Number(clash[0].id) !== p.id)) return fail(res, `Slug "${p.slug}" is already used`, 409);
 
-  const values = [p.slug, p.title, p.metaDescription || null, stripActive(p.content), p.showInFooter ? 1 : 0, p.published ? 1 : 0, p.sortOrder];
+  const values = [p.slug, p.title, p.metaDescription || null, p.metaKeywords || null, stripActive(p.content), p.showInFooter ? 1 : 0, p.published ? 1 : 0, p.sortOrder];
   if (action === 'add') {
     await prisma.$executeRawUnsafe(
-      'INSERT INTO pages (slug, title, meta_description, content, show_in_footer, published, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pages (slug, title, meta_description, meta_keywords, content, show_in_footer, published, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       ...values
     );
   } else {
     if (!p.id) return fail(res, 'Page id required', 422);
     const n = await prisma.$executeRawUnsafe(
-      'UPDATE pages SET slug=?, title=?, meta_description=?, content=?, show_in_footer=?, published=?, sort_order=? WHERE id=?',
+      'UPDATE pages SET slug=?, title=?, meta_description=?, meta_keywords=?, content=?, show_in_footer=?, published=?, sort_order=? WHERE id=?',
       ...values, p.id
     );
     if (!n) return fail(res, 'Page not found', 404);
@@ -809,6 +821,77 @@ router.post('/cache/bump', requireAuth, requireStaff('settings'), async (_req: R
   await prisma.$executeRawUnsafe('UPDATE app_version SET asset_version = asset_version + 1 WHERE id = 1');
   const row = (await prisma.$queryRawUnsafe<Array<{ asset_version: number }>>('SELECT asset_version FROM app_version WHERE id = 1'))[0];
   return ok(res, { assetVersion: Number(row?.asset_version ?? 1) });
+});
+
+// ---------------- Feature flags ----------------
+// Admin toggles for optional app/web features. Stored as a JSON object in the
+// `config.features` LONGTEXT column (added by prisma/features-column.sql). Every
+// known key is a boolean; an absent key means ON (see src/utils/features.ts).
+// Only the known keys are accepted and only booleans are stored.
+const featuresSchema = z.object({
+  features: z.record(z.boolean()),
+});
+
+router.post('/features', requireAuth, requireStaff('settings'), async (req: Request, res: Response) => {
+  const parsed = featuresSchema.safeParse(req.body || {});
+  if (!parsed.success) return fail(res, 'Each feature flag must be true or false', 422);
+  const incoming = parsed.data.features;
+  const unknown = Object.keys(incoming).filter((k) => !(FEATURE_KEYS as string[]).includes(k));
+  if (unknown.length) return fail(res, `Unknown feature flag(s): ${unknown.join(', ')}`, 422);
+  // Merge onto the current stored flags so a partial save only changes the sent keys.
+  const cur = (await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>('SELECT features FROM config WHERE id = 1'))[0] || {};
+  const parse = (v: unknown) => (typeof v === 'string' ? JSON.parse(v) : v ?? null);
+  const merged = { ...mergeFeatures(parse(cur.features)), ...incoming };
+  const features = mergeFeatures(merged);
+  await prisma.$executeRawUnsafe('UPDATE config SET features = ? WHERE id = 1', JSON.stringify(features));
+  return ok(res, { message: 'Features saved', features });
+});
+
+// ---------------- Global SEO config ----------------
+// Mirrors SeoConfig in src/seo/localSeo.ts. Stored as JSON in config.seo LONGTEXT
+// (added by prisma/seo.sql). Partial payloads are fine — mergeSeoConfig fills any
+// missing field from the settings-derived local defaults before saving.
+const seoSchema = z.object({
+  titleTemplate: z.string().trim().max(120).optional(),
+  defaultDescription: z.string().trim().max(500).optional(),
+  defaultKeywords: z.string().trim().max(1000).optional(),
+  defaultOgImage: z.string().trim().max(500).optional(),
+  robotsExtra: z.string().max(2000).optional(),
+  social: z
+    .object({
+      whatsapp: z.string().trim().max(300).optional().default(''),
+      instagram: z.string().trim().max(300).optional().default(''),
+      facebook: z.string().trim().max(300).optional().default(''),
+    })
+    .optional(),
+  business: z
+    .object({
+      name: z.string().trim().max(120).optional(),
+      address: z.string().trim().max(500).optional(),
+      phone: z.string().trim().max(20).optional(),
+      geo: z
+        .object({
+          lat: z.coerce.number().min(-90).max(90).optional(),
+          lng: z.coerce.number().min(-180).max(180).optional(),
+        })
+        .optional(),
+      openingHours: z.string().trim().max(120).optional(),
+      priceRange: z.string().trim().max(20).optional(),
+      areaServed: z.array(z.string().trim().max(80)).max(30).optional(),
+    })
+    .optional(),
+});
+
+router.post('/seo', requireAuth, requireStaff('settings'), async (req: Request, res: Response) => {
+  const parsed = seoSchema.safeParse(req.body?.seo ?? req.body ?? {});
+  if (!parsed.success) return fail(res, 'Please check the SEO values (template, keywords, business details)', 422);
+  // Read the settings row so business defaults stay in sync, then persist the merged blob.
+  const settingsRows = await prisma
+    .$queryRawUnsafe<SettingsRow[]>('SELECT * FROM settings WHERE id = 1')
+    .catch(() => [] as SettingsRow[]);
+  const seo = mergeSeoConfig(parsed.data, settingsRows[0] || null);
+  await prisma.$executeRawUnsafe('UPDATE config SET seo = ? WHERE id = 1', JSON.stringify(seo));
+  return ok(res, { message: 'SEO settings saved', seo });
 });
 
 export default router;

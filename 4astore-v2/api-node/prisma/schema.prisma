@@ -90,6 +90,10 @@ model Product {
   image       String?  @db.VarChar(500)
   description String?  @db.Text
   features    Json?
+  seo_title       String? @db.VarChar(255)
+  seo_description String? @db.Text
+  seo_keywords    String? @db.VarChar(500)
+  og_image        String? @db.VarChar(500)
   in_stock    Boolean  @default(true)
   featured    Boolean  @default(false) // daily "Aaj ka Special" video picks these first
   created_at  DateTime @default(now())
