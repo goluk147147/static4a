@@ -12,17 +12,25 @@ const router = Router();
 // 'Rider Assigned' is one of the rider console buttons, so it must be accepted too.
 const ALLOWED_STATUS = ['Order Placed', 'Confirmed', 'Packed', 'Rider Assigned', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
+// Store location changes almost never; cache it so each 8s tracking poll doesn't re-query the DB.
+let storeLocCache: { value: { latitude: number; longitude: number; name: string; address: unknown }; at: number } | null = null;
+const STORE_LOC_TTL = 60_000; // ms
+
 async function getStoreLocation() {
+  const now = Date.now();
+  if (storeLocCache && now - storeLocCache.at < STORE_LOC_TTL) return storeLocCache.value;
   const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
     'SELECT store_latitude, store_longitude, store_address FROM settings WHERE id = 1'
   );
   const row = rows[0] || {};
-  return {
+  const value = {
     latitude: Number(row.store_latitude ?? config.store.lat),
     longitude: Number(row.store_longitude ?? config.store.lng),
     name: '4A Store',
     address: row.store_address ?? '',
   };
+  storeLocCache = { value, at: now };
+  return value;
 }
 
 async function getTrackingRow(orderId: string): Promise<Record<string, unknown> | null> {

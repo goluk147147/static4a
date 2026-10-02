@@ -46,6 +46,26 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- ---- tracking.order_id : every /api/tracking read + rider location/status write
+--      filters on order_id (SELECT/UPDATE ... WHERE order_id = ?). Without an index
+--      this is a full scan of the tracking table on each 8s poll. Guarded add. ----
+SET @idx := (
+  SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'tracking'
+    AND INDEX_NAME = 'idx_tracking_order'
+);
+SET @tbl := (
+  SELECT COUNT(*) FROM information_schema.TABLES
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tracking'
+);
+SET @sql := IF(@tbl > 0 AND @idx = 0,
+  'CREATE INDEX idx_tracking_order ON tracking (order_id)',
+  'SELECT ''idx_tracking_order skipped (missing table or already exists)'' AS note');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- ============================================================
 -- The following indexes are ALREADY created by db/schema.sql on a fresh
 -- install and are therefore NOT re-added here:
