@@ -17,7 +17,13 @@ export default function SocialProof() {
     const show = () => {
       const m = messages[Math.floor(Math.random() * messages.length)];
       const n = names.length ? names[Math.floor(Math.random() * names.length)] : 'Someone';
-      setMsg(m.replace(/\{\{\s*name\s*\}\}|\{name\}/gi, n));
+      // Fake-but-believable order value for the {amount} placeholder (₹120–₹960, rounded to ₹10).
+      const amount = (Math.floor(Math.random() * 85) + 12) * 10;
+      setMsg(
+        m
+          .replace(/\{\{\s*name\s*\}\}|\{name\}/gi, n)
+          .replace(/\{\{\s*amount\s*\}\}|\{amount\}/gi, String(amount))
+      );
       Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       hide = setTimeout(() => Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(), 4500);
     };
