@@ -1,0 +1,7 @@
+{
+  "task_id": "task-seo-module",
+  "task_description": "Build a practical SEO module for the 4A Store stack (Node/Express/Prisma/MySQL API + React/Vite SPA storefront + admin): admin-managed SEO + server-side meta/sitemap/robots for crawlers (NO full SSR). Make product/content pages crawlable, indexable and rankable for the local grocery store '4A Store' (Chandargarh / Nabinagar / Aurangabad, Bihar, PIN 824301). All API JSON response shapes stay backward-compatible (ADD only). New SQL is guarded/idempotent for MariaDB 10.4 and applied manually by the user. Reuse the existing OG generator, feature-flag plumbing, config-JSON helpers, Helmet usage and AdminSettings sub-tab pattern. Do NOT git commit/push.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}
