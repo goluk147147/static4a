@@ -32,6 +32,7 @@ model User {
   refreshTokens RefreshToken[]
   addresses     Address[]
 
+  @@index([role], map: "idx_users_role")
   @@map("users")
 }
 
@@ -46,6 +47,7 @@ model RefreshToken {
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
+  @@index([user_id], map: "idx_refresh_user")
   @@map("refresh_tokens")
 }
 
@@ -58,6 +60,7 @@ model EmailOtp {
   consumed   Boolean  @default(false)
   created_at DateTime @default(now())
 
+  @@index([email], map: "idx_otp_email")
   @@map("email_otps")
 }
 
@@ -92,6 +95,8 @@ model Product {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
+  @@index([category], map: "idx_products_category")
+  @@index([in_stock], map: "idx_products_instock")
   @@map("products")
 }
 
@@ -114,6 +119,7 @@ model Address {
 
   user User? @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
+  @@index([user_id], map: "idx_addresses_user")
   @@map("addresses")
 }
 
@@ -142,6 +148,10 @@ model Order {
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
+  @@index([order_status], map: "idx_orders_status")
+  @@index([rider_id], map: "idx_orders_rider")
+  @@index([user_id], map: "idx_orders_user")
+  @@index([order_date], map: "idx_orders_date")
   @@map("orders")
 }
 
@@ -154,5 +164,6 @@ model DeviceToken {
   updated_at DateTime @updatedAt
   created_at DateTime @default(now())
 
+  @@index([user_id], map: "idx_device_user")
   @@map("device_tokens")
 }

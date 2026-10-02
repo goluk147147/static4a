@@ -1,0 +1,24 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "label": "Orders filter widening",
+      "severity": "non-blocking",
+      "confidence": "confirmed",
+      "detail": "The owner /orders branch now matches user_id OR mobile instead of mobile alone; it can only return a superset of the prior rows, never fewer, and the JSON shape and id-desc ordering are unchanged. Confirm the product intent is 'show all orders I own' (the sensible reading). No code change required."
+    },
+    {
+      "label": "Public cache TTL on /settings and /config",
+      "severity": "non-blocking",
+      "confidence": "possible",
+      "detail": "A 30s Cache-Control max-age means admin edits to settings/config/announcement can take up to 30s to appear on already-loaded clients. Matches the stated rarely-changing intent; confirm 30s staleness is acceptable for announcement/store-config edits."
+    },
+    {
+      "label": "Pool fix inert until live .env updated",
+      "severity": "non-blocking",
+      "confidence": "confirmed",
+      "detail": "connection_limit/pool_timeout are only in .env.example; the live .env must get the same params (a manual deploy step) for the pool tuning to take effect. Correctly documented in PERF-FINDINGS DEPLOY."
+    }
+  ],
+  "reviewDoc": "c:\\xampp\\htdocs\\static4a\\4astore-v2\\api-node\\.agents\\tasks\\review.md"
+}

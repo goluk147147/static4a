@@ -36,10 +36,24 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
     return ok(res, { orders });
   }
   const target = mobile || viewer.mobile;
+  // Prefer the indexed owner FK (user_id) over the unindexable JSON-path
+  // `customer -> '$.mobile'` scan. When the viewer is the logged-in owner
+  // (no explicit `mobile` override), match either their user_id OR the mobile
+  // JSON-path so legacy orders with a null user_id still show up — the result
+  // set, ordering (id desc) and JSON shape are unchanged.
   // Prisma JSON-path filter (not raw SQL): raw queries return JSON columns as
   // strings, which broke `items.map` on the client.
+  const canUseOwnerId = !mobile && viewer.sub && target === viewer.mobile;
+  const where = canUseOwnerId
+    ? {
+        OR: [
+          { user_id: BigInt(viewer.sub) },
+          { customer: { path: '$.mobile', equals: target } },
+        ],
+      }
+    : { customer: { path: '$.mobile', equals: target } };
   const orders = await prisma.order.findMany({
-    where: { customer: { path: '$.mobile', equals: target } },
+    where,
     orderBy: { id: 'desc' },
   });
   return ok(res, { orders });

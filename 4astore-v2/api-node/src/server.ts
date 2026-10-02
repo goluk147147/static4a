@@ -18,6 +18,7 @@ import pagesRouter from './routes/pages';
 import videosRouter from './routes/videos';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
+import { timing } from './middleware/timing';
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use(
 app.use('/api/admin/ads', express.json({ limit: '15mb' }));
 app.use(express.json({ limit: '6mb' })); // room for base64 payment screenshots
 app.use(cookieParser());
+app.use(timing); // no-op unless DEBUG_TIMING=1
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ success: true, service: '4astore-api-node', env: config.env }));
