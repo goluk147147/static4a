@@ -62,7 +62,8 @@ export default function Profile() {
       const d = await api.post('/users/recovery-email/send', { email: clean });
       if (d.alreadyVerified) return setStatus({ text: '✅ This recovery email is already verified.', color: colors.green });
       setPending(clean);
-      if (d.devOtp) setCode(String(d.devOtp));
+      setCode('');
+      // Never auto-fill the emailed code — the user reads it from their inbox and types it.
       setStatus({ text: 'Code sent. Check your inbox and spam folder.', color: colors.green });
     } catch (e) {
       setStatus({ text: apiError(e), color: '#b42318' });

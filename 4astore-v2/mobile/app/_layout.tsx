@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppState } from 'react-native';
 import { queryClient } from '../src/queries';
+import { restoreCache, startPersisting } from '../src/persistCache';
 import { useAuth } from '../src/store/auth';
 import { ensureChannels, listenForeground, listenNotificationTaps, listenTokenRotation, registerForPush } from '../src/push';
 import { legacyToRoute } from '../src/links';
@@ -31,6 +32,13 @@ export default function RootLayout() {
     void ensureChannels();
     void bootstrap();
   }, [bootstrap]);
+
+  // Restore the last storefront snapshot (instant warm start), then keep persisting it.
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    void restoreCache(queryClient).finally(() => { stop = startPersisting(queryClient); });
+    return () => stop?.();
+  }, []);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => null);

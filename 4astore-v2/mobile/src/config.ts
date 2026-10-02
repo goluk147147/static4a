@@ -2,8 +2,8 @@ import Constants from 'expo-constants';
 
 const extra = (Constants.expoConfig?.extra || {}) as { apiBase?: string; siteUrl?: string; hasPush?: boolean };
 
-export const API_BASE = (extra.apiBase || 'https://4astore.webtoolsz.com/api').replace(/\/$/, '');
-export const SITE_URL = (extra.siteUrl || 'https://4astore.webtoolsz.com').replace(/\/$/, '');
+export const API_BASE = (extra.apiBase || 'https://4astore.com/api').replace(/\/$/, '');
+export const SITE_URL = (extra.siteUrl || 'https://4astore.com').replace(/\/$/, '');
 export const HAS_PUSH = !!extra.hasPush;
 
 export const STORE_PHONE_DEFAULT = '7543888698';

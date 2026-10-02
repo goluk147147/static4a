@@ -9,7 +9,7 @@ import TextRecognition from '@react-native-ml-kit/text-recognition';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppState } from 'react-native';
 import { extractUtr } from '../checkout';
-import { openPaymentApp, saveImageToGallery, speakHindi, stopSpeaking } from '../native';
+import { openAnyUpiScanner, openUpiScanner, saveImageToGallery, speakHindi, stopSpeaking } from '../native';
 import { showToast } from '../store/ui';
 import { colors, radius } from '../theme';
 import { Button, GradientButton } from './ui';
@@ -40,10 +40,14 @@ export default function PaymentSheet({ total, customerName, upiId, upiName, busy
   const upiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${amount}&cu=INR&tn=Order%20Payment`;
   const ready = !!shot && /^\d{12}$/.test(utr) && !scanning;
   const guide = () =>
-    `प्रिय ${customerName || 'ग्राहक'}, आपको ${upiName} को ₹${Number(total).toFixed(0)} का भुगतान करना है। पहले QR कोड फ़ोन में सेव करें, फिर PhonePe या Google Pay खोलकर Scan QR में Gallery से सेव किया QR चुनें। भुगतान के बाद इसी स्क्रीन पर लौटकर स्क्रीनशॉट अपलोड करें और ऑर्डर पक्का करें।`;
+    `प्रिय ${customerName || 'ग्राहक'}, आपको ${upiName} को ₹${Number(total).toFixed(0)} का भुगतान करना है। क्यू आर कोड अपने-आप गैलरी में सेव हो गया है। PhonePe या Google Pay का बटन दबाएँ, स्कैनर खुलेगा, वहाँ गैलरी आइकॉन दबाकर यही क्यू आर चुनें। राशि अपने-आप आ जाएगी। भुगतान के बाद इसी स्क्रीन पर लौटकर स्क्रीनशॉट अपलोड करें और ऑर्डर पक्का करें।`;
 
   useEffect(() => {
     const t = setTimeout(() => speakHindi(guide()), 450);
+    // Auto-save the branded QR to the gallery once it has rendered, so the user
+    // skips the manual "Save QR" step — the QR (with the amount) is ready to pick
+    // in the UPI app's scanner. Runs quietly; the manual Save button stays as backup.
+    const autoSave = setTimeout(() => { if (!qrSaved.current) void saveQr(true); }, 1200);
     // Returning from the UPI app → prompt for the screenshot (web visibilitychange logic).
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active' && launched.current) {
@@ -54,39 +58,62 @@ export default function PaymentSheet({ total, customerName, upiId, upiName, busy
     });
     return () => {
       clearTimeout(t);
+      clearTimeout(autoSave);
       sub.remove();
       stopSpeaking();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function saveQr(): Promise<boolean> {
+  /** Capture the branded QR and save to gallery. `silent` = background auto-save (no toast on success). */
+  async function saveQr(silent = false): Promise<boolean> {
     try {
       const uri = await captureRef(qrCard, { format: 'png', quality: 1, result: 'tmpfile' });
       const ok = await saveImageToGallery(uri);
       if (ok) {
         qrSaved.current = true;
-        showToast('QR सेव हुआ। PhonePe/GPay में Scan QR → Gallery चुनें।', 'success');
+        if (!silent) showToast('QR सेव हुआ। PhonePe/GPay में Scan QR → Gallery चुनें।', 'success');
       }
       return ok;
     } catch {
-      showToast('QR save nahi ho saka / QR सेव नहीं हुआ।', 'error');
+      if (!silent) showToast('QR save nahi ho saka / QR सेव नहीं हुआ।', 'error');
       return false;
     }
   }
 
   async function launch(app: 'phonepe' | 'gpay') {
+    // Ensure the QR is in the gallery (auto-save may still be running or have failed).
     if (!qrSaved.current && !(await saveQr())) {
       setLaunchStatus({ text: 'QR सेव नहीं हुआ। पहले QR दोबारा सेव करें, फिर UPI App खोलें।', fallback: true });
       return;
     }
     const appName = app === 'gpay' ? 'Google Pay' : 'PhonePe';
     launched.current = true;
-    const ok = await openPaymentApp(app);
+    // Open the app STRAIGHT on its QR scanner (one step less). The QR carries the amount,
+    // so the user just picks it from the gallery. We do NOT use a upi://pay link — UPI
+    // blocks link-based payment to merchant IDs.
+    const ok = await openUpiScanner(app);
     setLaunchStatus(
       ok
-        ? { text: `${appName} खोल रहे हैं। खुलने के बाद Scan QR → Gallery से सेव किया QR चुनें।`, fallback: false }
-        : { text: `${appName} नहीं खुला? फ़ोन में App खोलकर Scan QR → Gallery से सेव किया QR चुनें।`, fallback: true }
+        ? { text: `${appName} का Scan खुल रहा है → ऊपर/गैलरी आइकॉन दबाकर सेव किया 4A Store QR चुनें। राशि ₹${Math.round(total)} अपने-आप आ जाएगी।`, fallback: false }
+        : { text: `${appName} नहीं खुला? फ़ोन में App खोलकर Scan QR → Gallery से सेव किया QR चुनें। राशि QR में है।`, fallback: true }
     );
+    speakHindi(`${appName} का क्यू आर स्कैनर खुल रहा है। गैलरी आइकॉन दबाकर सेव किया क्यू आर कोड चुनें। ${Math.round(total)} रुपये अपने-आप आ जाएंगे। भुगतान के बाद वापस आकर स्क्रीनशॉट चुनें।`);
+  }
+
+  /** Any other installed UPI app (Paytm, BHIM, Amazon Pay, bank app…) via the system chooser. */
+  async function launchOther() {
+    if (!qrSaved.current && !(await saveQr())) {
+      setLaunchStatus({ text: 'QR सेव नहीं हुआ। पहले QR दोबारा सेव करें।', fallback: true });
+      return;
+    }
+    launched.current = true;
+    const ok = await openAnyUpiScanner();
+    if (ok) {
+      setLaunchStatus({ text: `अपनी UPI ऐप में Scan QR खोलें → Gallery से सेव किया 4A Store QR चुनें। राशि ₹${Math.round(total)} अपने-आप आ जाएगी।`, fallback: false });
+      speakHindi(`अपनी यूपीआई ऐप में स्कैन क्यू आर खोलें और गैलरी से सेव किया क्यू आर चुनें। भुगतान के बाद वापस आकर स्क्रीनशॉट चुनें।`);
+    } else {
+      setLaunchStatus({ text: 'कोई UPI ऐप नहीं खुली। PhonePe/GPay इस्तेमाल करें, या अपनी UPI ऐप में Scan QR → Gallery से QR चुनें।', fallback: true });
+    }
   }
 
   async function copyUpi() {
@@ -147,11 +174,23 @@ export default function PaymentSheet({ total, customerName, upiId, upiName, busy
 
         <Button title="🔊 निर्देश दोबारा सुनें" outline color={colors.primary} onPress={() => speakHindi(guide())} style={{ alignSelf: 'stretch', marginBottom: 10 }} />
         <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch' }}>
-          <Button title="🟣 PhonePe खोलें" color="#5f259f" onPress={() => launch('phonepe')} style={{ flex: 1 }} />
-          <Button title="🟢 Google Pay खोलें" color="#1a73e8" onPress={() => launch('gpay')} style={{ flex: 1 }} />
+          <Button title="🟣 PhonePe Scan" color="#5f259f" onPress={() => launch('phonepe')} style={{ flex: 1 }} />
+          <Button title="🟢 GPay Scan" color="#1a73e8" onPress={() => launch('gpay')} style={{ flex: 1 }} />
         </View>
+        <Button title="📲 कोई और UPI App (Paytm/BHIM/Bank)" outline color={colors.primary} onPress={launchOther} style={{ alignSelf: 'stretch', marginTop: 8 }} />
         {!!launchStatus.text && <Text style={[s.status, launchStatus.fallback && { color: '#b45309' }]} accessibilityLiveRegion="polite">{launchStatus.text}</Text>}
-        <Text style={s.small}>पहले QR सेव करें, फिर UPI App में Scan QR → Gallery चुनें।</Text>
+
+        {/* UPI blocks link-based pay to merchant IDs, so the QR-scan flow is the way.
+            QR auto-saves + the button opens the scanner directly, so it's just 2 taps. */}
+        <View style={s.scanInfo}>
+          <Text style={{ fontWeight: '800', color: colors.primaryDark, fontSize: 13, marginBottom: 4 }}>📷 QR Scan करके भुगतान करें (सबसे आसान)</Text>
+          <Text style={{ color: '#92400e', fontSize: 12, lineHeight: 18 }}>
+            ✅ QR अपने-आप गैलरी में सेव हो गया है{'\n'}
+            1️⃣ नीचे “PhonePe/GPay खोलें” दबाएँ — सीधे Scan खुलेगा{'\n'}
+            2️⃣ गैलरी आइकॉन दबाकर 4A Store QR चुनें → राशि ₹{Math.round(total)} अपने-आप आएगी, Pay दबाएँ{'\n'}
+            3️⃣ वापस आकर भुगतान का स्क्रीनशॉट अपलोड करें
+          </Text>
+        </View>
 
         {/* Branded QR card (captured to PNG for the gallery) */}
         <View ref={qrCard} collapsable={false} style={s.qrCard}>
@@ -161,8 +200,8 @@ export default function PaymentSheet({ total, customerName, upiId, upiName, busy
           <Text style={{ fontWeight: '800', fontSize: 18, marginTop: 10, color: '#111827' }}>Pay ₹{Math.round(total)}</Text>
           <Text style={{ color: '#6B7280', fontSize: 12 }}>{upiId}</Text>
         </View>
-        <Text style={s.small}>Merchant QR / दुकानदार का QR</Text>
-        <Button title="⬇️ Save QR to Phone / QR फ़ोन में सेव करें" outline color="#334155" onPress={saveQr} style={{ alignSelf: 'stretch' }} />
+        <Text style={s.small}>Merchant QR / दुकानदार का QR (अपने-आप सेव हो गया है)</Text>
+        <Button title="⬇️ QR दोबारा सेव करें (Backup)" outline color="#334155" onPress={() => saveQr(false)} style={{ alignSelf: 'stretch' }} />
 
         <View style={s.upiBox}>
           <Text style={{ fontSize: 11, color: '#666' }}>UPI ID / यूपीआई आईडी</Text>
@@ -206,6 +245,7 @@ export default function PaymentSheet({ total, customerName, upiId, upiName, busy
 const s = StyleSheet.create({
   status: { color: colors.green, fontSize: 13, marginTop: 8, textAlign: 'center' },
   small: { color: '#64748b', fontSize: 12, marginVertical: 8, textAlign: 'center' },
+  scanInfo: { alignSelf: 'stretch', backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa', borderLeftWidth: 4, borderLeftColor: colors.primary, borderRadius: 10, padding: 12, marginTop: 10 },
   qrCard: { backgroundColor: '#fff', borderWidth: 6, borderColor: '#0FA958', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 4 },
   upiBox: { backgroundColor: colors.primaryLight, padding: 10, borderRadius: 8, alignSelf: 'stretch', marginVertical: 10, alignItems: 'center' },
   uploadSection: { borderTopWidth: 2, borderTopColor: colors.border, paddingTop: 16, marginTop: 16, alignSelf: 'stretch' },

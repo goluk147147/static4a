@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -175,6 +176,43 @@ export function Field({
   );
 }
 
+/** Password input with a show/hide (eye) toggle. Same label/error styling as Field. */
+export function PasswordField({
+  label,
+  error,
+  errorText,
+  style,
+  ...props
+}: Omit<TextInputProps, 'secureTextEntry'> & { label: string; error?: boolean; errorText?: string }) {
+  const [show, setShow] = React.useState(false);
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.pwdWrap}>
+        <TextInput
+          placeholderTextColor="#a3928a"
+          accessibilityLabel={label}
+          secureTextEntry={!show}
+          autoCapitalize="none"
+          autoCorrect={false}
+          {...props}
+          style={[styles.input, styles.pwdInput, error && { borderColor: colors.accent }, style]}
+        />
+        <Pressable
+          onPress={() => setShow((s) => !s)}
+          style={styles.pwdEye}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={show ? 'Hide password' : 'Show password'}
+        >
+          <Text style={{ fontSize: 20 }}>{show ? '🙈' : '👁️'}</Text>
+        </Pressable>
+      </View>
+      {error && !!errorText && <Text style={styles.errorText}>{errorText}</Text>}
+    </View>
+  );
+}
+
 export function StatusChip({ status }: { status: string }) {
   const s = statusStyle(status);
   return (
@@ -198,6 +236,47 @@ export function Loading({ text = 'Loading...' }: { text?: string }) {
     <View style={{ padding: 40, alignItems: 'center' }}>
       <ActivityIndicator color={colors.primary} size="large" />
       <Text style={[styles.muted, { marginTop: 10 }]}>{text}</Text>
+    </View>
+  );
+}
+
+/** A single shimmering block — a looping opacity pulse (no extra deps). */
+export function Shimmer({ style }: { style?: StyleProp<ViewStyle> }) {
+  const anim = React.useRef(new Animated.Value(0.3)).current;
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.3, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim]);
+  return <Animated.View style={[{ backgroundColor: '#e9ddcb', borderRadius: 8, opacity: anim }, style]} />;
+}
+
+/** Skeleton product card matching ProductCard's shape, shown while products load. */
+export function ProductCardSkeleton({ width }: { width?: number }) {
+  return (
+    <View style={[styles.card, width ? { width } : { flex: 1 }, { margin: 5 }]}>
+      <Shimmer style={{ height: 110, borderRadius: radius.sm, marginBottom: 10 }} />
+      <Shimmer style={{ height: 11, width: '45%', marginBottom: 8 }} />
+      <Shimmer style={{ height: 13, width: '90%', marginBottom: 6 }} />
+      <Shimmer style={{ height: 13, width: '70%', marginBottom: 10 }} />
+      <Shimmer style={{ height: 16, width: '40%', marginBottom: 10 }} />
+      <Shimmer style={{ height: 38, borderRadius: radius.sm }} />
+    </View>
+  );
+}
+
+/** A grid of skeleton product cards (2 columns), for the products list loading state. */
+export function ProductGridSkeleton({ cardWidth, count = 6 }: { cardWidth?: number; count?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 4 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <ProductCardSkeleton key={i} width={cardWidth} />
+      ))}
     </View>
   );
 }
@@ -229,6 +308,9 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.dark,
   },
+  pwdWrap: { position: 'relative', justifyContent: 'center' },
+  pwdInput: { paddingRight: 48 },
+  pwdEye: { position: 'absolute', right: 6, top: 0, bottom: 0, width: 40, alignItems: 'center', justifyContent: 'center' },
   errorText: { color: colors.accent, fontSize: 12, marginTop: 4 },
   totalText: { fontSize: 18, fontWeight: '800', color: colors.primaryDark },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 10 },

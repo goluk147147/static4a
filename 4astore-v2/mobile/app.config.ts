@@ -8,7 +8,7 @@ import type { ExpoConfig } from 'expo/config';
  *  - signed with the original upload key (4AStoreApp/4astore-key-new.jks, alias "4astore")
  *  - versionCode continues after the last WebView release (17 / 1.7.9)
  */
-const SITE_HOST = process.env.STORE4A_SITE_HOST || '4astore.webtoolsz.com';
+const SITE_HOST = process.env.STORE4A_SITE_HOST || '4astore.com';
 const API_BASE = process.env.STORE4A_API_BASE || `https://${SITE_HOST}/api`;
 const VERSION_CODE = Number(process.env.STORE4A_VERSION_CODE || 18);
 const VERSION_NAME = process.env.STORE4A_VERSION_NAME || '2.0.0';
@@ -34,6 +34,9 @@ const config: ExpoConfig = {
   android: {
     package: 'com.store4a.app',
     versionCode: VERSION_CODE,
+    // Allow http:// API only when explicitly testing against a LAN/localhost server
+    // (set STORE4A_ALLOW_HTTP=1). Production (https) builds keep cleartext disabled.
+    usesCleartextTraffic: process.env.STORE4A_ALLOW_HTTP === '1' || /^http:\/\//i.test(API_BASE),
     adaptiveIcon: { foregroundImage: './assets/images/adaptive-icon.png', backgroundColor: '#FFFFFF' },
     ...(hasGoogleServices ? { googleServicesFile: './google-services.json' } : {}),
     softwareKeyboardLayoutMode: 'resize',
@@ -106,6 +109,12 @@ const config: ExpoConfig = {
     ],
     // Signs release builds with the ORIGINAL 4AStore key so the Play Store accepts it as an update.
     ['./plugins/withReleaseSigning', { keystorePath: '../../4AStoreApp/4astore-key-new.jks', keyAlias: '4astore' }],
+    // No custom native C++ → don't require the NDK (keeps the build working without a 1 GB NDK install).
+    './plugins/withNoNdk',
+    // Allow http:// API during LAN/localhost testing (STORE4A_ALLOW_HTTP=1).
+    './plugins/withCleartext',
+    // UPI app visibility (PhonePe/GPay/Paytm/BHIM/Amazon Pay + upi: scheme) for Android 11+.
+    './plugins/withUpiQueries',
   ],
   experiments: { typedRoutes: false },
   extra: {

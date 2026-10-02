@@ -33,21 +33,24 @@ export function normalizeOrder(o: Order): Order {
 export const useProducts = () =>
   useQuery({
     queryKey: ['products'],
+    staleTime: 5 * 60_000,
     queryFn: async () => ((await api.get('/products')).products as Product[]).map(normalizeProduct),
   });
 
 export const useCategories = () =>
   useQuery({
     queryKey: ['categories'],
+    staleTime: 10 * 60_000,
     queryFn: async () => ((await api.get('/categories')).categories as Category[]).map((c) => ({ ...c, id: Number(c.id) })),
   });
 
 export const useConfig = () =>
-  useQuery({ queryKey: ['config'], queryFn: async () => (await api.get('/config')).config as StoreConfig });
+  useQuery({ queryKey: ['config'], staleTime: 10 * 60_000, queryFn: async () => (await api.get('/config')).config as StoreConfig });
 
 export const useSettings = () =>
   useQuery({
     queryKey: ['settings'],
+    staleTime: 10 * 60_000,
     queryFn: async () => {
       const s = (await api.get('/settings')).settings as Settings;
       return {

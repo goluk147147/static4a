@@ -13,12 +13,25 @@ var map=L.map('m',{zoomControl:true}).setView([24.58,84.11],14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
 var layer=L.layerGroup().addTo(map);
 function icon(e){return L.divIcon({html:'<div style="font-size:26px">'+e+'</div>',className:'',iconSize:[26,26]});}
-window.draw=function(d){try{layer.clearLayers();var b=[];
+var riderMarker=null;var didFit=false;
+function animateRider(to){
+ if(!riderMarker){riderMarker=L.marker(to,{icon:icon('🛵'),zIndexOffset:1000}).addTo(layer).bindPopup('Rider');return;}
+ var from=riderMarker.getLatLng();var start=null;var dur=900;
+ function step(ts){if(!start)start=ts;var t=Math.min(1,(ts-start)/dur);
+  var lat=from.lat+(to[0]-from.lat)*t;var lng=from.lng+(to[1]-from.lng)*t;
+  riderMarker.setLatLng([lat,lng]);if(t<1)requestAnimationFrame(step);}
+ requestAnimationFrame(step);
+}
+window.draw=function(d){try{var b=[];
+ // Static markers + route are redrawn each poll; the rider marker is animated (not cleared) for a live feel.
+ layer.eachLayer(function(l){if(l!==riderMarker)layer.removeLayer(l);});
  if(d.store){L.marker([d.store.latitude,d.store.longitude],{icon:icon('🏪')}).addTo(layer).bindPopup('4A Store');b.push([d.store.latitude,d.store.longitude]);}
  if(d.customer&&d.customer.latitude&&d.customer.longitude){L.marker([d.customer.latitude,d.customer.longitude],{icon:icon('🏠')}).addTo(layer).bindPopup('Delivery address');b.push([d.customer.latitude,d.customer.longitude]);}
- if(d.rider&&d.rider.location){L.marker([d.rider.location.latitude,d.rider.location.longitude],{icon:icon('🛵')}).addTo(layer).bindPopup('Rider');b.push([d.rider.location.latitude,d.rider.location.longitude]);}
- if(d.route&&d.route.polyline&&d.route.polyline.coordinates){var ll=d.route.polyline.coordinates.map(function(c){return[c[1],c[0]]});L.polyline(ll,{color:'#ff7a00',weight:5}).addTo(layer);ll.forEach(function(p){b.push(p)});}
- if(b.length>1)map.fitBounds(b,{padding:[40,40]});else if(b.length)map.setView(b[0],15);
+ if(d.route&&d.route.polyline&&d.route.polyline.coordinates){var ll=d.route.polyline.coordinates.map(function(c){return[c[1],c[0]]});L.polyline(ll,{color:'#ff7a00',weight:5,opacity:0.9}).addTo(layer);ll.forEach(function(p){b.push(p)});}
+ if(d.rider&&d.rider.location){var rp=[d.rider.location.latitude,d.rider.location.longitude];animateRider(rp);b.push(rp);}
+ else if(riderMarker){layer.removeLayer(riderMarker);riderMarker=null;}
+ if(!didFit){if(b.length>1){map.fitBounds(b,{padding:[40,40]});didFit=true;}else if(b.length){map.setView(b[0],15);didFit=true;}}
+ else if(d.rider&&d.rider.location){map.panTo([d.rider.location.latitude,d.rider.location.longitude],{animate:true,duration:0.8});}
 }catch(e){}};
 window.ReactNativeWebView&&window.ReactNativeWebView.postMessage('ready');
 </script></body></html>`;

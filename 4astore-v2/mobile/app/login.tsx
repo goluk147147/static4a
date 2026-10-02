@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import StoreHeader from '../src/components/StoreHeader';
-import { Button, Card, Field, GradientButton, Screen, styles as ui } from '../src/components/ui';
+import { Button, Card, Field, GradientButton, PasswordField, Screen, styles as ui } from '../src/components/ui';
 import { useAuth, isOrderStaff, isRider } from '../src/store/auth';
 import { api, apiError } from '../src/api';
 import { registerForPush } from '../src/push';
@@ -45,9 +45,12 @@ export default function Login() {
     setBusy(true);
     setError('');
     try {
-      const d = await api.post('/otp/send', { email: email.trim() });
+      await api.post('/otp/send', { email: email.trim() });
       setOtpSent(true);
-      if (d.devOtp) setOtp(String(d.devOtp));
+      setOtp('');
+      // Email OTP is never auto-filled: the user reads it from their email and types it.
+      // (The server's `devOtp` is for backend testing only; we deliberately ignore it so
+      //  the field is never pre-filled with a static/leaked code on a real build.)
     } catch (e) {
       setError(apiError(e));
     } finally {
@@ -79,7 +82,7 @@ export default function Login() {
           {mode === 'login' ? (
             <>
               <Field label="Username or Mobile" value={username} onChangeText={setUsername} autoCapitalize="none" autoComplete="username" />
-              <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" onSubmitEditing={doLogin} />
+              <PasswordField label="Password" value={password} onChangeText={setPassword} autoComplete="password" onSubmitEditing={doLogin} />
               <GradientButton title={busy ? 'Please wait…' : 'Login'} onPress={doLogin} loading={busy} disabled={!username || !password} />
               <Pressable onPress={() => { setMode('register'); setError(''); }} style={{ marginTop: 14, alignItems: 'center' }} accessibilityRole="button">
                 <Text style={ui.muted}>New here? <Text style={{ color: colors.primary, fontWeight: '700' }}>Create account</Text></Text>
@@ -90,10 +93,15 @@ export default function Login() {
               <Field label="Full Name" value={name} onChangeText={setName} />
               <Field label="Mobile (10-digit)" value={mobile} onChangeText={(t) => setMobile(t.replace(/\D/g, ''))} keyboardType="phone-pad" maxLength={10} />
               <Field label="Username" value={regUser} onChangeText={setRegUser} autoCapitalize="none" />
-              <Field label="Password (4+ chars)" value={password} onChangeText={setPassword} secureTextEntry />
+              <PasswordField label="Password (4+ chars)" value={password} onChangeText={setPassword} />
               <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
               <Button title={otpSent ? 'Resend OTP' : 'Send OTP'} outline onPress={sendOtp} disabled={busy || !email} style={{ marginBottom: 12 }} />
-              {otpSent && <Field label="Email OTP" value={otp} onChangeText={setOtp} keyboardType="number-pad" maxLength={6} />}
+              {otpSent && (
+                <>
+                  <Text style={[ui.muted, { marginBottom: 6 }]}>📧 OTP aapke email par bheja gaya hai. Email check karke 6 ankon ka code daalein.</Text>
+                  <Field label="Email OTP" value={otp} onChangeText={(t) => setOtp(t.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} textContentType="oneTimeCode" autoComplete="sms-otp" />
+                </>
+              )}
               <GradientButton title={busy ? 'Please wait…' : 'Create Account'} onPress={doRegister} loading={busy} disabled={!otpSent} />
               <Pressable onPress={() => { setMode('login'); setError(''); }} style={{ marginTop: 14, alignItems: 'center' }} accessibilityRole="button">
                 <Text style={ui.muted}>Already have an account? <Text style={{ color: colors.primary, fontWeight: '700' }}>Login</Text></Text>
