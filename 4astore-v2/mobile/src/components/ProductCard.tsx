@@ -21,7 +21,7 @@ export default function ProductCard({ product, width }: { product: Product; widt
   return (
     <View style={[styles.card, width ? { width } : { flex: 1 }]}>
       <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={`${product.name}, ₹${product.price}`}>
-        <ProductImage name={product.name} weight={product.weight} category={product.category} image={product.image} height={110} />
+        <ProductImage name={product.name} weight={product.weight} category={product.category} image={product.image} height={92} />
         {showDiscount && (
           <View style={styles.badge}><Text style={styles.badgeText}>{product.discount}% OFF</Text></View>
         )}
@@ -48,17 +48,19 @@ export default function ProductCard({ product, width }: { product: Product; widt
   );
 }
 
+// Compact, BigBasket/Blinkit-style card — smaller image, tighter paddings & fonts so more
+// products fit per screen.
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.glass, borderRadius: radius.md, padding: 10, margin: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.78)', ...shadow },
-  badge: { position: 'absolute', top: 6, left: 6, backgroundColor: colors.accent, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 4 },
-  badgeText: { color: '#fff', fontSize: 10.5, fontWeight: '800' },
-  brand: { fontSize: 11, color: colors.gray, marginTop: 8 },
-  name: { fontSize: 13.5, fontWeight: '700', color: colors.dark, marginTop: 2, minHeight: 36 },
-  weight: { fontSize: 11.5, color: colors.gray, marginBottom: 4 },
-  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  price: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
-  mrp: { fontSize: 12.5, color: colors.gray, textDecorationLine: 'line-through' },
-  addBtn: { backgroundColor: colors.secondary, borderRadius: radius.sm, minHeight: 38, alignItems: 'center', justifyContent: 'center' },
-  addText: { color: '#fff', fontWeight: '800', fontSize: 13.5, textShadowColor: 'rgba(0,0,0,0.25)', textShadowRadius: 2 },
-  out: { color: colors.accent, fontWeight: '700', fontSize: 13, paddingVertical: 8 },
+  card: { backgroundColor: colors.glass, borderRadius: radius.sm, padding: 7, margin: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.78)', ...shadow },
+  badge: { position: 'absolute', top: 4, left: 4, backgroundColor: colors.accent, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 },
+  badgeText: { color: '#fff', fontSize: 9.5, fontWeight: '800' },
+  brand: { fontSize: 10, color: colors.gray, marginTop: 5 },
+  name: { fontSize: 12.5, fontWeight: '700', color: colors.dark, marginTop: 1, minHeight: 32, lineHeight: 16 },
+  weight: { fontSize: 10.5, color: colors.gray, marginBottom: 3 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
+  price: { fontSize: 14.5, fontWeight: '800', color: colors.primaryDark },
+  mrp: { fontSize: 11, color: colors.gray, textDecorationLine: 'line-through' },
+  addBtn: { backgroundColor: colors.secondary, borderRadius: radius.sm, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
+  addText: { color: '#fff', fontWeight: '800', fontSize: 12.5, textShadowColor: 'rgba(0,0,0,0.25)', textShadowRadius: 2 },
+  out: { color: colors.accent, fontWeight: '700', fontSize: 12, paddingVertical: 6 },
 });

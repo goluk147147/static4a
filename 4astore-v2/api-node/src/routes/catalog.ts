@@ -40,6 +40,12 @@ router.get('/settings', async (_req: Request, res: Response) => {
   const publicSettings = {
     deliveryCharge: row.delivery_charge,
     freeDeliveryAbove: row.free_delivery_above,
+    handlingCharge: Number(row.handling_charge ?? 0),
+    // Default delivery ON / handling OFF when the toggle columns don't exist yet
+    // (before charges-settings.sql has been applied on the live DB).
+    deliveryChargeEnabled: row.delivery_charge_enabled == null ? true : !!row.delivery_charge_enabled,
+    handlingChargeEnabled: row.handling_charge_enabled == null ? false : !!row.handling_charge_enabled,
+    staffOrderAlertsEnabled: row.staff_order_alerts_enabled == null ? true : !!row.staff_order_alerts_enabled,
     upiId: row.upi_id,
     upiName: row.upi_name,
     hideMrp: !!row.hide_mrp,

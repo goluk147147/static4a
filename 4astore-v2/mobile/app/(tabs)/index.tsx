@@ -6,7 +6,7 @@ import StoreHeader from '../../src/components/StoreHeader';
 import ProductCard from '../../src/components/ProductCard';
 import AnnouncementPopup from '../../src/components/AnnouncementPopup';
 import SocialProof from '../../src/components/SocialProof';
-import { GradientButton, Loading, styles as ui } from '../../src/components/ui';
+import { AnimatedGradient, GradientButton, Loading, styles as ui } from '../../src/components/ui';
 import { useCategories, useConfig, useProducts, useSettings, queryClient } from '../../src/queries';
 import { fillDeliveryPlaceholders, openLink } from '../../src/links';
 import { absoluteUrl } from '../../src/config';
@@ -84,7 +84,6 @@ export default function Home() {
               getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
               onMomentumScrollEnd={(e) => setSlide(Math.round(e.nativeEvent.contentOffset.x / width))}
               renderItem={({ item: b }) => {
-                const g: readonly [string, string, ...string[]] = Array.isArray(b.gradient) && b.gradient.length >= 2 ? (b.gradient as [string, string]) : ['#ff6600', '#ff9800'];
                 const content = (
                   <View style={[s.slideContent, b.image ? { alignItems: 'flex-start' } : null]}>
                     {!!b.title && <Text style={s.slideTitle}>{b.title}</Text>}
@@ -108,9 +107,11 @@ export default function Home() {
                         )}
                       </View>
                     ) : (
-                      <LinearGradient colors={g} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
+                      // Image-less banners share ONE animated warm gradient so every banner looks
+                      // consistent and alive (same colour family as buttons/header).
+                      <AnimatedGradient style={{ flex: 1 }}>
                         {content}
-                      </LinearGradient>
+                      </AnimatedGradient>
                     )}
                   </Pressable>
                 );

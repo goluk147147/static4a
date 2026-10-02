@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -64,14 +64,29 @@ export default function RootLayout() {
   }, [reloadSession]);
 
   // Tap on a push → deep link (new order → admin order detail, status → tracking, …).
-  useEffect(
-    () =>
-      listenNotificationTaps((link) => {
-        const to = legacyToRoute(link, '/');
-        if (!/^[a-z]+:/i.test(to)) setTimeout(() => router.push(to as never), 300);
-      }),
-    [router]
-  );
+  // A cold-start tap can arrive BEFORE auth bootstrap + the navigator are mounted; navigating
+  // then is a no-op and the app sits on the splash/loader. So we stash the target and only
+  // navigate once `ready` is true, and use replace() so there's no dangling loading route.
+  const pendingLink = useRef<string | null>(null);
+  const navigateToLink = (link: string) => {
+    const to = legacyToRoute(link, '/');
+    if (/^[a-z]+:/i.test(to)) return; // external scheme — ignore here
+    if (!useAuth.getState().ready) {
+      pendingLink.current = to;
+      return;
+    }
+    setTimeout(() => router.replace(to as never), 150);
+  };
+  useEffect(() => listenNotificationTaps((link) => navigateToLink(link)), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Once bootstrap finishes, flush any push tap that arrived during cold start.
+  useEffect(() => {
+    if (ready && pendingLink.current) {
+      const to = pendingLink.current;
+      pendingLink.current = null;
+      setTimeout(() => router.replace(to as never), 150);
+    }
+  }, [ready, router]);
 
   // Foreground push → refresh lists + in-app toast.
   useEffect(

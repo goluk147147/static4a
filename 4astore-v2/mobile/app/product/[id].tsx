@@ -1,5 +1,5 @@
-import React from 'react';
-import { Share, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Modal, Pressable, ScrollView, Share, Text, View, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import StoreHeader from '../../src/components/StoreHeader';
 import ProductImage from '../../src/components/ProductImage';
@@ -7,7 +7,65 @@ import { Button, Card, EmptyState, GradientButton, Loading, Screen, Stepper, sty
 import { useProducts, useSettings } from '../../src/queries';
 import { useCart } from '../../src/store/cart';
 import { SITE_URL } from '../../src/config';
-import { colors } from '../../src/theme';
+import { colors, radius } from '../../src/theme';
+
+/** Tap product image → full-screen, pinch/scroll-to-zoom viewer. */
+function ZoomViewer({ visible, onClose, children }: { visible: boolean; onClose: () => void; children: React.ReactNode }) {
+  const { width, height } = useWindowDimensions();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' }}>
+        <Pressable onPress={onClose} style={{ position: 'absolute', top: 44, right: 20, zIndex: 10, padding: 8 }} accessibilityRole="button" accessibilityLabel="Close">
+          <Text style={{ color: '#fff', fontSize: 28 }}>✕</Text>
+        </Pressable>
+        {/* Pinch-zoom via a zoomable ScrollView (works on Android + iOS without extra deps). */}
+        <ScrollView
+          maximumZoomScale={4}
+          minimumZoomScale={1}
+          pinchGestureEnabled
+          centerContent
+          contentContainerStyle={{ width, height, alignItems: 'center', justifyContent: 'center' }}
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+        >
+          {children}
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, position: 'absolute', bottom: 40 }}>🔍 Do ungliyon se zoom karein</Text>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+/** Auto-rotating product feature highlights. */
+function FeatureRotator({ features }: { features: string[] }) {
+  const [idx, setIdx] = useState(0);
+  const fade = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (features.length < 2) return;
+    const iv = setInterval(() => {
+      Animated.timing(fade, { toValue: 0, duration: 250, useNativeDriver: true }).start(() => {
+        setIdx((i) => (i + 1) % features.length);
+        Animated.timing(fade, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+      });
+    }, 2500);
+    return () => clearInterval(iv);
+  }, [features.length, fade]);
+  if (!features.length) return null;
+  return (
+    <View style={{ backgroundColor: colors.primaryLight, borderRadius: radius.sm, padding: 14, marginBottom: 14, minHeight: 54, justifyContent: 'center' }}>
+      <Animated.Text style={{ opacity: fade, color: colors.primaryDark, fontWeight: '700', fontSize: 14 }}>
+        ✨ {features[idx]}
+      </Animated.Text>
+      {features.length > 1 && (
+        <View style={{ flexDirection: 'row', gap: 5, marginTop: 8 }}>
+          {features.map((_, i) => (
+            <View key={i} style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, backgroundColor: i === idx ? colors.primary : '#e0cdb3' }} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
 
 export default function ProductDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -17,6 +75,7 @@ export default function ProductDetails() {
   const product = (q.data ?? []).find((p) => String(p.id) === String(id));
   const inCart = useCart((s) => s.items.find((i) => i.id === product?.id));
   const { add, setQty } = useCart();
+  const [zoom, setZoom] = useState(false);
 
   if (q.isLoading) return <Screen header={<StoreHeader back hideSearch />}><Loading /></Screen>;
   if (!product) {
@@ -33,8 +92,16 @@ export default function ProductDetails() {
   return (
     <Screen header={<StoreHeader back hideSearch />}>
       <Card style={{ padding: 16 }}>
-        <ProductImage name={product.name} weight={product.weight} category={product.category} image={product.image} height={280} />
+        <Pressable onPress={() => setZoom(true)} accessibilityRole="imagebutton" accessibilityLabel={`${product.name} — tap to zoom`}>
+          <ProductImage name={product.name} weight={product.weight} category={product.category} image={product.image} height={280} />
+          <View style={{ position: 'absolute', right: 8, bottom: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 }}>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>🔍 Zoom</Text>
+          </View>
+        </Pressable>
       </Card>
+      <ZoomViewer visible={zoom} onClose={() => setZoom(false)}>
+        <ProductImage name={product.name} weight={product.weight} category={product.category} image={product.image} height={360} style={{ width: 340 }} />
+      </ZoomViewer>
       <View style={{ paddingVertical: 14 }}>
         {!!product.brand && <Text style={ui.muted}>{product.brand}</Text>}
         <Text style={ui.h2}>{product.name}</Text>
@@ -49,7 +116,9 @@ export default function ProductDetails() {
           )}
         </View>
         {!!product.description && <Text style={{ color: colors.dark, lineHeight: 22, marginBottom: 12 }}>{product.description}</Text>}
-        {Array.isArray(product.features) && product.features.map((f, i) => <Text key={i} style={{ color: colors.dark, marginBottom: 4 }}>✔️ {f}</Text>)}
+        {Array.isArray(product.features) && product.features.length > 0 && (
+          <FeatureRotator features={product.features.filter(Boolean)} />
+        )}
 
         <View style={{ marginTop: 14 }}>
           {!product.in_stock ? (

@@ -75,6 +75,10 @@ export interface Settings {
   storeLatitude: number;
   storeLongitude: number;
   serviceableVillages: string;
+  handlingCharge?: number;
+  deliveryChargeEnabled?: boolean;
+  handlingChargeEnabled?: boolean;
+  staffOrderAlertsEnabled?: boolean;
 }
 
 export interface User {

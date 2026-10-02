@@ -47,6 +47,7 @@ export interface AdminSettings {
   storeEmail: string; deliveryCharge: number; freeDeliveryAbove: number; upiId: string; upiName: string;
   hideMrp: boolean; storePhone: string; storeAddress: string; storeLatitude: number | null; storeLongitude: number | null;
   serviceableVillages: string;
+  handlingCharge: number; deliveryChargeEnabled: boolean; handlingChargeEnabled: boolean; staffOrderAlertsEnabled: boolean;
 }
 export async function fetchAdminSettings() {
   return (await api.get('/admin/settings')).data.settings as AdminSettings;

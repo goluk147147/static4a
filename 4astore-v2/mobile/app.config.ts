@@ -79,7 +79,9 @@ const config: ExpoConfig = {
       'expo-splash-screen',
       { image: './assets/images/splash.png', imageWidth: 220, resizeMode: 'contain', backgroundColor: '#FFFFFF' },
     ],
-    ['expo-notifications', { color: '#FF7A00', defaultChannel: 'default' }],
+    // `icon` = the small status-bar icon; also used as the fallback large icon so every
+    // notification shows the 4A Store mark even when the push carries no image.
+    ['expo-notifications', { icon: './assets/images/icon.png', color: '#FF7A00', defaultChannel: 'default' }],
     [
       'expo-location',
       { locationWhenInUsePermission: '4A Store uses your location for delivery tracking and to check the delivery area.' },

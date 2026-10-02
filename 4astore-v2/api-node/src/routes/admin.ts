@@ -141,6 +141,10 @@ const settingsSchema = z.object({
   storeEmail: z.union([z.literal(''), z.string().trim().email().max(190)]).optional(),
   deliveryCharge: z.coerce.number().int().min(0).max(10000).optional(),
   freeDeliveryAbove: z.coerce.number().int().min(0).max(1000000).optional(),
+  handlingCharge: z.coerce.number().int().min(0).max(10000).optional(),
+  deliveryChargeEnabled: z.boolean().optional(),
+  handlingChargeEnabled: z.boolean().optional(),
+  staffOrderAlertsEnabled: z.boolean().optional(),
   upiId: z.string().trim().max(120).optional(),
   upiName: z.string().trim().max(120).optional(),
   hideMrp: z.boolean().optional(),
@@ -151,6 +155,8 @@ const settingsSchema = z.object({
   serviceableVillages: z.string().trim().max(5000).optional(),
 });
 
+const bool01 = (v: boolean | undefined) => (v === undefined ? null : v ? 1 : 0);
+
 router.post('/settings', requireAuth, requireStaff('settings'), async (req: Request, res: Response) => {
   const parsed = settingsSchema.safeParse(req.body || {});
   if (!parsed.success) return fail(res, 'Please check the settings values (email, amounts, latitude/longitude)', 422);
@@ -158,7 +164,12 @@ router.post('/settings', requireAuth, requireStaff('settings'), async (req: Requ
   await prisma.$executeRawUnsafe(
     `UPDATE settings SET
        store_email=COALESCE(?,store_email), delivery_charge=COALESCE(?,delivery_charge),
-       free_delivery_above=COALESCE(?,free_delivery_above), upi_id=COALESCE(?,upi_id),
+       free_delivery_above=COALESCE(?,free_delivery_above),
+       handling_charge=COALESCE(?,handling_charge),
+       delivery_charge_enabled=COALESCE(?,delivery_charge_enabled),
+       handling_charge_enabled=COALESCE(?,handling_charge_enabled),
+       staff_order_alerts_enabled=COALESCE(?,staff_order_alerts_enabled),
+       upi_id=COALESCE(?,upi_id),
        upi_name=COALESCE(?,upi_name), hide_mrp=COALESCE(?,hide_mrp), store_phone=COALESCE(?,store_phone),
        store_address=COALESCE(?,store_address), store_latitude=COALESCE(?,store_latitude),
        store_longitude=COALESCE(?,store_longitude), serviceable_villages=COALESCE(?,serviceable_villages)
@@ -166,9 +177,13 @@ router.post('/settings', requireAuth, requireStaff('settings'), async (req: Requ
     s.storeEmail ?? null,
     s.deliveryCharge ?? null,
     s.freeDeliveryAbove ?? null,
+    s.handlingCharge ?? null,
+    bool01(s.deliveryChargeEnabled),
+    bool01(s.handlingChargeEnabled),
+    bool01(s.staffOrderAlertsEnabled),
     s.upiId ?? null,
     s.upiName ?? null,
-    s.hideMrp === undefined ? null : s.hideMrp ? 1 : 0,
+    bool01(s.hideMrp),
     s.storePhone ?? null,
     s.storeAddress ?? null,
     s.storeLatitude ?? null,
@@ -732,6 +747,12 @@ router.get('/settings', requireAuth, requireStaff('settings'), async (_req: Requ
       storeEmail: s.store_email ?? '',
       deliveryCharge: Number(s.delivery_charge ?? 0),
       freeDeliveryAbove: Number(s.free_delivery_above ?? 0),
+      handlingCharge: Number(s.handling_charge ?? 0),
+      // New toggle columns: default to delivery ON / handling OFF / alerts ON when the column
+      // doesn't exist yet (before charges-settings.sql is applied).
+      deliveryChargeEnabled: s.delivery_charge_enabled == null ? true : !!s.delivery_charge_enabled,
+      handlingChargeEnabled: s.handling_charge_enabled == null ? false : !!s.handling_charge_enabled,
+      staffOrderAlertsEnabled: s.staff_order_alerts_enabled == null ? true : !!s.staff_order_alerts_enabled,
       upiId: s.upi_id ?? '',
       upiName: s.upi_name ?? '',
       hideMrp: !!s.hide_mrp,

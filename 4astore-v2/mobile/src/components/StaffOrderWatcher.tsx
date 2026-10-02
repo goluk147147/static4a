@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth, isOrderStaff } from '../store/auth';
-import { useAllOrders } from '../queries';
+import { useAllOrders, useSettings } from '../queries';
 import { localOrderAlert } from '../push';
 import { speakHindi } from '../native';
 import { HAS_PUSH } from '../config';
@@ -16,6 +16,7 @@ const SEEN_KEY = '4astore_staff_seen_orders';
 export default function StaffOrderWatcher() {
   const user = useAuth((s) => s.user);
   const staff = isOrderStaff(user);
+  const alertsOn = useSettings().data?.staffOrderAlertsEnabled !== false; // admin can mute (default on)
   const { data: orders } = useAllOrders(staff, 15000);
   const seen = useRef<Set<string> | null>(null);
 
@@ -31,6 +32,9 @@ export default function StaffOrderWatcher() {
       orders.forEach((o) => seen.current!.add(o.order_id));
       await AsyncStorage.setItem(`${SEEN_KEY}_${user?.id}`, JSON.stringify([...seen.current].slice(-500)));
       if (!fresh.length) return;
+
+      // Admin can mute the loud staff alert from the web admin; then we stay silent in-app too.
+      if (!alertsOn) return;
 
       // With FCM active the server push already alerted; only speak. Without FCM, notify locally.
       for (const o of fresh.slice(0, 3)) {
@@ -50,7 +54,7 @@ export default function StaffOrderWatcher() {
           : `${fresh.length} naye order aaye hain.`
       );
     })().catch(() => null);
-  }, [orders, staff, user?.id]);
+  }, [orders, staff, user?.id, alertsOn]);
 
   return null;
 }

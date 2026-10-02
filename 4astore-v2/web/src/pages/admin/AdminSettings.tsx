@@ -46,6 +46,10 @@ function StoreSettings() {
       upiId: data.upiId || '', upiName: data.upiName || '', hideMrp: !!data.hideMrp, storePhone: data.storePhone || '',
       storeAddress: data.storeAddress || '', storeLatitude: String(data.storeLatitude ?? STORE_FALLBACK.latitude),
       storeLongitude: String(data.storeLongitude ?? STORE_FALLBACK.longitude), serviceableVillages: data.serviceableVillages || '',
+      handlingCharge: String(data.handlingCharge ?? 0),
+      deliveryChargeEnabled: data.deliveryChargeEnabled !== false,
+      handlingChargeEnabled: !!data.handlingChargeEnabled,
+      staffOrderAlertsEnabled: data.staffOrderAlertsEnabled !== false,
     });
   }, [data]);
 
@@ -62,6 +66,10 @@ function StoreSettings() {
         storeEmail: email,
         deliveryCharge: Number(str('deliveryCharge')) || 0,
         freeDeliveryAbove: Number(str('freeDeliveryAbove')) || 0,
+        handlingCharge: Number(str('handlingCharge')) || 0,
+        deliveryChargeEnabled: !!s!.deliveryChargeEnabled,
+        handlingChargeEnabled: !!s!.handlingChargeEnabled,
+        staffOrderAlertsEnabled: !!s!.staffOrderAlertsEnabled,
         upiId: str('upiId').trim(),
         upiName: str('upiName').trim(),
         hideMrp: !!s!.hideMrp,
@@ -95,10 +103,35 @@ function StoreSettings() {
       <p style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 16 }}>Order notification email, delivery charges and UPI payment details. These apply across the store.</p>
       <div style={{ maxWidth: 520, display: 'grid', gap: 14 }}>
         {field('storeEmail', '📧 Order Notification Email', { type: 'email', placeholder: 'you@example.com' }, 'New orders are automatically emailed to this address.')}
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {field('deliveryCharge', '🚚 Delivery Fee (₹)', { type: 'number', min: 0 }, undefined, 1, 150)}
-          {field('freeDeliveryAbove', '🆓 Free Delivery Above (₹)', { type: 'number', min: 0 }, undefined, 1, 150)}
+
+        {/* Charges — each fee has an on/off toggle so the shop can enable/disable it */}
+        <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: 10, padding: 14, display: 'grid', gap: 12 }}>
+          <strong style={{ fontSize: 13, color: 'var(--primary-dark)' }}>💰 Charges</strong>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--primary-dark)' }}>
+            <input type="checkbox" checked={!!s.deliveryChargeEnabled} onChange={(e) => set('deliveryChargeEnabled', e.target.checked)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
+            🚚 Delivery charge enabled
+          </label>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', opacity: s.deliveryChargeEnabled ? 1 : 0.5 }}>
+            {field('deliveryCharge', 'Delivery Fee (₹)', { type: 'number', min: 0, disabled: !s.deliveryChargeEnabled }, undefined, 1, 150)}
+            {field('freeDeliveryAbove', 'Free Delivery Above (₹)', { type: 'number', min: 0, disabled: !s.deliveryChargeEnabled }, undefined, 1, 150)}
+          </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--primary-dark)', marginTop: 4 }}>
+            <input type="checkbox" checked={!!s.handlingChargeEnabled} onChange={(e) => set('handlingChargeEnabled', e.target.checked)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
+            📦 Handling charge enabled
+          </label>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', opacity: s.handlingChargeEnabled ? 1 : 0.5 }}>
+            {field('handlingCharge', 'Handling Fee (₹)', { type: 'number', min: 0, disabled: !s.handlingChargeEnabled }, 'Har order par ek flat handling/packaging charge jodta hai.', 1, 150)}
+          </div>
         </div>
+
+        {/* Staff new-order loud alert toggle */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--primary-dark)', background: '#fff3e6', padding: 12, borderRadius: 8 }}>
+          <input type="checkbox" checked={!!s.staffOrderAlertsEnabled} onChange={(e) => set('staffOrderAlertsEnabled', e.target.checked)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
+          🔔 Loud new-order alert (admin app) — beep + vibration
+        </label>
+        <p style={{ ...hint, marginTop: -6 }}>Off karne par naya order ki push aayegi par bina tez awaaz/vibration ke (silent channel).</p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {field('upiId', '💳 UPI ID', { placeholder: 'yourname@bank' }, <>Used for the payment QR code &amp; UPI app on checkout.</>)}
           {field('upiName', '🏷️ UPI Name (Payee)', { placeholder: '4astore' }, undefined, 1, 150)}

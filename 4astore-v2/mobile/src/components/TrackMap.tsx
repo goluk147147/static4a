@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type { Tracking } from '../types';
+import { colors } from '../theme';
 
 // Leaflet + OpenStreetMap + OSRM route (no paid map key), same as the web Track page.
 const HTML = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
@@ -39,28 +40,46 @@ window.ReactNativeWebView&&window.ReactNativeWebView.postMessage('ready');
 export default function TrackMap({ data, height = 360 }: { data?: Tracking | null; height?: number }) {
   const ref = useRef<WebView>(null);
   const ready = useRef(false);
+  const [loading, setLoading] = useState(true);
   const payload = useMemo(() => (data ? JSON.stringify(data) : ''), [data]);
 
   const push = () => {
-    if (ready.current && payload) ref.current?.injectJavaScript(`window.draw(${payload});true;`);
+    // Always push whatever we have (store/customer markers draw even with a null route),
+    // so the map is never just a blank grey box while waiting for the rider's GPS.
+    if (ready.current) ref.current?.injectJavaScript(`window.draw(${payload || '{}'});true;`);
   };
   useEffect(push, [payload]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <View style={{ height, borderRadius: 12, overflow: 'hidden', backgroundColor: '#eee' }} accessibilityLabel="Live tracking map">
+    <View style={{ height, borderRadius: 12, overflow: 'hidden', backgroundColor: '#eef2f5' }} accessibilityLabel="Live tracking map">
       <WebView
         ref={ref}
         originWhitelist={['*']}
-        source={{ html: HTML, baseUrl: 'https://4astore.local/' }}
+        // Load tiles/Leaflet from a normal https origin; a fake .local baseUrl can trip
+        // CORS/SSL on some release builds. https base + mixed-content allow + DOM storage
+        // make the CDN assets and OSM tiles load reliably on a signed APK.
+        source={{ html: HTML, baseUrl: 'https://tile.openstreetmap.org/' }}
         onMessage={(e) => {
           if (e.nativeEvent.data === 'ready') {
             ready.current = true;
+            setLoading(false);
             push();
           }
         }}
         javaScriptEnabled
+        domStorageEnabled
+        mixedContentMode="always"
+        androidLayerType="hardware"
+        cacheEnabled
+        onLoadEnd={() => setLoading(false)}
         setSupportMultipleWindows={false}
       />
+      {loading && (
+        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={{ marginTop: 8, color: colors.gray, fontSize: 12 }}>Map load ho raha hai…</Text>
+        </View>
+      )}
     </View>
   );
 }

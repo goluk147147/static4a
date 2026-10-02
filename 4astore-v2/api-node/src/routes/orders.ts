@@ -88,6 +88,7 @@ const saveSchema = z.object({
     subtotal: z.number(),
     discount: z.number().optional().default(0),
     deliveryCharge: z.number().optional().default(0),
+    handlingCharge: z.number().optional().default(0),
     totalAmount: z.number(),
     paymentMethod: z.string().optional().default('UPI'),
     paymentReference: z.string(),

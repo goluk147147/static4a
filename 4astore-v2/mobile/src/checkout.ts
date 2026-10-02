@@ -6,6 +6,7 @@ export interface CartTotals {
   mrpTotal: number;
   discount: number;
   deliveryCharge: number;
+  handlingCharge: number;
   total: number;
   itemCount: number;
 }
@@ -20,15 +21,34 @@ export function cartTotals(items: CartItem[], products: Product[], settings?: Se
   }, 0);
   const discount = Math.max(0, mrpTotal - subtotal);
 
+  // Delivery charge: admin can disable it entirely (deliveryChargeEnabled === false).
+  // Otherwise per-user custom override, else free-above-threshold, else the flat fee.
   let deliveryCharge: number;
-  const custom = user?.custom_delivery;
-  if (custom !== null && custom !== undefined && Number.isFinite(Number(custom))) {
-    deliveryCharge = Number(custom);
+  const deliveryEnabled = settings?.deliveryChargeEnabled !== false; // default ON
+  if (!deliveryEnabled) {
+    deliveryCharge = 0;
   } else {
-    const freeAbove = Number(settings?.freeDeliveryAbove ?? 500);
-    deliveryCharge = subtotal === 0 || subtotal >= freeAbove ? 0 : Number(settings?.deliveryCharge ?? 10);
+    const custom = user?.custom_delivery;
+    if (custom !== null && custom !== undefined && Number.isFinite(Number(custom))) {
+      deliveryCharge = Number(custom);
+    } else {
+      const freeAbove = Number(settings?.freeDeliveryAbove ?? 500);
+      deliveryCharge = subtotal === 0 || subtotal >= freeAbove ? 0 : Number(settings?.deliveryCharge ?? 10);
+    }
   }
-  return { subtotal, mrpTotal, discount, deliveryCharge, total: subtotal + deliveryCharge, itemCount: items.reduce((n, i) => n + i.quantity, 0) };
+
+  // Handling charge: a flat fee added only when the admin has enabled it (default OFF).
+  const handlingCharge = settings?.handlingChargeEnabled && subtotal > 0 ? Math.max(0, Number(settings?.handlingCharge ?? 0)) : 0;
+
+  return {
+    subtotal,
+    mrpTotal,
+    discount,
+    deliveryCharge,
+    handlingCharge,
+    total: subtotal + deliveryCharge + handlingCharge,
+    itemCount: items.reduce((n, i) => n + i.quantity, 0),
+  };
 }
 
 export function cartHasAgeRestricted(items: CartItem[], products: Product[], categories: Category[]): boolean {

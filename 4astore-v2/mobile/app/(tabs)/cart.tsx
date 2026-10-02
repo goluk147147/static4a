@@ -46,8 +46,11 @@ export default function Cart() {
           ))}
           <Card style={{ marginTop: 6 }}>
             <SummaryRow label="Subtotal" value={`₹${t.subtotal}`} />
-            <SummaryRow label="Delivery" value={t.deliveryCharge === 0 ? 'FREE' : `₹${t.deliveryCharge}`} color={t.deliveryCharge === 0 ? colors.primary : undefined} />
-            {t.deliveryCharge > 0 && user?.custom_delivery == null && t.subtotal < freeAbove && (
+            {settings?.deliveryChargeEnabled !== false && (
+              <SummaryRow label="Delivery" value={t.deliveryCharge === 0 ? 'FREE' : `₹${t.deliveryCharge}`} color={t.deliveryCharge === 0 ? colors.primary : undefined} />
+            )}
+            {t.handlingCharge > 0 && <SummaryRow label="Handling charge" value={`₹${t.handlingCharge}`} />}
+            {settings?.deliveryChargeEnabled !== false && t.deliveryCharge > 0 && user?.custom_delivery == null && t.subtotal < freeAbove && (
               <Text style={[ui.muted, { fontSize: 12 }]}>Add ₹{freeAbove - t.subtotal} more for free delivery</Text>
             )}
             <View style={ui.divider} />

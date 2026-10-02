@@ -178,6 +178,22 @@ export async function notifyStaffNewOrder(order: {
   const items = Array.isArray(order.items) ? (order.items as Array<{ quantity?: number }>) : [];
   const qty = items.reduce((n, i) => n + (Number(i.quantity) || 0), 0);
   const area = [customer.address, customer.city].filter(Boolean).join(', ');
+
+  // Admin can mute the loud staff alert from the web admin (settings.staff_order_alerts_enabled).
+  // When OFF we send on the quiet 'default' channel instead of the loud 'orders' channel, so the
+  // order still arrives but without the max-importance beep/vibration. Default ON if the column
+  // doesn't exist yet (before charges-settings.sql).
+  let loud = true;
+  try {
+    const rows = await prisma.$queryRawUnsafe<Array<{ staff_order_alerts_enabled?: number | null }>>(
+      'SELECT staff_order_alerts_enabled FROM settings WHERE id = 1'
+    );
+    const v = rows[0]?.staff_order_alerts_enabled;
+    loud = v == null ? true : !!v;
+  } catch {
+    loud = true;
+  }
+
   const msg: PushMessage = {
     title: `🛒 New order #${order.order_id} – ₹${order.total_amount}`,
     body: `${customer.name || 'Customer'} (${customer.mobile || ''}) • ${qty} item(s) • 📍 ${area || 'Address in app'}`,
@@ -189,7 +205,7 @@ export async function notifyStaffNewOrder(order: {
       total: String(order.total_amount ?? ''),
       link: staffOrderLink(order.order_id),
     },
-    channelId: 'orders',
+    channelId: loud ? 'orders' : 'default',
   };
   const tokens = await tokensForStaff('orders').catch(() => [] as string[]);
   if (tokens.length) await sendToTokens(tokens, msg).catch(() => null);

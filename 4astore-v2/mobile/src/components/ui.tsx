@@ -240,6 +240,47 @@ export function Loading({ text = 'Loading...' }: { text?: string }) {
   );
 }
 
+/**
+ * App-wide animated warm gradient (same colour family as buttons/header via `warmGradient`).
+ * The gradient endpoints slowly sweep back and forth for a subtle living shimmer. Use it as a
+ * banner/section background so every gradient surface in the app matches and animates the same way.
+ */
+export function AnimatedGradient({
+  children,
+  style,
+  colors: colorsOverride,
+}: {
+  children?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  colors?: readonly [string, string, ...string[]];
+}) {
+  const t = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(t, { toValue: 1, duration: 3500, useNativeDriver: false }),
+        Animated.timing(t, { toValue: 0, duration: 3500, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [t]);
+  const start = { x: 0, y: 0 };
+  const end = { x: 1, y: 1 };
+  // Animate by cross-fading two gradients at different diagonal angles.
+  const topOpacity = t.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+  const g = colorsOverride || warmGradient;
+  return (
+    <View style={style}>
+      <LinearGradient colors={g} start={start} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: topOpacity }]}>
+        <LinearGradient colors={g} start={start} end={end} style={StyleSheet.absoluteFill} />
+      </Animated.View>
+      {children}
+    </View>
+  );
+}
+
 /** A single shimmering block — a looping opacity pulse (no extra deps). */
 export function Shimmer({ style }: { style?: StyleProp<ViewStyle> }) {
   const anim = React.useRef(new Animated.Value(0.3)).current;

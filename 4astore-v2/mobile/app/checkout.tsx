@@ -176,7 +176,7 @@ export default function Checkout() {
         order: {
           customer, addressLabel: label,
           items: items.map((i) => ({ id: Number(i.id), name: i.name, weight: i.weight ?? '', price: Number(i.price), quantity: i.quantity })),
-          subtotal: totals.subtotal, discount: totals.discount, deliveryCharge: totals.deliveryCharge, totalAmount: totals.total,
+          subtotal: totals.subtotal, discount: totals.discount, deliveryCharge: totals.deliveryCharge, handlingCharge: totals.handlingCharge, totalAmount: totals.total,
           paymentMethod: 'UPI', paymentReference: utr,
         },
       };
@@ -239,7 +239,10 @@ export default function Checkout() {
         <View style={{ marginTop: 8 }}>
           <SummaryRow label="Subtotal" value={`₹${totals.subtotal}`} />
           <SummaryRow label="Discount" value={`-₹${totals.discount}`} color={colors.primary} />
-          <SummaryRow label="Delivery" value={totals.deliveryCharge === 0 ? 'FREE' : `₹${totals.deliveryCharge}`} />
+          {settings?.deliveryChargeEnabled !== false && (
+            <SummaryRow label="Delivery" value={totals.deliveryCharge === 0 ? 'FREE' : `₹${totals.deliveryCharge}`} />
+          )}
+          {totals.handlingCharge > 0 && <SummaryRow label="Handling charge" value={`₹${totals.handlingCharge}`} />}
           <View style={ui.divider} />
           <SummaryRow label="Total" value={`₹${totals.total}`} bold />
         </View>
