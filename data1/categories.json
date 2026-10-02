@@ -4,7 +4,7 @@
         "name": "Fruits & Vegetables",
         "slug": "fruits-vegetables",
         "icon": "🥬",
-        "image": "https://cdn-icons-png.flaticon.com/512/2329/2329865.png"
+        "image": "https://static.vecteezy.com/system/resources/thumbnails/033/210/784/small_2x/various-mixed-healthy-fruits-background-ai-generative-pro-photo.jpg"
     },
     {
         "id": 2,
@@ -18,7 +18,7 @@
         "name": "Oil & Ghee",
         "slug": "oil-ghee",
         "icon": "🫒",
-        "image": "https://cdn-icons-png.flaticon.com/128/5015/5015562.png"
+        "image": "https://cdn-icons-png.flaticon.com/512/5787/5787016.png"
     },
     {
         "id": 4,
@@ -39,7 +39,7 @@
         "name": "Cold Drinks & Beverages",
         "slug": "cold-drinks-beverages",
         "icon": "🥤",
-        "image": "https://cdn-icons-png.flaticon.com/128/102/102452.png"
+        "image": "https://cdn-icons-png.flaticon.com/512/3050/3050153.png"
     },
     {
         "id": 7,
@@ -99,12 +99,5 @@
         "hidden": true,
         "ageRestricted": true,
         "warning": "Tobacco causes cancer. Sirf 18+ ke liye."
-    },
-    {
-        "id": 15,
-        "name": "Sweets & Chocolates",
-        "slug": "sweets-and-chocolates",
-        "icon": "",
-        "image": "https://cdn-icons-png.flaticon.com/256/12125/12125076.png"
     }
 ]

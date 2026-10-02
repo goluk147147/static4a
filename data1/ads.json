@@ -55,74 +55,50 @@
         "name": "New Ad",
         "campaign": "",
         "offerTitle": "आज का खास ऑफर",
-        "productId": "3",
-        "productName": "Fortune Mustard Oil",
-        "format": "1:1",
+        "productId": "11",
+        "productName": "Banana (Dozen)",
+        "format": "16:9",
         "platform": "all",
         "status": "draft",
-        "template": "todays-offer",
+        "template": "discount",
         "creative": {
-            "id": 3,
+            "id": null,
             "name": "New Ad",
             "campaign": "",
             "offerTitle": "आज का खास ऑफर",
-            "productId": "3",
-            "productName": "Fortune Mustard Oil",
+            "productId": "11",
+            "productName": "Banana (Dozen)",
             "productIds": [
-                "3",
-                "6"
+                "11",
+                "18"
             ],
             "productCount": 2,
             "productPrices": {
-                "3": 195,
-                "5": 28,
-                "6": 25
+                "4": 145,
+                "9": 45,
+                "11": 50,
+                "16": 25,
+                "18": 30,
+                "21": 72
             },
-            "productMrps": {
-                "3": 210,
-                "5": 30,
-                "6": 25
-            },
-            "price": 195,
-            "mrp": 210,
-            "discount": 7,
-            "format": "1:1",
+            "price": 50,
+            "mrp": 60,
+            "discount": 17,
+            "format": "16:9",
             "platform": "all",
-            "template": "todays-offer",
+            "template": "discount",
             "cta": "Order Now",
-            "ctaLink": "https://4astore.webtoolsz.com/download",
-            "headerTitle": "4A STORE",
-            "headerTagline": "आपकी अपनी किराना दुकान",
             "localMode": true,
             "lang": "hindi",
             "img": {
-                "zoom": 1,
+                "zoom": 2.61,
                 "x": 0,
                 "y": 0,
                 "rot": 0,
                 "flipH": false,
                 "flipV": false,
-                "src": "https://www.bbassets.com/media/uploads/p/m/276756_16-fortune-fortune-premium-kachi-ghani-pure-mustard-oil.jpg?tr=w-154,q-80"
+                "src": "https://www.bbassets.com/media/uploads/p/m/10000025_32-fresho-banana-robusta.jpg?tr=w-154,q-80"
             },
-            "background": null,
-            "layout": {
-                "background": [],
-                "products": [],
-                "title": [],
-                "discount": [],
-                "cta": [],
-                "footer": [],
-                "header": []
-            },
-            "textColors": {
-                "header": "#ffffff",
-                "title": "#ffffff",
-                "discount": "#FFD54F",
-                "cta": "#3a2400",
-                "footer": "#ffffff"
-            },
-            "hiddenLayers": [],
-            "overlays": [],
             "lines": [],
             "caption": "",
             "hashtags": "",
@@ -131,7 +107,7 @@
         "caption": "",
         "hashtags": "",
         "image": "",
-        "createdAt": "2026-09-23T12:43:14+00:00",
-        "updatedAt": "2026-09-25T04:28:07+00:00"
+        "createdAt": "2026-09-23T09:53:37+02:00",
+        "updatedAt": "2026-09-23T09:53:37+02:00"
     }
 ]

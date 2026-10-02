@@ -9,7 +9,7 @@
                 "#ff6600",
                 "#ff9800"
             ],
-            "image": "data/banners/banner_20260928_094440_eca6f5ba.webp",
+            "image": "data/banners/banner_20260928_114255_ac474c0b.webp",
             "festival": "",
             "active": true
         },
@@ -22,20 +22,20 @@
                 "#e55b00",
                 "#ffb74d"
             ],
-            "image": "data/banners/banner_20260928_094606_e70250a8.webp",
+            "image": "data/banners/banner_20260928_114318_d7cfcfd4.webp",
             "festival": "",
             "active": true
         },
         {
-            "title": "🏷️ रोज़मर्रा की ज़रूरी चीज़ें, सबसे बेहतरीन दामों पर",
-            "subtitle": "चावल, तेल, दाल और भी बहुत कुछ पर 25% तक की छूट",
+            "title": "🏷️ Daily Essentials at Best Prices",
+            "subtitle": "Up to 25% OFF on rice, oil, dal and more",
             "btnText": "View Offers →",
             "btnLink": "products.html",
             "gradient": [
                 "#bf360c",
                 "#ff7043"
             ],
-            "image": "data/banners/banner_20260928_095219_cc382161.webp",
+            "image": "data/banners/banner_20260928_120421_2d580d18.webp",
             "festival": "",
             "active": true
         },
@@ -170,15 +170,15 @@
             "festival": "chhath"
         },
         {
-            "title": "",
-            "subtitle": "",
+            "title": "🚀 Fast Delivery in Chandargarh",
+            "subtitle": "Order now, get delivered quick – only for 824301",
             "btnText": "Order Now →",
             "btnLink": "products.html",
             "gradient": [
                 "#e65100",
                 "#fb8c00"
             ],
-            "image": "data/banners/banner_20260928_095840_44ef8950.webp",
+            "image": "data/banners/banner_20260928_120404_7fa70c9f.webp",
             "festival": "",
             "active": true
         }

@@ -1,76 +1,396 @@
 [
     {
-        "orderId": "4A916301",
-        "userId": 4,
+        "orderId": "4A472901",
+        "userId": 10,
         "customer": {
-            "name": "akashh",
-            "mobile": "8002116652",
-            "email": "",
-            "address": "fghgfdfgh",
-            "landmark": "",
-            "city": "Chandragarh (चंद्रगढ़)",
-            "pincode": "824301",
-            "deliveryLat": 28.512927640394437,
-            "deliveryLng": 77.41112552982112
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
+            "email": "aashukumar31116@gmail.com",
+            "address": "Chandgrah kanva pati old sbi bank ke pass",
+            "landmark": "Pipar tar",
+            "city": "Chandargarh",
+            "pincode": "824301"
         },
         "items": [
             {
-                "id": 4,
-                "name": "Soya Health Refined Soyabean Oil",
-                "weight": "1 Litre",
-                "price": 145,
+                "id": 23,
+                "name": "chips",
+                "weight": "52 g",
+                "price": 20,
                 "quantity": 1
             }
         ],
-        "subtotal": 145,
-        "discount": 15,
-        "deliveryCharge": 0,
-        "totalAmount": 145,
+        "subtotal": 20,
+        "discount": 0,
+        "deliveryCharge": 10,
+        "totalAmount": 30,
         "paymentMethod": "UPI",
         "orderStatus": "Delivered",
-        "orderDate": "2026-09-22T09:49:20.407Z",
+        "orderDate": "2026-09-16T13:29:28.582Z",
         "status": "Delivered",
-        "deliveredAt": "2026-09-25T13:12:57+02:00"
+        "deliveredAt": null
     },
     {
-        "orderId": "4A366951",
-        "userId": 4,
+        "orderId": "4A652255",
+        "userId": 10,
         "customer": {
-            "name": "Akash",
-            "mobile": "8002116652",
-            "email": "",
-            "address": "takurbari pe near middile school",
-            "landmark": "takurbari pe",
-            "city": "Chandragarh (चंद्रगढ़)",
-            "pincode": "824301",
-            "deliveryLat": 28.51292141940702,
-            "deliveryLng": 77.41112210463919
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
+            "email": "aashukumar31116@gmail.com",
+            "address": "Chandgrah kanva pati old sbi bank ke pass",
+            "landmark": "Pipar tar",
+            "city": "Chandargarh",
+            "pincode": "824301"
         },
         "items": [
             {
-                "id": 5,
-                "name": "Tata Salt",
-                "weight": "1 Kg",
-                "price": 28,
+                "id": 50,
+                "name": "Cello Pen (Pack of 10)",
+                "weight": "10 Pens",
+                "price": 52,
                 "quantity": 1
             }
         ],
-        "subtotal": 28,
-        "discount": 2,
-        "deliveryCharge": 0,
-        "totalAmount": 28,
+        "subtotal": 52,
+        "discount": 8,
+        "deliveryCharge": 10,
+        "totalAmount": 62,
         "paymentMethod": "UPI",
         "orderStatus": "Delivered",
-        "orderDate": "2026-09-22T12:50:24.974Z",
+        "orderDate": "2026-09-16T14:00:36.284Z",
         "status": "Delivered",
-        "deliveredAt": "2026-09-25T14:22:22+02:00"
+        "deliveredAt": null
     },
     {
-        "orderId": "4AABC572E3",
+        "orderId": "4A728612",
+        "userId": 17,
+        "customer": {
+            "name": "Happy kumar",
+            "mobile": "9801818643",
+            "email": "happygupta72093@gmail.com",
+            "address": "Chandragarh shiv mandir",
+            "landmark": "Near shiv temple",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 23,
+                "name": "chips",
+                "weight": "52 g",
+                "price": 20,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 20,
+        "discount": 0,
+        "deliveryCharge": 10,
+        "totalAmount": 30,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-17T07:25:50.835Z",
+        "status": "Delivered",
+        "deliveredAt": null
+    },
+    {
+        "orderId": "4A500098",
+        "userId": 10,
+        "customer": {
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
+            "email": "aashukumar31116@gmail.com",
+            "address": "Chandgrah kanva pati old sbi bank ke pass",
+            "landmark": "Pipar tar",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 23,
+                "name": "chips",
+                "weight": "52 g",
+                "price": 20,
+                "quantity": 1
+            },
+            {
+                "id": 95,
+                "name": "Rimzim jeera",
+                "weight": "250 ml",
+                "price": 10,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 30,
+        "discount": 0,
+        "deliveryCharge": 10,
+        "totalAmount": 40,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-17T13:10:38.901Z",
+        "status": "Delivered",
+        "deliveredAt": null
+    },
+    {
+        "orderId": "4A616048",
+        "userId": 12,
+        "customer": {
+            "name": "Prem kumar",
+            "mobile": "6207704494",
+            "email": "",
+            "address": "M.k studio",
+            "landmark": "M.k studio",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 23,
+                "name": "chips",
+                "weight": "52 g",
+                "price": 20,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 20,
+        "discount": 0,
+        "deliveryCharge": 10,
+        "totalAmount": 30,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-18T06:50:38.873Z",
+        "status": "Delivered",
+        "deliveredAt": null
+    },
+    {
+        "orderId": "4A822494",
+        "userId": 10,
+        "customer": {
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
+            "email": "aashukumar31116@gmail.com",
+            "address": "Chandgrah kanva pati old sbi bank ke pass",
+            "landmark": "Pipar tar",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 95,
+                "name": "Rimzim jeera",
+                "weight": "250 ml",
+                "price": 10,
+                "quantity": 2
+            }
+        ],
+        "subtotal": 20,
+        "discount": 0,
+        "deliveryCharge": 0,
+        "totalAmount": 20,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-18T13:21:38.623Z",
+        "status": "Delivered",
+        "deliveredAt": null
+    },
+    {
+        "orderId": "4A738951",
+        "userId": 10,
+        "customer": {
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
+            "email": "aashukumar31116@gmail.com",
+            "address": "Chandgrah kanva pati old sbi bank ke pass",
+            "landmark": "Pipar tar",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 95,
+                "name": "Rimzim jeera",
+                "weight": "250 ml",
+                "price": 10,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 10,
+        "discount": 0,
+        "deliveryCharge": 0,
+        "totalAmount": 10,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-18T13:44:14.869Z",
+        "status": "Delivered",
+        "deliveredAt": null
+    },
+    {
+        "orderId": "4A299978",
+        "userId": 10,
+        "customer": {
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
+            "email": "aashukumar31116@gmail.com",
+            "address": "Chandgrah kanva pati old sbi bank ke pass",
+            "landmark": "Pipar tar",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 98,
+                "name": "Maaza",
+                "weight": "600ml",
+                "price": 35,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 35,
+        "discount": 10,
+        "deliveryCharge": 0,
+        "totalAmount": 35,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-19T05:21:38.976Z",
+        "status": "Delivered",
+        "deliveredAt": null
+    },
+    {
+        "orderId": "4A460120",
+        "userId": 10,
+        "customer": {
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
+            "email": "aashukumar31116@gmail.com",
+            "address": "Chandgrah kanva pati old sbi bank ke pass",
+            "landmark": "Pipar tar",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 95,
+                "name": "Rimzim jeera",
+                "weight": "250 ml",
+                "price": 10,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 10,
+        "discount": 0,
+        "deliveryCharge": 0,
+        "totalAmount": 10,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-19T12:41:23.556Z",
+        "status": "Delivered",
+        "deliveredAt": null
+    },
+    {
+        "orderId": "4A710145",
+        "userId": 10,
+        "customer": {
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
+            "email": "aashukumar31116@gmail.com",
+            "address": "Chandgrah kanva pati old sbi bank ke pass",
+            "landmark": "Pipar tar",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 35,
+                "name": "Frooti Mango Drink",
+                "weight": "125 ml",
+                "price": 10,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 10,
+        "discount": 0,
+        "deliveryCharge": 0,
+        "totalAmount": 10,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-19T12:45:48.896Z",
+        "status": "Delivered",
+        "deliveredAt": null
+    },
+    {
+        "orderId": "4A355190",
+        "userId": 17,
+        "customer": {
+            "name": "Happy kumar",
+            "mobile": "9801818643",
+            "email": "happygupta72093@gmail.com",
+            "address": "Bed collage",
+            "landmark": "Q457415074@ybl",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 34,
+                "name": "Sprite",
+                "weight": "750 ml",
+                "price": 40,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 40,
+        "discount": 5,
+        "deliveryCharge": 10,
+        "totalAmount": 50,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-21T06:23:23.944Z",
+        "status": "Delivered",
+        "deliveredAt": null
+    },
+    {
+        "orderId": "4A270389",
+        "userId": 28,
+        "customer": {
+            "name": "Niraj",
+            "mobile": "9155450690",
+            "email": "pathakchn@gmail.com",
+            "address": "Vip muhhala, pakdi tar, pathak ji",
+            "landmark": "Hanuman mandir",
+            "city": "Chandargarh",
+            "pincode": "824301"
+        },
+        "items": [
+            {
+                "id": 16,
+                "name": "Potato (Aloo)",
+                "weight": "5 Kg",
+                "price": 65,
+                "quantity": 1
+            },
+            {
+                "id": 20,
+                "name": "Green Chilli",
+                "weight": "250 g",
+                "price": 20,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 85,
+        "discount": 20,
+        "deliveryCharge": 10,
+        "totalAmount": 95,
+        "paymentMethod": "UPI",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-21T06:32:59.184Z",
+        "status": "Delivered",
+        "deliveredAt": null
+    },
+    {
+        "orderId": "4A5B749F7D",
         "userId": null,
         "customer": {
-            "name": "Akash Kumar",
-            "mobile": "9876543210",
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
             "email": "",
             "address": "",
             "city": "",
@@ -78,305 +398,201 @@
         },
         "items": [
             {
-                "id": 1,
-                "name": "Aashirvaad Atta",
-                "weight": "5 Kg",
-                "price": 200,
+                "id": 23,
+                "name": "chips",
+                "weight": "52 g",
+                "price": 20,
                 "quantity": 1
             }
         ],
-        "subtotal": 200,
+        "subtotal": 20,
         "discount": 0,
         "deliveryCharge": 0,
-        "totalAmount": 200,
+        "totalAmount": 20,
         "paymentMethod": "Cash",
         "orderStatus": "Delivered",
         "status": "Delivered",
-        "orderDate": "2026-09-22T15:02:21+02:00",
-        "createdBy": "akgupta",
-        "deliveredAt": "2026-09-25T14:22:31+02:00"
+        "orderDate": "2026-09-24T12:34:37+00:00",
+        "createdBy": "owner",
+        "deliveredAt": "2026-09-24T12:35:14+00:00"
     },
     {
-        "orderId": "4A250615",
-        "userId": 4,
+        "orderId": "4A59CC88FF",
+        "userId": null,
         "customer": {
-            "name": "Akash",
-            "mobile": "8002116652",
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
             "email": "",
-            "address": "sdfghj",
-            "landmark": "",
-            "city": "Chandragarh (चंद्रगढ़)",
+            "address": "",
+            "city": "",
             "pincode": "824301"
         },
         "items": [
             {
-                "id": 5,
-                "name": "Tata Salt",
-                "weight": "1 Kg",
-                "price": 28,
+                "id": 23,
+                "name": "chips",
+                "weight": "52 g",
+                "price": 20,
                 "quantity": 1
             }
         ],
-        "subtotal": 28,
-        "discount": 2,
+        "subtotal": 20,
+        "discount": 0,
         "deliveryCharge": 0,
-        "totalAmount": 28,
-        "paymentMethod": "UPI",
+        "totalAmount": 20,
+        "paymentMethod": "Cash",
         "orderStatus": "Delivered",
-        "orderDate": "2026-09-24T12:14:56.825Z",
         "status": "Delivered",
-        "deliveredAt": "2026-09-25T13:31:35+02:00"
+        "orderDate": "2026-09-24T12:36:20+00:00",
+        "createdBy": "owner",
+        "deliveredAt": "2026-09-24T12:36:44+00:00"
     },
     {
-        "orderId": "4A203002",
-        "userId": null,
+        "orderId": "4A111742",
+        "userId": 14,
         "customer": {
-            "name": "Akash",
-            "mobile": "8002116652",
-            "email": "",
-            "address": "Alpha Bhutani",
-            "landmark": "shiv mandir",
+            "name": "Lucky gupta",
+            "mobile": "9801089631",
+            "email": "luckykumar11200582@gmail.com",
+            "address": "Near Pintu sir coaching,chandragard , Nabinagar",
+            "landmark": "Devi Mandir",
             "city": "Chandragarh (चंद्रगढ़)",
             "pincode": "824301",
-            "deliveryLat": 28.51293135368222,
-            "deliveryLng": 77.41112069676684
-        },
-        "items": [
-            {
-                "id": 4,
-                "name": "Soya Health Refined Soyabean Oil",
-                "weight": "1 Litre",
-                "price": 145,
-                "quantity": 1
-            }
-        ],
-        "subtotal": 145,
-        "discount": 15,
-        "deliveryCharge": 1,
-        "totalAmount": 146,
-        "paymentMethod": "UPI",
-        "orderStatus": "Delivered",
-        "orderDate": "2026-09-25T11:19:00.585Z",
-        "status": "Delivered",
-        "deliveredAt": "2026-09-25T14:22:26+02:00"
-    },
-    {
-        "orderId": "4A449003",
-        "userId": 4,
-        "customer": {
-            "name": "Akash",
-            "mobile": "8002116652",
-            "email": "",
-            "address": "Alpha Bhutani",
-            "landmark": "shiv mandir",
-            "city": "Chandragarh (चंद्रगढ़)",
-            "pincode": "824301",
-            "deliveryLat": 28.51292,
-            "deliveryLng": 77.41112,
-            "deliverySource": "manual"
-        },
-        "items": [
-            {
-                "id": 5,
-                "name": "Tata Salt",
-                "weight": "1 Kg",
-                "price": 28,
-                "quantity": 1
-            }
-        ],
-        "subtotal": 28,
-        "discount": 2,
-        "deliveryCharge": 0,
-        "totalAmount": 28,
-        "paymentMethod": "UPI",
-        "orderStatus": "Delivered",
-        "orderDate": "2026-09-25T11:56:22.744Z",
-        "status": "Delivered",
-        "deliveredAt": "2026-09-25T14:22:16+02:00"
-    },
-    {
-        "orderId": "4A208034",
-        "userId": 4,
-        "customer": {
-            "name": "Akash",
-            "mobile": "8002116652",
-            "email": "",
-            "address": "kanwapati chandargarah",
-            "landmark": "shiv mandir",
-            "city": "Chandragarh (चंद्रगढ़)",
-            "pincode": "824301",
-            "deliveryLat": 28.51292,
-            "deliveryLng": 77.41112,
+            "deliveryLat": 24.580164,
+            "deliveryLng": 84.114194,
             "deliverySource": "manual",
             "deliveryAddress": {
-                "label": "Other",
-                "receiver_name": "Akash",
-                "phone": "8002116652",
-                "house_no": "kanwapati chandargarah",
-                "street": "",
-                "area": "Chandragarh (चंद्रगढ़)",
-                "landmark": "shiv mandir",
+                "label": "Home",
+                "receiver_name": "Lucky gupta",
+                "phone": "9801089631",
+                "house_no": "Near Pintu sir coaching",
+                "street": "chandragard",
+                "area": "Nabinagar",
+                "landmark": "Devi Mandir",
                 "city": "Chandragarh (चंद्रगढ़)",
                 "district": "Aurangabad",
                 "state": "Bihar",
                 "pincode": "824301",
-                "latitude": 28.51292,
-                "longitude": 77.41112,
-                "full_address": "kanwapati chandargarah, Chandragarh (चंद्रगढ़), 824301",
-                "status": "active",
-                "id": 2,
-                "user_id": "1",
-                "is_default": 0,
-                "created_at": "2026-09-26T12:33:02+02:00",
-                "updated_at": "2026-09-26T12:33:02+02:00"
-            }
-        },
-        "items": [
-            {
-                "id": 9,
-                "name": "Vim Dishwash Bar",
-                "weight": "600 g",
-                "price": 45,
-                "quantity": 1
-            },
-            {
-                "id": 10,
-                "name": "Dettol Original Soap",
-                "weight": "125 g",
-                "price": 48,
-                "quantity": 1
-            },
-            {
-                "id": 8,
-                "name": "Surf Excel Easy Wash",
-                "weight": "1.5 Kg",
-                "price": 175,
-                "quantity": 1
-            },
-            {
-                "id": 1,
-                "name": "Aashirvaad Atta",
-                "weight": "5 Kg",
-                "price": 200,
-                "quantity": 1
-            },
-            {
-                "id": 4,
-                "name": "Soya Health Refined Soyabean Oil",
-                "weight": "1 Litre",
-                "price": 145,
-                "quantity": 1
-            }
-        ],
-        "subtotal": 613,
-        "discount": 133,
-        "deliveryCharge": 0,
-        "totalAmount": 613,
-        "paymentMethod": "UPI",
-        "orderStatus": "Out for Delivery",
-        "orderDate": "2026-09-26T10:33:09.849Z",
-        "deliveryAddress": {
-            "label": "Other",
-            "receiver_name": "Akash",
-            "phone": "8002116652",
-            "house_no": "",
-            "landmark": "shiv mandir",
-            "full_address": "kanwapati chandargarah, Chandragarh (चंद्रगढ़), 824301",
-            "city": "Chandragarh (चंद्रगढ़)",
-            "district": "",
-            "state": "Bihar",
-            "pincode": "824301",
-            "latitude": 28.51292,
-            "longitude": 77.41112,
-            "captured_at": "2026-09-26T12:33:09+02:00"
-        },
-        "rider_id": "4",
-        "rider_name": "Akash",
-        "rider_mobile": "8002116652",
-        "assigned_at": "2026-09-26T12:40:46+02:00",
-        "status": "Out for Delivery"
-    },
-    {
-        "orderId": "4A216897",
-        "userId": 6,
-        "customer": {
-            "name": "akashjiia",
-            "mobile": "8002116650",
-            "email": "",
-            "address": "near shiv mandir, Chandragarh (चंद्रगढ़)",
-            "landmark": "near shiv mandir",
-            "city": "Chandragarh (चंद्रगढ़)",
-            "pincode": "824301",
-            "deliveryLat": 28.51292,
-            "deliveryLng": 77.41112,
-            "deliverySource": "manual",
-            "deliveryAddress": {
-                "label": "Other",
-                "receiver_name": "akashjiia",
-                "phone": "8002116650",
-                "house_no": "near shiv mandir",
-                "street": "Chandragarh (चंद्रगढ़)",
-                "area": "Chandragarh (चंद्रगढ़)",
-                "landmark": "near shiv mandir",
-                "city": "Chandragarh (चंद्रगढ़)",
-                "district": "Aurangabad",
-                "state": "Bihar",
-                "pincode": "824301",
-                "latitude": 28.51292,
-                "longitude": 77.41112,
-                "full_address": "near shiv mandir, Chandragarh (चंद्रगढ़), Chandragarh (चंद्रगढ़), 824301",
+                "latitude": 24.580164,
+                "longitude": 84.114194,
+                "full_address": "Near Pintu sir coaching,chandragard , Nabinagar, Chandragarh (चंद्रगढ़), 824301",
                 "status": "active",
                 "id": 3,
-                "user_id": "6",
-                "created_at": "2026-09-26T12:51:27+02:00",
-                "updated_at": "2026-09-26T14:28:05+02:00",
+                "user_id": "14",
+                "created_at": "2026-09-26T16:31:49+00:00",
+                "updated_at": "2026-09-26T16:31:52+00:00",
                 "is_default": 1
             }
         },
         "items": [
             {
-                "id": 9,
-                "name": "Vim Dishwash Bar",
-                "weight": "600 g",
-                "price": 45,
-                "quantity": 1
-            },
-            {
-                "id": 8,
-                "name": "Surf Excel Easy Wash",
-                "weight": "1.5 Kg",
-                "price": 175,
+                "id": 215,
+                "name": "Dairy Milk",
+                "weight": "2pec",
+                "price": 40,
                 "quantity": 1
             }
         ],
-        "subtotal": 220,
-        "discount": 31,
-        "deliveryCharge": 0,
-        "totalAmount": 220,
+        "subtotal": 40,
+        "discount": 0,
+        "deliveryCharge": 10,
+        "totalAmount": 50,
         "paymentMethod": "UPI",
-        "orderStatus": "Out for Delivery",
-        "orderDate": "2026-09-26T12:28:15.416Z",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-26T16:33:34.514Z",
         "deliveryAddress": {
             "label": "Other",
-            "receiver_name": "akashjiia",
-            "phone": "8002116650",
+            "receiver_name": "Lucky gupta",
+            "phone": "9801089631",
             "house_no": "",
-            "landmark": "near shiv mandir",
-            "full_address": "near shiv mandir, Chandragarh (चंद्रगढ़), Chandragarh (चंद्रगढ़), 824301",
+            "landmark": "Devi Mandir",
+            "full_address": "Near Pintu sir coaching,chandragard , Nabinagar, Chandragarh (चंद्रगढ़), 824301",
             "city": "Chandragarh (चंद्रगढ़)",
             "district": "",
             "state": "Bihar",
             "pincode": "824301",
-            "latitude": 28.51292,
-            "longitude": 77.41112,
-            "captured_at": "2026-09-26T14:28:15+02:00"
+            "latitude": 24.580164,
+            "longitude": 84.114194,
+            "captured_at": "2026-09-26T16:33:35+00:00"
         },
-        "delivery_latitude": 28.51292,
-        "delivery_longitude": 77.41112,
-        "rider_id": "4",
-        "rider_name": "Akash",
-        "rider_mobile": "8002116652",
-        "assigned_at": "2026-09-26T14:30:07+02:00",
-        "status": "Out for Delivery"
+        "delivery_latitude": 24.580164,
+        "delivery_longitude": 84.114194,
+        "status": "Delivered",
+        "deliveredAt": "2026-09-27T07:02:36+00:00"
+    },
+    {
+        "orderId": "4A698686",
+        "userId": 10,
+        "customer": {
+            "name": "Aashu kumar",
+            "mobile": "7543800573",
+            "email": "aashukumar31116@gmail.com",
+            "address": "Chandragarah old sbi bank, Chandragarh (चंद्रगढ़)",
+            "landmark": "Old Sbi bank",
+            "city": "Chandragarh (चंद्रगढ़)",
+            "pincode": "824301",
+            "deliveryLat": 24.580164,
+            "deliveryLng": 84.114194,
+            "deliverySource": "manual",
+            "deliveryAddress": {
+                "label": "Home",
+                "receiver_name": "Aashu kumar",
+                "phone": "7543800573",
+                "house_no": "Chandragarah old sbi bank",
+                "street": "Chandragarh (चंद्रगढ़)",
+                "area": "Chandragarh (चंद्रगढ़)",
+                "landmark": "Old Sbi bank",
+                "city": "Chandragarh (चंद्रगढ़)",
+                "district": "Aurangabad",
+                "state": "Bihar",
+                "pincode": "824301",
+                "latitude": 24.580164,
+                "longitude": 84.114194,
+                "full_address": "Chandragarah old sbi bank, Chandragarh (चंद्रगढ़), Chandragarh (चंद्रगढ़), 824301",
+                "status": "active",
+                "id": 17,
+                "user_id": "10",
+                "created_at": "2026-09-29T05:42:12+00:00",
+                "updated_at": "2026-09-29T05:44:14+00:00",
+                "is_default": 1
+            },
+            "paymentReference": "708338085028"
+        },
+        "items": [
+            {
+                "id": 95,
+                "name": "Rimzim jeera",
+                "weight": "250 ml",
+                "price": 10,
+                "quantity": 1
+            }
+        ],
+        "subtotal": 10,
+        "discount": 0,
+        "deliveryCharge": 0,
+        "totalAmount": 10,
+        "paymentMethod": "UPI",
+        "paymentReference": "708338085028",
+        "orderStatus": "Delivered",
+        "orderDate": "2026-09-29T05:45:09.816Z",
+        "deliveryAddress": {
+            "label": "Other",
+            "receiver_name": "Aashu kumar",
+            "phone": "7543800573",
+            "house_no": "",
+            "landmark": "Old Sbi bank",
+            "full_address": "Chandragarah old sbi bank, Chandragarh (चंद्रगढ़), Chandragarh (चंद्रगढ़), 824301",
+            "city": "Chandragarh (चंद्रगढ़)",
+            "district": "",
+            "state": "Bihar",
+            "pincode": "824301",
+            "latitude": 24.580164,
+            "longitude": 84.114194,
+            "captured_at": "2026-09-29T05:45:11+00:00"
+        },
+        "delivery_latitude": 24.580164,
+        "delivery_longitude": 84.114194,
+        "status": "Delivered",
+        "deliveredAt": "2026-09-29T06:09:52+00:00"
     }
 ]

@@ -16,15 +16,9 @@
         "passwordHash": "$2y$10$tVIqu\/7hcQgicCbzKh\/YDOgqbrahms3bOufbRYRqyNmzzTa2sL1Tu",
         "role": "admin",
         "permissions": [
-            "dashboard",
             "orders",
-            "products",
-            "categories",
-            "banners",
             "ads",
-            "riderTracking",
-            "users",
-            "settings"
+            "users"
         ]
     }
 ]
