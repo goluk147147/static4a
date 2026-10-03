@@ -1,8 +1,26 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db';
 import { ok } from '../utils/http';
+import { mergeFeatures } from '../utils/features';
+import { mergeSeoConfig, type SettingsRow } from '../seo/localSeo';
 
 const router = Router();
+
+// Tiny in-memory TTL cache for the two hottest public reads (/config, /settings).
+// They change rarely (admin edits) yet every app launch / React-Query refetch hits
+// them, so a ~10s cache removes most of their DB pressure. The cached value is the
+// already-shaped response object, so the JSON body stays byte-identical and the
+// same Cache-Control headers are still set on every response.
+const TTL_MS = 10_000;
+const ttlCache = new Map<string, { data: unknown; at: number }>();
+async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const hit = ttlCache.get(key);
+  if (hit && now - hit.at < TTL_MS) return hit.data as T;
+  const data = await load();
+  ttlCache.set(key, { data, at: now });
+  return data;
+}
 
 // Static-ish public GETs change rarely (admin edits). A short Cache-Control lets
 // repeat app launches and React-Query refetches return 304 (Express computes a
@@ -35,38 +53,44 @@ router.get('/categories', async (_req: Request, res: Response) => {
 
 // GET /api/settings — public subset (never leak internal-only fields)
 router.get('/settings', async (_req: Request, res: Response) => {
-  const s = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>('SELECT * FROM settings WHERE id = 1');
-  const row = s[0] || {};
-  const publicSettings = {
-    deliveryCharge: row.delivery_charge,
-    freeDeliveryAbove: row.free_delivery_above,
-    handlingCharge: Number(row.handling_charge ?? 0),
-    // Default delivery ON / handling OFF when the toggle columns don't exist yet
-    // (before charges-settings.sql has been applied on the live DB).
-    deliveryChargeEnabled: row.delivery_charge_enabled == null ? true : !!row.delivery_charge_enabled,
-    handlingChargeEnabled: row.handling_charge_enabled == null ? false : !!row.handling_charge_enabled,
-    staffOrderAlertsEnabled: row.staff_order_alerts_enabled == null ? true : !!row.staff_order_alerts_enabled,
-    upiId: row.upi_id,
-    upiName: row.upi_name,
-    hideMrp: !!row.hide_mrp,
-    storePhone: row.store_phone,
-    storeAddress: row.store_address,
-    storeLatitude: row.store_latitude,
-    storeLongitude: row.store_longitude,
-    serviceableVillages: row.serviceable_villages,
-  };
+  const publicSettings = await cached('settings', async () => {
+    const s = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>('SELECT * FROM settings WHERE id = 1');
+    const row = s[0] || {};
+    return {
+      deliveryCharge: row.delivery_charge,
+      freeDeliveryAbove: row.free_delivery_above,
+      handlingCharge: Number(row.handling_charge ?? 0),
+      // Default delivery ON / handling OFF when the toggle columns don't exist yet
+      // (before charges-settings.sql has been applied on the live DB).
+      deliveryChargeEnabled: row.delivery_charge_enabled == null ? true : !!row.delivery_charge_enabled,
+      handlingChargeEnabled: row.handling_charge_enabled == null ? false : !!row.handling_charge_enabled,
+      staffOrderAlertsEnabled: row.staff_order_alerts_enabled == null ? true : !!row.staff_order_alerts_enabled,
+      upiId: row.upi_id,
+      upiName: row.upi_name,
+      hideMrp: !!row.hide_mrp,
+      storePhone: row.store_phone,
+      storeAddress: row.store_address,
+      storeLatitude: row.store_latitude,
+      storeLongitude: row.store_longitude,
+      serviceableVillages: row.serviceable_villages,
+    };
+  });
   res.setHeader('Cache-Control', STATIC_CACHE);
   return ok(res, { settings: publicSettings });
 });
 
 // GET /api/config — homepage merchandising (banners, ads, festivals, social proof)
 router.get('/config', async (_req: Request, res: Response) => {
-  const c = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>('SELECT * FROM config WHERE id = 1');
-  const row = c[0] || {};
-  const parse = (v: unknown) => (typeof v === 'string' ? JSON.parse(v) : v ?? null);
-  res.setHeader('Cache-Control', STATIC_CACHE);
-  return ok(res, {
-    config: {
+  const config = await cached('config', async () => {
+    const c = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>('SELECT * FROM config WHERE id = 1');
+    const row = c[0] || {};
+    const parse = (v: unknown) => (typeof v === 'string' ? JSON.parse(v) : v ?? null);
+    // SEO config needs the business defaults derived from the settings row. Tolerant
+    // of the `seo` column not existing yet (ADD-only — mergeSeoConfig fills defaults).
+    const settingsRows = await prisma
+      .$queryRawUnsafe<SettingsRow[]>('SELECT * FROM settings WHERE id = 1')
+      .catch(() => [] as SettingsRow[]);
+    return {
       banners: parse(row.banners) || [],
       festivalAds: parse(row.festival_ads) || {},
       festivalCategories: parse(row.festival_categories) || {},
@@ -75,8 +99,15 @@ router.get('/config', async (_req: Request, res: Response) => {
       socialProofNames: parse(row.social_proof_names) || [],
       currentFestival: row.current_festival || '',
       footer: parse(row.footer) || null, // null → web uses its built-in default footer
-    },
+      // Feature flags (ADD-only; absent column → all defaults ON). Clients default
+      // ON when `features` is undefined, so this is safe to ship before the SQL runs.
+      features: mergeFeatures(parse(row.features)),
+      // Global SEO config (ADD-only; absent column → settings-derived local defaults).
+      seo: mergeSeoConfig(parse(row.seo), settingsRows[0] || null),
+    };
   });
+  res.setHeader('Cache-Control', STATIC_CACHE);
+  return ok(res, { config });
 });
 
 // GET /api/announcement — active announcement banner

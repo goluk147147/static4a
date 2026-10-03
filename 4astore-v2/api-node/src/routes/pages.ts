@@ -7,7 +7,7 @@ import { ok, fail } from '../utils/http';
 const router = Router();
 
 export interface PageRow {
-  id: number; slug: string; title: string; meta_description: string | null; content: string;
+  id: number; slug: string; title: string; meta_description: string | null; meta_keywords?: string | null; content: string;
   show_in_footer: number | boolean; published: number | boolean; sort_order: number; updated_at: Date;
 }
 
@@ -16,6 +16,7 @@ export const toPage = (r: PageRow) => ({
   slug: r.slug,
   title: r.title,
   metaDescription: r.meta_description || '',
+  metaKeywords: r.meta_keywords || '',
   content: r.content || '',
   showInFooter: !!r.show_in_footer,
   published: !!r.published,
@@ -26,6 +27,9 @@ export const toPage = (r: PageRow) => ({
 // GET /api/pages — published pages for the footer (no content, keeps the payload small)
 router.get('/', async (_req: Request, res: Response) => {
   const rows = await prisma.$queryRawUnsafe<PageRow[]>(
+    // meta_keywords is intentionally NOT selected here: the footer list consumer does
+    // not need it and the column may be absent before prisma/seo.sql is applied. The
+    // per-page reads (GET /:slug, admin GET /pages) use SELECT * so they ride along.
     `SELECT id, slug, title, meta_description, '' AS content, show_in_footer, published, sort_order, updated_at
        FROM pages WHERE published = 1 ORDER BY sort_order ASC, id ASC`
   );

@@ -12,6 +12,38 @@ export interface Product {
   features?: string[];
   in_stock: boolean;
   featured?: boolean; // daily "Aaj ka Special" video picks these first
+  // Per-product SEO (ADD-only; API returns null when unset — see FEAT-001).
+  seo_title?: string | null;
+  seo_description?: string | null;
+  seo_keywords?: string | null;
+  og_image?: string | null;
+}
+
+/** Mirrors the API SeoConfig (api-node/src/seo/localSeo.ts). config.seo is always complete. */
+export interface SeoBusiness {
+  name: string;
+  address: string;
+  phone: string;
+  geo: { lat: number; lng: number };
+  openingHours: string;
+  priceRange: string;
+  areaServed: string[];
+}
+
+export interface SeoSocial {
+  whatsapp: string;
+  instagram: string;
+  facebook: string;
+}
+
+export interface SeoConfig {
+  titleTemplate: string;
+  defaultDescription: string;
+  defaultKeywords: string;
+  defaultOgImage: string;
+  robotsExtra: string;
+  social: SeoSocial;
+  business: SeoBusiness;
 }
 
 export interface Category {
@@ -56,6 +88,10 @@ export interface StoreConfig {
   socialProofNames: string[];
   currentFestival: string;
   footer?: Partial<import('./lib/footer').FooterConfig> | null;
+  /** Boolean feature flags from the API (config.features). Absent = all ON. */
+  features?: Record<string, boolean>;
+  /** Global SEO defaults + LocalBusiness info (config.seo). Always complete from the API. */
+  seo?: SeoConfig;
 }
 
 export interface Settings {

@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
-import { useProducts, useSettings } from '../lib/queries';
+import { useConfig, useProducts, useSettings } from '../lib/queries';
 import { useCart } from '../store/cart';
 import { productImageSrc, onProductImageError } from '../lib/productImage';
 import { SkeletonDetail } from '../components/Skeleton';
+import Seo from '../components/Seo';
+import { buildCanonical, deriveProductSeo, productJsonLd, breadcrumbJsonLd, localBusinessJsonLd } from '../lib/seo';
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -11,6 +12,7 @@ export default function ProductDetails() {
   const productsQ = useProducts();
   const products = productsQ.data ?? [];
   const settings = useSettings().data;
+  const config = useConfig().data;
   const product = products.find((p) => String(p.id) === id);
   const { add, items, setQty } = useCart();
 
@@ -28,17 +30,32 @@ export default function ProductDetails() {
   const inCart = items.find((i) => i.id === product.id);
   const hideMrp = settings?.hideMrp;
 
+  const seoCfg = config?.seo;
+  const derived = deriveProductSeo(product);
+  const canonical = buildCanonical(`/product/${product.id}`);
+  const seoImage = product.og_image || buildCanonical(productImageSrc(product));
+  const jsonLd = [
+    productJsonLd(product, seoCfg, canonical, seoImage),
+    breadcrumbJsonLd([
+      { name: 'Home', url: buildCanonical('/') },
+      { name: 'Products', url: buildCanonical('/products') },
+      { name: product.name, url: canonical },
+    ]),
+    localBusinessJsonLd(seoCfg),
+  ];
+
   return (
     <div className="container" style={{ padding: 16 }}>
-      <Helmet>
-        <title>{`${product.name} | 4A Store`}</title>
-        <meta name="description" content={product.description || product.name} />
-        <script type="application/ld+json">{JSON.stringify({
-          '@context': 'https://schema.org', '@type': 'Product', name: product.name, image: product.image,
-          description: product.description, brand: product.brand,
-          offers: { '@type': 'Offer', price: product.price, priceCurrency: 'INR', availability: product.in_stock ? 'InStock' : 'OutOfStock' },
-        })}</script>
-      </Helmet>
+      <Seo
+        title={product.seo_title || derived.title}
+        description={product.seo_description || product.description || derived.description}
+        keywords={product.seo_keywords || derived.keywords}
+        canonical={canonical}
+        image={seoImage}
+        jsonLd={jsonLd}
+        cfg={seoCfg}
+        features={config?.features}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
         <div style={{ background: '#fff', borderRadius: 12, padding: 20, textAlign: 'center' }}>

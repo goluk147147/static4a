@@ -6,6 +6,8 @@ import ProductCard from '../components/ProductCard';
 import AnnouncementPopup from '../components/AnnouncementPopup';
 import { SkeletonBanner, SkeletonAds, SkeletonCategories, SkeletonCards } from '../components/Skeleton';
 import { legacyToRoute, fillDeliveryPlaceholders } from '../lib/links';
+import { isFeatureOn } from '../lib/features';
+import { applyTitleTemplate, buildCanonical, organizationJsonLd, localBusinessJsonLd } from '../lib/seo';
 import './home.css';
 
 /** Banner images are stored as "data/banners/x.webp" (served from web/public/data). */
@@ -21,6 +23,12 @@ export default function Home() {
   const productsQ = useProducts();
   const products = productsQ.data ?? [];
 
+  // Feature flags (default ON when the API has no `features`).
+  const features = config?.features;
+  const socialProofOn = isFeatureOn(features, 'socialProof');
+  const animatedBannersOn = isFeatureOn(features, 'animatedBanners');
+  const seoOn = isFeatureOn(features, 'seoModule');
+
   // Original renderBanners(): general banners + the current festival's banners.
   const festival = config?.currentFestival || '';
   const allBanners = config?.banners ?? [];
@@ -35,18 +43,24 @@ export default function Home() {
 
   const [slide, setSlide] = useState(0);
   useEffect(() => {
-    if (banners.length < 2) return;
+    // `animatedBanners` off → keep the first banner static (no auto-advance).
+    if (!animatedBannersOn || banners.length < 2) return;
     const t = setInterval(() => setSlide((s) => (s + 1) % banners.length), 4000);
     return () => clearInterval(t);
-  }, [banners.length]);
+  }, [banners.length, animatedBannersOn]);
 
   return (
     <>
       <Helmet>
-        <title>4A Store | Online Grocery Delivery in Chandargarh</title>
-        <meta name="description" content="Fresh fruits, vegetables & daily essentials delivered fast in Chandargarh, Nabinagar, Bihar - 824301." />
+        <title>{applyTitleTemplate('Online Grocery Delivery in Chandargarh', config?.seo)}</title>
+        <meta name="description" content={config?.seo?.defaultDescription || 'Fresh fruits, vegetables & daily essentials delivered fast in Chandargarh, Nabinagar, Bihar - 824301.'} />
+        <meta name="keywords" content={config?.seo?.defaultKeywords || 'grocery delivery, kirana, online grocery, Chandargarh, Nabinagar, Bihar'} />
+        <link rel="canonical" href={buildCanonical('/')} />
+        {seoOn && [organizationJsonLd(config?.seo), localBusinessJsonLd(config?.seo)].map((entry, i) => (
+          <script key={i} type="application/ld+json">{JSON.stringify(entry)}</script>
+        ))}
       </Helmet>
-      <AnnouncementPopup />
+      {socialProofOn && <AnnouncementPopup />}
 
       {/* Hero Slider */}
       <section className="hero-slider">

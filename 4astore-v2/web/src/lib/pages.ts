@@ -7,6 +7,7 @@ export interface CmsPage {
   slug: string;
   title: string;
   metaDescription: string;
+  metaKeywords: string;
   content: string;
   showInFooter: boolean;
   published: boolean;

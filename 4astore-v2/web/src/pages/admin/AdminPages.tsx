@@ -12,7 +12,7 @@ type Form = PagePayload;
 
 const slugify = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 const blank = (order: number): Form => ({
-  slug: '', title: '', metaDescription: '', content: '<div class="legal-card">\n  <h1>Title</h1>\n  <p>Write here…</p>\n</div>',
+  slug: '', title: '', metaDescription: '', metaKeywords: '', content: '<div class="legal-card">\n  <h1>Title</h1>\n  <p>Write here…</p>\n</div>',
   showInFooter: true, published: true, sortOrder: order,
 });
 // Pages Google Play / users rely on — deleting them needs an extra warning.

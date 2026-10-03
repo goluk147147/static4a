@@ -71,6 +71,24 @@ export async function bumpCache() {
   return (await api.post('/admin/cache/bump', {})).data as { assetVersion: number };
 }
 
+// ---- Owner-only Data tools (import dummy data / factory reset) ----
+export interface DataStatus {
+  counts: { users: number; products: number; categories: number; orders: number };
+  ownerExists: boolean;
+}
+export interface ImportSummary {
+  categories: number; products: number; banners: number; ads: number; settings: true; announcement: true;
+}
+export async function dataStatus() {
+  return (await api.get('/admin/data/status')).data as DataStatus & { success: boolean };
+}
+export async function importDummyData() {
+  return (await api.post('/admin/data/import', {})).data as { summary: ImportSummary };
+}
+export async function factoryReset(confirm: string) {
+  return (await api.post('/admin/data/reset', { confirm })).data as { reset: boolean; ownerSeeded: boolean };
+}
+
 // ---- Banners ----
 export async function saveBanners(banners: unknown[]) {
   return (await api.post('/admin/banners', { banners })).data;
@@ -100,6 +118,17 @@ export async function deleteCategory(id: number) {
 // ---- Push ----
 export async function sendBroadcast(target: string, title: string, body: string, link?: string) {
   return (await api.post('/push/send', { target, title, body, link })).data;
+}
+
+// ---- Feature flags ----
+export async function saveFeatures(features: Record<string, boolean>) {
+  return (await api.post('/admin/features', { features })).data as { features: Record<string, boolean> };
+}
+
+// ---- SEO ----
+/** Save global SEO defaults + LocalBusiness info (POST /admin/seo). Partial payloads merge server-side. */
+export async function saveSeo(payload: Record<string, unknown>) {
+  return (await api.post('/admin/seo', payload)).data as { success?: boolean; seo: import('../types').SeoConfig };
 }
 
 export interface AdminOrder {

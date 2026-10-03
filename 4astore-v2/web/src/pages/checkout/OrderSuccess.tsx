@@ -59,10 +59,10 @@ export default function OrderSuccess({ order, storePhone }: { order: PlacedOrder
         💬 Send Order on WhatsApp / WhatsApp पर ऑर्डर भेजें
       </button>
 
-      <div style={{ marginTop: 20 }}>
-        <Link to="/orders" className="btn-primary" style={{ marginRight: 10 }}>View My Orders / मेरे ऑर्डर देखें</Link>
-        <Link to={`/track/${order.orderId}`} className="btn-primary" style={{ marginRight: 10 }}>Track Order / ऑर्डर ट्रैक करें</Link>
-        <Link to="/" className="btn-primary" style={{ background: 'var(--secondary)' }}>Continue Shopping / खरीदारी जारी रखें</Link>
+      <div style={{ marginTop: 24, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
+        <Link to="/orders" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 46, padding: '12px 22px' }}>View My Orders / मेरे ऑर्डर देखें</Link>
+        <Link to={`/track/${order.orderId}`} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 46, padding: '12px 22px' }}>Track Order / ऑर्डर ट्रैक करें</Link>
+        <Link to="/" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 46, padding: '12px 22px', background: 'var(--secondary)' }}>Continue Shopping / खरीदारी जारी रखें</Link>
       </div>
     </div>
   );

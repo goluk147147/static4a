@@ -16,10 +16,7 @@ interface Props {
 
 type UtrState = '' | 'success' | 'error';
 
-const isMobileDevice = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
 interface AndroidBridge {
-  openPaymentApp?: (app: string) => void;
   saveBase64File?: (data: string, name: string, mime: string) => void;
 }
 const androidApp = () => (window as unknown as { AndroidApp?: AndroidBridge }).AndroidApp;
@@ -29,7 +26,6 @@ export default function PaymentModal({ total, customerName, upiId, upiName, busy
   const qrSavedRef = useRef(false);
   const scanSeq = useRef(0);
 
-  const [launchStatus, setLaunchStatus] = useState<{ text: string; fallback: boolean }>({ text: '', fallback: false });
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [utr, setUtr] = useState('');
   const [utrStatus, setUtrStatus] = useState<{ text: string; state: UtrState }>({
@@ -126,63 +122,6 @@ export default function PaymentModal({ total, customerName, upiId, upiName, busy
     qrSavedRef.current = true;
     showToast('UPI QR डाउनलोड हो गया / QR saved to Downloads.', 'success');
     return true;
-  }
-
-  function scrollToQr() {
-    qrCanvasRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  /** Original launchUpiPayment(): save QR first, then open PhonePe / Google Pay. */
-  function launchUpiPayment(app: 'phonepe' | 'gpay') {
-    const android = androidApp();
-    if (!android && !isMobileDevice()) {
-      setLaunchStatus({ text: 'कंप्यूटर पर UPI App नहीं खुलेगा। QR सेव करके दूसरे फ़ोन से स्कैन करें।', fallback: true });
-      scrollToQr();
-      return;
-    }
-    if (!qrSavedRef.current && !downloadUpiQr()) {
-      setLaunchStatus({ text: 'QR सेव नहीं हुआ। पहले QR दोबारा सेव करें, फिर UPI App खोलें।', fallback: true });
-      scrollToQr();
-      return;
-    }
-    const appName = app === 'gpay' ? 'Google Pay' : 'PhonePe';
-    setLaunchStatus({ text: `QR सेव हो गया। ${appName} खुलने पर Scan QR → Gallery से QR चुनें।`, fallback: false });
-
-    if (android?.openPaymentApp) {
-      try {
-        android.openPaymentApp(app);
-        setLaunchStatus({ text: `${appName} खोल रहे हैं। खुलने के बाद Scan QR → Gallery से सेव किया QR चुनें।`, fallback: false });
-        return;
-      } catch {
-        /* fall back to the intent URL */
-      }
-    }
-
-    let appOpened = false;
-    const onVisibility = () => {
-      if (document.hidden) {
-        appOpened = true;
-        setLaunchStatus({ text: `${appName} खुल गया है। सेव किया QR Gallery से चुनकर भुगतान करें।`, fallback: false });
-        return;
-      }
-      if (appOpened) {
-        setLaunchStatus({ text: 'वापस आ गए हैं। भुगतान का स्क्रीनशॉट चुनें; UTR अपने-आप पढ़ा जाएगा।', fallback: false });
-        speakHindi(`प्रिय ${customerName || 'ग्राहक'}, भुगतान के बाद वापस आने के लिए धन्यवाद। अब भुगतान का स्क्रीनशॉट चुनें। UTR अपने-आप पढ़ने के बाद ऑर्डर पक्का करें।`);
-        document.removeEventListener('visibilitychange', onVisibility);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-    setTimeout(() => {
-      if (!document.hidden && !appOpened) {
-        setLaunchStatus({ text: `${appName} नहीं खुला? फ़ोन में App खोलकर Scan QR → Gallery से सेव किया QR चुनें।`, fallback: true });
-        scrollToQr();
-        document.removeEventListener('visibilitychange', onVisibility);
-      }
-    }, 1800);
-
-    const pkg = app === 'gpay' ? 'com.google.android.apps.nbu.paisa.user' : 'com.phonepe.app';
-    const fallbackUrl = `https://play.google.com/store/apps/details?id=${pkg}`;
-    window.location.href = `intent://launch#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
   }
 
   function copyUpiId() {
@@ -302,12 +241,7 @@ export default function PaymentModal({ total, customerName, upiId, upiName, busy
         <div style={{ color: '#087a3d', fontSize: 30, fontWeight: 850, marginBottom: 10 }}>₹{total}</div>
 
         <button className="upi-audio-button" type="button" onClick={() => speakHindi(guideMessage())}>🔊 निर्देश दोबारा सुनें</button>
-        <div className="upi-app-actions">
-          <button className="upi-pay-button" type="button" onClick={() => launchUpiPayment('phonepe')}>🟣 PhonePe खोलें</button>
-          <button className="upi-pay-button upi-gpay-button" type="button" onClick={() => launchUpiPayment('gpay')}>🟢 Google Pay खोलें</button>
-        </div>
-        <p className={`upi-launch-status${launchStatus.fallback ? ' fallback' : ''}`} role="status" aria-live="polite">{launchStatus.text}</p>
-        <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 12px' }}>पहले QR सेव करें, फिर UPI App में Scan QR → Gallery चुनें। कंप्यूटर पर दूसरे फ़ोन से QR स्कैन करें।</p>
+        <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 12px' }}>पहले QR सेव करें, फिर अपने फ़ोन की UPI App (PhonePe/GPay) में Scan QR → Gallery से सेव किया QR चुनें। कंप्यूटर पर दूसरे फ़ोन से QR स्कैन करें।</p>
 
         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 12, marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
