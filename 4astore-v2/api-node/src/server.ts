@@ -12,6 +12,7 @@ import ordersRouter from './routes/orders';
 import trackingRouter from './routes/tracking';
 import pushRouter from './routes/push';
 import adminRouter, { BANNER_DIR, ADS_DIR } from './routes/admin';
+import adminDataRouter from './routes/admin-data';
 import addressesRouter from './routes/addresses';
 import imgProxyRouter from './routes/imgProxy';
 import pagesRouter from './routes/pages';
@@ -20,6 +21,7 @@ import ogRouter from './routes/og';
 import seoRouter from './routes/seo';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
+import { seedDefaultOwner } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -47,6 +49,7 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/tracking', trackingRouter);
 app.use('/api/push', pushRouter);
 app.use('/api/admin/videos', videosRouter); // before /api/admin (own auth: staff + "ads")
+app.use('/api/admin', adminDataRouter); // owner-only /data/* (import, reset, status) — specific paths first
 app.use('/api/admin', adminRouter);
 app.use('/api/addresses', addressesRouter);
 app.use('/api/img-proxy', imgProxyRouter);
@@ -84,6 +87,8 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 app.listen(config.port, () => {
   // eslint-disable-next-line no-console
   console.log(`4AStore Node API running on http://localhost:${config.port} (${config.env})`);
+  // A fresh/emptied DB must always have an owner login (idempotent).
+  seedDefaultOwner().catch((e) => console.error('[seed] owner failed', e));
   startReminderJob();
   startVideoScheduler();
 });

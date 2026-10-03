@@ -56,6 +56,13 @@ export function hasPermission(user: AccessClaims | undefined, permission: string
   return false;
 }
 
+/** Blocks the request unless the authenticated user is the OWNER (not superadmin/admin). */
+export function requireOwner(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) return fail(res, 'Login required', 401);
+  if (req.user.role !== 'owner') return fail(res, 'Owner access required', 403);
+  return next();
+}
+
 export function requireStaff(permission: string) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) return fail(res, 'Login required', 401);

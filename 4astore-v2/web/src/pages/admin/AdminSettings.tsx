@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   fetchAdminSettings, saveAdminSettings, fetchAnnouncement, saveAnnouncement, saveFestival, bumpCache, downloadText,
-  saveFeatures, saveSeo, saveProduct, AdminSettings as SettingsT,
+  saveFeatures, saveSeo, saveProduct, importDummyData, factoryReset, AdminSettings as SettingsT,
 } from '../../lib/admin';
 import { apiError } from '../../lib/api';
+import { useAuth } from '../../store/auth';
 import { useConfig, useProducts, useSettings } from '../../lib/queries';
 import { FEATURE_KEYS, FEATURE_LABELS, isFeatureOn } from '../../lib/features';
 import { usePages, savePage, fetchAdminPages } from '../../lib/pages';
@@ -447,9 +449,56 @@ function CacheSettings() {
 
 function DataSettings() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const isOwner = user?.role === 'owner';
   const orders = useAdminOrders().data ?? [];
   const users = useAdminUsers().data ?? [];
   const products = useProducts().data ?? [];
+
+  // Owner-only tool state.
+  const [importing, setImporting] = useState(false);
+  const [dangerOpen, setDangerOpen] = useState(false);
+  const [resetWord, setResetWord] = useState('');
+  const [resetting, setResetting] = useState(false);
+
+  async function runImport() {
+    setImporting(true);
+    try {
+      const { summary } = await importDummyData();
+      // Refresh everything the import touches.
+      ['admin-settings', 'settings', 'config', 'products', 'announcement', 'admin-announcement'].forEach((k) =>
+        qc.invalidateQueries({ queryKey: [k] })
+      );
+      showToast(
+        `📥 Import done — ${summary.categories} categories, ${summary.products} products, ${summary.banners} banners, ${summary.ads} ads (+ settings, announcement)`,
+        'success'
+      );
+    } catch (e) {
+      showToast(apiError(e) || 'Import failed', 'error');
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function runFactoryReset() {
+    const sure = await showConfirm(
+      'FACTORY RESET: saara data (products, categories, orders, users — owner samet) delete ho jaayega aur ek naya default owner ban jaayega. Yeh wapas nahi aayega. Pakka?',
+      { title: '⚠️ Factory Reset', confirmText: 'Reset everything', danger: true }
+    );
+    if (!sure) return;
+    setResetting(true);
+    try {
+      await factoryReset('RESET');
+      showToast('🧨 Factory reset complete — fresh default owner seeded. Please log in again.', 'success');
+      await logout();
+      navigate('/admin');
+    } catch (e) {
+      showToast(apiError(e) || 'Factory reset failed', 'error');
+    } finally {
+      setResetting(false);
+    }
+  }
 
   async function reset(kind: 'orders' | 'users') {
     const ok = await showConfirm(kind === 'orders' ? 'Reload orders from the server?' : 'Reload users from the server?', { title: kind === 'orders' ? 'Reset orders' : 'Reset users', confirmText: kind === 'orders' ? 'Reset orders' : 'Reset users' });
@@ -483,11 +532,62 @@ function DataSettings() {
         <button type="button" onClick={() => exportData('all')} style={b('var(--primary)')}>📥 Export All Data</button>
       </div>
 
-      <h4 style={{ marginTop: 24, marginBottom: 12 }}>📤 Import Data</h4>
-      <p style={{ fontSize: 13, color: 'var(--gray)', maxWidth: 620 }}>
-        Purane admin me import sirf browser cache (localStorage) badalta tha, server data nahi. Ab data MySQL me hai, isliye import server-side
-        script se hota hai: <code>api-node/scripts/import-legacy-json.ts</code> (catalogue). Users/orders import ke liye pehle migration review zaroori hai.
-      </p>
+      {/* Owner-only: one-click import of the root data/*.json catalogue into MySQL. */}
+      {isOwner && (
+        <>
+          <h4 style={{ marginTop: 24, marginBottom: 12 }}>📤 Import Dummy Data (Owner only)</h4>
+          <p style={{ fontSize: 13, color: 'var(--gray)', maxWidth: 620, marginBottom: 10 }}>
+            Server ki <code>data/*.json</code> files (products, categories, config, settings, announcement, ads) ko MySQL me daalta hai.
+            Idempotent — baar-baar chalane par duplicate nahi banta, bas update hota hai. / Imports the root JSON catalogue; safe to re-run.
+          </p>
+          <button type="button" onClick={runImport} disabled={importing} style={b('#1565c0')}>
+            📥 {importing ? 'Importing…' : 'Import data from JSON'}
+          </button>
+        </>
+      )}
+
+      {/* Owner-only Danger Zone: destructive factory reset, gated behind an expander + typed RESET + double confirm. */}
+      {isOwner && (
+        <div style={{ marginTop: 28, border: '2px solid #e53935', borderRadius: 12, padding: 16, background: '#fff5f5', maxWidth: 640 }}>
+          <h4 style={{ margin: 0, color: '#b71c1c' }}>🧨 Danger Zone (Owner only)</h4>
+          <p style={{ fontSize: 13, color: '#b71c1c', margin: '8px 0 12px' }}>
+            Factory reset saara data (products, categories, orders, addresses, users — owner samet) hamesha ke liye delete kar deta hai,
+            phir ek fresh default owner bana deta hai. Yeh action undo nahi hota. / Wipes everything, then re-seeds the default owner.
+          </p>
+          {!dangerOpen ? (
+            <button type="button" onClick={() => setDangerOpen(true)} style={{ ...b('#b71c1c') }}>
+              I understand — show reset
+            </button>
+          ) : (
+            <div style={{ display: 'grid', gap: 10 }}>
+              <label style={albl} htmlFor="reset_word">
+                Type <strong>RESET</strong> to enable the button:
+              </label>
+              <input
+                id="reset_word"
+                value={resetWord}
+                onChange={(e) => setResetWord(e.target.value)}
+                placeholder="RESET"
+                autoComplete="off"
+                style={{ ...inp, maxWidth: 220, borderColor: '#e53935' }}
+              />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={runFactoryReset}
+                  disabled={resetWord !== 'RESET' || resetting}
+                  style={{ ...b('#b71c1c'), opacity: resetWord === 'RESET' && !resetting ? 1 : 0.5, cursor: resetWord === 'RESET' && !resetting ? 'pointer' : 'not-allowed' }}
+                >
+                  🧨 {resetting ? 'Resetting…' : 'Factory Reset Everything'}
+                </button>
+                <button type="button" onClick={() => { setDangerOpen(false); setResetWord(''); }} style={{ ...b('#666') }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }
