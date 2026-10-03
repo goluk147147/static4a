@@ -6,6 +6,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import App from './App';
 import Toasts from './components/Toasts';
 import ConfirmDialog from './components/ConfirmDialog';
+import { restoreCache, startPersisting } from './lib/persistCache';
 import './app-extra.css';
 
 // Original app.js checkAssetVersion(): when the admin clicks "Clear Cache & Update
@@ -30,6 +31,11 @@ checkAssetVersion();
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 60_000, refetchOnWindowFocus: false } },
 });
+
+// Seed the cache from the last localStorage snapshot so a refresh shows the last
+// products/categories/config/settings instantly, then revalidate in background.
+restoreCache(queryClient);
+startPersisting(queryClient);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

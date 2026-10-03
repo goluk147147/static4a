@@ -7,6 +7,7 @@ import { showToast } from '../../store/toast';
 import { showConfirm } from '../../store/confirm';
 import { useAdminOrders, useAdminUsers, formatDate, ADMIN_ORDERS_KEY, AdminUserRow } from './adminData';
 import AdminModal from './AdminModal';
+import PasswordInput from '../../components/PasswordInput';
 
 const STAFF = ['owner', 'superadmin', 'admin'];
 const MOBILE_RE = /^[6-9]\d{9}$/;
@@ -76,7 +77,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: AdminUserRow; onClose
           </select>
         </label>
         <label className="full">New password <small style={{ color: 'var(--gray)' }}>(leave blank to keep current)</small>
-          <input type="password" autoComplete="new-password" value={f.password} onChange={(e) => set('password', e.target.value)} />
+          <PasswordInput autoComplete="new-password" value={f.password} onChange={(e) => set('password', e.target.value)} />
         </label>
       </div>
       <button type="button" onClick={save} disabled={busy} style={{ width: '100%', marginTop: 16, padding: 11, background: 'var(--primary)', color: '#fff', border: 0, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>

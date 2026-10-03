@@ -8,6 +8,7 @@ import { showToast } from '../../store/toast';
 import { showConfirm } from '../../store/confirm';
 import { canAdmin, useAdminOrders } from './adminData';
 import { useOrderNotifications, unlockNotifAudio } from './useOrderNotifications';
+import PasswordInput from '../../components/PasswordInput';
 import './admin.css';
 
 const STAFF_ROLES = ['owner', 'superadmin', 'admin'];
@@ -91,7 +92,7 @@ function AdminLogin() {
             <label htmlFor="adminUser">Admin Username</label>
             <input type="text" id="adminUser" placeholder="Enter admin username" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} />
             <label htmlFor="adminPass" style={{ marginTop: 10 }}>Admin Password</label>
-            <input type="password" id="adminPass" placeholder="Enter admin password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <PasswordInput id="adminPass" placeholder="Enter admin password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             <div className="error-msg">Incorrect username or password</div>
           </div>
           <button className="btn-checkout" type="submit" disabled={busy}>{busy ? '⏳ Signing in…' : '🔓 SIGN IN'}</button>

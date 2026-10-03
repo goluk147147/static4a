@@ -6,6 +6,7 @@ import { useAuth } from '../../store/auth';
 import { showToast } from '../../store/toast';
 import { showConfirm } from '../../store/confirm';
 import AdminModal from './AdminModal';
+import PasswordInput from '../../components/PasswordInput';
 
 const fieldStyle: React.CSSProperties = { padding: 9, border: '1px solid var(--border)', borderRadius: 7, minWidth: 0 };
 
@@ -54,7 +55,7 @@ function EditAdminModal({ admin, onClose, onSaved }: { admin: AdminUser; onClose
         <input value={name} onChange={(e) => setName(e.target.value)} style={input} />
       </label>
       <label style={{ display: 'block', fontSize: 12, fontWeight: 700, margin: '10px 0 5px' }}>New password <small style={{ color: 'var(--gray)' }}>(optional)</small>
-        <input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} style={input} />
+        <PasswordInput autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} style={input} />
       </label>
       <div style={{ margin: '12px 0' }}><PermChecks value={perms} onChange={setPerms} /></div>
       <button type="button" onClick={save} disabled={busy} style={{ width: '100%', padding: 10, background: '#2e7d32', color: '#fff', border: 0, borderRadius: 7, fontWeight: 700, cursor: 'pointer' }}>
@@ -128,7 +129,7 @@ export default function AdminTeam() {
           <input placeholder="Username" aria-label="Username" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} style={fieldStyle} />
           <input placeholder="Name" aria-label="Name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} style={fieldStyle} />
           <input placeholder="Mobile (10-digit)" aria-label="Mobile" inputMode="numeric" maxLength={10} value={f.mobile} onChange={(e) => setF({ ...f, mobile: e.target.value.replace(/\D/g, '') })} style={fieldStyle} />
-          <input type="password" placeholder="Password (8+ chars)" aria-label="Password" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} style={fieldStyle} />
+          <PasswordInput placeholder="Password (8+ chars)" aria-label="Password" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} style={fieldStyle} wrapperStyle={{ minWidth: 0 }} />
         </div>
         <div style={{ margin: '10px 0' }}><PermChecks value={perms} onChange={setPerms} /></div>
         <button type="button" onClick={createAdmin} style={{ padding: '9px 14px', background: '#2e7d32', color: '#fff', border: 0, borderRadius: 7, fontWeight: 700, cursor: 'pointer' }}>Create Admin</button>
