@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Logo from './Logo';
+import Icon from './Icon';
 import { colors, topBarGradient, warmGradient } from '../theme';
 import { useAuth } from '../store/auth';
 import { useCartCount } from '../store/cart';
@@ -29,8 +30,8 @@ export default function StoreHeader({ back, title, hideSearch }: { back?: boolea
 
       <View style={styles.row}>
         {back && (
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} style={styles.back} accessibilityRole="button" accessibilityLabel="Back" hitSlop={8}>
-            <Text style={{ fontSize: 22, color: colors.dark }}>←</Text>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} style={styles.back} accessibilityRole="button" accessibilityLabel="Back / पीछे" hitSlop={8}>
+            <Icon name="back" size="lg" color={colors.dark} />
           </Pressable>
         )}
         <Pressable onPress={() => router.push('/')} accessibilityRole="link" accessibilityLabel="4A Store home">
@@ -46,14 +47,14 @@ export default function StoreHeader({ back, title, hideSearch }: { back?: boolea
           {user ? (
             <View style={styles.avatar}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{user.name.charAt(0).toUpperCase()}</Text></View>
           ) : (
-            <Text style={styles.icon}>👤</Text>
+            <Icon name="profile" size="lg" />
           )}
         </Pressable>
-        <Pressable onPress={() => router.push('/orders')} style={styles.action} accessibilityRole="button" accessibilityLabel="Orders">
-          <Text style={styles.icon}>📋</Text>
+        <Pressable onPress={() => router.push('/orders')} style={styles.action} accessibilityRole="button" accessibilityLabel="Orders / ऑर्डर">
+          <Icon name="orders" size="lg" />
         </Pressable>
-        <Pressable onPress={() => router.push('/cart')} style={styles.action} accessibilityRole="button" accessibilityLabel={`Cart, ${count} items`}>
-          <Text style={styles.icon}>🛒</Text>
+        <Pressable onPress={() => router.push('/cart')} style={styles.action} accessibilityRole="button" accessibilityLabel={`Cart, ${count} items / कार्ट`}>
+          <Icon name="cart" size="lg" />
           {count > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{count}</Text></View>}
         </Pressable>
       </View>
@@ -74,7 +75,7 @@ export default function StoreHeader({ back, title, hideSearch }: { back?: boolea
           />
           <Pressable onPress={submit} style={styles.searchBtn} accessibilityRole="button" accessibilityLabel="Search">
             <LinearGradient colors={warmGradient} style={styles.searchGrad}>
-              <Text style={{ fontSize: 15 }}>🔍</Text>
+              <Icon name="search" size="sm" />
             </LinearGradient>
           </Pressable>
         </View>
@@ -88,7 +89,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 8, paddingBottom: 6, gap: 2 },
   back: { paddingRight: 8, paddingVertical: 4 },
   action: { padding: 8, minWidth: 40, minHeight: 40, alignItems: 'center', justifyContent: 'center' },
-  icon: { fontSize: 20 },
   avatar: { backgroundColor: colors.primary, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 0, right: 0, backgroundColor: colors.accent, minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },

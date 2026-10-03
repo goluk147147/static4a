@@ -79,9 +79,11 @@ const config: ExpoConfig = {
       'expo-splash-screen',
       { image: './assets/images/splash.png', imageWidth: 220, resizeMode: 'contain', backgroundColor: '#FFFFFF' },
     ],
-    // `icon` = the small status-bar icon; also used as the fallback large icon so every
-    // notification shows the 4A Store mark even when the push carries no image.
-    ['expo-notifications', { icon: './assets/images/icon.png', color: '#FF7A00', defaultChannel: 'default' }],
+    // `icon` = the Android small status-bar icon. It MUST be a white, transparent,
+    // monochrome silhouette (Android tints/masks it to white) — a full-colour logo
+    // renders as a white blob. The new icon only takes effect after an APK rebuild
+    // (npm run prebuild && npm run build:apk). Large icon / app logo stay as-is.
+    ['expo-notifications', { icon: './assets/images/notification-icon.png', color: '#FF7A00', defaultChannel: 'default' }],
     [
       'expo-location',
       { locationWhenInUsePermission: '4A Store uses your location for delivery tracking and to check the delivery area.' },

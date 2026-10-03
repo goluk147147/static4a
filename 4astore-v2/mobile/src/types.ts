@@ -62,6 +62,8 @@ export interface StoreConfig {
   socialProofMessages: string[];
   socialProofNames: string[];
   currentFestival: string;
+  /** Boolean feature flags from `GET /api/config` config.features. Absent → treat all as ON. */
+  features?: Record<string, boolean>;
 }
 
 export interface Settings {

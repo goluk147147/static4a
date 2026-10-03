@@ -8,6 +8,7 @@ import AnnouncementPopup from '../../src/components/AnnouncementPopup';
 import SocialProof from '../../src/components/SocialProof';
 import { AnimatedGradient, GradientButton, Loading, styles as ui } from '../../src/components/ui';
 import { useCategories, useConfig, useProducts, useSettings, queryClient } from '../../src/queries';
+import { isFeatureOn } from '../../src/features';
 import { fillDeliveryPlaceholders, openLink } from '../../src/links';
 import { absoluteUrl } from '../../src/config';
 import { colors, radius, shadow } from '../../src/theme';
@@ -22,6 +23,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
 
   const config = configQ.data;
+  const animatedBanners = isFeatureOn(config?.features, 'animatedBanners');
   const allCategories = categoriesQ.data ?? [];
   const categories = allCategories.filter((c) => !c.hidden);
   const products = productsQ.data ?? [];
@@ -109,7 +111,7 @@ export default function Home() {
                     ) : (
                       // Image-less banners share ONE animated warm gradient so every banner looks
                       // consistent and alive (same colour family as buttons/header).
-                      <AnimatedGradient style={{ flex: 1 }}>
+                      <AnimatedGradient style={{ flex: 1 }} animated={animatedBanners}>
                         {content}
                       </AnimatedGradient>
                     )}

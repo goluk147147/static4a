@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, Text } from 'react-native';
 import { useConfig, useProducts } from '../queries';
+import { isFeatureOn } from '../features';
 import { colors, shadow } from '../theme';
 
 /** Live social-proof toast on the home screen ("Rahul from Chandargarh just ordered…"). */
 export default function SocialProof() {
   const cfg = useConfig().data;
+  const enabled = isFeatureOn(cfg?.features, 'socialProof');
   const products = useProducts().data ?? [];
   const [msg, setMsg] = useState('');
   const [opacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
+    if (!enabled) return;
     const messages = cfg?.socialProofMessages ?? [];
     const names = cfg?.socialProofNames ?? [];
     if (!messages.length) return;
@@ -38,9 +41,9 @@ export default function SocialProof() {
       clearTimeout(hide);
       clearInterval(iv);
     };
-  }, [cfg, products, opacity]);
+  }, [cfg, enabled, products, opacity]);
 
-  if (!msg) return null;
+  if (!enabled || !msg) return null;
   return (
     <Animated.View
       pointerEvents="none"

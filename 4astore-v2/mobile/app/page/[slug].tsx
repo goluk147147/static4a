@@ -28,11 +28,17 @@ export default function CmsPage() {
         <View style={{ padding: 14 }}><EmptyState icon="📄" title="Page not found" text="Ye page maujood nahi hai ya abhi published nahi hai." /></View>
       ) : (
         <WebView
-          originWhitelist={['about:*']}
+          // `originWhitelist` must allow the `source.baseUrl` (SITE_URL) origin, otherwise the
+          // very first load of our inline HTML is blocked and the page renders blank. We keep
+          // `baseUrl` so relative links in CMS content still resolve, and allow all origins for
+          // the initial render — JS stays disabled and every navigation is intercepted below.
+          originWhitelist={['*']}
           source={{ html, baseUrl: SITE_URL }}
           javaScriptEnabled={false}
           onShouldStartLoadWithRequest={(req) => {
-            if (req.url.startsWith('about:') || req.url === `${SITE_URL}/`) return true;
+            // Allow the initial document render (our own inline HTML on the SITE_URL baseUrl)
+            // and about: blanks; intercept every other navigation into the app / browser.
+            if (req.url.startsWith('about:') || req.url === SITE_URL || req.url === `${SITE_URL}/`) return true;
             const route = legacyToRoute(req.url, '/');
             if (route.startsWith('/')) router.push(route as never);
             else Linking.openURL(req.url).catch(() => null);

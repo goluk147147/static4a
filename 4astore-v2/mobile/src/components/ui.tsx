@@ -249,13 +249,18 @@ export function AnimatedGradient({
   children,
   style,
   colors: colorsOverride,
+  animated = true,
 }: {
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
   colors?: readonly [string, string, ...string[]];
+  /** When false, render a single static gradient (same colours) with no looping sweep.
+   *  Driven by the `animatedBanners` feature flag so the owner can calm it from admin. */
+  animated?: boolean;
 }) {
   const t = React.useRef(new Animated.Value(0)).current;
   React.useEffect(() => {
+    if (!animated) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(t, { toValue: 1, duration: 3500, useNativeDriver: false }),
@@ -264,12 +269,21 @@ export function AnimatedGradient({
     );
     loop.start();
     return () => loop.stop();
-  }, [t]);
+  }, [t, animated]);
   const start = { x: 0, y: 0 };
   const end = { x: 1, y: 1 };
   // Animate by cross-fading two gradients at different diagonal angles.
   const topOpacity = t.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
   const g = colorsOverride || warmGradient;
+  if (!animated) {
+    // Static single gradient — identical colours, no shimmer.
+    return (
+      <View style={style}>
+        <LinearGradient colors={g} start={start} end={end} style={StyleSheet.absoluteFill} />
+        {children}
+      </View>
+    );
+  }
   return (
     <View style={style}>
       <LinearGradient colors={g} start={start} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
