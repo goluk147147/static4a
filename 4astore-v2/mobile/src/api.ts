@@ -43,6 +43,8 @@ interface RequestOpts {
   params?: Query;
   /** internal: already retried after refresh */
   _retried?: boolean;
+  /** internal: already retried once after a transient network/timeout blip (GET only) */
+  _netRetried?: boolean;
 }
 
 function buildUrl(path: string, params?: Query) {
