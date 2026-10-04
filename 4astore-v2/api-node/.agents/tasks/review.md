@@ -1,86 +1,82 @@
-# Latency fix: Prisma pool singleton, HTTP caching, and index sync
+# Legacy users + orders import with dual-password scheme
 
-The change targets the ~1-minute app-loader symptom by attacking connection/pool pressure rather than query time (the diagnosis in PERF-FINDINGS.md established that single-row `WHERE id=1` reads are ~4ms locally, so the cost is handshake/pool contention on the live box). It makes `PrismaClient` a process-wide singleton, adds explicit `connection_limit`/`pool_timeout` to `DATABASE_URL`, puts `Cache-Control` + weak ETag on the six rarely-changing public GETs so repeat launches return `304` and skip the DB, syncs `schema.prisma` `@@index` declarations to the indexes already live in `db/schema.sql` (so a future `prisma migrate`/`db push` won't drop them), ships a guarded idempotent `CREATE INDEX` script for the two genuinely-missing order indexes, and rewrites the customer "my orders" lookup to prefer the indexed `user_id` FK over an unindexable JSON-path scan. A gated no-op timing middleware is added for live diagnosis.
+The change extends the existing shared legacy-JSON importer (`src/services/dataImport.ts`) so a full reset-and-reload now also seeds users and orders, not just the catalogue. Users get a dual-password treatment: a bcrypt hash for login plus an owner-approved readable `plain_password` column (added by a guarded raw ALTER, kept out of the Prisma model) for phone support. Orders are remapped to the new user ids via an old→new map read back by unique mobile, with orphan orders kept at `user_id = null`. Users are imported before orders inside `runImport()`, so the admin API and the CLI share one path; the catalogue importers are untouched and addresses are intentionally not imported. The evidence (`verification.md`) records a clean `tsc --noEmit` (exit 0) and a correctness trace against the real `data/*.json`; no live DB run was done in the worktree, which is acceptable given the one-shot EC2 migration path.
 
-Watch for: the customer `/orders` filter widened from a single mobile match to `user_id OR mobile` — this is an intentional superset that returns the same-or-more owner orders (confirmed), with field/order shape unchanged; no shrinkage risk. All response bodies are byte-identical; only headers were added.
+Watch for: one off-by-one in the EC2 runbook's verification SELECT comment (`plain_password NOT NULL → 29`, actual is 28 because the owner-mobile row is skipped) — **confirmed**, documentation-only, non-blocking. Everything else — password branches, dedup/guards, owner skip, id remap, order mapping, idempotency, no new dependency, no API/response-shape change — checks out against the data and the schema.
 
 **Verdict**: APPROVED
 
 ## High-level view
 
-The response-shape constraint holds. The catalog routes only call `res.setHeader('Cache-Control', ...)` before the existing `ok(res, {...})` payloads — no body construction changed, so `/products`, `/categories`, `/settings`, `/config`, `/announcement`, `/version` return identical JSON. The orders route keeps its staff branch (`orderBy id desc`, all orders) untouched; the customer branch changes only the `where` predicate, not the selected fields or ordering.
+The readable-password store is handled the right way for a deliberate security exception. `ensurePlainPasswordColumn()` adds `plain_password` with a guarded, idempotent raw ALTER (information_schema check plus a swallow of MySQL error 1060) and no prisma migrate. The column is deliberately absent from the Prisma `User` model, so `prisma.user.find*` never selects it and the existing `safeUser()` cannot leak it through any API — a clean way to honor the owner's request without widening the API surface. The security caveat is spelled out in both the code and the EC2 runbook.
 
-The orders filter change is a behavioral widening, not a shape change. Previously a customer saw orders whose `customer->'$.mobile'` equals their mobile. Now, when the viewer is the logged-in owner with no explicit `?mobile=` override, they see orders matching `user_id OR the mobile JSON-path`. This can only add rows (owner's orders that were saved with a null/legacy `user_id` still match via the JSON path; owner's orders saved under their id now also match). The explicit `?mobile=` lookup and the staff path keep the exact old predicate.
+The user import covers every password branch the task requires, even the ones the current data never exercises. Plaintext passwords become bcrypt(10) with the plaintext mirrored into `plain_password`; PHP `$2y$` hashes get the `$2b$` prefix swap bcryptjs needs and a null readable; a missing password produces a random bcrypt hash, null readable, and a log line. Username dedup runs on the lowercased value (matching the login lookup), logs every rename, and never drops a row; a repeated mobile is skipped; the `7543888698` owner row is skipped so `seedDefaultOwner()` stays authoritative. The old→new id map is built by reading rows back on unique mobile rather than trusting autoincrement order.
 
-The index work is internally consistent. Every pre-existing `@@index` map name in `schema.prisma` matches a `KEY` in `db/schema.sql` one-for-one, so declaring them is pure drift-correction that protects them from a future migrate. The two new indexes (`idx_orders_user` on `user_id`, `idx_orders_date` on `order_date`) are the only entries in `perf-indexes.sql`, and both columns are actually used: `user_id` by the new orders filter, `order_date` by the reminder job's `WHERE order_date <= cutoff ORDER BY order_date asc`.
+Order import resolves `user_id` through that map, keeps orphans at null rather than rejecting them, stores customer/items as JSON, preserves the real payment method (UPI/Cash), captures the one real 12-char `paymentReference` present in the data (and nulls it otherwise), and upserts idempotently by `order_id`.
 
-The SQL script is non-destructive and MariaDB-safe. It contains only `SELECT`/`CREATE INDEX`, each add guarded by an `information_schema.STATISTICS` count so re-running is a no-op rather than an error (MariaDB 10.4 lacks `CREATE INDEX IF NOT EXISTS`). No drops, no data changes.
-
-The pool and caching posture match the constraints. `src/db.ts` is now a `globalThis.__prisma` singleton. Caching lands only on static GETs; `/products` gets a shorter 15s TTL so admin stock/price edits surface quickly, and authenticated/polled routes (`/orders`, `/tracking`) stay uncached.
+The wiring puts users before orders in `runImport()` and leaves the catalogue importers and all orders/auth/rider API behavior untouched. No npm dependency was added (`crypto` is a Node builtin, `bcryptjs` already present). The one defect is a stale expected-count comment in the runbook; the code and the trace both land on the correct value.
 
 <details>
 <summary>Issues (2)</summary>
 
-1. **Orders filter widening (non-blocking, confirmed)** — the owner `/orders` branch now matches `user_id OR mobile` instead of mobile alone; it can only return a superset of the prior rows, never fewer, and shape/order are unchanged. Confirm the product intent is "show all orders I own" (it is the sensible reading); no code change required.
-2. **Public cache TTL on `/settings` and `/config` (non-blocking, possible)** — a 30s `max-age` means admin changes to settings/config/announcement can take up to 30s to appear on already-loaded clients. This matches the stated "rarely-changing" intent, but confirm 30s staleness is acceptable for announcement/store-config edits.
+1. **Runbook count off by one** — `.agents/tasks/RUN-ON-EC2.md` §6 states `SELECT COUNT(*) FROM users WHERE plain_password IS NOT NULL; -- 29 (28 plaintext users + owner)`. The owner-mobile row (legacy id 5, a plaintext user) is skipped, so 27 imported customers + owner = **28**. `verification.md` already corrected this to 28; update the runbook SELECT comment to match so the operator doesn't read a correct import as a failure. Non-blocking.
+2. **`delivery_address` left stale on re-import if a future order drops its customer** — in `importOrders`, `delivery_address: deliveryAddress ?? undefined` means "don't update this column" on the upsert's UPDATE branch when both `deliveryAddress` and `customer` are absent. All 16 current orders carry a customer object so this never fires today; it's a latent edge, not a current bug. Possible — worth a null (not undefined) if you want re-imports to be able to clear the field. Non-blocking.
 
 </details>
 
 <details>
 <summary>Details</summary>
 
-### Response-shape invariance on catalog GETs
+### plain_password: guarded column, kept off the Prisma model
 
-Each of the six public handlers inserts a single `res.setHeader('Cache-Control', ...)` immediately before the pre-existing `ok(res, {...})` return. The payload objects (`{ products }`, `{ categories }`, the hand-mapped `publicSettings`, the parsed `config`, `announcement`, and the `version*` fields) are unchanged in the diff. Bodies are byte-identical; only a header and Express's weak ETag are added, so conditional requests short-circuit to `304` without touching the DB.
+`ensurePlainPasswordColumn()` queries `information_schema.columns` under `DATABASE()` and only runs `ALTER TABLE users ADD COLUMN plain_password VARCHAR(255) NULL` when absent, inside a try/catch that rethrows anything that is not a duplicate-column error (`/1060|Duplicate column/i`) — idempotent and safe under a concurrent second runner. It is called at the top of both `importUsers` and `seedDefaultOwner`, so the column exists whether or not a reset seeds the owner before any import runs.
 
-`/products` is deliberately held to `public, max-age=15` versus `30` for the rest, so admin stock/price edits appear quickly — consistent with the constraint to keep `/products` fresh. The weak ETag path means even within the TTL window a changed body yields a new validator, so a client that revalidates won't be served stale product data beyond its own cache window.
+The decision not to add `plain_password` to the Prisma `User` model is the load-bearing security control: because the model does not declare it, `prisma.user.find*` never selects it and `safeUser()` (which strips only `password`) has nothing to strip — the readable value cannot escape through the users or auth endpoints. The schema carries a doc-only commented line instructing that anyone who later promotes it to a real field MUST also strip it in `safeUser()`. The exception is narrow, documented, and structurally prevented from leaking rather than relying on every future query remembering to exclude the column.
 
-### Orders owner-lookup: indexed FK with JSON-path fallback
+### Password branches
 
 ```
-viewer is owner, no ?mobile override
-        │
-        ▼
-  OR ─┬─ user_id = BigInt(viewer.sub)        ← indexed (idx_orders_user)
-      └─ customer->'$.mobile' = viewer.mobile ← legacy/null-user_id orders
+plaintext password  -> password = bcrypt.hashSync(pwd, 10);  plain_password = pwd
+$2y$ hash only       -> password = pwd.replace(/^\$2y\$/, '$2b$');  plain_password = null;  noReadable++
+neither              -> password = bcrypt(random 16 bytes hex);  plain_password = null;  noReadable++;  logged
 ```
 
-The staff branch (`findMany({ orderBy: { id: 'desc' } })`) is untouched. The explicit `?mobile=` branch keeps the exact original JSON-path-only predicate. Only the owner-no-override branch gains the `OR`. Because it is a union with the original predicate, the result set is a superset of the old one — the fallback leg guarantees no order that previously showed up can disappear, and `orderBy: { id: 'desc' }` plus the returned fields are identical. `BigInt(viewer.sub)` is guarded by the `viewer.sub` truthiness check in `canUseOwnerId`, so no `BigInt(undefined)` throw.
+The `$2y$`→`$2b$` swap is required, not cosmetic: bcryptjs rejects the `$2y$` prefix PHP emits, so without the swap those 14 accounts could never log in. The branch order checks `password` (plaintext) before `passwordHash`, which matches the data — no row carries both in a way that would conflict. The random-password branch never fires on the current 42 rows (0 have neither) but is present and logs the affected id, as required. Against the real file this yields 28 plaintext, 14 hash-only, 0 neither, so `noReadable = 14`.
 
-The one judgement call is semantic: an owner now also sees orders tied to their `user_id` even if those were stored under a different mobile. That is the correct reading of "my orders" and strictly additive, but it is a behavior change worth naming.
+### Dedup, mobile guard, and owner skip
 
-### Index declarations vs. live schema
+Usernames are lowercased before both the dedup check and the insert, which is correct because the login route looks users up by `username.toLowerCase()`; deduping on the raw value would let a casing variant slip past and then fail at the unique index. On a collision the code appends `-<legacyId>`, then `-2`, `-3`… if still colliding, truncates to 64 chars, logs the rename, and never drops the row.
 
-The nine pre-existing `@@index(map: ...)` entries added to `schema.prisma` each correspond one-for-one to a `KEY` in `db/schema.sql` (verified: `idx_users_role`, `idx_refresh_user`, `idx_otp_email`, `idx_products_category`, `idx_products_instock`, `idx_addresses_user`, `idx_orders_status`, `idx_orders_rider`, `idx_device_user`). Declaring them corrects schema drift so a future `prisma migrate`/`db push` won't drop indexes the live DB depends on — a real, non-cosmetic safety fix. The two new declarations (`idx_orders_user`, `idx_orders_date`) match the SQL script exactly in name and column.
+Worth noting against the task framing: the "duplicates" in the data are name-level, not username-level. Legacy id 5 ("Chhotu kumar", username `chhotu`) and id 35 ("Avinash Gupta", username `chhotu kumar`) are distinct usernames; the two "lalit chaudhary" rows (id 36 username `prasun anand`, id 37 username `lalit chaudhary`) also differ at the username level. All 42 lowercased usernames are unique, so `renamed = 0` on this data. Deduping on username rather than name is the correct call here precisely because login is username-based — the name collisions are irrelevant to login uniqueness.
 
-Both new indexes target columns that are actually filtered/sorted: `user_id` by the new owner-orders `OR`, and `order_date` by `services/reminderJob.ts` (`where: { order_date: { lte: cutoff } }, orderBy: { order_date: 'asc' }`). Neither is a speculative index.
+The owner-mobile skip fires on exactly one row: legacy id 5 has mobile `7543888698`, equal to the seeded owner, so it is skipped before any insert (`skipped = 1`) and `seedDefaultOwner()` stays authoritative for that login. The mobile-collision guard (a `Set` of used mobiles) protects the unique index against a repeat; no repeat exists in the data, so it is defensive. Net: 41 imported + seeded owner = 42 logins.
 
-### perf-indexes.sql: non-destructive and re-runnable on MariaDB 10.4
+### oldId → newId map by read-back
 
-The script contains only `SET`/`SELECT`/`PREPARE`/`CREATE INDEX` — no `DROP`, `ALTER … DROP`, `DELETE`, `UPDATE`, or `TRUNCATE`. Each `CREATE INDEX` is gated by a count against `information_schema.STATISTICS` scoped to `DATABASE()`, so a second run resolves to a harmless `SELECT '… already exists'` instead of the duplicate-key error a bare `CREATE INDEX` would raise on 10.4 (which has no `IF NOT EXISTS`). The index names are distinct from the already-present `idx_orders_*`, so no collision. Scoping to `DATABASE()` means it acts on whichever schema the connection targets, which matches the documented `mysql … four_a_store < perf-indexes.sql` invocation.
+After the insert loop, the map is built by `prisma.user.findMany({ where: { mobile: { in: insertedMobiles } }, select: { id, mobile } })` and matching legacy `row.id` to the DB id via mobile. This avoids assuming autoincrement order, which matters because an upsert against existing rows would not produce sequential ids. The owner-skipped legacy id 5 is deliberately absent from the map, so its orders correctly fall through to `user_id = null`.
 
-### Prisma singleton and pool
+### Order mapping and idempotency
 
-`src/db.ts` stashes the client on `globalThis.__prisma` and reuses it, which prevents `ts-node-dev --respawn` from leaking an extra client (and pool) per hot-reload — one of the named causes of live connection pressure. The BigInt `toJSON` patch and the `prisma` export name are preserved. The live `.env` must receive the same `connection_limit`/`pool_timeout` params as `.env.example` for the pool fix to take effect — correctly flagged in PERF-FINDINGS DEPLOY, but it is a manual deploy step, so the fix is inert until that happens.
+`user_id = o.userId != null ? userIdMap.get(Number(o.userId)) ?? null : null` keeps orphan orders rather than rejecting them — the two orders with a null `userId` (`4A5B749F7D`, `4A59CC88FF`) land at `user_id = null` with their customer snapshot preserved in the `customer` JSON column. `payment_method` is `o.paymentMethod ?? 'UPI'`, so the 14 UPI and 2 Cash values are preserved rather than forced. `payment_reference` is `o.paymentReference ?? null`; the one order that carries a reference (`4A698686` → `708338085028`, exactly 12 chars) fits the `VARCHAR(12)` unique column, and the nullable unique column tolerates the 15 nulls. `order_status` falls back `orderStatus ?? status ?? 'Order Placed'`, and `order_date` uses `parseDate(...) ?? new Date()`. The upsert is keyed on the unique `order_id`, so re-runs update in place. `customer`/`items` are required `Json` columns and are always supplied; `delivery_address` is `Json?` and is omitted via `undefined` when absent (see issue 2 for the one latent edge).
+
+### Wiring, scope, and constraints
+
+`runImport()` runs the catalogue/config/settings/announcement importers unchanged, then `importUsers()` and `importOrders(usersResult.userIdMap)` — users strictly before orders so the id map exists when orders are mapped. The `ImportSummary` interface gained `users`, `orders`, `usersSkipped`, `usersRenamed`, `usersNoReadable`, and the CLI prints them. The contract decision is stated in both the file header and the verification notes: the old "users/orders NOT imported" wording was documentation, not a consumed API contract, and `runImport` is called only by the admin route and the CLI, so folding users+orders into the single path keeps them in lockstep — a reasonable, clearly-justified choice. addresses.json is not imported, as required. No npm dependency was added: `package.json` is untouched by the commit, `bcryptjs` was already a dependency, and `crypto` is a Node builtin. The commit touches only the importer, the CLI, the schema comment, and task docs — orders/tracking/rider/auth routes and response shapes are not modified.
 
 ### Verification evidence
 
-PERF-FINDINGS.md records `npx prisma validate` ✅, `npx tsc --noEmit` exit 0, `npm run build` exit 0, and an idempotency check of the SQL script (second run printed "already exists", exit 0), plus an endpoint smoke table showing the `Cache-Control` values and a `304` on `If-None-Match` for `/products`, and `/orders` unauth → `401` (business logic intact). The one `npx prisma generate` EPERM is a Windows file lock on the engine DLL, not a schema fault, and `@@index` additions don't alter the generated client's TypeScript surface — consistent with `tsc`/`build` passing against the existing client. Evidence is sufficient; no re-run warranted.
+`verification.md` records `tsc --noEmit` exit 0 with zero new type errors (run via the sibling package's fully-installed compiler against the worktree tsconfig, because the worktree's own typescript install was incomplete) and a line-by-line correctness trace against the real data files, including the id-5 owner-skip count correction (plan said 29, trace corrects to 28). No live DB dry-run was performed because the worktree has no `.env`/`DATABASE_URL` and a scratch run would write a real local DB; the trace plus the EC2 runbook stand in for runtime verification, which is acceptable for this one-shot migration. The EC2 instructions are concrete and copy-paste-ready: backup, data-dir resolution (with the `data/` not `data1/` reminder), build, CLI option, owner-only reset+import API option with exact curls, verification SELECTs, owner login re-check, and a prominent security caveat. The spot-checks I ran against `data/users.json` and `data/orders.json` confirm the counts the trace relies on (42 users / 28 plaintext / 14 hash-only / 0 neither; 16 orders / 2 null userId / UPI 14 / Cash 2 / one 12-char payment reference).
 
 </details>
 
 <details>
 <summary>File map</summary>
 
-- `src/db.ts` — PrismaClient becomes a `globalThis` singleton; `log` gated on `DEBUG_TIMING`.
-- `src/middleware/timing.ts` (new) — gated no-op request-timing logger.
-- `src/server.ts` — wires `timing` middleware after `cookieParser()`.
-- `src/routes/catalog.ts` — `Cache-Control` headers on the six public GETs (`/products` 15s, rest 30s); bodies unchanged.
-- `src/routes/orders.ts` — owner "my orders" branch filters on `user_id OR mobile`; staff and explicit-mobile branches unchanged.
-- `prisma/schema.prisma` — nine drift-correcting `@@index` + two new (`idx_orders_user`, `idx_orders_date`).
-- `prisma/perf-indexes.sql` (new) — guarded, idempotent `CREATE INDEX` for the two missing order indexes.
-- `.env.example` — documents `connection_limit`/`pool_timeout` on `DATABASE_URL`.
+- `src/services/dataImport.ts` — adds `parseDate`, `ensurePlainPasswordColumn`, `importUsers`, `importOrders`; extends `ImportSummary`; wires users-before-orders into `runImport`; sets owner `plain_password` in `seedDefaultOwner`; header JSDoc updated.
+- `scripts/import-legacy-json.ts` — header no longer claims users/orders are skipped; final log prints users/orders/skipped/renamed/noReadable; positional-arg override and `DEFAULT_DATA_DIR` unchanged.
+- `prisma/schema.prisma` — doc-only commented `plain_password` line on `User` explaining the raw column kept out of the model; no migrate/db push.
+- `.agents/tasks/RUN-ON-EC2.md` — full EC2 runbook (backup, data-dir, build, CLI + API reset/import, verification SELECTs, owner login, security caveat). See issue 1 for the one stale count comment.
 
-Full diff: `git -C 4astore-v2/api-node diff main`.
+Full diff: `git show HEAD` on branch `legacy-users-orders-import` (commit `498ebcc`, scoped to the five files above).
 
 </details>
