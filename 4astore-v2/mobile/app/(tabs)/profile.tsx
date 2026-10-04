@@ -11,7 +11,7 @@ import { api, apiError, setAccessToken, clearRefreshToken } from '../../src/api'
 import { showConfirm, showToast } from '../../src/store/ui';
 import { appVersion } from '../../src/native';
 import { getPushPermission, registerForPush } from '../../src/push';
-import { colors, radius, warmGradient } from '../../src/theme';
+import { colors, radius, space, warmGradient } from '../../src/theme';
 
 export default function Profile() {
   const router = useRouter();
@@ -172,7 +172,7 @@ export default function Profile() {
         )}
       </Card>
 
-      <View style={{ marginTop: 14, gap: 8 }}>
+      <View style={{ marginTop: space.lg, gap: space.sm }}>
         <Action label="📦 My Orders" right={`${orders.length} orders →`} onPress={() => router.push('/orders')} />
         <Action label="🛒 My Cart" right={`${cartCount} items →`} onPress={() => router.push('/cart')} />
         <Action label="🏠 Delivery Address" right="→" onPress={() => router.push('/checkout')} />
@@ -223,8 +223,8 @@ const Info = ({ l, v }: { l: string; v: string }) => (
 const s = StyleSheet.create({
   head: { alignItems: 'center', padding: 20 },
   avatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  stats: { flexDirection: 'row', marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  stats: { flexDirection: 'row', marginBottom: space.md, paddingBottom: space.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   info: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f6eadb' },
-  action: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: radius.md, minHeight: 50, borderWidth: 1, borderColor: colors.border },
+  action: { flexDirection: 'row', alignItems: 'center', padding: space.lg, borderRadius: radius.md, minHeight: 50, borderWidth: 1, borderColor: colors.border },
   legal: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#f6eadb' },
 });

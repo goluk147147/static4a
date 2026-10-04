@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
   price: { fontSize: 14.5, fontWeight: '800', color: colors.primaryDark },
   mrp: { fontSize: 11, color: colors.gray, textDecorationLine: 'line-through' },
-  addBtn: { backgroundColor: colors.secondary, borderRadius: radius.sm, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
-  addText: { color: '#fff', fontWeight: '800', fontSize: 12.5, textShadowColor: 'rgba(0,0,0,0.25)', textShadowRadius: 2 },
+  addBtn: { backgroundColor: colors.primary, borderRadius: radius.sm, minHeight: 34, alignItems: 'center', justifyContent: 'center' },
+  addText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
   out: { color: colors.accent, fontWeight: '700', fontSize: 12, paddingVertical: 6 },
 });

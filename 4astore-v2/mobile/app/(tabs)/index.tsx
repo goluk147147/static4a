@@ -11,7 +11,7 @@ import { useCategories, useConfig, useProducts, useSettings, queryClient } from 
 import { isFeatureOn } from '../../src/features';
 import { fillDeliveryPlaceholders, openLink } from '../../src/links';
 import { absoluteUrl } from '../../src/config';
-import { colors, radius, shadow } from '../../src/theme';
+import { colors, radius, shadow, space } from '../../src/theme';
 
 export default function Home() {
   const router = useRouter();
@@ -143,7 +143,7 @@ export default function Home() {
         )}
 
         {/* Categories */}
-        <View style={{ paddingHorizontal: 14, paddingTop: 14 }}>
+        <View style={{ paddingHorizontal: 14, paddingTop: space.md }}>
           <Text style={ui.sectionTitle}>🛍️ Shop by Category</Text>
         </View>
         {categoriesQ.isLoading ? (
@@ -162,7 +162,7 @@ export default function Home() {
         )}
 
         {/* Popular products */}
-        <View style={{ paddingHorizontal: 14, paddingTop: 10 }}>
+        <View style={{ paddingHorizontal: 14, paddingTop: space.md }}>
           <Text style={ui.sectionTitle}>🔥 Popular Products</Text>
         </View>
         {productsQ.isLoading ? (
@@ -185,7 +185,7 @@ const s = StyleSheet.create({
   slideContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   slideTitle: { color: '#fff', fontSize: 24, fontWeight: '900', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.25)', textShadowRadius: 4 },
   slideSub: { color: '#fff', fontSize: 14, marginTop: 6, textAlign: 'center', opacity: 0.95 },
-  shopBtn: { backgroundColor: '#fff', borderRadius: 30, paddingHorizontal: 26, paddingVertical: 10, marginTop: 14 },
+  shopBtn: { backgroundColor: '#fff', borderRadius: radius.pill, paddingHorizontal: 26, paddingVertical: 10, marginTop: space.lg },
   shopText: { color: colors.primary, fontWeight: '800', fontSize: 14 },
   dots: { position: 'absolute', bottom: 8, alignSelf: 'center', flexDirection: 'row', gap: 5 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.55)' },

@@ -97,7 +97,7 @@ export default function AdminOrderDetail() {
       <Card style={{ marginTop: 12 }}>
         <Text style={[ui.h3, { marginBottom: 8 }]}>📦 Items</Text>
         {o.items.map((i, idx) => (
-          <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+          <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <Text style={{ flex: 1, color: colors.dark }}>{i.name} × {i.quantity}</Text>
             <Text style={{ color: colors.dark }}>₹{i.price * i.quantity}</Text>
           </View>

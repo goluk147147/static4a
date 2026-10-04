@@ -167,9 +167,9 @@ export default function PaymentSheet({ total, customerName, upiId, upiName, busy
   return (
     <Modal visible animationType="slide" onRequestClose={() => !busy && onCancel()}>
       <ScrollView style={{ backgroundColor: '#fff' }} contentContainerStyle={{ padding: 18, paddingTop: insets.top + 14, paddingBottom: insets.bottom + 30, alignItems: 'center' }}>
-        <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827' }}>{upiName}</Text>
-        <Text style={{ color: '#64748b', fontSize: 12, marginBottom: 10 }}>📍 Chandargarh (824301)</Text>
-        <Text style={{ color: '#64748b', fontSize: 13 }}>Payable Amount / देय राशि</Text>
+        <Text style={{ fontSize: 22, fontWeight: '800', color: colors.dark }}>{upiName}</Text>
+        <Text style={{ color: colors.gray, fontSize: 12, marginBottom: 10 }}>📍 Chandargarh (824301)</Text>
+        <Text style={{ color: colors.gray, fontSize: 13 }}>Payable Amount / देय राशि</Text>
         <Text style={{ color: colors.green, fontSize: 32, fontWeight: '900', marginBottom: 10 }}>₹{total}</Text>
 
         <Button title="🔊 निर्देश दोबारा सुनें" outline color={colors.primary} onPress={() => speakHindi(guide())} style={{ alignSelf: 'stretch', marginBottom: 10 }} />
@@ -194,21 +194,21 @@ export default function PaymentSheet({ total, customerName, upiId, upiName, busy
 
         {/* Branded QR card (captured to PNG for the gallery) */}
         <View ref={qrCard} collapsable={false} style={s.qrCard}>
-          <Text style={{ fontSize: 22, fontWeight: '900', color: '#111827' }}>{upiName || '4A Store'}</Text>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: colors.dark }}>{upiName || '4A Store'}</Text>
           <Text style={{ color: '#0FA958', fontWeight: '800', fontSize: 12, marginBottom: 10 }}>UPI PAYMENT</Text>
           <QRCode value={upiLink} size={200} color="#1a1a2e" backgroundColor="#ffffff" ecl="M" />
-          <Text style={{ fontWeight: '800', fontSize: 18, marginTop: 10, color: '#111827' }}>Pay ₹{Math.round(total)}</Text>
+          <Text style={{ fontWeight: '800', fontSize: 18, marginTop: 10, color: colors.dark }}>Pay ₹{Math.round(total)}</Text>
           <Text style={{ color: '#6B7280', fontSize: 12 }}>{upiId}</Text>
         </View>
         <Text style={s.small}>Merchant QR / दुकानदार का QR (अपने-आप सेव हो गया है)</Text>
-        <Button title="⬇️ QR दोबारा सेव करें (Backup)" outline color="#334155" onPress={() => saveQr(false)} style={{ alignSelf: 'stretch' }} />
+        <Button title="⬇️ QR दोबारा सेव करें (Backup)" outline color={colors.gray} onPress={() => saveQr(false)} style={{ alignSelf: 'stretch' }} />
 
         <View style={s.upiBox}>
           <Text style={{ fontSize: 11, color: '#666' }}>UPI ID / यूपीआई आईडी</Text>
           <Text style={{ fontSize: 16, fontWeight: '800', color: colors.primaryDark }} selectable>{upiId}</Text>
           <Text style={{ fontSize: 11, color: '#666' }}>Name / नाम: <Text style={{ fontWeight: '800' }}>{upiName}</Text></Text>
         </View>
-        <Button title="📋 Copy UPI ID / यूपीआई आईडी कॉपी करें" onPress={copyUpi} style={{ alignSelf: 'stretch', borderRadius: 30 }} />
+        <Button title="📋 Copy UPI ID / यूपीआई आईडी कॉपी करें" onPress={copyUpi} style={{ alignSelf: 'stretch', borderRadius: radius.pill }} />
 
         <View style={s.uploadSection}>
           <Text style={{ color: colors.primaryDark, fontWeight: '800', fontSize: 15, marginBottom: 6 }}>📸 Upload Payment Screenshot / भुगतान का स्क्रीनशॉट अपलोड करें</Text>
@@ -244,7 +244,7 @@ export default function PaymentSheet({ total, customerName, upiId, upiName, busy
 
 const s = StyleSheet.create({
   status: { color: colors.green, fontSize: 13, marginTop: 8, textAlign: 'center' },
-  small: { color: '#64748b', fontSize: 12, marginVertical: 8, textAlign: 'center' },
+  small: { color: colors.gray, fontSize: 12, marginVertical: 8, textAlign: 'center' },
   scanInfo: { alignSelf: 'stretch', backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa', borderLeftWidth: 4, borderLeftColor: colors.primary, borderRadius: 10, padding: 12, marginTop: 10 },
   qrCard: { backgroundColor: '#fff', borderWidth: 6, borderColor: '#0FA958', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 4 },
   upiBox: { backgroundColor: colors.primaryLight, padding: 10, borderRadius: 8, alignSelf: 'stretch', marginVertical: 10, alignItems: 'center' },

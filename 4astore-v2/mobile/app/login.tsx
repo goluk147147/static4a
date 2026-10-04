@@ -6,7 +6,7 @@ import { Button, Card, Field, GradientButton, PasswordField, Screen, styles as u
 import { useAuth, isOrderStaff, isRider } from '../src/store/auth';
 import { api, apiError } from '../src/api';
 import { registerForPush } from '../src/push';
-import { colors } from '../src/theme';
+import { colors, space } from '../src/theme';
 
 export default function Login() {
   const router = useRouter();
@@ -95,14 +95,14 @@ export default function Login() {
               <Field label="Username" value={regUser} onChangeText={setRegUser} autoCapitalize="none" />
               <PasswordField label="Password (4+ chars)" value={password} onChangeText={setPassword} />
               <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-              <Button title={otpSent ? 'Resend OTP' : 'Send OTP'} outline onPress={sendOtp} disabled={busy || !email} style={{ marginBottom: 12 }} />
+              <Button title={otpSent ? 'Resend OTP' : 'Send OTP'} outline onPress={sendOtp} disabled={busy || !email} style={{ marginBottom: space.md }} />
               {otpSent && (
                 <>
                   <Text style={[ui.muted, { marginBottom: 6 }]}>📧 OTP aapke email par bheja gaya hai. Email check karke 6 ankon ka code daalein.</Text>
                   <Field label="Email OTP" value={otp} onChangeText={(t) => setOtp(t.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} textContentType="oneTimeCode" autoComplete="sms-otp" />
                 </>
               )}
-              <GradientButton title={busy ? 'Please wait…' : 'Create Account'} onPress={doRegister} loading={busy} disabled={!otpSent} />
+              <GradientButton title={busy ? 'Please wait…' : 'Create Account'} onPress={doRegister} loading={busy} disabled={!otpSent} style={{ marginTop: space.sm }} />
               <Pressable onPress={() => { setMode('login'); setError(''); }} style={{ marginTop: 14, alignItems: 'center' }} accessibilityRole="button">
                 <Text style={ui.muted}>Already have an account? <Text style={{ color: colors.primary, fontWeight: '700' }}>Login</Text></Text>
               </Pressable>
