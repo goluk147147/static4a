@@ -153,8 +153,11 @@ export default function Checkout() {
     showToast('Address saved / पता सहेजा गया।', 'success');
 
     // Fire the server write in the background — never block the Save button on it.
+    // A NEGATIVE id is an optimistic temp row the server has never seen, so it must go
+    // up as a CREATE with id:undefined — never send a temp id to the server.
+    const serverId = selectedId != null && selectedId > 0 ? selectedId : undefined;
     const payload = {
-      action: selectedId ? 'update' : 'create', id: selectedId ?? undefined, label,
+      action: serverId ? 'update' : 'create', id: serverId, label,
       receiver_name: c.name, phone: c.mobile, house_no: c.address, landmark: c.landmark, city: c.city,
       district: 'Aurangabad', state: 'Bihar', pincode: c.pincode, latitude: c.deliveryLat, longitude: c.deliveryLng,
       full_address: [c.address, c.city, c.pincode].filter(Boolean).join(', '),
