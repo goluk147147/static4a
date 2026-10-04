@@ -9,6 +9,7 @@ import { useAuth } from '../src/store/auth';
 import { useCart } from '../src/store/cart';
 import { useProducts, useCategories, useSettings } from '../src/queries';
 import { api, apiError } from '../src/api';
+import { loadLocal, saveLocal, upsertLocal, syncFromServer, queuePending, flushPending } from '../src/store/addresses';
 import { showToast, showConfirm } from '../src/store/ui';
 import { cartTotals, cartHasAgeRestricted, getServiceableVillages, verifyVillage, resolveDeliveryCoordinates } from '../src/checkout';
 import { DEFAULT_UPI_ID } from '../src/config';
@@ -43,6 +44,7 @@ export default function Checkout() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [villageOpen, setVillageOpen] = useState(false);
   const [savingAddr, setSavingAddr] = useState(false);
+  const [loadingAddr, setLoadingAddr] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [customer, setCustomer] = useState<any>(null);
@@ -58,23 +60,34 @@ export default function Checkout() {
     setEmail((v) => v || user.recovery_email || user.email || '');
   }, [user]);
 
-  async function loadAddresses() {
-    try {
-      const d = await api.get('/addresses');
-      const list = (d.addresses || []) as SavedAddress[];
-      setSaved(list);
-      return list;
-    } catch {
-      return [];
-    }
-  }
   useEffect(() => {
     if (!user || !items.length) return;
+    const userId = user.id;
+    let cancelled = false;
     (async () => {
-      const list = await loadAddresses();
+      // Local-first: serve the last-known addresses INSTANTLY, no network await.
+      const list = await loadLocal(userId);
+      if (cancelled) return;
+      setSaved(list);
       if (list.length) fill(list.find((a) => Number(a.is_default) === 1) || list[0]);
       else setEditorOpen(true);
+      setLoadingAddr(false);
+
+      // Background: refresh from server and flush any writes queued while offline.
+      // Keep the current selection if that address still exists on the server.
+      syncFromServer(userId).then((srv) => {
+        if (cancelled || !srv) return;
+        setSaved(srv);
+        setSelectedId((prev) => (prev != null && !srv.some((a) => a.id === prev) ? (srv[0]?.id ?? null) : prev));
+      });
+      flushPending(userId).then((flushed) => {
+        if (cancelled || !flushed) return;
+        setSaved(flushed);
+      });
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function fill(a: SavedAddress) {
@@ -105,16 +118,6 @@ export default function Checkout() {
     };
   }
 
-  async function saveAddress(c: any, lbl: Label) {
-    const payload = {
-      action: selectedId ? 'update' : 'create', id: selectedId ?? undefined, label: lbl,
-      receiver_name: c.name, phone: c.mobile, house_no: c.address, landmark: c.landmark, city: c.city,
-      district: 'Aurangabad', state: 'Bihar', pincode: c.pincode, latitude: c.deliveryLat, longitude: c.deliveryLng,
-      full_address: [c.address, c.city, c.pincode].filter(Boolean).join(', '),
-    };
-    return (await api.post('/addresses', payload)).address as SavedAddress;
-  }
-
   async function saveFromEditor() {
     const m = mobile.replace(/\D+/g, '');
     if (!name.trim() || !/^[6-9]\d{9}$/.test(m) || !address.trim() || !city.trim() || pincode.trim() !== '824301') {
@@ -123,19 +126,51 @@ export default function Checkout() {
     const v = verifyVillage(city, villages);
     if (v.status !== 'exact') return showToast('Select a village from the list / कृपया सूची में से गाँव चुनें।', 'error');
     setCity(v.match);
+    if (!user) return;
+    const userId = user.id;
+
     setSavingAddr(true);
-    try {
-      const c = buildCustomer(v.match);
-      const s = await saveAddress(c, label);
-      setSelectedId(s?.id ?? selectedId);
-      setEditorOpen(false);
-      await loadAddresses();
-      showToast('Address saved / पता सहेजा गया।', 'success');
-    } catch (e) {
-      showToast(`${apiError(e)} / पता सहेजा नहीं जा सका।`, 'error');
-    } finally {
-      setSavingAddr(false);
-    }
+    const c = buildCustomer(v.match);
+    // Optimistic local row: reuse the selected id on edit, else a NEGATIVE temp id.
+    const addr: SavedAddress = {
+      id: selectedId ?? -Date.now(),
+      label,
+      receiver_name: c.name,
+      phone: c.mobile,
+      house_no: c.address,
+      landmark: c.landmark,
+      city: c.city,
+      pincode: c.pincode,
+      latitude: c.deliveryLat,
+      longitude: c.deliveryLng,
+      full_address: [c.address, c.city, c.pincode].filter(Boolean).join(', '),
+    };
+    const list = await upsertLocal(userId, addr);
+    setSaved(list);
+    setSelectedId(addr.id);
+    setEditorOpen(false);
+    setSavingAddr(false);
+    showToast('Address saved / पता सहेजा गया।', 'success');
+
+    // Fire the server write in the background — never block the Save button on it.
+    const payload = {
+      action: selectedId ? 'update' : 'create', id: selectedId ?? undefined, label,
+      receiver_name: c.name, phone: c.mobile, house_no: c.address, landmark: c.landmark, city: c.city,
+      district: 'Aurangabad', state: 'Bihar', pincode: c.pincode, latitude: c.deliveryLat, longitude: c.deliveryLng,
+      full_address: [c.address, c.city, c.pincode].filter(Boolean).join(', '),
+    } as const;
+    api.post('/addresses', payload)
+      .then(async (res) => {
+        const serverAddr = res.address as SavedAddress;
+        if (!serverAddr) return;
+        // Reconcile: drop the optimistic temp row, keep the server's real one.
+        const current = await loadLocal(userId);
+        const next = [serverAddr, ...current.filter((a) => a.id !== addr.id && a.id !== serverAddr.id)];
+        await saveLocal(userId, next);
+        setSaved(next);
+        setSelectedId((prev) => (prev === addr.id ? serverAddr.id : prev));
+      })
+      .catch(() => queuePending(userId, payload));
   }
 
   async function proceed() {
@@ -160,10 +195,8 @@ export default function Checkout() {
     }
 
     const c = buildCustomer(vr.match);
-    try {
-      const s = await saveAddress(c, label);
-      if (s?.id) setSelectedId(s.id);
-    } catch { /* non-blocking, same as web */ }
+    // No save round-trip here — the address is already saved locally (and synced
+    // in the background). Proceed must open payment instantly, never network-block.
     setCustomer(c);
     setPayOpen(true);
   }
@@ -248,7 +281,7 @@ export default function Checkout() {
         </View>
       </Card>
 
-      <GradientButton title="📱 Proceed to UPI Payment / UPI भुगतान जारी रखें →" onPress={proceed} style={{ marginTop: 18 }} />
+      <GradientButton title="📱 Proceed to UPI Payment / UPI भुगतान जारी रखें →" onPress={proceed} disabled={loadingAddr} style={{ marginTop: 18 }} />
 
       {/* Address editor */}
       <Modal visible={editorOpen} animationType="slide" onRequestClose={() => setEditorOpen(false)}>
