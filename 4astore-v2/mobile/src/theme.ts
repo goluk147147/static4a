@@ -28,6 +28,8 @@ export const offerGradient: Gradient = ['#ff6a00', '#f107a3'];
 
 export const radius = { sm: 8, md: 12, lg: 18, pill: 30 };
 
+export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20 };
+
 export const shadow = {
   shadowColor: '#743610',
   shadowOpacity: 0.09,

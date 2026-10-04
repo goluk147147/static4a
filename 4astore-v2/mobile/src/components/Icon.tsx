@@ -28,7 +28,7 @@ const GLYPH: Record<IconName, string> = {
   phonepe: '🟣', gpay: '🟢', upi: '📲', track: '📦', edit: '✏️', delete: '🗑️', success: '✅', info: 'ℹ️', warn: '⚠️', reset: '↺',
 };
 
-const SIZE: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', number> = { xs: 12, sm: 15, md: 18, lg: 22, xl: 28 };
+const SIZE: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', number> = { xs: 14, sm: 16, md: 20, lg: 24, xl: 30 };
 
 export default function Icon({
   name,
