@@ -8,6 +8,8 @@
     "android": "expo run:android",
     "prebuild": "expo prebuild --platform android --clean",
     "typecheck": "tsc --noEmit",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./src/__tests__/register.mjs --test \"src/__tests__/**/*.test.ts\"",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "build:apk": "cd android && gradlew.bat assembleRelease",
     "build:aab": "cd android && gradlew.bat bundleRelease",
     "ios": "expo run:ios"
