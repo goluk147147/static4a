@@ -7,6 +7,7 @@
 // warm start and makes the app usable for a moment even on a slow/absent network.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { QueryClient } from '@tanstack/react-query';
+import type { Order, CmsPage } from './types';
 
 const KEY = '4astore:rq-cache:v1';
 // Only persist the big, slow, mostly-static storefront data (not per-user/order data).
@@ -64,4 +65,51 @@ export function startPersisting(client: QueryClient): () => void {
     if (timer) clearTimeout(timer);
     unsub();
   };
+}
+
+// --- Per-user orders cache (own key, NOT part of the storefront snapshot above) ---------------
+// My Orders is per-user data, so it lives under a mobile-scoped key instead of PERSIST_KEYS.
+const ORDERS_KEY = (mobile: string) => `4astore:orders:v1:${mobile}`;
+
+/** Read the last-saved order list for a user, or null if none/corrupt. */
+export async function loadOrdersCache(mobile: string): Promise<Order[] | null> {
+  try {
+    const raw = await AsyncStorage.getItem(ORDERS_KEY(mobile));
+    if (!raw) return null;
+    return JSON.parse(raw) as Order[];
+  } catch {
+    return null;
+  }
+}
+
+/** Persist the latest order list for a user. */
+export async function saveOrdersCache(mobile: string, orders: Order[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(ORDERS_KEY(mobile), JSON.stringify(orders));
+  } catch {
+    /* storage full / serialise error — skip */
+  }
+}
+
+// --- Per-slug CMS page cache ------------------------------------------------------------------
+const PAGE_KEY = (slug: string) => `4astore:page:v1:${slug}`;
+
+/** Read the last-saved CMS page for a slug, or null if none/corrupt. */
+export async function loadPageCache(slug: string): Promise<CmsPage | null> {
+  try {
+    const raw = await AsyncStorage.getItem(PAGE_KEY(slug));
+    if (!raw) return null;
+    return JSON.parse(raw) as CmsPage;
+  } catch {
+    return null;
+  }
+}
+
+/** Persist the latest CMS page for a slug. */
+export async function savePageCache(slug: string, page: CmsPage): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PAGE_KEY(slug), JSON.stringify(page));
+  } catch {
+    /* storage full / serialise error — skip */
+  }
 }

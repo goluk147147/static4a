@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Cache + skeleton for the read-only screens that currently hang on a bare spinner: My Orders (app/(tabs)/orders.tsx) and CMS Help/Legal pages (app/page/[slug].tsx). Both must show last-cached content instantly, a Shimmer skeleton only on true first load, and a bounded error-with-retry state — never a permanent spinner. Extends src/persistCache.ts with per-user orders and per-slug page cache helpers following its existing pattern. Independent of FEAT-001 and FEAT-003.",
+  "status": "completed",
+  "steps": [
+    "In src/persistCache.ts add per-user orders cache helpers (own AsyncStorage key, same try/catch style, NOT added to PERSIST_KEYS): const ORDERS_KEY = (mobile) => `4astore:orders:v1:${mobile}`; export async function loadOrdersCache(mobile): Promise<Order[] | null> and export async function saveOrdersCache(mobile, orders: Order[]): Promise<void>. Import type { Order } from './types'.",
+    "In src/persistCache.ts add per-slug page cache helpers: const PAGE_KEY = (slug) => `4astore:page:v1:${slug}`; export async function loadPageCache(slug): Promise<CmsPage | null> and export async function savePageCache(slug, page: CmsPage): Promise<void>. Import type { CmsPage } from './types'.",
+    "In app/(tabs)/orders.tsx: hydrate a local `cached` state from loadOrdersCache(user.mobile) in an effect keyed on user?.mobile; when useMyOrders returns data (q.data) call saveOrdersCache(user.mobile, q.data) in an effect. Replace the bare `q.isLoading ? <Loading/>` branch: show a Shimmer skeleton list (3-4 Card-shaped rows built from the existing Shimmer component) ONLY when q.isLoading && !cached?.length; when cached exists render it immediately even while loading. On q.isError keep rendering cached rows if present plus the existing 'Unable to load data. Pull down to refresh.' line; never a permanent spinner. Keep the EmptyState for the genuinely-empty case. Do NOT change useAllOrders or the 7s poll.",
+    "In app/page/[slug].tsx: seed usePage from cache — in an effect read loadPageCache(slug) into a `cached` state (or look the slug up in the already-persisted ['pages'] query via queryClient and use it as placeholder). Render cached content immediately when present. Replace the bare `isLoading ? <Loading/>` with a Shimmer block layout (a few Shimmer bars) ONLY on true first load (no cached content). On success call savePageCache(slug, page). On isError show cached content if any, else the existing friendly EmptyState('Page not found'). Keep the WebView render path, CSP, originWhitelist, and onShouldStartLoadWithRequest exactly as-is.",
+    "Reuse Shimmer, Card, Screen, Loading, EmptyState from src/components/ui.tsx. Do NOT restyle buttons/fonts/colors; skeletons use the existing Shimmer only."
+  ],
+  "acceptance_criteria": [
+    "src/persistCache.ts exports loadOrdersCache/saveOrdersCache (keyed by mobile) and loadPageCache/savePageCache (keyed by slug), all with try/catch and no new dependency.",
+    "My Orders shows the last cached order list instantly on a warm start and a Shimmer skeleton (not a bare ActivityIndicator) on first-ever load; on error it keeps cached data plus a retry hint and never spins forever.",
+    "A CMS page opens instantly from cache when previously viewed, shows a Shimmer skeleton only on true first load, and on error shows cached content or the friendly EmptyState — never an endless loader.",
+    "Running `npm run typecheck` yields no new TypeScript errors beyond the known app.config.ts one."
+  ],
+  "verification": [
+    "From the mobile dir run `npm run typecheck` (after FEAT-001's npm install) and confirm no new errors.",
+    "Read-through: orders.tsx and page/[slug].tsx each have a cached-first render, a Shimmer first-load branch, and an error branch that falls back to cache or EmptyState (no bare <Loading/> as the only state)."
+  ],
+  "blocked_reason": null,
+  "findings": "persistCache.ts now exports loadOrdersCache/saveOrdersCache (key 4astore:orders:v1:<mobile>) and loadPageCache/savePageCache (key 4astore:page:v1:<slug>), both try/catch, no new deps, NOT in PERSIST_KEYS. orders.tsx: hydrates `cached` from loadOrdersCache on user.mobile change, saves q.data via effect, renders `orders = q.data ?? cached ?? []`; OrdersSkeleton (3 Card-shaped Shimmer rows) shows only when q.isLoading && !orders.length; error with no data shows the existing retry hint; error WITH cached data renders cached rows plus an inline retry hint; EmptyState preserved; useAllOrders/7s poll untouched. page/[slug].tsx: seeds `cached` from loadPageCache(slug), saves on success, uses page = data ?? cached; PageSkeleton (Shimmer bars) only on isLoading && !page; error/no-page falls back to friendly EmptyState('Page not found'); WebView/CSP/originWhitelist/onShouldStartLoadWithRequest unchanged. Note: replaced the unused `Loading` import in both files with `Shimmer`. typecheck: only the known app.config.ts usesCleartextTraffic error remains (no new errors)."
+}
