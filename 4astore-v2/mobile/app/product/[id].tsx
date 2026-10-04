@@ -8,7 +8,7 @@ import { useProducts, useSettings } from '../../src/queries';
 import { useFeature } from '../../src/features';
 import { useCart } from '../../src/store/cart';
 import { SITE_URL } from '../../src/config';
-import { colors, radius } from '../../src/theme';
+import { colors, radius, space } from '../../src/theme';
 
 /**
  * Full-screen image viewer: pinch-to-zoom (zoomable ScrollView, no extra native deps) +
@@ -52,7 +52,7 @@ function ZoomViewer({
         {canRotate && (
           <Pressable
             onPress={onRotate}
-            style={{ position: 'absolute', bottom: 70, alignSelf: 'center', backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 12 }}
+            style={{ position: 'absolute', bottom: 70, alignSelf: 'center', backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: radius.pill, paddingHorizontal: 20, paddingVertical: 12 }}
             accessibilityRole="button"
             accessibilityLabel="Rotate image / तस्वीर घुमाएँ"
           >
@@ -137,13 +137,13 @@ export default function ProductDetails() {
             <ProductImage name={product.name} weight={product.weight} category={product.category} image={product.image} height={280} />
           </View>
           {canZoom && (
-            <View style={{ position: 'absolute', right: 8, bottom: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 }}>
+            <View style={{ position: 'absolute', right: 8, bottom: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 }}>
               <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>🔍 Zoom</Text>
             </View>
           )}
         </Pressable>
         {canRotate && (
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+          <View style={{ flexDirection: 'row', gap: space.sm, marginTop: 10 }}>
             <Button title="⟳ Ghumayein / घुमाएँ" outline color={colors.primary} small onPress={rotate} style={{ flex: 1 }} />
             {rotation !== 0 && <Button title="↺ Reset" outline color={colors.gray} small onPress={() => setRotation(0)} style={{ flex: 1 }} />}
           </View>
@@ -191,15 +191,15 @@ export default function ProductDetails() {
           {!product.in_stock ? (
             <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 15 }}>Out of stock</Text>
           ) : hideMrp ? null : inCart ? (
-            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'stretch' }}>
               <Stepper qty={inCart.quantity} label={product.name} onMinus={() => setQty(product.id, inCart.quantity - 1)} onPlus={() => setQty(product.id, inCart.quantity + 1)} />
-              <GradientButton title="Cart par jaayein / कार्ट देखें →" onPress={() => router.push('/cart')} style={{ flex: 1 }} />
+              <GradientButton title="Cart देखें →" size="sm" onPress={() => router.push('/cart')} style={{ flex: 1 }} />
             </View>
           ) : (
             <GradientButton title="Add to Cart / कार्ट में डालें" onPress={() => add(product)} />
           )}
         </View>
-        <Button title="🔗 Share / शेयर करें" outline onPress={share} style={{ marginTop: 12 }} />
+        <Button title="🔗 Share / शेयर करें" outline onPress={share} style={{ marginTop: space.md }} />
       </View>
     </Screen>
   );
