@@ -19,6 +19,13 @@ export const setAccessToken = (t: string | null) => {
   accessToken = t;
 };
 
+// Called when a request's token is dead AND a silent refresh also failed, so the app can
+// clear its user state (auto-logout) instead of showing a stale "logged-in" UI. Wired by the auth store.
+let onSessionExpired: (() => void) | null = null;
+export const setOnSessionExpired = (fn: (() => void) | null) => {
+  onSessionExpired = fn;
+};
+
 export async function saveRefreshToken(token: string) {
   await SecureStore.setItemAsync(REFRESH_KEY, token);
 }
@@ -88,25 +95,50 @@ export function refreshSession(): Promise<{ token: string; user: unknown } | nul
 export async function api<T = any>(path: string, opts: RequestOpts = {}): Promise<T> {
   const method = opts.method || (opts.body !== undefined ? 'POST' : 'GET');
   let res: Response;
+  // Hard timeout so a slow/hung server never leaves a button spinning forever.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
     res = await fetch(buildUrl(path, opts.params), {
       method,
+      signal: controller.signal,
       headers: {
         Accept: 'application/json',
         'X-Client': 'mobile',
+        Connection: 'keep-alive', // reuse the TCP/TLS connection → avoids a fresh handshake each call
         ...(opts.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...authHeaders(),
       },
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     });
-  } catch {
-    throw new ApiError('No internet connection. Please try again / इंटरनेट कनेक्शन जाँचें।', 0);
+  } catch (e) {
+    const aborted = (e as { name?: string })?.name === 'AbortError';
+    // Auto-retry ONCE for idempotent GETs on a transient network/timeout blip (the server
+    // occasionally spikes). Never auto-retry writes (POST) to avoid duplicate orders/addresses.
+    if (method === 'GET' && !opts._netRetried) {
+      return api<T>(path, { ...opts, _netRetried: true });
+    }
+    throw new ApiError(
+      aborted
+        ? 'Server slow hai / timeout. Dobara try karein (Server is slow — please try again).'
+        : 'No internet connection. Please try again / इंटरनेट कनेक्शन जाँचें।',
+      0
+    );
+  } finally {
+    clearTimeout(timeout);
   }
 
   const isAuthCall = path.includes('/users/login') || path.includes('/users/refresh') || path.includes('/users/register');
   if (res.status === 401 && !opts._retried && !isAuthCall) {
     const session = await refreshSession();
     if (session) return api<T>(path, { ...opts, _retried: true });
+    // Refresh failed too → the session is truly dead (expired / revoked / server reset the token).
+    // Surface a clear, actionable error instead of a silent no-op, and signal the app to log out
+    // so stale screens don't pretend the user is still signed in.
+    accessToken = null;
+    await clearRefreshToken().catch(() => null);
+    onSessionExpired?.();
+    throw new ApiError('Session expired. Please log in again / सत्र समाप्त हो गया, कृपया दोबारा लॉगिन करें।', 401);
   }
 
   const data = await res.json().catch(() => null);

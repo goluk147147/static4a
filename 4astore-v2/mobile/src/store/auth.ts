@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, setAccessToken, saveRefreshToken, clearRefreshToken, refreshSession, getRefreshToken } from '../api';
+import { api, setAccessToken, saveRefreshToken, clearRefreshToken, refreshSession, getRefreshToken, setOnSessionExpired } from '../api';
 import { unregisterPush } from '../push';
 import type { User } from '../types';
 
@@ -57,13 +57,17 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   logout: async () => {
-    const rt = await getRefreshToken();
-    // Remove this device's push token first (still authenticated), then revoke the refresh token.
-    await unregisterPush().catch(() => null);
-    await api.post('/users/logout', { refreshToken: rt }).catch(() => null);
-    await clearRefreshToken();
+    // Clear LOCAL session FIRST so logout always works instantly — even if the token is already
+    // invalid/expired or the network is down (earlier a hung server call could block logout).
+    const rt = await getRefreshToken().catch(() => null);
+    await clearRefreshToken().catch(() => null);
     setAccessToken(null);
     set({ user: null });
+    // Clear the cart on logout so the next user doesn't inherit the previous person's cart.
+    try { const { useCart } = require('./cart'); useCart.getState().clear(); } catch { /* ignore */ }
+    // Best-effort server-side cleanup AFTER local logout; never blocks or throws.
+    void unregisterPush().catch(() => null);
+    void api.post('/users/logout', { refreshToken: rt }).catch(() => null);
   },
 
   // Launch: silent refresh → life-long login.
@@ -82,6 +86,15 @@ export const useAuth = create<AuthState>((set) => ({
     if (session) set({ user: normalizeUser(session.user) });
   },
 }));
+
+// When the API detects a truly-dead session (token expired/revoked + refresh failed), clear the
+// local user so the UI stops showing a stale logged-in state and routes the user to login.
+setOnSessionExpired(() => {
+  setAccessToken(null);
+  void clearRefreshToken().catch(() => null);
+  useAuth.setState({ user: null });
+  try { const { useCart } = require('./cart'); useCart.getState().clear(); } catch { /* ignore */ }
+});
 
 export const STAFF_ROLES = ['owner', 'superadmin', 'admin'];
 

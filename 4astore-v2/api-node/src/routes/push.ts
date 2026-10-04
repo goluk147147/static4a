@@ -29,11 +29,25 @@ router.post('/register', requireAuth, async (req: Request, res: Response) => {
   const { token, platform } = parsed.data;
   const topics = topicsForUser(req.user!.role, req.user!.permissions || []);
 
-  await prisma.deviceToken.upsert({
-    where: { token },
-    create: { user_id: BigInt(req.user!.sub), token, platform, topics },
-    update: { user_id: BigInt(req.user!.sub), platform, topics },
-  });
+  // App launch + login can fire two near-simultaneous registrations for the SAME token, which
+  // races Prisma's upsert and throws P2002 (unique token). Fall back to a plain update on conflict
+  // so the register is reliable and the error log stays clean.
+  try {
+    await prisma.deviceToken.upsert({
+      where: { token },
+      create: { user_id: BigInt(req.user!.sub), token, platform, topics },
+      update: { user_id: BigInt(req.user!.sub), platform, topics },
+    });
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code === 'P2002') {
+      await prisma.deviceToken.update({
+        where: { token },
+        data: { user_id: BigInt(req.user!.sub), platform, topics },
+      }).catch(() => null);
+    } else {
+      throw e;
+    }
+  }
   // FCM topics must be subscribed per token; do it server-side so role changes take effect
   // the next time the app registers (every launch/login).
   if (platform !== 'web') await syncTokenTopics(token, topics).catch(() => null);

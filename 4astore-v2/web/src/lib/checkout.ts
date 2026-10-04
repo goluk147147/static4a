@@ -143,6 +143,19 @@ interface AndroidBridge {
   speak?: (text: string) => void;
 }
 
+/** Pick the most natural Hindi voice available (same intent as the app's native hi-IN voice). */
+function pickHindiVoice(): SpeechSynthesisVoice | undefined {
+  const voices = window.speechSynthesis.getVoices();
+  const hindi = voices.filter((v) => (v.lang || '').toLowerCase().startsWith('hi'));
+  if (!hindi.length) return undefined;
+  // Prefer Google's हिन्दी voice (clearest), then any hi-IN, then any Hindi.
+  return (
+    hindi.find((v) => /google/i.test(v.name) && /hi/i.test(v.lang)) ||
+    hindi.find((v) => v.lang === 'hi-IN') ||
+    hindi[0]
+  );
+}
+
 export function speakHindi(message: string) {
   const android = (window as unknown as { AndroidApp?: AndroidBridge }).AndroidApp;
   if (android?.speak) {
@@ -156,12 +169,26 @@ export function speakHindi(message: string) {
   if (!('speechSynthesis' in window)) return;
   try {
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(message);
-    u.lang = 'hi-IN';
-    u.rate = 0.9;
-    const voice = window.speechSynthesis.getVoices().find((v) => (v.lang || '').toLowerCase().startsWith('hi'));
-    if (voice) u.voice = voice;
-    window.speechSynthesis.speak(u);
+    const run = () => {
+      const u = new SpeechSynthesisUtterance(message);
+      u.lang = 'hi-IN';
+      u.rate = 0.9; // match the app's calmer pace
+      u.pitch = 1;
+      u.volume = 1;
+      const voice = pickHindiVoice();
+      if (voice) u.voice = voice;
+      window.speechSynthesis.speak(u);
+    };
+    // Voices load lazily in most browsers — the first call often has an empty list, which is why
+    // the web voice sounded wrong/robotic. Wait for them so we actually pick the Hindi voice.
+    if (window.speechSynthesis.getVoices().length === 0) {
+      let done = false;
+      const fire = () => { if (done) return; done = true; run(); };
+      window.speechSynthesis.onvoiceschanged = fire;
+      setTimeout(fire, 500); // fallback if the event never arrives
+    } else {
+      run();
+    }
   } catch {
     /* speech not available */
   }
