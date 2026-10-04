@@ -1,0 +1,31 @@
+{
+  "project_type": "React Native mobile app on Expo SDK 54 (expo-router), part of the 4astore-v2 monorepo; shares a Node API at https://4astore.com/api.",
+  "language": "TypeScript (strict), React 19 / React Native 0.81.",
+  "build_system": "Expo. No bundler step for verification; the build/type gate is `tsc --noEmit`. Native APK via expo prebuild + gradle (NOT needed for this task's verification).",
+  "test_framework": "NONE. There is no unit/integration test framework in this app. The only automated gate is TypeScript typecheck.",
+  "build_command": "npm run typecheck   (alias for `tsc --noEmit`)",
+  "test_command": "npm run typecheck",
+  "verification_instructions": "1) The worktree has NO node_modules yet — run `npm install` ONCE in c:\\xampp\\htdocs\\static4a\\.worktrees\\app-local-first\\4astore-v2\\mobile before the first typecheck. 2) Then run `npm run typecheck`. 3) PASS = no NEW TypeScript errors. There is ONE pre-existing error on the green base, in app.config.ts about `usesCleartextTraffic` on the android config object (not declared on Expo's ExpoConfig type) — IGNORE it, do not fix it. Any error other than that one is a regression to fix.",
+  "snapshot_or_generated_files": "null — no generated/snapshot files get checked in for this task.",
+  "environment_constraints": "Windows + PowerShell. Do NOT touch tracking (src/components/TrackMap.tsx, app/track/*) or the rider flow (app/rider.tsx, /orders/accept, /tracking/*). Do NOT change the server/API or any JSON response shape. NO new npm dependency. No visual restyle — a separate parallel workflow owns UI polish (ui.tsx, screen styles); limit visual edits strictly to reusing the existing Shimmer component for skeletons.",
+  "contribution_requirements": "No AGENTS.md/CONTRIBUTING.md in this subtree. README.md documents build/signing only. Follow the existing code conventions: AsyncStorage via '@react-native-async-storage/async-storage', versioned storage keys, try/catch around all storage/network, zustand stores in src/store, React Query hooks in src/queries.ts, UI primitives from src/components/ui.tsx.",
+  "key_patterns": "Offline cache pattern lives in src/persistCache.ts (versioned AsyncStorage key, try/catch, debounced persist, MAX_AGE). The api helper (src/api.ts) uses a {success,message} envelope, Bearer access token in memory, refresh token in SecureStore, single silent refresh on 401 guarded by opts._retried and a single-flight `refreshing` promise; refreshSession() clears the refresh token only on 401/404. Toasts/confirm via src/store/ui.ts (showToast, showConfirm). Shimmer skeleton + Loading in src/components/ui.tsx. Address create payload today uses `id: selectedId ?? undefined`; temp optimistic ids must be NEGATIVE (-Date.now()).",
+  "relevant_files": [
+    "src/store/addresses.ts (NEW — local-first address store, follow src/persistCache.ts)",
+    "src/persistCache.ts (study the pattern; also add per-user orders + per-slug page cache helpers)",
+    "src/api.ts (401/refresh audit; do not weaken security)",
+    "src/store/auth.ts (login/register/logout/bootstrap/reloadSession; already local-first logout)",
+    "app/checkout.tsx (mount loadAddresses, saveFromEditor, proceed, saveAddress — rewire to local-first/optimistic)",
+    "app/(tabs)/orders.tsx (My Orders — useMyOrders(user.mobile); replace bare <Loading/> with cache + Shimmer)",
+    "app/page/[slug].tsx (CMS Help/Legal — usePage(slug); cache + Shimmer)",
+    "app/admin/order/[id].tsx (staff order detail; setStatus() status-change buttons spin — make optimistic)",
+    "app/admin/orders.tsx (staff order list; context only — NO delete feature exists here)",
+    "src/queries.ts (useMyOrders ['orders', mobile], useAllOrders 7s poll, usePage ['page', slug], usePages ['pages'])",
+    "src/types.ts (SavedAddress, Order, CmsPage, User)",
+    "src/components/ui.tsx (Shimmer, Loading, Card, Screen, GradientButton, Button, EmptyState, Field — reuse, do not restyle)",
+    "src/store/ui.ts (showToast, showConfirm)",
+    "app/_layout.tsx (restoreCache + startPersisting + bootstrap wiring; AppState reloadSession)",
+    "app.config.ts (known tsc error to ignore)"
+  ],
+  "directory_structure": "mobile/app = expo-router screens (tabs, admin, page, track, checkout, login...). mobile/src = api.ts, config.ts, queries.ts, persistCache.ts, types.ts, checkout.ts (validation helpers verifyVillage/resolveDeliveryCoordinates/cartTotals), store/ (auth.ts, cart.ts, ui.ts), components/ (ui.tsx + screen components). mobile/.agents/tasks = these FEAT artifacts + plan.md fallback. Verdict gate for the review loop: mobile/.agents/tasks/review.json."
+}

@@ -1,0 +1,7 @@
+{
+  "task_id": "task-app-local-first-no-spinner",
+  "task_description": "Make the 4A Store Expo SDK 54 mobile app local-first and resilient so no screen hangs on a bare spinner, and harden the 401/refresh/session path. Local-first saved-address store + optimistic checkout save/proceed; per-user orders cache + skeleton; CMS page cache + skeleton; optimistic staff order status change; 401 refresh audit. No new npm dependency; do not touch tracking or rider flow; do not change the server/API or response shapes; reuse existing Shimmer only (no visual restyle).",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}
