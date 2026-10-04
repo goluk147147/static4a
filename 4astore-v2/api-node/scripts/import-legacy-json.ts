@@ -3,8 +3,10 @@
  * (products, categories, homepage config, settings, announcement) into MySQL.
  *
  * Runs through Prisma/Node so Hindi text and emoji stay intact (no shell pipes).
- * Users and orders are NOT imported (passwords/order history need a separate,
- * reviewed migration).
+ * Users and orders ARE imported too (dual-password scheme: bcrypt hash for login
+ * + a readable plain_password for owner-approved phone support). This does NOT
+ * truncate — for a clean "truncate everything then reload" use the admin reset
+ * route first (see .agents/tasks/RUN-ON-EC2.md).
  *
  * All upsert logic lives in ../src/services/dataImport (shared with the owner-only
  * admin route POST /api/admin/data/import) — ONE source of truth, zero duplication.
@@ -27,7 +29,10 @@ async function main() {
   }
   console.log(`Importing from ${dataDir}`);
   const r = await runImport(dataDir);
-  console.log(`Done: categories=${r.categories} products=${r.products} banners=${r.banners} ads=${r.ads} (+ settings, announcement)`);
+  console.log(
+    `Done: categories=${r.categories} products=${r.products} banners=${r.banners} ads=${r.ads} ` +
+      `users=${r.users} orders=${r.orders} (skipped=${r.usersSkipped}, renamed=${r.usersRenamed}, noReadable=${r.usersNoReadable}) (+ settings, announcement)`
+  );
 }
 
 main()

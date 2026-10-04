@@ -20,6 +20,13 @@ model User {
   recovery_email         String?  @db.VarChar(190)
   recovery_email_verified Boolean @default(false)
   password               String   @db.VarChar(255)
+  // DOCS ONLY — NOT a Prisma field. A nullable `plain_password VARCHAR(255)`
+  // column is added at runtime by ensurePlainPasswordColumn() (raw ALTER, no
+  // migrate). It stores a readable copy of the password for owner-approved
+  // phone support. It is deliberately kept OUT of this model so prisma.user
+  // never selects it and safeUser() cannot leak it. If you ever add it here,
+  // you MUST also strip it in safeUser(). Do NOT run prisma migrate/db push.
+  // plain_password      String?  @db.VarChar(255)
   role                   String   @default("customer")
   permissions            Json?
   backend_rider          Boolean  @default(false)
