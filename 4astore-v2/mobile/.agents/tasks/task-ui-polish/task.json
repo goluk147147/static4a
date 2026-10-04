@@ -1,0 +1,7 @@
+{
+  "task_id": "task-ui-polish",
+  "task_description": "VISUAL/STYLING-ONLY polish sweep of the 4A Store Expo SDK 54 React Native mobile app: make icon sizes, button sizes, fonts, spacing, animations, gradients, colors and borders uniform/premium across every screen by centralizing in the shared primitives (src/theme.ts, src/components/ui.tsx, src/components/Icon.tsx), and specifically fix the broken product-details add-to-cart row (stepper + 'go to cart' gradient button misaligned, label wraps on 360px) and the zoom/rotate controls on app/product/[id].tsx. No data-fetching, caching, auth, React Query, API, or business-logic changes. No new npm dependency. Keep all bilingual Hindi/English text.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

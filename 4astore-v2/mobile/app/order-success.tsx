@@ -9,7 +9,7 @@ import { showToast } from '../src/store/ui';
 import { speakHindi, openWhatsApp } from '../src/native';
 import { useSettings } from '../src/queries';
 import { STORE_WHATSAPP_DEFAULT } from '../src/config';
-import { colors } from '../src/theme';
+import { colors, radius } from '../src/theme';
 
 export default function OrderSuccess() {
   const router = useRouter();
@@ -90,8 +90,8 @@ export default function OrderSuccess() {
       </View>
 
       <View style={{ gap: 10, marginTop: 14 }}>
-        <Button title="💬 Send Order on WhatsApp / WhatsApp पर भेजें" color={colors.whatsapp} onPress={whatsapp} style={{ borderRadius: 30 }} />
-        <Button title={sharing ? '⏳ Preparing…' : '📸 Send Screenshot on WhatsApp / स्क्रीनशॉट भेजें'} color={colors.green} loading={sharing} onPress={shareScreenshot} />
+        <Button title="💬 Send Order on WhatsApp / WhatsApp पर भेजें" color={colors.whatsapp} onPress={whatsapp} style={{ borderRadius: radius.pill }} />
+        <Button title={sharing ? '⏳ Preparing…' : '📸 Send Screenshot on WhatsApp / स्क्रीनशॉट भेजें'} color={colors.green} loading={sharing} onPress={shareScreenshot} style={{ borderRadius: radius.pill }} />
         <GradientButton title="📍 Track Order / ऑर्डर ट्रैक करें" onPress={() => router.replace(`/track/${p.orderId}`)} />
         <Button title="📋 View My Orders / मेरे ऑर्डर देखें" onPress={() => router.replace('/orders')} />
         <Button title="🏠 Continue Shopping / खरीदारी जारी रखें" color={colors.secondary} onPress={() => router.replace('/')} />

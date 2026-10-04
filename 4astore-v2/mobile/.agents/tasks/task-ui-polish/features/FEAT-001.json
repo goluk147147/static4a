@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-001",
+  "type": "refactor",
+  "description": "Centralize sizing/spacing/text tokens in the three shared primitives so every screen inherits uniform polish. Normalize the Icon size scale, add a spacing scale + shared text/pill roles, and harden GradientButton (never-wrap label + optional small size) and Stepper (height that lines up with buttons). This is the foundation FEAT-002 and FEAT-003 build on; it is style/token only, no runtime behavior changes. Independent of FEAT-002/003 in content but MUST run first since they rely on these tokens/props.",
+  "status": "completed",
+  "steps": [
+    "src/theme.ts: add `export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20 };` below the `radius` export. Do not modify existing colors/gradients/radius/shadow/STATUS_STYLE values (they are the single source of truth).",
+    "src/components/Icon.tsx: change the SIZE map from { xs:12, sm:15, md:18, lg:22, xl:28 } to { xs:14, sm:16, md:20, lg:24, xl:30 } so header/tab/inline emoji icons read evenly. Keep lineHeight = fontSize + 2 and the allowFontScaling={false} / accessibility props. No call-site edits are needed because every usage passes a size key.",
+    "src/components/ui.tsx (styles StyleSheet at bottom): add shared text roles `body: { fontSize: 14, color: colors.dark }`, `bodyStrong: { fontSize: 14, fontWeight: '700', color: colors.dark }`, `price: { fontSize: 16, fontWeight: '800', color: colors.primaryDark }`, and hoist chip styles `pill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: '#fff', borderWidth: 1.5, borderColor: colors.border }`, `pillActive: { backgroundColor: colors.primary, borderColor: colors.primary }`, `pillText: { fontSize: 13, fontWeight: '700', color: colors.dark }`. Do NOT remove or rename any existing style key.",
+    "src/components/ui.tsx (GradientButton): add `numberOfLines={1}` and `adjustsFontSizeToFit minimumFontScale={0.85}` to the inner `<Text style={[styles.gradText, textStyle]}>` so long bilingual labels never wrap. Add an optional `size?: 'sm'` prop to the component signature; when `size === 'sm'` merge a new `styles.gradBtnSm: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10 }` into the LinearGradient style (default stays styles.gradBtn minHeight 48). Keep pill radius, warmGradient, loading ActivityIndicator and all accessibility props unchanged.",
+    "src/components/ui.tsx (Stepper + styles.stepper): set the stepper container to `minHeight: 44` and change its `borderWidth` from 2 to 1.5 (match Field/pill borders) while keeping the 34x34 step buttons (styles.stepBtn) and `stepQty` minWidth 34. This makes a Stepper placed beside a button align to the same ~44-48px height band. Keep onMinus/onPlus/qty props and hitSlop unchanged."
+  ],
+  "acceptance_criteria": [
+    "`npx tsc --noEmit` (after `npm install`) exits 0 with no errors.",
+    "src/theme.ts exports `space`; existing color/radius/gradient/STATUS_STYLE values are byte-for-byte unchanged.",
+    "Icon.tsx SIZE map is 14/16/20/24/30 and no call site passes a size that now conflicts (all call sites use size keys).",
+    "GradientButton accepts an optional `size` prop (default unchanged) and its label has numberOfLines={1}; existing call sites still compile without passing `size`.",
+    "Stepper container minHeight is 44 with borderWidth 1.5; step buttons remain 34x34; all existing Stepper usages compile unchanged."
+  ],
+  "verification": [
+    "From c:\\xampp\\htdocs\\static4a\\.worktrees\\app-ui-polish\\4astore-v2\\mobile: if node_modules is absent run `npm install` once (no new deps), then run `npx tsc --noEmit` and confirm exit code 0.",
+    "Code-trace: open src/components/Icon.tsx, ui.tsx, src/theme.ts and confirm only the SIZE map, the new style/token keys, the GradientButton Text props + size prop, and the Stepper container height/border changed — no logic, no handler, no data edits."
+  ],
+  "blocked_reason": null,
+  "findings": "Implemented all 5 steps. New tokens/props for FEAT-002/003 to reuse: (1) src/theme.ts now exports `space = { xs:4, sm:8, md:12, lg:16, xl:20 }` (import from '../theme'). (2) src/components/Icon.tsx SIZE map is now 14/16/20/24/30 (xs/sm/md/lg/xl); all call sites use size keys so no call-site edits needed. (3) ui.tsx GradientButton now accepts optional `size?: 'sm'` (sm => minHeight 44 via styles.gradBtnSm; default styles.gradBtn minHeight 48) and its label has numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}. (4) New shared styles exported from ui.tsx `styles`: body (fontSize 14), bodyStrong (14/700), price (16/800 primaryDark), pill, pillActive, pillText (import { styles } from '../components/ui'). (5) Stepper container is now minHeight 44, borderWidth 1.5; stepBtn stays 34x34, stepQty minWidth 34. npm install WAS run once (worktree had no node_modules; used committed package-lock.json, no new deps added). `npx tsc --noEmit` exit 2 is ONLY a pre-existing baseline error in app.config.ts (usesCleartextTraffic not in Android type) — confirmed identical on clean baseline via git stash; my 3 edited files add ZERO new errors. That app.config.ts error is out of this task's scope."
+}

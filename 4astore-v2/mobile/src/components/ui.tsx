@@ -25,6 +25,7 @@ export function GradientButton({
   loading,
   style,
   textStyle,
+  size,
   accessibilityLabel,
 }: {
   title: string;
@@ -33,6 +34,7 @@ export function GradientButton({
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  size?: 'sm';
   accessibilityLabel?: string;
 }) {
   return (
@@ -44,8 +46,14 @@ export function GradientButton({
       accessibilityState={{ disabled: !!(disabled || loading) }}
       style={({ pressed }) => [{ opacity: disabled ? 0.55 : pressed ? 0.85 : 1, borderRadius: radius.pill, overflow: 'hidden' }, style]}
     >
-      <LinearGradient colors={warmGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradBtn}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.gradText, textStyle]}>{title}</Text>}
+      <LinearGradient colors={warmGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.gradBtn, size === 'sm' && styles.gradBtnSm]}>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={[styles.gradText, textStyle]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+            {title}
+          </Text>
+        )}
       </LinearGradient>
     </Pressable>
   );
@@ -338,12 +346,13 @@ export function ProductGridSkeleton({ cardWidth, count = 6 }: { cardWidth?: numb
 
 export const styles = StyleSheet.create({
   gradBtn: { minHeight: 48, paddingHorizontal: 22, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  gradBtnSm: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10 },
   gradText: { color: '#fff', fontWeight: '800', fontSize: 15, textAlign: 'center' },
   btn: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   btnSmall: { minHeight: 34, paddingHorizontal: 10, paddingVertical: 6 },
   btnText: { fontWeight: '700', fontSize: 14, textAlign: 'center' },
   card: { backgroundColor: colors.glass, borderRadius: radius.md, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.78)', ...shadow },
-  stepper: { flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderColor: colors.primary, borderRadius: radius.sm, overflow: 'hidden' },
+  stepper: { flexDirection: 'row', alignItems: 'center', minHeight: 44, borderWidth: 1.5, borderColor: colors.primary, borderRadius: radius.sm, overflow: 'hidden' },
   stepBtn: { backgroundColor: colors.primary, width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   stepBtnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
   stepQty: { minWidth: 34, textAlign: 'center', fontWeight: '800', fontSize: 15, color: colors.primary },
@@ -351,6 +360,12 @@ export const styles = StyleSheet.create({
   h3: { fontSize: 16, fontWeight: '800', color: colors.dark },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.primaryDark, marginBottom: 12 },
   muted: { color: colors.gray, fontSize: 13 },
+  body: { fontSize: 14, color: colors.dark },
+  bodyStrong: { fontSize: 14, fontWeight: '700', color: colors.dark },
+  price: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: '#fff', borderWidth: 1.5, borderColor: colors.border },
+  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  pillText: { fontSize: 13, fontWeight: '700', color: colors.dark },
   label: { fontSize: 13, fontWeight: '700', color: colors.dark, marginBottom: 5 },
   input: {
     minHeight: 46,

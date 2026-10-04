@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import StoreHeader from '../../src/components/StoreHeader';
 import ProductCard from '../../src/components/ProductCard';
-import { ProductGridSkeleton } from '../../src/components/ui';
+import { ProductGridSkeleton, styles as ui } from '../../src/components/ui';
 import { useCategories, useConfig, useProducts } from '../../src/queries';
 import { openLink } from '../../src/links';
 import { absoluteUrl } from '../../src/config';
@@ -76,9 +76,9 @@ export default function Products() {
   const cardW = (width - 28) / 2 - 10;
 
   const Chip = ({ active, label, onPress, img }: { active: boolean; label: string; onPress: () => void; img?: string }) => (
-    <Pressable onPress={onPress} style={[s.pill, active && s.pillActive]} accessibilityRole="button" accessibilityState={{ selected: active }}>
+    <Pressable onPress={onPress} style={[ui.pill, active && ui.pillActive]} accessibilityRole="button" accessibilityState={{ selected: active }}>
       {!!img && <Image source={{ uri: absoluteUrl(img) }} style={{ width: 18, height: 18 }} />}
-      <Text style={[s.pillText, active && { color: '#fff' }]}>{label}</Text>
+      <Text style={[ui.pillText, active && { color: '#fff' }]}>{label}</Text>
     </Pressable>
   );
 
@@ -188,9 +188,6 @@ export default function Products() {
 }
 
 const s = StyleSheet.create({
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 30, backgroundColor: '#fff', borderWidth: 1.5, borderColor: colors.border },
-  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  pillText: { fontSize: 13, fontWeight: '700', color: colors.dark },
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8 },
   railLabel: { fontSize: 13, fontWeight: '800', color: colors.dark, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 2 },
   filterBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 30, borderWidth: 1.5, borderColor: colors.primary, backgroundColor: '#fff' },

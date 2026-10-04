@@ -10,7 +10,7 @@ import { useAllOrders } from '../src/queries';
 import { api, apiError } from '../src/api';
 import { callNumber, openMapDirections } from '../src/native';
 import { showToast } from '../src/store/ui';
-import { colors } from '../src/theme';
+import { colors, space } from '../src/theme';
 
 const RIDER_STATUS = ['Rider Assigned', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
@@ -94,11 +94,11 @@ export default function Rider() {
           </View>
           <Text style={ui.muted}>{o.customer?.name} · {o.customer?.city} · ₹{o.total_amount}</Text>
           <Text style={ui.muted}>📍 {o.customer?.address}</Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', gap: space.sm, marginTop: 8 }}>
             {!!o.customer?.mobile && <Button small color={colors.green} title="📞 Call" onPress={() => callNumber(o.customer?.mobile)} />}
             {o.delivery_address?.latitude != null && <Button small color={colors.track} title="🧭 Navigate" onPress={() => openMapDirections(Number(o.delivery_address!.latitude), Number(o.delivery_address!.longitude), o.customer?.name)} />}
           </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: 8 }}>
             {RIDER_STATUS.map((st) => <Button key={st} small outline={o.order_status !== st} title={st} onPress={() => setStatus(o.order_id, st)} />)}
           </View>
         </Card>

@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "Fix the broken product-details add-to-cart area and clean up the zoom/rotate controls on app/product/[id].tsx. When the item is in the cart, a Stepper and a full-width GradientButton 'Cart par jaayein / कार्ट देखें →' sit in a flexDirection:'row' with alignItems:'center' and gap 12; the stepper (~38px) and the 48px gradient button have different heights and the long bilingual label wraps on a 360px-wide screen. Make the stepper + go-to-cart button vertically aligned, equal height, correctly spaced, with a label that stays on one line at 360px; and make the zoom badge and rotate buttons clean and consistent. Depends on FEAT-001 (uses GradientButton size='sm', the taller Stepper, and radius/space tokens). This workflow fully owns app/product/[id].tsx. No cart/zoom/rotate logic or data changes.",
+  "status": "completed",
+  "steps": [
+    "In app/product/[id].tsx, locate the in-cart branch (around the `inCart ?` ternary inside the `<View style={{ marginTop: 14 }}>` block). Change the wrapper `<View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>` to `alignItems: 'stretch'` and `gap: 10` (space.sm from theme) so the Stepper and GradientButton share one height. Import `space` from '../../src/theme' alongside the existing `colors, radius` import.",
+    "Shorten the GradientButton label from 'Cart par jaayein / कार्ट देखें →' to 'Cart देखें →' (keeps bilingual intent and the arrow, fits one line at 360px) and pass `size=\"sm\"` so its 44px height matches the Stepper's new 44px height. Keep `onPress={() => router.push('/cart')}` and `style={{ flex: 1 }}` exactly as-is. Do NOT change the Stepper's onMinus/onPlus/qty wiring.",
+    "Zoom badge: on the `canZoom` overlay View (the one containing '🔍 Zoom'), change `borderRadius: 20` to `borderRadius: radius.pill` and keep the dark glass bg; leave text at fontSize 12 fontWeight '700' (small-scale consistent). No change to the Pressable onPress / setZoom / disabled logic.",
+    "Inline rotate controls row (the `canRotate &&` block with the two Buttons): change its `gap: 10` to `space.sm` and confirm both Buttons keep `small outline` + `style={{ flex: 1 }}` so they are equal width and height. Leave the `rotate()` and `setRotation(0)` handlers unchanged.",
+    "ZoomViewer modal: unify the rotate button and the zoom-hint pill to the pill radius — change the rotate Pressable `borderRadius: 24` to `radius.pill` (import radius into the ZoomViewer scope or reference via the module-level import) and keep the close button, ScrollView pinch-zoom props, rotation transform, and all text strings unchanged.",
+    "Share button at the bottom (`Button title=\"🔗 Share / शेयर करें\" outline`): leave behavior; optionally set its marginTop to space.md for spacing consistency. Do not touch the `share()` Share.share call."
+  ],
+  "acceptance_criteria": [
+    "`npx tsc --noEmit` exits 0.",
+    "In the in-cart row the wrapper uses alignItems:'stretch' and the GradientButton uses size='sm', so stepper and button render at the same height (44px band).",
+    "The go-to-cart label is 'Cart देखें →' and, by code-trace of widths on a 360px screen (screen pad 14*2 + stepper ~ (34*2+qty 34)=102 + gap 10), the remaining ~218px plus numberOfLines={1}/adjustsFontSizeToFit guarantees a single line.",
+    "Zoom badge and both rotate controls (inline + modal) use radius.pill and consistent spacing.",
+    "No change to useCart/useFeature/useProducts/useSettings calls, the add()/setQty()/router.push handlers, zoom/rotation state, or the Share call (code-trace)."
+  ],
+  "verification": [
+    "From c:\\xampp\\htdocs\\static4a\\.worktrees\\app-ui-polish\\4astore-v2\\mobile run `npx tsc --noEmit` and confirm exit 0.",
+    "Code-trace app/product/[id].tsx: confirm only layout/style props (alignItems, gap, borderRadius, size prop, label text) and the new `space` import changed; every hook call, handler, and the ZoomViewer gesture/rotation logic are identical to before.",
+    "Mentally lay out the in-cart row at width 360: stepper block + gap + flex:1 button at 44px height with a one-line 'Cart देखें →' label — confirm no wrap and equal heights."
+  ],
+  "blocked_reason": null,
+  "findings": "Implemented all 6 steps in app/product/[id].tsx. (1) In-cart row wrapper changed to alignItems:'stretch' + gap:space.sm (8) so Stepper (minHeight 44 from FEAT-001) and GradientButton share one 44px band. (2) GradientButton label shortened to 'Cart देखें →' with size='sm' (44px via styles.gradBtnSm); onPress router.push('/cart') and style flex:1 unchanged. (3) Zoom badge borderRadius 20 -> radius.pill. (4) Inline rotate row gap 10 -> space.sm; both Buttons keep small outline + flex:1. (5) ZoomViewer modal rotate Pressable borderRadius 24 -> radius.pill (used module-level `radius` import, already in scope). (6) Share button marginTop 12 -> space.md. Added `space` to the existing '../../src/theme' import. No cart/zoom/rotate logic, hooks, handlers, or Share call touched. `npx tsc --noEmit` exits 2 ONLY due to the pre-existing baseline app.config.ts:39 `usesCleartextTraffic` error documented in FEAT-001; this file adds ZERO new errors. node_modules was already restored by prior npm install (verified up to date)."
+}
