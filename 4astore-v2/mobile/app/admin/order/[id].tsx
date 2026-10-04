@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { callNumber, openMapDirections } from '../../../src/native';
 import { showToast } from '../../../src/store/ui';
 import { colors } from '../../../src/theme';
 import { formatDate } from '../../../src/checkout';
+import type { Order } from '../../../src/types';
 
 const STATUS = ['Order Placed', 'Confirmed', 'Packed', 'Rider Assigned', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
@@ -44,7 +45,6 @@ export default function AdminOrderDetail() {
   const q = useOrder(id);
   const settings = useSettings().data;
   const shot = useScreenshot(String(id));
-  const [saving, setSaving] = useState('');
 
   useEffect(() => {
     if (ready && !staff) router.replace('/login');
@@ -58,18 +58,34 @@ export default function AdminOrderDetail() {
   const c = o.customer || {};
   const dest = o.delivery_address || {};
 
-  async function setStatus(status: string) {
-    setSaving(status);
-    try {
-      await api.post('/admin/orders/status', { orderId: o.order_id, status });
-      showToast(`#${o.order_id} → ${status}`, 'success');
-      qc.invalidateQueries({ queryKey: ['order', o.order_id] });
-      qc.invalidateQueries({ queryKey: ['all-orders'] });
-    } catch (e) {
-      showToast(apiError(e), 'error');
-    } finally {
-      setSaving('');
-    }
+  // Status change (incl. 'Cancelled') is the staff loader surface the user reported as
+  // "order staff ke delete pe loader" — there is NO DELETE endpoint in the mobile app, so this
+  // is the only staff action that touches an order. Make it optimistic so the button never hangs
+  // on the network: apply the new status to the cache immediately, clear the spinner, and roll
+  // back if the background request fails.
+  function setStatus(status: string) {
+    const prevOrder = qc.getQueryData<Order>(['order', o.order_id]);
+    const prevAll = qc.getQueryData(['all-orders']);
+    // Optimistic cache update — UI reflects the new status at once.
+    qc.setQueryData<Order | undefined>(['order', o.order_id], (old) => (old ? { ...old, order_status: status } : old));
+    qc.setQueryData(['all-orders'], (list) =>
+      Array.isArray(list) ? list.map((x: Order) => (x.order_id === o.order_id ? { ...x, order_status: status } : x)) : list
+    );
+    // The optimistic cache update is the instant feedback — do NOT hold the button spinner
+    // across the network request (that was the reported "loader" hang).
+    api
+      .post('/admin/orders/status', { orderId: o.order_id, status })
+      .then(() => {
+        showToast(`#${o.order_id} → ${status}`, 'success');
+        qc.invalidateQueries({ queryKey: ['order', o.order_id] });
+        qc.invalidateQueries({ queryKey: ['all-orders'] });
+      })
+      .catch((e) => {
+        // Roll the cache back to what it was before the optimistic update.
+        qc.setQueryData(['order', o.order_id], prevOrder);
+        qc.setQueryData(['all-orders'], prevAll);
+        showToast(apiError(e), 'error');
+      });
   }
 
   return (
@@ -129,7 +145,7 @@ export default function AdminOrderDetail() {
         <Text style={[ui.h3, { marginBottom: 8 }]}>Update status</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
           {STATUS.map((st) => (
-            <Button key={st} small outline={o.order_status !== st} loading={saving === st} color={st === 'Cancelled' ? '#c62828' : colors.primary} title={st} onPress={() => setStatus(st)} />
+            <Button key={st} small outline={o.order_status !== st} color={st === 'Cancelled' ? '#c62828' : colors.primary} title={st} onPress={() => setStatus(st)} />
           ))}
         </View>
         <Button title="📄 Download Invoice" onPress={() => downloadInvoice(o, settings?.storePhone, settings?.storeAddress).catch(() => showToast('Invoice could not be created', 'error'))} style={{ marginTop: 12 }} />

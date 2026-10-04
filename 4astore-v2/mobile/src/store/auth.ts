@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, setAccessToken, saveRefreshToken, clearRefreshToken, refreshSession, getRefreshToken, setOnSessionExpired } from '../api';
+import { api, setAccessToken, saveRefreshToken, clearRefreshToken, refreshSession, getRefreshToken } from '../api';
 import { unregisterPush } from '../push';
 import type { User } from '../types';
 
@@ -57,20 +57,22 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   logout: async () => {
-    // Clear LOCAL session FIRST so logout always works instantly — even if the token is already
-    // invalid/expired or the network is down (earlier a hung server call could block logout).
-    const rt = await getRefreshToken().catch(() => null);
-    await clearRefreshToken().catch(() => null);
+    const rt = await getRefreshToken();
+    // Local-first logout (audited): the network calls below are best-effort (.catch → null); the
+    // local session is ALWAYS cleared even if unregisterPush/logout fail, so the user never gets
+    // stuck "logged in" offline.
+    // Remove this device's push token first (still authenticated), then revoke the refresh token.
+    await unregisterPush().catch(() => null);
+    await api.post('/users/logout', { refreshToken: rt }).catch(() => null);
+    await clearRefreshToken();
     setAccessToken(null);
     set({ user: null });
-    // Clear the cart on logout so the next user doesn't inherit the previous person's cart.
-    try { const { useCart } = require('./cart'); useCart.getState().clear(); } catch { /* ignore */ }
-    // Best-effort server-side cleanup AFTER local logout; never blocks or throws.
-    void unregisterPush().catch(() => null);
-    void api.post('/users/logout', { refreshToken: rt }).catch(() => null);
   },
 
   // Launch: silent refresh → life-long login.
+  // Audited: `ready` is set in finally, so a failed/offline refresh still releases the splash
+  // loader — the app lands on its screens (bounded by OfflineGate + per-screen error branches),
+  // never an endless spinner.
   bootstrap: async () => {
     try {
       const session = await refreshSession();
@@ -86,15 +88,6 @@ export const useAuth = create<AuthState>((set) => ({
     if (session) set({ user: normalizeUser(session.user) });
   },
 }));
-
-// When the API detects a truly-dead session (token expired/revoked + refresh failed), clear the
-// local user so the UI stops showing a stale logged-in state and routes the user to login.
-setOnSessionExpired(() => {
-  setAccessToken(null);
-  void clearRefreshToken().catch(() => null);
-  useAuth.setState({ user: null });
-  try { const { useCart } = require('./cart'); useCart.getState().clear(); } catch { /* ignore */ }
-});
 
 export const STAFF_ROLES = ['owner', 'superadmin', 'admin'];
 

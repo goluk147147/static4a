@@ -128,6 +128,13 @@ export async function api<T = any>(path: string, opts: RequestOpts = {}): Promis
     clearTimeout(timeout);
   }
 
+  // Bounded 401 recovery (audited — no loop/hang possible):
+  //  • isAuthCall excludes /users/login,/users/refresh,/users/register so a refresh never retries itself.
+  //  • opts._retried guards the single retry — the retried request has _retried:true and so can never
+  //    re-enter this branch, making the refresh+retry exactly ONE attempt per request.
+  //  • refreshSession() is single-flight (shared `refreshing` promise) so concurrent 401s share one refresh.
+  //  • If refresh fails (session === null) we fall through and throw an ApiError below — never an
+  //    unresolved spinner.
   const isAuthCall = path.includes('/users/login') || path.includes('/users/refresh') || path.includes('/users/register');
   if (res.status === 401 && !opts._retried && !isAuthCall) {
     const session = await refreshSession();
