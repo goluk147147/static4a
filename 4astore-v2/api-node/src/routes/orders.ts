@@ -32,8 +32,12 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   if (mobile && !staff && viewer.mobile !== mobile) return fail(res, 'Access denied', 403);
 
   if (staff && !mobile) {
-    const orders = await prisma.order.findMany({ orderBy: { id: 'desc' } });
-    return ok(res, { orders });
+    try {
+      const orders = await prisma.order.findMany({ orderBy: { id: 'desc' } });
+      return ok(res, { orders });
+    } catch {
+      return fail(res, 'Could not load orders', 500);
+    }
   }
   const target = mobile || viewer.mobile;
   // Prefer the indexed owner FK (user_id) over the unindexable JSON-path
@@ -52,11 +56,15 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
         ],
       }
     : { customer: { path: '$.mobile', equals: target } };
-  const orders = await prisma.order.findMany({
-    where,
-    orderBy: { id: 'desc' },
-  });
-  return ok(res, { orders });
+  try {
+    const orders = await prisma.order.findMany({
+      where,
+      orderBy: { id: 'desc' },
+    });
+    return ok(res, { orders });
+  } catch {
+    return fail(res, 'Could not load orders', 500);
+  }
 });
 
 // POST /api/orders — place an order (customer).

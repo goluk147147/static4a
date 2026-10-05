@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import StoreHeader from '../src/components/StoreHeader';
-import { Button, Card, Field, GradientButton, PasswordField, Screen, styles as ui } from '../src/components/ui';
+import { AnimatedGradient, Button, Card, Field, GradientButton, PasswordField, Screen, styles as ui } from '../src/components/ui';
 import { useAuth, isOrderStaff, isRider } from '../src/store/auth';
 import { api, apiError } from '../src/api';
 import { registerForPush } from '../src/push';
-import { colors, space } from '../src/theme';
+import { showToast } from '../src/store/ui';
+import { GOOGLE_CLIENT_ID, FACEBOOK_APP_ID, INSTAGRAM_APP_ID } from '../src/config';
+import { colors, offerGradient, radius, space } from '../src/theme';
 
 export default function Login() {
   const router = useRouter();
   const { next } = useLocalSearchParams<{ next?: string }>();
   const { login, register } = useAuth();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [username, setUsername] = useState('');
@@ -23,6 +25,9 @@ export default function Login() {
   const [regUser, setRegUser] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  // Forgot-password form: identifier = username / mobile / email
+  const [resetId, setResetId] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
 
   function done(user: import('../src/types').User) {
     void registerForPush(); // subscribe to role topics (admins / riders / customers)
@@ -69,26 +74,105 @@ export default function Login() {
     }
   }
 
+  // --- Forgot password (item 12) ---------------------------------------------
+  // Real end-to-end reset via the PUBLIC endpoints:
+  //   POST /users/forgot-password/send { identifier }  → emails a 6-digit code
+  //   POST /users/reset-password { identifier, otp, newPassword }
+  // identifier = username / mobile / email. The server is enumeration-safe and
+  // always returns a generic success for the send step.
+  function switchMode(m: 'login' | 'register' | 'forgot') {
+    setMode(m);
+    setError('');
+    setOtpSent(false);
+    setOtp('');
+    setResetId('');
+    setResetPassword('');
+  }
+  async function sendResetOtp() {
+    setBusy(true);
+    setError('');
+    try {
+      await api.post('/users/forgot-password/send', { identifier: resetId.trim() });
+      setOtpSent(true);
+      setOtp('');
+      showToast('Reset code aapke registered email par bheja gaya. / Reset code sent to your registered email.', 'info');
+    } catch (e) {
+      setError(apiError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function submitReset() {
+    setBusy(true);
+    setError('');
+    try {
+      await api.post('/users/reset-password', { identifier: resetId.trim(), otp: otp.trim(), newPassword: resetPassword });
+      showToast('Password reset ✅ — ab naye password se login karein. / Log in with your new password.', 'success');
+      // Return to login prefilled with the identifier the user just reset.
+      setUsername(resetId.trim());
+      switchMode('login');
+    } catch (e) {
+      setError(apiError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // --- Social login (item 13) ------------------------------------------------
+  // Build-safe buttons only: no OAuth round-trip, no native dep. With empty creds
+  // (or no server endpoint) each button shows a per-provider "setup pending" toast.
+  function socialLogin(provider: 'Google' | 'Facebook' | 'Instagram', clientId: string) {
+    if (!clientId) {
+      showToast(`${provider} login setup pending — admin se contact karein. / ${provider} login setup pending — please contact admin.`, 'info');
+      return;
+    }
+    // Even with an id, the POST /users/social-login endpoint does not exist yet.
+    showToast(`${provider} login setup pending — admin se contact karein. / ${provider} login setup pending — please contact admin.`, 'info');
+  }
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen header={<StoreHeader back hideSearch />}>
-        <Card style={{ padding: 20 }}>
-          <Text style={[ui.h2, { marginBottom: 14 }]}>{mode === 'login' ? 'Welcome back 👋' : 'Create your account'}</Text>
+        {/* Branded gradient hero — same warm gradient family as buttons/header. */}
+        <AnimatedGradient style={styles.hero}>
+          <View style={styles.heroInner}>
+            <Image source={require('../assets/images/icon.png')} style={styles.heroLogo} resizeMode="contain" accessibilityLabel="4A Store" />
+            <Text style={styles.heroTitle}>
+              {mode === 'login' ? 'Welcome back 👋' : mode === 'register' ? 'Create your account' : 'Reset password'}
+            </Text>
+            <Text style={styles.heroSub}>
+              {mode === 'login'
+                ? 'Login karein / Login to continue'
+                : mode === 'register'
+                ? 'Naya account banayein / Join 4A Store'
+                : 'Email se password reset karein / Reset via email'}
+            </Text>
+          </View>
+        </AnimatedGradient>
+
+        <Card style={styles.card}>
           {!!error && (
-            <View style={{ backgroundColor: '#fdecea', padding: 10, borderRadius: 8, marginBottom: 12 }} accessibilityRole="alert">
+            <View style={styles.errorBox} accessibilityRole="alert">
               <Text style={{ color: '#b42318' }}>{error}</Text>
             </View>
           )}
+
           {mode === 'login' ? (
             <>
               <Field label="Username or Mobile" value={username} onChangeText={setUsername} autoCapitalize="none" autoComplete="username" />
               <PasswordField label="Password" value={password} onChangeText={setPassword} autoComplete="password" onSubmitEditing={doLogin} />
+              <Pressable onPress={() => switchMode('forgot')} style={styles.forgotLink} accessibilityRole="button">
+                <Text style={[ui.muted, { color: colors.primary, fontWeight: '700' }]}>Forgot password? / पासवर्ड भूल गए?</Text>
+              </Pressable>
               <GradientButton title={busy ? 'Please wait…' : 'Login'} onPress={doLogin} loading={busy} disabled={!username || !password} />
-              <Pressable onPress={() => { setMode('register'); setError(''); }} style={{ marginTop: 14, alignItems: 'center' }} accessibilityRole="button">
-                <Text style={ui.muted}>New here? <Text style={{ color: colors.primary, fontWeight: '700' }}>Create account</Text></Text>
+
+              <SocialBlock onPress={socialLogin} />
+
+              <Pressable onPress={() => switchMode('register')} style={styles.switchLink} accessibilityRole="button">
+                <Text style={ui.muted}>New here? <Text style={styles.linkStrong}>Create account</Text></Text>
               </Pressable>
             </>
-          ) : (
+          ) : mode === 'register' ? (
             <>
               <Field label="Full Name" value={name} onChangeText={setName} />
               <Field label="Mobile (10-digit)" value={mobile} onChangeText={(t) => setMobile(t.replace(/\D/g, ''))} keyboardType="phone-pad" maxLength={10} />
@@ -103,8 +187,44 @@ export default function Login() {
                 </>
               )}
               <GradientButton title={busy ? 'Please wait…' : 'Create Account'} onPress={doRegister} loading={busy} disabled={!otpSent} style={{ marginTop: space.sm }} />
-              <Pressable onPress={() => { setMode('login'); setError(''); }} style={{ marginTop: 14, alignItems: 'center' }} accessibilityRole="button">
-                <Text style={ui.muted}>Already have an account? <Text style={{ color: colors.primary, fontWeight: '700' }}>Login</Text></Text>
+              <Pressable onPress={() => switchMode('login')} style={styles.switchLink} accessibilityRole="button">
+                <Text style={ui.muted}>Already have an account? <Text style={styles.linkStrong}>Login</Text></Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={[ui.muted, { marginBottom: 10 }]}>
+                Username, mobile ya email daalein — reset code aapke registered email par aayega. / Enter your username, mobile or
+                email — the reset code goes to your registered email.
+              </Text>
+              <Field
+                label="Username / Mobile / Email"
+                value={resetId}
+                onChangeText={setResetId}
+                autoCapitalize="none"
+                autoComplete="username"
+                editable={!otpSent}
+              />
+              <Button title={otpSent ? 'Resend code' : 'Send reset code'} outline onPress={sendResetOtp} disabled={busy || !resetId} style={{ marginBottom: space.md }} />
+              {otpSent && (
+                <>
+                  <Text style={[ui.muted, { marginBottom: 6 }]}>📧 6 ankon ka code email check karke daalein. / Enter the 6-digit code from your email.</Text>
+                  <Field label="Reset code" value={otp} onChangeText={(t) => setOtp(t.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} textContentType="oneTimeCode" autoComplete="sms-otp" />
+                  <PasswordField label="New Password (4+ chars) / नया पासवर्ड" value={resetPassword} onChangeText={setResetPassword} />
+                  <GradientButton
+                    title={busy ? 'Please wait…' : 'Reset Password'}
+                    onPress={submitReset}
+                    loading={busy}
+                    disabled={!otp || !resetPassword}
+                    style={{ marginTop: space.sm }}
+                  />
+                </>
+              )}
+              <Text style={[ui.muted, { marginTop: 12, textAlign: 'center' }]}>
+                Email nahi hai? Store se contact karein: 7543888698
+              </Text>
+              <Pressable onPress={() => switchMode('login')} style={styles.switchLink} accessibilityRole="button">
+                <Text style={ui.muted}>Back to <Text style={styles.linkStrong}>Login</Text></Text>
               </Pressable>
             </>
           )}
@@ -113,3 +233,70 @@ export default function Login() {
     </KeyboardAvoidingView>
   );
 }
+
+/** Three build-safe social buttons (emoji/text only — no icon font, no native dep). */
+function SocialBlock({ onPress }: { onPress: (provider: 'Google' | 'Facebook' | 'Instagram', clientId: string) => void }) {
+  return (
+    <View style={styles.social}>
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or continue with / या इसके साथ जारी रखें</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      <Pressable
+        onPress={() => onPress('Google', GOOGLE_CLIENT_ID)}
+        style={({ pressed }) => [styles.socialBtn, styles.googleBtn, pressed && { opacity: 0.85 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Google"
+      >
+        <Text style={styles.googleG}>G</Text>
+        <Text style={styles.socialTextDark}>Continue with Google</Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() => onPress('Facebook', FACEBOOK_APP_ID)}
+        style={({ pressed }) => [styles.socialBtn, styles.facebookBtn, pressed && { opacity: 0.85 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Facebook"
+      >
+        <Text style={styles.socialTextLight}>f   Continue with Facebook</Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() => onPress('Instagram', INSTAGRAM_APP_ID)}
+        style={({ pressed }) => [styles.socialBtn, { padding: 0, overflow: 'hidden' }, pressed && { opacity: 0.85 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Instagram"
+      >
+        <AnimatedGradient colors={offerGradient} animated={false} style={styles.instaGrad}>
+          <Text style={styles.socialTextLight}>📷  Continue with Instagram</Text>
+        </AnimatedGradient>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  hero: { borderRadius: radius.lg, overflow: 'hidden', marginBottom: space.md },
+  heroInner: { alignItems: 'center', paddingVertical: space.xl, paddingHorizontal: space.lg },
+  heroLogo: { width: 72, height: 72, borderRadius: radius.md, marginBottom: space.md, backgroundColor: 'rgba(255,255,255,0.9)' },
+  heroTitle: { fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  heroSub: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.95)', textAlign: 'center', marginTop: 4 },
+  card: { padding: 20 },
+  errorBox: { backgroundColor: '#fdecea', padding: 10, borderRadius: 8, marginBottom: 12 },
+  forgotLink: { alignSelf: 'flex-end', marginBottom: space.md, marginTop: -4 },
+  switchLink: { marginTop: 14, alignItems: 'center' },
+  linkStrong: { color: colors.primary, fontWeight: '700' },
+  social: { marginTop: space.lg },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: space.md },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { marginHorizontal: 8, fontSize: 11, color: colors.gray, fontWeight: '600' },
+  socialBtn: { minHeight: 48, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 10, paddingHorizontal: 16 },
+  googleBtn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: colors.border },
+  googleG: { fontSize: 18, fontWeight: '800', color: '#4285F4', marginRight: 10 },
+  facebookBtn: { backgroundColor: '#1877F2' },
+  instaGrad: { minHeight: 48, width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  socialTextDark: { fontSize: 15, fontWeight: '700', color: colors.dark },
+  socialTextLight: { fontSize: 15, fontWeight: '700', color: '#fff' },
+});

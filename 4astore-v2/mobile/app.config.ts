@@ -125,6 +125,11 @@ const config: ExpoConfig = {
     apiBase: API_BASE,
     siteUrl: `https://${SITE_HOST}`,
     hasPush: hasGoogleServices,
+    // Social-login OAuth client IDs — empty until the owner provisions them.
+    // Buttons render regardless; an empty id shows a "setup pending" toast.
+    googleClientId: process.env.STORE4A_GOOGLE_CLIENT_ID || '',
+    facebookAppId: process.env.STORE4A_FACEBOOK_APP_ID || '',
+    instagramAppId: process.env.STORE4A_INSTAGRAM_APP_ID || '',
   },
 };
 

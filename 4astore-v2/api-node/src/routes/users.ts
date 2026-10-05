@@ -192,6 +192,85 @@ router.post('/deleteSelf', requireAuth, async (req: Request, res: Response) => {
   return ok(res, { message: 'Account deleted' });
 });
 
+// ---------- Forgot / reset password (PUBLIC, no requireAuth) ----------
+// Lets a logged-out user reset their password via an email OTP. Reuses the
+// EmailOtp table (purpose='reset') + the existing sendMail. Enumeration-safe:
+// both endpoints always return a generic 200 so they never reveal whether an
+// account or email exists. Separate from the auth-gated recovery-email flow.
+
+const forgotSendSchema = z.object({ identifier: z.string().trim().min(1) });
+const RESET_GENERIC = 'If an account exists, a reset code has been sent to the registered email.';
+
+/** Find a user by username, then mobile, then email/recovery_email. */
+async function findUserByIdentifier(identifier: string) {
+  const id = identifier.trim();
+  const lower = id.toLowerCase();
+  return prisma.user.findFirst({
+    where: {
+      OR: [{ username: lower }, { mobile: id }, { email: lower }, { recovery_email: lower }],
+    },
+  });
+}
+
+// POST /api/users/forgot-password/send { identifier } — username | mobile | email
+router.post('/forgot-password/send', async (req: Request, res: Response) => {
+  const parsed = forgotSendSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 'Enter your username, mobile or email.', 422);
+
+  const user = await findUserByIdentifier(parsed.data.identifier);
+  // The email we send the code to: a verified recovery email first, else any email on file.
+  const target = user ? (user.recovery_email || user.email || '') : '';
+  if (user && target) {
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    await prisma.emailOtp.create({
+      data: { email: target.toLowerCase(), otp, purpose: 'reset', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
+    });
+    await sendMail(
+      target,
+      '4A Store password reset code',
+      `Your 4A Store password reset code is ${otp}. It expires in 10 minutes. If you did not request this, ignore this email.`
+    ).catch(() => null);
+  }
+  // Always generic (enumeration-safe) — never reveal whether the account/email exists.
+  return ok(res, { message: RESET_GENERIC });
+});
+
+const resetSchema = z.object({
+  identifier: z.string().trim().min(1),
+  otp: z.string().trim().regex(/^\d{6}$/),
+  newPassword: z.string().min(4),
+});
+
+// POST /api/users/reset-password { identifier, otp, newPassword }
+router.post('/reset-password', async (req: Request, res: Response) => {
+  const parsed = resetSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 'Enter the 6-digit code and a 4+ character password.', 422);
+  const { identifier, otp, newPassword } = parsed.data;
+
+  const user = await findUserByIdentifier(identifier);
+  const target = user ? (user.recovery_email || user.email || '') : '';
+  if (!user || !target) return fail(res, 'Invalid or expired code', 422);
+
+  const row = await prisma.emailOtp.findFirst({
+    where: { email: target.toLowerCase(), purpose: 'reset', consumed: false, expires_at: { gt: new Date() } },
+    orderBy: { id: 'desc' },
+  });
+  if (!row || row.otp !== otp) return fail(res, 'Invalid or expired code', 422);
+
+  const hashed = bcrypt.hashSync(newPassword, 10);
+  await prisma.$transaction([
+    prisma.emailOtp.update({ where: { id: row.id }, data: { consumed: true } }),
+    prisma.user.update({ where: { id: user.id }, data: { password: hashed } }),
+    // Revoke existing refresh tokens so old sessions can't linger after a reset.
+    prisma.refreshToken.updateMany({ where: { user_id: user.id, revoked: false }, data: { revoked: true } }),
+  ]);
+  // Keep the owner-approved readable copy in sync (plain_password is a raw column,
+  // not a Prisma field — see ensurePlainPasswordColumn()). Best-effort.
+  await prisma.$executeRawUnsafe('UPDATE users SET plain_password = ? WHERE id = ?', newPassword, user.id).catch(() => null);
+
+  return ok(res, { message: 'Password reset successful. Please log in with your new password.' });
+});
+
 // ---------- Password-recovery email (profile page) ----------
 // Mirrors the original password-recovery.php profileEmail / sendProfileEmailCode / verifyProfileEmailCode.
 

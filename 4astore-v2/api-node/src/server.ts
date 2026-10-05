@@ -1,3 +1,4 @@
+import 'express-async-errors'; // route async rejections flow to the error handler (must be first)
 import './systemCa'; // must run before any outbound HTTPS request
 import express from 'express';
 import cors from 'cors';
