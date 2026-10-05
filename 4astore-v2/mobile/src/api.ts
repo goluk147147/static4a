@@ -8,9 +8,12 @@ let accessToken: string | null = null;
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** True when raised by a `silent` request (background poll). The toast surface must skip it. */
+  silent?: boolean;
+  constructor(message: string, status: number, silent?: boolean) {
     super(message);
     this.status = status;
+    this.silent = silent;
   }
 }
 
@@ -41,6 +44,10 @@ interface RequestOpts {
   method?: 'GET' | 'POST';
   body?: unknown;
   params?: Query;
+  /** Background poll / best-effort call: suppress the global "Server slow" toast (the thrown
+   *  ApiError carries silent:true so the toast surface can skip it) and skip the GET auto-retry
+   *  so a dropped poll fails once quietly and the next interval refetches. */
+  silent?: boolean;
   /** internal: already retried after refresh */
   _retried?: boolean;
   /** internal: already retried once after a transient network/timeout blip (GET only) */
@@ -117,14 +124,17 @@ export async function api<T = any>(path: string, opts: RequestOpts = {}): Promis
     const aborted = (e as { name?: string })?.name === 'AbortError';
     // Auto-retry ONCE for idempotent GETs on a transient network/timeout blip (the server
     // occasionally spikes). Never auto-retry writes (POST) to avoid duplicate orders/addresses.
-    if (method === 'GET' && !opts._netRetried) {
+    // Silent (background poll) calls do NOT auto-retry — they fail once quietly and the next
+    // interval refetches, so a dropped poll never raises the global toast.
+    if (method === 'GET' && !opts._netRetried && !opts.silent) {
       return api<T>(path, { ...opts, _netRetried: true });
     }
     throw new ApiError(
       aborted
         ? 'Server slow hai / timeout. Dobara try karein (Server is slow — please try again).'
         : 'No internet connection. Please try again / इंटरनेट कनेक्शन जाँचें।',
-      0
+      0,
+      opts.silent
     );
   } finally {
     clearTimeout(timeout);
@@ -147,12 +157,12 @@ export async function api<T = any>(path: string, opts: RequestOpts = {}): Promis
     accessToken = null;
     await clearRefreshToken().catch(() => null);
     onSessionExpired?.();
-    throw new ApiError('Session expired. Please log in again / सत्र समाप्त हो गया, कृपया दोबारा लॉगिन करें।', 401);
+    throw new ApiError('Session expired. Please log in again / सत्र समाप्त हो गया, कृपया दोबारा लॉगिन करें।', 401, opts.silent);
   }
 
   const data = await res.json().catch(() => null);
   if (!res.ok || (data && data.success === false)) {
-    throw new ApiError((data && data.message) || `Request failed (${res.status})`, res.status);
+    throw new ApiError((data && data.message) || `Request failed (${res.status})`, res.status, opts.silent);
   }
   return data as T;
 }

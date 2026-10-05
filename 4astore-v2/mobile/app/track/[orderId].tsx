@@ -33,7 +33,8 @@ export default function Track() {
     queryKey: ['track', orderId],
     enabled: !!orderId,
     refetchInterval: 8000,
-    queryFn: async () => (await api.get('/tracking', { orderId })).tracking as Tracking,
+    // Silent background poll — a dropped 8s poll never raises the global "Server slow" toast.
+    queryFn: async () => (await api('/tracking', { method: 'GET', params: { orderId }, silent: true })).tracking as Tracking,
   });
   const data = q.data;
   const stepIndex = data ? STEPS.indexOf(data.status) : -1;

@@ -22,15 +22,30 @@ function useScreenshot(orderId: string) {
     queryKey: ['screenshot', orderId],
     retry: false,
     queryFn: async () => {
-      const res = await fetch(apiUrl(`/orders/${encodeURIComponent(orderId)}/screenshot`), { headers: { ...authHeaders() } });
-      if (!res.ok) throw new Error('none');
-      const blob = await res.blob();
-      return await new Promise<string>((resolve, reject) => {
-        const r = new FileReader();
-        r.onloadend = () => resolve(String(r.result));
-        r.onerror = reject;
-        r.readAsDataURL(blob);
-      });
+      // Bound the raw fetch so a slow/hung screenshot can never leave the card's ActivityIndicator
+      // spinning forever: abort after 15s. On abort/network error we throw Error('none') like a 404,
+      // so (retry:false) resolves to shot.data==null and the "No payment screenshot found" empty
+      // state renders and the spinner stops.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const res = await fetch(apiUrl(`/orders/${encodeURIComponent(orderId)}/screenshot`), {
+          headers: { ...authHeaders() },
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error('none');
+        const blob = await res.blob();
+        return await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onloadend = () => resolve(String(r.result));
+          r.onerror = reject;
+          r.readAsDataURL(blob);
+        });
+      } catch {
+        throw new Error('none');
+      } finally {
+        clearTimeout(timeout);
+      }
     },
   });
 }

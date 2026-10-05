@@ -57,16 +57,19 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   logout: async () => {
-    const rt = await getRefreshToken();
-    // Local-first logout (audited): the network calls below are best-effort (.catch → null); the
-    // local session is ALWAYS cleared even if unregisterPush/logout fail, so the user never gets
-    // stuck "logged in" offline.
-    // Remove this device's push token first (still authenticated), then revoke the refresh token.
-    await unregisterPush().catch(() => null);
-    await api.post('/users/logout', { refreshToken: rt }).catch(() => null);
-    await clearRefreshToken();
+    // Local-first logout (audited): clear the in-memory session FIRST and synchronously so the UI
+    // flips to logged-out instantly — the logout button never waits on a slow/offline network.
     setAccessToken(null);
     set({ user: null });
+    // Everything below is best-effort and fire-and-forget (.catch → null); it never blocks the
+    // local clear, so offline logout always works.
+    (async () => {
+      const rt = await getRefreshToken();
+      // Remove this device's push token (best-effort), then revoke the refresh token silently.
+      await unregisterPush().catch(() => null);
+      await api('/users/logout', { method: 'POST', body: { refreshToken: rt }, silent: true }).catch(() => null);
+      await clearRefreshToken().catch(() => null);
+    })();
   },
 
   // Launch: silent refresh → life-long login.
