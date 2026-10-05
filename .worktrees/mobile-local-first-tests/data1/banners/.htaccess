@@ -1,0 +1,11 @@
+<IfModule mod_authz_core.c>
+  <FilesMatch "\.(?:png|jpe?g|webp)$">
+    Require all granted
+  </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  <FilesMatch "\.(?:png|jpe?g|webp)$">
+    Order deny,allow
+    Allow from all
+  </FilesMatch>
+</IfModule>

@@ -1,0 +1,92 @@
+/* Ported from the original 4AStore checkout.html <style> block.
+   Global html/body rules were dropped so they don't leak into other SPA pages. */
+body.modal-open { overflow: hidden; }
+
+.checkout-page { max-width: 700px; margin: 16px auto; padding: 0 12px 32px; }
+.checkout-form { padding: 18px; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.checkout-form h3 { margin-bottom: 14px; padding-bottom: 8px; }
+.location-choice-card { background: #fffaf6; border: 1px solid #f0d6bd; border-radius: 12px; padding: 13px; margin: 8px 0 12px; }
+.location-choice-card > strong { display: block; color: var(--primary-dark); font-size: 14px; margin-bottom: 9px; }
+.location-choice-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.location-choice-actions button { min-height: 42px; border: 1px solid var(--primary); border-radius: 9px; background: #fff; color: var(--primary-dark); font-weight: 800; cursor: pointer; padding: 8px 10px; }
+.location-choice-actions button:last-child { border-color: var(--border); background: var(--primary-light); }
+#deliveryLocationStatus { margin-top: 8px; color: var(--gray); font-size: 12px; line-height: 1.4; }
+.village-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; z-index: 50; max-height: 220px; overflow-y: auto; padding: 6px; background: #fff; border: 1px solid var(--border); border-radius: 9px; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+.village-dropdown.open { display: block; }
+.village-option { display: block; width: 100%; margin: 3px 0; padding: 10px 12px; border: 1px solid #e8e0d9; border-radius: 7px; background: #fff; color: #342923; text-align: left; font: inherit; cursor: pointer; }
+.village-option:hover, .village-option:focus { outline: none; border-color: var(--primary); background: var(--primary-light); }
+.village-empty { padding: 11px 12px; color: #c62828; font-size: 13px; }
+.address-summary { background: var(--primary-light); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; margin: 10px 0 14px; }
+.address-summary-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.address-change-btn { border: 0; background: none; color: var(--primary-dark); font-weight: 800; cursor: pointer; padding: 4px; }
+
+.address-picker-modal { position: fixed; inset: 0; z-index: 10000; display: none; align-items: center; justify-content: center; background: rgba(18,24,30,.5); padding: 0; backdrop-filter: blur(2px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.address-picker-modal.open { display: flex; }
+.address-picker-sheet { display: flex; flex-direction: column; width: min(100%,520px); max-height: min(82dvh,720px); min-height: 0; overflow: hidden; box-sizing: border-box; background: #fff; border-radius: 16px; padding: 18px 14px calc(12px + env(safe-area-inset-bottom)); box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.address-picker-sheet h3 { border: 0; margin: 0 0 4px; padding: 0; color: #2d211d; font-size: 21px; }
+.address-picker-sheet::before { content: ""; display: block; width: 42px; height: 4px; border-radius: 5px; background: #d8c9c2; margin: 0 auto 14px; }
+.address-picker-list { min-height: 0; max-height: min(34dvh,220px); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 0 2px; }
+.address-option { display: block; width: 100%; text-align: left; border: 1px solid var(--border); background: #fff; border-radius: 9px; padding: 11px; margin: 7px 0; cursor: pointer; }
+.address-option.selected { border-color: var(--primary); background: var(--primary-light); }
+.address-search { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 9px; font-size: 14px; outline: none; margin: 8px 0 10px; box-sizing: border-box; }
+.address-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(44,111,173,.12); }
+.address-new-btn { width: 100%; border: 1px dashed var(--primary); background: #fffaf6; border-radius: 9px; padding: 12px; color: var(--primary-dark); font-weight: 800; cursor: pointer; margin-top: 8px; }
+.address-new-btn:hover { background: var(--primary-light); }
+
+.address-editor-modal { position: fixed; inset: 0; z-index: 10050; width: 100%; height: 100dvh; min-height: 0; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; display: none; align-items: center; justify-content: center; background: rgba(18,24,30,.5); padding: 0; backdrop-filter: blur(2px); }
+.address-editor-modal.open { display: flex; }
+.address-editor-sheet { display: flex; flex-direction: column; width: min(100%,680px); max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); min-height: 0; overflow: hidden; background: #fff; border-radius: 16px; padding: 14px 16px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+.address-editor-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.address-editor-head h3 { border: 0; margin: 0; padding: 0; color: #2d211d; }
+.address-editor-head p { color: var(--gray); font-size: 12px; margin: 3px 0 0; }
+.address-editor-head button { border: 0; background: none; color: var(--gray); font-size: 28px; line-height: 1; cursor: pointer; }
+.address-editor-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 0 2px; }
+.address-editor-actions { flex: 0 0 auto; padding-top: 10px; background: #fff; }
+.address-label-options { border: 0; padding: 0; margin: 4px 0 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+.address-label-options legend { width: 100%; color: #555; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.address-label-options label { border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; background: #fff; color: var(--primary-dark); font-size: 13px; font-weight: 700; cursor: pointer; }
+.address-label-options label:has(input:checked) { border-color: var(--primary); background: var(--primary-light); }
+.address-label-options input { accent-color: var(--primary); }
+.save-address-btn { width: 100%; border: 0; border-radius: 10px; padding: 13px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; }
+.save-address-btn:disabled { opacity: .7; cursor: wait; }
+@media (min-width: 700px) { .address-picker-modal, .address-editor-modal { padding: 16px; } }
+
+@media (max-width: 600px) {
+  .checkout-form { padding: 14px; }
+  .checkout-page { padding-left: 10px; padding-right: 10px; }
+  .checkout-page h2 { font-size: 20px; }
+  .location-choice-actions { grid-template-columns: 1fr; }
+  .payment-modal-sheet { max-width: 100%; }
+  .upi-app-actions { grid-template-columns: 1fr; }
+}
+@media (max-width: 420px) {
+  .checkout-page { margin-top: 8px; }
+  .checkout-form { padding: 12px; }
+  .payment-confirm-sticky { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+}
+
+/* ---- Step 2: UPI payment modal ---- */
+.upi-payment-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10100; display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.payment-modal-sheet { background: white; border-radius: 16px; padding: 20px; max-width: 440px; width: 100%; text-align: center; max-height: calc(100dvh - 24px); overflow-y: auto; }
+@media (max-width: 480px) { .payment-modal-sheet { padding: 16px; } }
+.screenshot-upload { border: 2px dashed var(--primary); border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; transition: var(--transition); margin: 16px 0; position: relative; }
+.screenshot-upload:hover { background: var(--primary-light); }
+.screenshot-upload input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.screenshot-upload .preview-img { max-width: 200px; max-height: 200px; border-radius: 8px; margin: 12px auto 0; }
+.screenshot-upload.has-image { border-color: var(--primary); background: var(--primary-light); }
+.upi-app-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.upi-pay-button { display: flex; width: 100%; min-height: 54px; align-items: center; justify-content: center; padding: 12px; border: 0; border-radius: 11px; background: #0FA958; color: #fff; text-align: center; text-decoration: none; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
+.upi-gpay-button { background: #4285f4; }
+.upi-audio-button { width: 100%; min-height: 44px; border: 1px solid #b7ebce; border-radius: 9px; background: #effcf4; color: #087a3d; font-weight: 750; cursor: pointer; }
+.upi-launch-status { min-height: 20px; margin: 0 0 10px; color: #64748b; font-size: 12px; line-height: 1.45; }
+.upi-launch-status.fallback { color: #9a5800; font-weight: 700; }
+.utr-status { min-height: 24px; margin: 8px 0; font-size: 12px; color: var(--gray); text-align: left; }
+.utr-status.success { color: #087a3d; font-weight: 750; }
+.utr-status.error { color: #b42318; font-weight: 700; }
+.utr-progress { display: none; align-items: center; gap: 10px; margin: 8px 0 12px; color: var(--primary-dark); font-size: 12px; text-align: left; }
+.utr-progress.visible { display: flex; }
+.utr-progress-track { flex: 1; height: 8px; overflow: hidden; border-radius: 999px; background: #e5e7eb; }
+.utr-progress-fill { width: 0; height: 100%; border-radius: inherit; background: var(--primary); transition: width .2s ease; }
+.utr-progress-track.indeterminate .utr-progress-fill { width: 35%; animation: utr-progress-loading 1.1s ease-in-out infinite; }
+@keyframes utr-progress-loading { from { transform: translateX(-110%); } to { transform: translateX(310%); } }
+.payment-confirm-sticky { position: sticky; bottom: -10px; padding: 10px 0 calc(8px + env(safe-area-inset-bottom)); background: #fff; }

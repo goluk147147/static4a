@@ -1,0 +1,396 @@
+[
+    {
+        "id": 1,
+        "name": "Akash Kumar",
+        "mobile": "9876543210",
+        "username": "akash",
+        "password": "akash123",
+        "registeredAt": "2026-07-15T10:30:00",
+        "lastLogin": "2026-08-26T09:19:48+02:00"
+    },
+    {
+        "id": 2,
+        "name": "Priya Devi",
+        "mobile": "8765432109",
+        "username": "priya",
+        "password": "priya123",
+        "registeredAt": "2026-07-20T14:00:00",
+        "lastLogin": "2026-08-17T16:45:00"
+    },
+    {
+        "id": 3,
+        "name": "Rahul Singh",
+        "mobile": "7654321098",
+        "username": "rahul",
+        "password": "rahul123",
+        "registeredAt": "2026-08-01T11:20:00",
+        "lastLogin": "2026-08-16T20:30:00"
+    },
+    {
+        "id": 4,
+        "name": "akashh",
+        "mobile": "8002116652",
+        "username": "sssss",
+        "registeredAt": "2026-08-26T08:44:16+02:00",
+        "lastLogin": "2026-09-29T11:21:35+00:00",
+        "passwordHash": "$2y$10$BxwohPnEyclC\/dlDbyPXK.FSt68mbPF2YHkSX.GMSwKbGScdXCC1G",
+        "role": "rider",
+        "backendRider": true
+    },
+    {
+        "id": 5,
+        "name": "Chhotu kumar",
+        "mobile": "7543888698",
+        "username": "chhotu",
+        "password": "123456789",
+        "registeredAt": "2026-09-15T16:01:06+00:00",
+        "lastLogin": "2026-09-16T04:31:01+00:00"
+    },
+    {
+        "id": 6,
+        "name": "Ranjeet",
+        "mobile": "9523890654",
+        "username": "ranjeet",
+        "password": "12345678",
+        "registeredAt": "2026-09-16T11:14:42+00:00",
+        "lastLogin": "2026-09-16T11:14:42+00:00"
+    },
+    {
+        "id": 7,
+        "name": "yogendra kumar",
+        "mobile": "7667079426",
+        "username": "hahuaai ji",
+        "password": "1234",
+        "registeredAt": "2026-09-16T11:16:37+00:00",
+        "lastLogin": "2026-09-17T15:14:38+00:00"
+    },
+    {
+        "id": 8,
+        "name": "Uttam Kumar",
+        "mobile": "9546903625",
+        "username": "uttam",
+        "password": "1447",
+        "registeredAt": "2026-09-16T11:33:54+00:00",
+        "lastLogin": "2026-09-16T11:33:54+00:00"
+    },
+    {
+        "id": 9,
+        "name": "Harsh vardhan arya",
+        "mobile": "7903403961",
+        "username": "harsh vardhan",
+        "password": "6023",
+        "registeredAt": "2026-09-16T11:40:27+00:00",
+        "lastLogin": "2026-09-16T11:40:27+00:00"
+    },
+    {
+        "id": 10,
+        "name": "Aashu kumar",
+        "mobile": "7543800573",
+        "username": "aashu kumar",
+        "registeredAt": "2026-09-16T11:58:55+00:00",
+        "lastLogin": "2026-09-29T05:41:13+00:00",
+        "customDelivery": 0,
+        "passwordHash": "$2y$10$wSTdw9PrpiRXOuPI1kbty.OaChUtZpRuMb6g22hz1HMprujuxtBJq"
+    },
+    {
+        "id": 11,
+        "name": "Ankit",
+        "mobile": "7033306027",
+        "username": "ankit kumar",
+        "password": "123456789",
+        "registeredAt": "2026-09-16T13:44:51+00:00",
+        "lastLogin": "2026-09-16T13:44:51+00:00"
+    },
+    {
+        "id": 12,
+        "name": "Prem kumar",
+        "mobile": "6207704494",
+        "username": "prem@123",
+        "registeredAt": "2026-09-16T13:49:06+00:00",
+        "lastLogin": "2026-09-24T10:19:53+00:00",
+        "passwordHash": "$2y$10$NDOVJGjGhYSCVCCepOlluujdiY48d3Kx5uRgwPHj3vqcBZ.DDySaq"
+    },
+    {
+        "id": 13,
+        "name": "Inderjeet",
+        "mobile": "8302700623",
+        "username": "ik9849597@gmail.com",
+        "password": "2580",
+        "registeredAt": "2026-09-16T14:27:57+00:00",
+        "lastLogin": "2026-09-16T14:27:57+00:00"
+    },
+    {
+        "id": 14,
+        "name": "Lucky gupta",
+        "mobile": "9801089631",
+        "username": "lucky kumar",
+        "registeredAt": "2026-09-16T14:48:52+00:00",
+        "lastLogin": "2026-09-26T16:31:45+00:00",
+        "passwordHash": "$2y$10$A1lpeLjSSBUerpB8c62cyuTzfb8SLD5VvTCJTHyz1kyxsEj9HPfT."
+    },
+    {
+        "id": 15,
+        "name": "Arvind kumar",
+        "mobile": "9015133134",
+        "username": "9015133134",
+        "password": "Login",
+        "registeredAt": "2026-09-16T15:28:13+00:00",
+        "lastLogin": "2026-09-16T15:34:17+00:00"
+    },
+    {
+        "id": 16,
+        "name": "avinash kumar",
+        "mobile": "7543888869",
+        "username": "chhotu gupta",
+        "registeredAt": "2026-09-17T01:14:11+00:00",
+        "lastLogin": "2026-10-02T13:32:12+00:00",
+        "passwordHash": "$2y$10$8s6\/qIWTtAx5IpJFWwZS..7NMQfqktEQosAzGMpZgtjcH\/7GI3skW",
+        "recoveryEmail": "avinash10081997@gmail.com",
+        "recoveryEmailVerified": true,
+        "recoveryEmailVerifiedAt": "2026-09-28T13:14:01+00:00"
+    },
+    {
+        "id": 17,
+        "name": "Happy kumar",
+        "mobile": "9801818643",
+        "username": "happy kumar",
+        "password": "7777",
+        "registeredAt": "2026-09-17T07:16:10+00:00",
+        "lastLogin": "2026-09-17T13:28:12+00:00"
+    },
+    {
+        "id": 18,
+        "name": "Rakesh",
+        "mobile": "9174287308",
+        "username": "rakesh",
+        "password": "rakesh0987654321",
+        "registeredAt": "2026-09-17T07:52:54+00:00",
+        "lastLogin": "2026-09-17T07:52:54+00:00"
+    },
+    {
+        "id": 19,
+        "name": "Sahil Ahmad",
+        "mobile": "9651786735",
+        "username": "sahil123",
+        "password": "Sahil@123",
+        "registeredAt": "2026-09-17T09:56:14+00:00",
+        "lastLogin": "2026-09-17T09:56:14+00:00"
+    },
+    {
+        "id": 20,
+        "name": "AMAN GUPTA",
+        "mobile": "9625711626",
+        "username": "@aman123",
+        "password": "1200",
+        "registeredAt": "2026-09-17T14:15:03+00:00",
+        "lastLogin": "2026-09-17T14:15:03+00:00"
+    },
+    {
+        "id": 21,
+        "name": "Ankit kumar",
+        "mobile": "9102469130",
+        "username": "ankit pratap singh",
+        "password": "0000",
+        "registeredAt": "2026-09-17T14:18:43+00:00",
+        "lastLogin": "2026-09-17T14:18:43+00:00"
+    },
+    {
+        "id": 22,
+        "name": "akgupta",
+        "mobile": "8252241400",
+        "username": "akgupta",
+        "registeredAt": "2026-09-18T04:40:32+00:00",
+        "lastLogin": "2026-09-27T16:01:46+00:00",
+        "passwordHash": "$2y$10$iVRLtHxt6oRd8EFIeXUUQe1iUm0Kx5e4xjuPYYSSja6L5z1FUY9iW",
+        "role": "rider",
+        "backendRider": true,
+        "recoveryEmail": "ankitkumargupta545467@gmail.com",
+        "recoveryEmailVerified": true,
+        "recoveryEmailVerifiedAt": "2026-09-27T16:01:38+00:00",
+        "passwordResetAt": "2026-09-27T16:01:38+00:00"
+    },
+    {
+        "id": 23,
+        "name": "ku.shiva",
+        "mobile": "9934237447",
+        "username": "puja kumari",
+        "password": "1369",
+        "registeredAt": "2026-09-18T09:55:23+00:00",
+        "lastLogin": "2026-09-18T09:55:23+00:00",
+        "customDelivery": 0
+    },
+    {
+        "id": 24,
+        "name": "Deepak",
+        "mobile": "7033714155",
+        "username": "deepak kumar",
+        "password": "12345678",
+        "registeredAt": "2026-09-19T02:37:52+00:00",
+        "lastLogin": "2026-09-19T02:37:52+00:00"
+    },
+    {
+        "id": 25,
+        "name": "Chhote lal",
+        "mobile": "9508442077",
+        "username": "bhadhi bhai",
+        "password": "123456789",
+        "registeredAt": "2026-09-19T04:29:39+00:00",
+        "lastLogin": "2026-09-19T04:29:39+00:00"
+    },
+    {
+        "id": 26,
+        "name": "Ranjit singh",
+        "mobile": "6204708969",
+        "username": "mayapur",
+        "password": "778293",
+        "registeredAt": "2026-09-20T03:16:26+00:00",
+        "lastLogin": "2026-09-20T03:16:26+00:00"
+    },
+    {
+        "id": 27,
+        "name": "Alok kumar mishra",
+        "mobile": "9534290606",
+        "username": "alok mishra",
+        "password": "Alok@12345",
+        "registeredAt": "2026-09-20T13:36:58+00:00",
+        "lastLogin": "2026-09-20T13:52:39+00:00"
+    },
+    {
+        "id": 28,
+        "name": "Niraj",
+        "mobile": "9155450690",
+        "username": "lal ji",
+        "password": "Niraj@123",
+        "registeredAt": "2026-09-21T06:28:54+00:00",
+        "lastLogin": "2026-09-21T06:28:54+00:00"
+    },
+    {
+        "id": 29,
+        "name": "pawan kumar",
+        "mobile": "7050347360",
+        "username": "pawan kumar",
+        "password": "12345678",
+        "registeredAt": "2026-09-21T06:46:33+00:00",
+        "lastLogin": "2026-09-21T06:46:33+00:00"
+    },
+    {
+        "id": 30,
+        "name": "Raju Kumar",
+        "mobile": "6204696426",
+        "username": "raju kumar",
+        "password": "12345678",
+        "registeredAt": "2026-09-22T06:30:00+00:00",
+        "lastLogin": "2026-09-22T06:30:00+00:00"
+    },
+    {
+        "id": 31,
+        "name": "Nitish Kumar",
+        "mobile": "8084884878",
+        "username": "nitish kumar",
+        "password": "12345678",
+        "registeredAt": "2026-09-22T10:55:18+00:00",
+        "lastLogin": "2026-09-22T10:55:18+00:00"
+    },
+    {
+        "id": 32,
+        "name": "Yuraj Singh",
+        "mobile": "7982509185",
+        "username": "yuvraj",
+        "password": "12345678",
+        "registeredAt": "2026-09-22T10:59:35+00:00",
+        "lastLogin": "2026-09-22T10:59:35+00:00"
+    },
+    {
+        "id": 33,
+        "name": "Nidhi singh",
+        "mobile": "8757174924",
+        "username": "nidhi singh",
+        "password": "1234",
+        "registeredAt": "2026-09-22T13:40:31+00:00",
+        "lastLogin": "2026-09-22T13:40:31+00:00"
+    },
+    {
+        "id": 34,
+        "name": "Miraj Kumar",
+        "mobile": "7011713072",
+        "username": "miraj kumar",
+        "password": "12345678",
+        "registeredAt": "2026-09-23T11:55:54+00:00",
+        "lastLogin": "2026-09-23T11:55:54+00:00"
+    },
+    {
+        "id": 35,
+        "name": "Avinash Gupta",
+        "mobile": "9631009126",
+        "username": "chhotu kumar",
+        "passwordHash": "$2y$10$3M4SCq6NUrGqsldUlLOlbOCHpnOlb8Wz5NPCeAQZsQWu\/tBLkHIWa",
+        "registeredAt": "2026-09-24T09:50:41+00:00",
+        "lastLogin": "2026-09-24T09:50:41+00:00"
+    },
+    {
+        "id": 36,
+        "name": "lalit chaudhary",
+        "mobile": "9170614863",
+        "username": "prasun anand",
+        "passwordHash": "$2y$10$vu64pJdrpCVCF.7pHfo1xe\/Y4THXKJj.QsUkiWxbH7FcvccQgRVN2",
+        "registeredAt": "2026-09-24T11:54:08+00:00",
+        "lastLogin": "2026-09-24T11:54:08+00:00"
+    },
+    {
+        "id": 37,
+        "name": "lalit chaudhary",
+        "mobile": "7061486346",
+        "username": "lalit chaudhary",
+        "passwordHash": "$2y$10$XyjicushelK8ftXP2F3aW.OZq8qoQE7uJvMOu199Dc2MHsI5R5bSS",
+        "registeredAt": "2026-09-24T12:29:31+00:00",
+        "lastLogin": "2026-09-27T02:15:13+00:00"
+    },
+    {
+        "id": 38,
+        "name": "Saroj kumar",
+        "mobile": "6202061625",
+        "username": "saroj kumar",
+        "passwordHash": "$2y$10$SCFmM.dWnViFEPGGQ7KwIOo\/WYaUSp.2DOpHNvW7OfIwIjbfC5BWG",
+        "registeredAt": "2026-09-25T07:59:00+00:00",
+        "lastLogin": "2026-09-25T08:38:41+00:00"
+    },
+    {
+        "id": 39,
+        "name": "Santosh Kumar",
+        "mobile": "8252241401",
+        "username": "santosh kumar",
+        "passwordHash": "$2y$10$VtVKagSKphI6LaFHg0prl.dPC.uZn5pg6jm4WXb.De4nPckx3Wwsu",
+        "registeredAt": "2026-09-25T08:36:24+00:00",
+        "lastLogin": "2026-09-25T08:36:42+00:00"
+    },
+    {
+        "id": 40,
+        "name": "Saurabh Kumar",
+        "mobile": "9122172965",
+        "username": "saurabhcsc",
+        "passwordHash": "$2y$10$iULbOI9LY2iH6DnEyHpOrO3vi8\/zBuQyx\/3bXUymhjoT.Svbh0bKS",
+        "registeredAt": "2026-09-26T09:14:46+00:00",
+        "lastLogin": "2026-09-26T09:14:46+00:00"
+    },
+    {
+        "id": 41,
+        "name": "sharwan kumar",
+        "mobile": "9798052380",
+        "username": "sharwan kumar",
+        "passwordHash": "$2y$10$XX8fnao.\/VVuZm4mVRYs5uQoCgFw.g2duDR\/yxgth9WawG110VIzG",
+        "registeredAt": "2026-09-27T11:36:09+00:00",
+        "lastLogin": "2026-09-27T11:36:09+00:00"
+    },
+    {
+        "id": 42,
+        "name": "harish kumar",
+        "mobile": "9015190272",
+        "username": "harry",
+        "recoveryEmail": "online4astore@gmail.com",
+        "recoveryEmailVerified": true,
+        "recoveryEmailVerifiedAt": "2026-09-28T13:10:13+00:00",
+        "passwordHash": "$2y$10$\/HhoPHFzkk2FctCYD5czeO1iOxpZY4H3YlUUbqOWXcyXfkXDOJeeq",
+        "registeredAt": "2026-09-28T13:10:13+00:00",
+        "lastLogin": "2026-09-28T13:10:13+00:00"
+    }
+]

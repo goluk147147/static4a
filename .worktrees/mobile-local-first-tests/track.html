@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track Order - 4A Store</title>
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/notifications.js"></script>
+  <script src="assets/js/store-location.js"></script>
+  <!-- Leaflet (free OpenStreetMap maps, no API key) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    .track-wrap { width:100%; max-width:620px; margin:16px auto; padding:0 12px 40px; }
+    .track-card { width:100%; background:#fff; border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow); margin-bottom:14px; overflow:hidden; }
+    #trackMap { width:100%; height:340px; border-radius:12px; margin-top:12px; }
+    #recenterTracking { margin-top:8px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--primary-dark); font-weight:700; cursor:pointer; }
+    .steps { display:flex; justify-content:flex-start; gap:8px; margin:8px -4px 8px; padding:2px 4px 8px; overflow-x:auto; scrollbar-width:thin; }
+    .step { flex:0 0 78px; text-align:center; font-size:11px; line-height:1.25; color:#999; position:relative; overflow-wrap:anywhere; }
+    .step .dot { width:22px; height:22px; border-radius:50%; background:#e0e0e0; color:#fff; line-height:22px; margin:0 auto 4px; font-size:12px; }
+    .step.done .dot { background:var(--primary); }
+    .step.done { color:var(--primary-dark); font-weight:600; }
+    .track-input { display:flex; gap:8px; }
+    .track-input input { flex:1; padding:11px 14px; border:2px solid var(--border); border-radius:8px; font-size:15px; }
+    /* Crisp, HD rider marker (pure CSS - never pixelates) */
+    .rider-pin-wrap { position:relative; }
+    .rider-pin { width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,#0891b2,#0e7490);
+      display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff;
+      box-shadow:0 4px 14px rgba(0,0,0,.35); border:3px solid #fff; position:relative; z-index:2; }
+    .rider-pulse { position:absolute; top:50%; left:50%; width:42px; height:42px; margin:-21px 0 0 -21px;
+      border-radius:50%; background:rgba(8,145,178,.45); animation:riderPulse 1.8s ease-out infinite; z-index:1; }
+    @keyframes riderPulse { 0%{transform:scale(.7);opacity:.8} 70%{transform:scale(2.2);opacity:0} 100%{opacity:0} }
+    .leaflet-container { font-family:inherit; }
+    .track-input button { padding:11px 20px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; }
+    .track-title { color:var(--primary-dark); font-size:1.2rem; margin:0 0 10px; line-height:1.3; }
+    #statusMsg { line-height:1.45; overflow-wrap:anywhere; }
+    @media (max-width:420px) {
+      .track-card { padding:13px 11px; }
+      .track-input { gap:6px; }
+      .track-input input { min-width:0; padding:10px; font-size:14px; }
+      .track-input button { padding:10px 12px; }
+      #trackMap { height:280px; }
+      .steps { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px 4px; overflow:visible; margin-left:0; margin-right:0; padding:2px 0 4px; }
+      .step { width:auto; min-width:0; flex:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar"><div class="location-text">📍 Track Order • 4A Store</div></div>
+  <header class="main-header">
+    <div class="header-content">
+      <a href="./" class="logo"><img src="assets/images/logo.svg" alt="4A Store" height="48"></a>
+      <div style="flex:1"></div>
+      <div class="header-actions"><a href="order-history">📋 <span class="action-text">Orders</span></a></div>
+    </div>
+  </header>
+
+  <div class="track-wrap">
+    <div class="track-card">
+      <h2 class="track-title">📦 Apna Order Track Karein</h2>
+      <div class="track-input">
+        <input type="text" id="orderInput" placeholder="Order ID (e.g. 4A123456)">
+        <button onclick="startTracking()">Track</button>
+      </div>
+    </div>
+
+    <div class="track-card" id="statusCard" style="display:none;">
+      <div class="steps" id="steps"></div>
+      <div id="statusMsg" style="text-align:center;font-size:14px;color:var(--gray);margin-top:6px;"></div>
+      <div id="riderContact" style="text-align:center;margin-top:10px;"><span id="riderCallLink" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#777;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">डिलीवरी बॉय का नंबर उपलब्ध नहीं है</span></div>
+      <div id="navActions" style="display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+      <div id="trackMap"></div>
+      <button id="recenterTracking" type="button">📍 Recenter Rider</button>
+      <p style="font-size:11px;color:var(--gray);margin-top:8px;text-align:center;">Map har 15 second me update hota hai. Rider live location share kare tabhi pin dikhega.</p>
+    </div>
+  </div>
+
+  <script>
+    const STEPS = ['Order Placed','Confirmed','Packed','Rider Assigned','Out for Delivery','Delivered'];
+    let map = null, riderMarker = null, destMarker = null, storeMarker = null, routeLine = null, poll = null, currentOrder = '', accCircle = null, destinationLoadedFor = '', mapHasFitted = false, mapUserMoved = false, lastLiveAt = 0;
+    let storeLocation = { lat: STORE_LOCATION_FALLBACK.latitude, lng: STORE_LOCATION_FALLBACK.longitude };
+
+    // Animate the marker from its old spot to the new one (Blinkit-style glide)
+    function smoothMove(marker, to) {
+      const from = marker.getLatLng();
+      const steps = 25, dur = 900;
+      let i = 0;
+      const dLat = (to[0] - from.lat) / steps, dLng = (to[1] - from.lng) / steps;
+      const tick = setInterval(() => {
+        i++;
+        marker.setLatLng([from.lat + dLat * i, from.lng + dLng * i]);
+        if (i >= steps) clearInterval(tick);
+      }, dur / steps);
+    }
+
+    // Prefill from ?orderId=
+    (function () {
+      const q = new URLSearchParams(location.search).get('orderId');
+      if (q) { document.getElementById('orderInput').value = q; startTracking(); }
+    })();
+
+    function startTracking() {
+      const id = document.getElementById('orderInput').value.trim();
+      if (!id) { showAppToast('Order ID daalein', 'error'); return; }
+      currentOrder = id;
+      document.getElementById('statusCard').style.display = 'block';
+      fetch('api/settings.php?_=' + Date.now(), { cache: 'no-store' })
+        .then(response => response.json())
+        .then(result => {
+          const settings = result && result.settings ? result.settings : {};
+          const lat = Number(settings.storeLatitude);
+          const lng = Number(settings.storeLongitude);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            storeLocation = { lat, lng };
+            if (map && !riderMarker) map.setView([lat, lng], 12);
+          }
+        })
+        .catch(() => {});
+      if (!map) {
+        map = L.map('trackMap', { zoomControl: true, attributionControl: true })
+                .setView([storeLocation.lat, storeLocation.lng], 12);
+        // OpenStreetMap tiles: no API key required.
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        map.on('dragstart zoomstart', () => { mapUserMoved = true; });
+      }
+      document.getElementById('recenterTracking').onclick = () => {
+        mapUserMoved = false;
+        if (riderMarker) map.setView(riderMarker.getLatLng(), 16);
+        else map.setView([storeLocation.lat, storeLocation.lng], 12);
+      };
+      loadDestinationFromOrder();
+      fetchTracking();
+      if (poll) clearInterval(poll);
+      poll = setInterval(fetchTracking, 10000);
+    }
+
+    function renderSteps(status) {
+      const idx = STEPS.indexOf(status);
+      document.getElementById('steps').innerHTML = STEPS.map((s, i) =>
+        `<div class="step ${i <= idx ? 'done' : ''}"><div class="dot">${i <= idx ? '✓' : (i+1)}</div>${s}</div>`
+      ).join('');
+    }
+
+    function addDestinationMarker(lat, lng) {
+      if (!map || destMarker || !hasCoordinates(lat, lng)) return;
+      destMarker = L.marker([lat, lng]).addTo(map).bindPopup('डिलीवरी पता');
+    }
+
+    function addStoreMarker() {
+      if (!map || storeMarker || !hasCoordinates(storeLocation.lat, storeLocation.lng)) return;
+      storeMarker = L.marker([storeLocation.lat, storeLocation.lng]).addTo(map).bindPopup('4A Store');
+    }
+
+    function buildDirectionsUrl(destLat, destLng, label) {
+      const origin = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(destLat + ',' + destLng);
+      if (label) return origin + '&waypoints=' + encodeURIComponent(label);
+      return origin;
+    }
+
+    function setNavigationActions(riderLat, riderLng, label) {
+      const box = document.getElementById('navActions');
+      if (!box) return;
+      if (hasCoordinates(riderLat, riderLng)) {
+        const url = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent('My Location') + '&destination=' + encodeURIComponent(riderLat + ',' + riderLng) + '&travelmode=driving';
+        box.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener" onclick="if(window.AndroidApp&&typeof window.AndroidApp.openMapDirections===\'function\'){event.preventDefault();window.AndroidApp.openMapDirections(\'' + riderLat + '\',\'' + riderLng + '\',\'Rider location\'); return false;}" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#0891b2;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">🧭 Navigate to Rider</a>';
+        return;
+      }
+      if (label) {
+        const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(label);
+        box.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#0f766e;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">📍 View Delivery Address</a>';
+        return;
+      }
+      box.innerHTML = '';
+    }
+
+    function hasCoordinates(lat, lng) {
+      return lat !== null && lat !== '' && lng !== null && lng !== '' &&
+        Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+    }
+
+    function loadDestinationFromOrder() {
+      if (destinationLoadedFor === currentOrder) return;
+      destinationLoadedFor = currentOrder;
+      fetch('api/orders.php?_=' + Date.now())
+        .then(r => r.json())
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res.orders || []);
+          const order = list.find(x => x.orderId === currentOrder);
+          const customer = order && order.customer;
+          if (!customer) return;
+          addDestinationMarker(customer.deliveryLat, customer.deliveryLng);
+        })
+        .catch(() => {});
+    }
+
+    // If the rider hasn't started sharing, read the order's status from orders.php
+    // so the customer still sees real progress (Placed / Confirmed / Packed...).
+    function fetchOrderStatusFallback() {
+      fetch('api/orders.php?_=' + Date.now())
+        .then(r => r.json())
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res.orders || []);
+          const o = list.find(x => x.orderId === currentOrder);
+          if (!o) {
+            renderSteps('Order Placed');
+            document.getElementById('statusMsg').textContent = 'Ye Order ID nahi mili. Sahi Order ID daalein.';
+            return;
+          }
+          const st = o.orderStatus || o.status || 'Order Placed';
+          renderSteps(st);
+          document.getElementById('statusMsg').textContent = 'Status: ' + st + ' • Rider ne abhi live location share nahi ki.';
+        })
+        .catch(() => {
+          renderSteps('Order Placed');
+          document.getElementById('statusMsg').textContent = 'Status load nahi hua. Thodi der baad dekhein.';
+        });
+    }
+
+    function fetchTracking() {
+      fetch('api/tracking.php?orderId=' + encodeURIComponent(currentOrder) + '&_=' + Date.now())
+        .then(r => r.json())
+        .then(res => {
+          const t = res.tracking;
+          if (!t) {
+            // No live location yet -> still show the real order status
+            fetchOrderStatusFallback();
+            return;
+          }
+          renderSteps(t.status || 'Order Placed');
+          let msg = 'Status: ' + (t.status || 'Order Placed');
+          const riderName = t.riderName || (t.rider && t.rider.name) || '';
+          if (riderName) msg += ' • Rider: ' + riderName;
+          if (t.route && t.route.distance !== undefined) msg += ' • ' + t.route.distance + ' km • ETA ' + t.route.eta + ' min';
+          if (t.updatedAt) msg += ' • ' + new Date(t.updatedAt).toLocaleTimeString();
+          document.getElementById('statusMsg').textContent = msg;
+
+          const live = t.rider && t.rider.location ? t.rider.location : t;
+          if (hasCoordinates(live.latitude ?? live.lat, live.longitude ?? live.lng) && (!live.accuracy || Number(live.accuracy) <= 100)) {
+            lastLiveAt = Date.now();
+            const pos = [Number(live.latitude ?? live.lat), Number(live.longitude ?? live.lng)];
+            setNavigationActions(Number(t.lat), Number(t.lng), 'Rider Location');
+            if (!riderMarker) {
+              const icon = L.divIcon({
+                className: 'rider-pin-wrap',
+                html: '<div class="rider-pulse"></div><div class="rider-pin">🛵</div>',
+                iconSize: [46, 46], iconAnchor: [23, 23]
+              });
+              riderMarker = L.marker(pos, { icon: icon, zIndexOffset: 1000 }).addTo(map);
+              accCircle = L.circle(pos, { radius: Number(live.accuracy || 60), color: '#0891b2', weight: 1, fillColor: '#0891b2', fillOpacity: 0.12 }).addTo(map);
+            } else {
+              smoothMove(riderMarker, pos);
+              if (accCircle) { accCircle.setLatLng(pos); accCircle.setRadius(Number(live.accuracy || 60)); }
+            }
+            const heading = Number(live.heading);
+            if (Number.isFinite(heading)) riderMarker.setIcon(L.divIcon({ className: 'rider-pin-wrap', html: '<div class="rider-pin" style="transform:rotate(' + heading + 'deg)">🛵</div>', iconSize: [46, 46], iconAnchor: [23, 23] }));
+            riderMarker.bindTooltip((riderName || 'डिलीवरी बॉय') + ' आ रहे हैं', { permanent: false, direction: 'top', offset: [0, -18] });
+          } else {
+            setNavigationActions(null, null, currentOrder ? 'Order ' + currentOrder : 'Delivery location');
+            const stale = lastLiveAt && Date.now() - lastLiveAt > 30000;
+            document.getElementById('statusMsg').textContent += stale ? ' • ⚠️ Rider location temporarily unavailable' : ' • Waiting for rider live location';
+          }
+          const phone = String(t.riderMobile || (t.rider && t.rider.phone) || '').replace(/\D/g, '');
+          const contact = document.getElementById('riderContact');
+          const callLink = document.getElementById('riderCallLink');
+          if (/^[6-9]\d{9}$/.test(phone)) {
+            callLink.outerHTML = '<a id="riderCallLink" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#2e7d32;color:#fff;text-decoration:none;font-size:13px;font-weight:700;"></a>';
+            const activeCallLink = document.getElementById('riderCallLink');
+            activeCallLink.href = 'tel:' + phone;
+            activeCallLink.textContent = 'डिलीवरी बॉय को कॉल करें: ' + phone;
+            contact.style.display = 'block';
+          } else {
+            callLink.outerHTML = '<span id="riderCallLink" style="display:inline-block;padding:9px 14px;border-radius:8px;background:#777;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">डिलीवरी बॉय का नंबर उपलब्ध नहीं है</span>';
+            contact.style.display = 'block';
+          }
+          if (hasCoordinates(t.destLat, t.destLng)) {
+            addDestinationMarker(t.destLat, t.destLng);
+          }
+          if (t.customer && hasCoordinates(t.customer.latitude, t.customer.longitude)) addDestinationMarker(t.customer.latitude, t.customer.longitude);
+          addStoreMarker();
+          const routeCoordinates = t.route && t.route.polyline && t.route.polyline.coordinates;
+          if (Array.isArray(routeCoordinates) && routeCoordinates.length > 1) {
+            const latLngs = routeCoordinates.map(point => [Number(point[1]), Number(point[0])]).filter(point => hasCoordinates(point[0], point[1]));
+            if (latLngs.length > 1) {
+              if (routeLine) routeLine.setLatLngs(latLngs);
+              else routeLine = L.polyline(latLngs, { color: '#168447', weight: 5, opacity: .82 }).addTo(map);
+              if (!mapHasFitted && !mapUserMoved) { map.fitBounds(routeLine.getBounds(), { padding: [25, 25] }); mapHasFitted = true; }
+            }
+          }
+          if (t.status === 'Delivered' && poll) { clearInterval(poll); }
+        })
+        .catch(() => {});
+    }
+  </script>
+</body>
+</html>

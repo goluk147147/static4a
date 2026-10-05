@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.store4a.app",
+      "sha256_cert_fingerprints": [
+        "86:6C:52:B9:F3:C7:D3:DA:5B:3C:C4:8E:7B:82:6A:09:B0:EB:B0:F3:40:F4:FC:DB:C2:BF:B7:3B:D7:14:3E:CE"
+      ]
+    }
+  }
+]

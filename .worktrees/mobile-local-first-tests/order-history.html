@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Orders - 4A Store</title>
+  <meta name="description" content="4A Store - Track your orders and delivery status.">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="location-text">
+      📍 Delivering in Chandargarh – 824301 | ☎️ 8210874123
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="main-header">
+    <div class="header-content">
+      <a href="./" class="logo"><img src="assets/images/logo.svg" alt="4A Store" height="52"></a>
+      <form class="search-box" onsubmit="handleSearch(event)">
+        <input type="text" placeholder="Search for groceries, fruits, snacks..." id="searchInput">
+        <button type="submit">🔍</button>
+      </form>
+      <div class="header-actions">
+        <div class="login-btn-area"></div>
+        <a href="order-history">📋 <span class="action-text">Orders</span></a>
+        <a href="cart.html" class="cart-badge">
+          🛒 <span class="action-text">Cart</span>
+          <span class="badge cart-count" style="display:none">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Orders Page -->
+  <div class="orders-page">
+    <h2 style="margin-bottom:20px;">📋 My Orders</h2>
+    <div id="ordersContent">
+      <!-- Shimmer placeholder -->
+      <div class="skeleton-order">
+        <div class="skeleton-order-header"><div class="skeleton-text shimmer" style="width:120px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+        <div class="skeleton-order-items"><div class="skeleton-text shimmer" style="width:90%"></div><div class="skeleton-text shimmer" style="width:75%"></div><div class="skeleton-text shimmer" style="width:60%"></div></div>
+        <div class="skeleton-order-footer"><div class="skeleton-text shimmer" style="width:150px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+      </div>
+      <div class="skeleton-order">
+        <div class="skeleton-order-header"><div class="skeleton-text shimmer" style="width:120px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+        <div class="skeleton-order-items"><div class="skeleton-text shimmer" style="width:85%"></div><div class="skeleton-text shimmer" style="width:70%"></div></div>
+        <div class="skeleton-order-footer"><div class="skeleton-text shimmer" style="width:150px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+      </div>
+      <div class="skeleton-order">
+        <div class="skeleton-order-header"><div class="skeleton-text shimmer" style="width:120px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+        <div class="skeleton-order-items"><div class="skeleton-text shimmer" style="width:80%"></div><div class="skeleton-text shimmer" style="width:65%"></div><div class="skeleton-text shimmer" style="width:50%"></div></div>
+        <div class="skeleton-order-footer"><div class="skeleton-text shimmer" style="width:150px"></div><div class="skeleton-text shimmer" style="width:80px"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="invoiceOptionsModal" class="order-detail-modal hidden" onclick="if(event.target===this)closeInvoiceOptions()">
+    <div class="modal-body" style="max-width:430px;width:calc(100% - 24px);max-height:calc(100vh - 24px);box-sizing:border-box;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h3 style="margin:0;color:var(--primary);">🖨️ Print Invoice</h3>
+        <button onclick="closeInvoiceOptions()" style="background:none;border:0;font-size:24px;cursor:pointer;color:var(--gray);">×</button>
+      </div>
+      <p style="margin:0 0 14px;color:var(--gray);font-size:13px;">Choose paper size / printer ratio.</p>
+      <label style="display:block;font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:5px;">Invoice size</label>
+      <select id="invoicePaperSize" style="width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--border);border-radius:8px;font-size:14px;">
+        <option value="58mm">58mm Thermal Receipt</option>
+        <option value="80mm">80mm Thermal Receipt</option>
+        <option value="a3">A3 - 297 × 420 mm</option>
+        <option value="a4" selected>A4 - 210 × 297 mm</option>
+        <option value="a5">A5 - 148 × 210 mm</option>
+        <option value="a6">A6 - 105 × 148 mm</option>
+        <option value="letter">Letter - 8.5 × 11 in</option>
+        <option value="half-letter">Half Letter - 5.5 × 8.5 in</option>
+        <option value="legal">Legal - 8.5 × 14 in</option>
+        <option value="tabloid">Tabloid - 11 × 17 in</option>
+        <option value="ledger">Ledger - 17 × 11 in</option>
+        <option value="b5">B5 - 176 × 250 mm</option>
+        <option value="executive">Executive - 184 × 267 mm</option>
+      </select>
+      <p id="invoiceSizeHint" style="margin:9px 0 0;color:var(--gray);font-size:11px;line-height:1.4;">Best for office printer and PDF.</p>
+      <button onclick="generateSelectedInvoice()" style="width:100%;margin-top:16px;padding:12px;border:0;border-radius:8px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer;">📄 Generate Invoice</button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>About 4astore</h4>
+        <p>4astore is your local online grocery and daily essentials store serving Chandargarh and nearby areas.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Store Address</h4>
+        <p>Gajana Road, Chandargarh<br>Nabinagar, Aurangabad<br>Bihar – 824301, India</p>
+        <p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p>
+      </div>
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <a href="./">Home</a>
+        <a href="products">Products</a>
+        <a href="cart.html">My Cart</a>
+        <a href="order-history">My Orders</a>
+      </div>
+      <div class="footer-col">
+        <h4>Delivery Information</h4>
+        <span class="delivery-info-badge">📍 PIN Code – 824301</span>
+        <p style="margin-top:8px; font-size:12px; color:#aaa;">More locations coming soon 🚀</p>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
+  </footer>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="bottom-nav">
+    <div class="nav-items">
+      <a href="./" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+      <a href="products" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="order-history" class="nav-item active"><span class="nav-icon">📦</span>Orders</a>
+      <a href="profile" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
+    </div>
+  </nav>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    let orderHistoryAuthReady = false;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!await requireLogin()) return;
+      orderHistoryAuthReady = true;
+      renderOrders();
+    });
+
+    // Wait for data to load from JSON files before rendering orders
+    window.addEventListener('dataLoaded', () => {
+      if (!orderHistoryAuthReady || !getLoggedInUser()) return;
+      renderOrders();
+    });
+
+    function renderOrders() {
+      const user = getLoggedInUser();
+      // Show only logged-in user's orders (filtered by mobile)
+      const orders = getOrdersByUser(user.mobile);
+      const container = document.getElementById('ordersContent');
+
+      if (orders.length === 0) {
+        container.innerHTML = `
+          <div class="empty-cart">
+            <div class="empty-icon">📋</div>
+            <h3>No orders yet</h3>
+            <p>You haven't placed any orders yet. Start shopping!</p>
+            <a href="products" class="btn-primary">Browse Products →</a>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = orders.map(order => `
+        <div class="order-card">
+          <div class="order-header">
+            <div>
+              <span class="order-id-text">#${order.orderId}</span>
+              <span class="order-date"> · ${formatDate(order.orderDate)}</span>
+            </div>
+            <span class="order-status ${getStatusClass(order.orderStatus)}">${order.orderStatus}</span>
+          </div>
+          <div class="order-items-list">
+            ${order.items.map(item => `
+              <div class="o-item">
+                <span>${item.name} × ${item.quantity}</span>
+                <span>₹${item.price * item.quantity}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+            <div style="font-size:13px; color:var(--gray);">
+              📍 ${order.customer.address}, ${order.customer.city} – ${order.customer.pincode}<br>
+              💳 ${order.paymentMethod}
+            </div>
+            <div class="order-total">Total: ₹${order.totalAmount}</div>
+          </div>
+          <div style="margin-top:12px; text-align:right;">
+            <a href="track.html?orderId=${order.orderId}" style="display:inline-block; padding:9px 18px; background:#0891b2; color:white; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; margin-right:8px;">📍 Track Order</a>
+            <button onclick="downloadInvoice('${order.orderId}')" style="padding:9px 18px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">📄 Download Invoice</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ==========================================================
+    // INVOICE PDF (generated in the browser with selectable paper sizes)
+    // ==========================================================
+    let selectedInvoiceOrderId = '';
+
+    function openInvoiceOptions(orderId) {
+      selectedInvoiceOrderId = orderId;
+      document.getElementById('invoicePaperSize').value = 'a4';
+      updateInvoiceSizeHint();
+      document.getElementById('invoiceOptionsModal').classList.remove('hidden');
+    }
+
+    function closeInvoiceOptions() {
+      document.getElementById('invoiceOptionsModal').classList.add('hidden');
+    }
+
+    function updateInvoiceSizeHint() {
+      const size = document.getElementById('invoicePaperSize').value;
+      const hint = document.getElementById('invoiceSizeHint');
+      hint.textContent = size === '58mm' ? 'Compact thermal receipt for small billing printers.'
+        : size === '80mm' ? 'Standard thermal receipt for POS printers.'
+        : size === 'a4' ? 'Best for office printer and PDF.'
+        : 'Standard document size for printer or PDF.';
+    }
+
+    document.addEventListener('change', event => {
+      if (event.target.id === 'invoicePaperSize') updateInvoiceSizeHint();
+    });
+
+    function generateSelectedInvoice() {
+      const orderId = selectedInvoiceOrderId;
+      const size = document.getElementById('invoicePaperSize').value;
+      closeInvoiceOptions();
+      generateInvoice(orderId, size);
+    }
+
+    // Legacy web behavior: one click downloads the normal A4 invoice.
+    function downloadInvoice(orderId) { generateInvoice(orderId, 'a4'); }
+
+    function saveInvoicePdf(doc, fileName) {
+      if (window.AndroidApp && typeof window.AndroidApp.saveBase64File === 'function') {
+        try {
+          window.AndroidApp.saveBase64File(doc.output('datauristring'), fileName, 'application/pdf');
+          showToast('📄 Invoice saved to Downloads', 'success');
+          return;
+        } catch (e) { /* fall through to normal browser save */ }
+      }
+      doc.save(fileName);
+    }
+
+    function invoicePdfFormat(size) {
+      const formats = {
+        a3:[841.89,1190.55], a4:[595.28,841.89], a5:[419.53,595.28], a6:[297.64,419.53],
+        letter:[612,792], 'half-letter':[396,612], legal:[612,1008], tabloid:[792,1224],
+        ledger:[1224,792], b5:[498.9,708.66], executive:[522.52,756]
+      };
+      return formats[size] || formats.a4;
+    }
+
+    function generateThermalInvoice(order, size) {
+      const { jsPDF } = window.jspdf;
+      const width = size === '58mm' ? 58 : 80;
+      const height = Math.max(170, 145 + order.items.reduce((sum, item) => sum + Math.max(1, Math.ceil(String(item.name).length / (width === 58 ? 22 : 32))) * 12, 0));
+      const doc = new jsPDF({ unit:'mm', format:[width, height] });
+      const x = 4, right = width - 4, center = width / 2;
+      let y = 9;
+      const line = (text, yy, opts) => doc.text(String(text), opts?.align === 'right' ? right : (opts?.align === 'center' ? center : x), yy, opts || {});
+      doc.setFont('helvetica','bold'); doc.setFontSize(width === 58 ? 13 : 15); line('4AStore', y, { align:'center' });
+      y += 5; doc.setFont('helvetica','normal'); doc.setFontSize(7); line('Grocery in minutes', y, { align:'center' });
+      y += 6; doc.setDrawColor(80); doc.line(x, y, right, y); y += 5;
+      doc.setFontSize(7); line('INVOICE #' + order.orderId, y); y += 4;
+      line('Placed: ' + new Date(order.orderDate).toLocaleString('en-IN'), y); y += 4;
+      line('Status: ' + (order.orderStatus || order.status || 'Order Placed'), y); y += 4;
+      if ((order.orderStatus || order.status) === 'Delivered' && order.deliveredAt) { line('Delivered: ' + new Date(order.deliveredAt).toLocaleString('en-IN'), y); y += 4; }
+      line('Customer: ' + (order.customer.name || '-'), y); y += 4;
+      line('Mobile: ' + (order.customer.mobile || '-'), y); y += 6;
+      doc.setFont('helvetica','bold'); line('ITEM', y); line('AMOUNT', y, { align:'right' }); y += 4;
+      doc.setFont('helvetica','normal');
+      order.items.forEach(item => {
+        const name = String(item.name || '').slice(0, width === 58 ? 24 : 35);
+        const amount = (Number(item.price) || 0) * (Number(item.quantity) || 0);
+        line(name + ' x' + item.quantity, y); line('Rs. ' + amount, y, { align:'right' }); y += 4;
+      });
+      y += 2; doc.line(x, y, right, y); y += 6;
+      line('Subtotal', y); line('Rs. ' + (order.subtotal ?? order.totalAmount), y, { align:'right' }); y += 4;
+      line('Delivery', y); line(order.deliveryCharge ? 'Rs. ' + order.deliveryCharge : 'FREE', y, { align:'right' }); y += 4;
+      line('Payment: ' + (order.paymentMethod || 'UPI'), y); y += 5;
+      doc.setFont('helvetica','bold'); line('TOTAL', y); line('Rs. ' + order.totalAmount, y, { align:'right' }); y += 7;
+      doc.setFont('helvetica','normal'); doc.setFontSize(6.5); line('Thank you for shopping with 4AStore!', y, { align:'center' });
+      saveInvoicePdf(doc, 'Invoice-' + order.orderId + '-' + size + '.pdf');
+    }
+
+    function generateInvoice(orderId, size) {
+      const user = getLoggedInUser();
+      const orders = getOrdersByUser(user.mobile);
+      const order = orders.find(o => o.orderId === orderId);
+      if (!order) { showToast('Order not found', 'error'); return; }
+
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        showToast('Invoice library not loaded. Check your connection.', 'error');
+        return;
+      }
+
+      if (size === '58mm' || size === '80mm') {
+        generateThermalInvoice(order, size);
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: invoicePdfFormat(size) });
+      const pageW = doc.internal.pageSize.getWidth();
+      const left = 40;
+      const right = pageW - 40;
+      let y = 50;
+
+      const rupee = 'Rs. '; // jsPDF core fonts don't render the ₹ glyph reliably
+
+      // ---- Header ----
+      doc.setFillColor(44, 111, 173);
+      doc.rect(0, 0, pageW, 125, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text('4A Store', left, 45);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Grocery in Minutes', left, 64);
+      doc.setFontSize(8);
+      doc.text(doc.splitTextToSize('Gajana Road, Chandargarh, Nabinagar, Bihar - 824301', right - left - 20), left, 86);
+      doc.text('Phone: 8210874123', left, 108);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('INVOICE', right, 45, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('#' + order.orderId, right, 64, { align: 'right' });
+
+      y = 145;
+      doc.setTextColor(60, 60, 60);
+
+      // ---- Store & order meta ----
+      doc.setFontSize(9);
+      const dateStr = new Date(order.orderDate).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      doc.text('Date: ' + dateStr, right, y, { align: 'right' });
+      doc.text('Status: ' + (order.orderStatus || 'Order Placed'), right, y + 14, { align: 'right' });
+      if ((order.orderStatus || order.status) === 'Delivered' && order.deliveredAt) {
+        doc.text('Delivered: ' + new Date(order.deliveredAt).toLocaleString('en-IN'), right, y + 28, { align: 'right' });
+      }
+
+      y += 44;
+
+      // ---- Bill To ----
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(44, 111, 173);
+      doc.text('Bill To', left, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      y += 16;
+      doc.text(order.customer.name || '', left, y);
+      y += 14;
+      doc.text('Mobile: ' + (order.customer.mobile || ''), left, y);
+      y += 14;
+      const addr = `${order.customer.address || ''}, ${order.customer.city || ''} - ${order.customer.pincode || ''}`;
+      doc.text(doc.splitTextToSize(addr, right - left), left, y);
+      y += 26;
+
+      // ---- Items table header ----
+      doc.setFillColor(240, 240, 240);
+      doc.rect(left, y, right - left, 22, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(40, 40, 40);
+      doc.text('Item', left + 8, y + 15);
+      doc.text('Qty', right - 200, y + 15, { align: 'right' });
+      doc.text('Price', right - 110, y + 15, { align: 'right' });
+      doc.text('Amount', right - 8, y + 15, { align: 'right' });
+      y += 22;
+
+      // ---- Items rows ----
+      doc.setFont('helvetica', 'normal');
+      order.items.forEach(item => {
+        const lineTotal = item.price * item.quantity;
+        const nameLines = doc.splitTextToSize(item.name, right - left - 230);
+        const rowH = Math.max(18, nameLines.length * 12 + 6);
+        doc.text(nameLines, left + 8, y + 13);
+        doc.text(String(item.quantity), right - 200, y + 13, { align: 'right' });
+        doc.text(rupee + item.price, right - 110, y + 13, { align: 'right' });
+        doc.text(rupee + lineTotal, right - 8, y + 13, { align: 'right' });
+        doc.setDrawColor(230, 230, 230);
+        doc.line(left, y + rowH, right, y + rowH);
+        y += rowH;
+      });
+
+      y += 12;
+
+      // ---- Totals ----
+      const totalsX = right - 200;
+      doc.setFontSize(10);
+      const addTotal = (label, value, bold) => {
+        doc.setFont('helvetica', bold ? 'bold' : 'normal');
+        doc.text(label, totalsX, y);
+        doc.text(value, right - 8, y, { align: 'right' });
+        y += 16;
+      };
+      addTotal('Subtotal', rupee + (order.subtotal ?? order.totalAmount));
+      if (order.discount) addTotal('Discount', '- ' + rupee + order.discount);
+      addTotal('Delivery', order.deliveryCharge ? rupee + order.deliveryCharge : 'FREE');
+      doc.setDrawColor(44, 111, 173);
+      doc.line(totalsX, y, right, y);
+      y += 16;
+      doc.setTextColor(44, 111, 173);
+      addTotal('Total', rupee + order.totalAmount, true);
+
+      // ---- Footer ----
+      doc.setTextColor(130, 130, 130);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('Payment: ' + (order.paymentMethod || 'UPI'), left, y + 20);
+      doc.text('Thank you for shopping with 4A Store!', left, y + 40);
+
+      const fileName = 'Invoice-' + order.orderId + '.pdf';
+
+      // Inside the Android app, blob/data downloads don't work — hand the
+      // base64 PDF to the native bridge so it saves to Downloads.
+      if (window.AndroidApp && typeof window.AndroidApp.saveBase64File === 'function') {
+        try {
+          const base64 = doc.output('datauristring'); // "data:application/pdf;base64,...."
+          window.AndroidApp.saveBase64File(base64, fileName, 'application/pdf');
+          showToast('📄 Invoice saved to Downloads', 'success');
+          return;
+        } catch (e) {
+          // fall through to normal browser save
+        }
+      }
+
+      // Normal browser download
+      saveInvoicePdf(doc, fileName);
+    }
+  </script>
+</body>
+</html>

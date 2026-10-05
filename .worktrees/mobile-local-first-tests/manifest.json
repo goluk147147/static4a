@@ -1,0 +1,23 @@
+{
+  "name": "4A Store - Grocery in Minutes",
+  "short_name": "4A Store",
+  "description": "Fresh fruits, vegetables & daily essentials delivered fast. Chandargarh, Nabinagar – 824301",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#2C6FAD",
+  "theme_color": "#2C6FAD",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "assets/images/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "assets/images/favicon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

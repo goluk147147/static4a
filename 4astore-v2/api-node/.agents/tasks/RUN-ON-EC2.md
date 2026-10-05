@@ -123,7 +123,7 @@ SELECT COUNT(*) FROM users;                                 -- 42 (41 imported +
 SELECT COUNT(*) FROM users WHERE role='owner';              -- 1
 SELECT username, role, plain_password IS NOT NULL AS has_plain
   FROM users WHERE role='owner';                            -- owner | owner | 1
-SELECT COUNT(*) FROM users WHERE plain_password IS NOT NULL;-- 29 (28 plaintext users + owner)
+SELECT COUNT(*) FROM users WHERE plain_password IS NOT NULL;-- 28 (27 plaintext users + owner; legacy id 5 skipped as owner-mobile collision)
 
 -- 3 sample users (readable password visible for phone support):
 SELECT name, mobile, plain_password FROM users

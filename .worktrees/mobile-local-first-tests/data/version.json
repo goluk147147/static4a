@@ -1,0 +1,8 @@
+{
+    "versionCode": 17,
+    "versionName": "1.7.9",
+    "url": "https://4astore.webtoolsz.com/4AStore.apk",
+    "message": "New update available. Only v1.6 (code 7) installs use the old signing key and must be uninstalled first. Versions 1.7.3 (code 11) and newer update normally. / नया अपडेट उपलब्ध है। केवल v1.6 (code 7) वाले ऐप में पुरानी signing key है, उसे पहले uninstall करें। v1.7.3 (code 11) और नए version सीधे update होंगे।",
+    "forceUpdate": false,
+    "assetVersion": 18
+}

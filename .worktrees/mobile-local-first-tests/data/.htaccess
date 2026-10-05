@@ -1,0 +1,14 @@
+# Allow access to JSON data files (static hosting)
+<IfModule mod_authz_core.c>
+  Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Allow from all
+</IfModule>
+
+# Set correct content type for JSON files
+<FilesMatch "\.json$">
+  Header set Content-Type "application/json"
+  Header set Access-Control-Allow-Origin "*"
+</FilesMatch>

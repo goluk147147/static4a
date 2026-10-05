@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0FA958">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="4A Store - Apna local grocery store. Fresh fruits, vegetables, daily essentials, snacks & more delivered in minutes. Chandargarh, Nabinagar, Bihar.">
+  <meta name="keywords" content="4A Store, grocery delivery, online grocery, Chandargarh, Nabinagar, Bihar, fruits, vegetables, daily needs">
+  <link rel="canonical" href="https://4astore.com/">
+  <meta property="og:title" content="4A Store - Grocery in Minutes">
+  <meta property="og:description" content="Fresh fruits, vegetables & daily essentials delivered fast. Order online from your local grocery store in Chandargarh, Bihar.">
+  <meta property="og:image" content="https://4astore.com/assets/images/og-image.jpg">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://4astore.com/">
+  <meta property="og:site_name" content="4A Store">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="4A Store - Grocery in Minutes">
+  <meta name="twitter:description" content="Fresh fruits, vegetables & daily essentials delivered fast.">
+  <meta name="twitter:image" content="https://4astore.com/assets/images/og-image.jpg">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <link rel="apple-touch-icon" href="assets/images/favicon.svg">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "GroceryStore",
+    "name": "4A Store",
+    "url": "https://4astore.com/",
+    "telephone": "+91-8210874123",
+    "image": "https://4astore.com/assets/images/og-image.jpg",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Gajana Road, Chandargarh, Nabinagar",
+      "addressLocality": "Aurangabad",
+      "addressRegion": "Bihar",
+      "postalCode": "824301",
+      "addressCountry": "IN"
+    },
+    "areaServed": "824301",
+    "priceRange": "₹₹"
+  }
+  </script>
+  <title>4A Store | Online Grocery Delivery in Chandargarh</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    /* Social Proof Popup */
+    .social-proof { position:fixed; bottom:90px; left:20px; background:white; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.15); padding:12px 16px; max-width:320px; z-index:900; display:flex; align-items:center; gap:10px; animation:popIn 0.4s ease; border-left:4px solid var(--primary); }
+    .social-proof .sp-icon { font-size:1.5rem; }
+    .social-proof .sp-text { font-size:12px; color:#333; line-height:1.4; }
+    .social-proof .sp-text strong { color:var(--primary-dark); }
+    .social-proof .sp-close { position:absolute; top:4px; right:8px; background:none; border:none; font-size:14px; cursor:pointer; color:#999; }
+    @keyframes popIn { from { transform:translateY(20px) scale(0.9); opacity:0; } to { transform:translateY(0) scale(1); opacity:1; } }
+    @keyframes popOut { from { opacity:1; } to { opacity:0; transform:translateY(10px); } }
+
+    /* Ads Section */
+    .ads-section { padding:0 20px 30px; max-width:1400px; margin:0 auto; }
+    .ads-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
+    .ad-card { border-radius:12px; padding:20px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:var(--transition); border:2px solid transparent; }
+    .ad-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+    .ad-card .ad-icon { font-size:2.2rem; }
+    .ad-card .ad-content h4 { font-size:14px; font-weight:700; margin-bottom:4px; }
+    .ad-card .ad-content p { font-size:12px; color:#555; line-height:1.4; }
+
+    /* Festive falling particles */
+    .festive-particle { position:fixed; pointer-events:none; z-index:800; animation:fall linear forwards; font-size:1.2rem; }
+    @keyframes fall { 0%{transform:translateY(-20px) rotate(0deg); opacity:1;} 100%{transform:translateY(100vh) rotate(720deg); opacity:0;} }
+
+    @media (max-width:768px) {
+      .social-proof { left:50%; right:auto; max-width:none; width:92%; bottom:auto; top:120px; transform:translateX(-50%); z-index:1001; animation:popInMobile 0.4s ease; }
+      @keyframes popInMobile { from { transform:translateX(-50%) translateY(-10px); opacity:0; } to { transform:translateX(-50%) translateY(0); opacity:1; } }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="location-text">📍 Delivering in Chandargarh – 824301 | ☎️ 8210874123</div>
+  </div>
+
+  <!-- Header -->
+  <header class="main-header">
+    <div class="header-content">
+      <a href="./" class="logo"><img src="assets/images/logo.svg" alt="4A Store" height="52"></a>
+      <form class="search-box" onsubmit="handleSearch(event)">
+        <input type="text" placeholder="Search for groceries, fruits, snacks..." id="searchInput">
+        <button type="submit">🔍</button>
+      </form>
+      <div class="header-actions">
+        <div class="login-btn-area"></div>
+        <a href="order-history" id="headerOrdersLink">📋 <span class="action-text">Orders</span></a>
+        <a href="cart.html" class="cart-badge">🛒 <span class="action-text">Cart</span>
+          <span class="badge cart-count" style="display:none">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Slider (Dynamic from config.json) -->
+  <section class="hero-slider">
+    <div class="slider-track" id="sliderTrack">
+      <!-- Shimmer placeholder -->
+      <div class="skeleton-container" id="sliderShimmer">
+        <div class="skeleton-banner shimmer"></div>
+      </div>
+    </div>
+    <div class="slider-dots" id="sliderDots"></div>
+  </section>
+
+  <!-- Ads / Offers Section -->
+  <section class="ads-section">
+    <div class="ads-grid" id="adsGrid">
+      <!-- Shimmer placeholder -->
+      <div class="skeleton-ad shimmer"></div>
+      <div class="skeleton-ad shimmer"></div>
+      <div class="skeleton-ad shimmer"></div>
+    </div>
+  </section>
+
+  <!-- Categories -->
+  <section class="categories-section">
+    <h2 class="section-title">🛍️ Shop by Category</h2>
+    <div class="categories-grid" id="categoriesGrid">
+      <!-- Shimmer placeholder -->
+      <div class="skeleton-category"><div class="skeleton-icon shimmer"></div><div class="skeleton-label shimmer"></div></div>
+      <div class="skeleton-category"><div class="skeleton-icon shimmer"></div><div class="skeleton-label shimmer"></div></div>
+      <div class="skeleton-category"><div class="skeleton-icon shimmer"></div><div class="skeleton-label shimmer"></div></div>
+      <div class="skeleton-category"><div class="skeleton-icon shimmer"></div><div class="skeleton-label shimmer"></div></div>
+      <div class="skeleton-category"><div class="skeleton-icon shimmer"></div><div class="skeleton-label shimmer"></div></div>
+      <div class="skeleton-category"><div class="skeleton-icon shimmer"></div><div class="skeleton-label shimmer"></div></div>
+      <div class="skeleton-category"><div class="skeleton-icon shimmer"></div><div class="skeleton-label shimmer"></div></div>
+      <div class="skeleton-category"><div class="skeleton-icon shimmer"></div><div class="skeleton-label shimmer"></div></div>
+    </div>
+  </section>
+
+  <!-- Popular Products -->
+  <section class="products-section">
+    <h2 class="section-title">🔥 Popular Products</h2>
+    <div class="products-grid" id="popularProducts">
+      <!-- Shimmer placeholder -->
+      <div class="skeleton-card"><div class="skeleton-img shimmer"></div><div class="skeleton-text short shimmer"></div><div class="skeleton-text long shimmer"></div><div class="skeleton-text medium shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer"></div></div>
+      <div class="skeleton-card"><div class="skeleton-img shimmer"></div><div class="skeleton-text short shimmer"></div><div class="skeleton-text long shimmer"></div><div class="skeleton-text medium shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer"></div></div>
+      <div class="skeleton-card"><div class="skeleton-img shimmer"></div><div class="skeleton-text short shimmer"></div><div class="skeleton-text long shimmer"></div><div class="skeleton-text medium shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer"></div></div>
+      <div class="skeleton-card"><div class="skeleton-img shimmer"></div><div class="skeleton-text short shimmer"></div><div class="skeleton-text long shimmer"></div><div class="skeleton-text medium shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer"></div></div>
+      <div class="skeleton-card"><div class="skeleton-img shimmer"></div><div class="skeleton-text short shimmer"></div><div class="skeleton-text long shimmer"></div><div class="skeleton-text medium shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer"></div></div>
+      <div class="skeleton-card"><div class="skeleton-img shimmer"></div><div class="skeleton-text short shimmer"></div><div class="skeleton-text long shimmer"></div><div class="skeleton-text medium shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer"></div></div>
+    </div>
+    <div class="text-center mt-20">
+      <a href="products" class="btn-primary">View All Products →</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>About 4astore</h4>
+        <p>4astore is your local online grocery and daily essentials store serving Chandargarh and nearby areas. We bring quality products at best prices to your doorstep.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Store Address</h4>
+        <p>4astore<br>Gajana Road, Chandargarh<br>Nabinagar, Aurangabad<br>Bihar – 824301, India</p>
+        <p class="store-phone"><a href="tel:8210874123">📞 8210874123</a></p>
+      </div>
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <a href="./">Home</a>
+        <a href="products">Products</a>
+        <a href="cart.html">My Cart</a>
+        <a href="order-history">My Orders</a>
+        <a href="track.html">Track Order</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal &amp; Support</h4>
+        <a href="privacy-policy.html">Privacy Policy</a>
+        <a href="terms.html">Terms &amp; Conditions</a>
+        <a href="help-support.html">Help &amp; Support</a>
+        <a href="account-deletion.html">Delete Account</a>
+      </div>
+      <div class="footer-col">
+        <h4>Delivery & Payment</h4>
+        <p>📍 Delivering in PIN 824301 only</p>
+        <p style="margin-top:4px;">💳 UPI: <strong data-upi-id>Q623952089@ybl</strong></p>
+        <p style="margin-top:8px; font-size:12px; color:#aaa;">More locations coming soon 🚀</p>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 4astore. All Rights Reserved.</div>
+  </footer>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="bottom-nav">
+    <div class="nav-items">
+      <a href="./" class="nav-item active"><span class="nav-icon">🏠</span>Home</a>
+      <a href="products" class="nav-item"><span class="nav-icon">📂</span>Categories</a>
+      <a href="cart.html" class="nav-item"><span class="nav-icon">🛒</span>Cart<span class="mobile-badge cart-count" style="display:none">0</span></a>
+      <a href="order-history" class="nav-item"><span class="nav-icon">📦</span>Orders</a>
+      <a href="profile" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
+    </div>
+  </nav>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      // Relative path works both at domain root (live) and in a subfolder (localhost/static4a)
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('SW registered'))
+        .catch(err => console.log('SW registration skipped:', err.message));
+    }
+    let siteConfig = null;
+
+    // Run the announcement independently too (in case dataLoaded doesn't fire)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => setTimeout(playAnnouncement, 500));
+    } else {
+      setTimeout(playAnnouncement, 500);
+    }
+
+    // ==========================================================
+    // HOME PAGE VOICE ANNOUNCEMENT (set by admin, plays once per message)
+    // ==========================================================
+    function playAnnouncement() {
+      fetch('api/announcement.php?t=' + Date.now(), { cache: 'no-store' })
+        .then(r => r.json())
+        .then(res => {
+          if (!res.success) return;
+          const ann = res.announcement;
+          if (!ann || !ann.enabled || (!ann.text && !ann.image)) return;
+
+          // Target check: "all" -> everyone; otherwise only the matching mobile
+          const target = (ann.target || 'all').trim();
+          if (target !== 'all') {
+            const user = (typeof getLoggedInUser === 'function') ? getLoggedInUser() : null;
+            if (!user || user.mobile !== target) return;  // not for this user
+          }
+
+          // Show only once per message id on this device
+          if (String(localStorage.getItem('4astore_ann_spoken')) === String(ann.id)) return;
+
+          // Show the popup (image + text) right away
+          showAnnouncementPopup(ann);
+
+          let done = false;
+          const speakNow = () => {
+            if (done) return;
+            done = true;
+            localStorage.setItem('4astore_ann_spoken', String(ann.id));
+            if (ann.text) speakText(ann.text);
+            document.removeEventListener('click', onTap);
+            document.removeEventListener('touchstart', onTap);
+          };
+          const onTap = () => speakNow();
+
+          if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
+            speakNow();
+          } else {
+            document.addEventListener('click', onTap, { once: true });
+            document.addEventListener('touchstart', onTap, { once: true });
+            setTimeout(speakNow, 600);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Popup showing the announcement image + text
+    function showAnnouncementPopup(ann) {
+      if (document.getElementById('annPopup')) return;
+
+      const overlay = document.createElement('div');
+      overlay.id = 'annPopup';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+
+      // Image with padding around it
+      const imgHtml = ann.image
+        ? `<div style="padding:14px 14px 0;"><img src="${ann.image}" alt="offer" style="display:block;width:100%;height:auto;max-height:38vh;object-fit:contain;border-radius:10px;" onerror="this.parentElement.style.display='none'"></div>`
+        : '';
+
+      // Highlight words wrapped in *stars*  ->  *20% OFF*  becomes a highlighted chip
+      const rawText = ann.text || '';
+      const formatted = escapeHtmlLite(rawText).replace(/\*([^*]+)\*/g,
+        '<span style="background:#fff3cd;color:#e65100;font-weight:800;padding:1px 6px;border-radius:5px;">$1</span>');
+      const textHtml = rawText
+        ? `<p style="font-size:15px;color:#333;line-height:1.6;white-space:pre-line;margin:0;">${formatted}</p>`
+        : '';
+
+      const ctaHtml = (ann.ctaText && ann.ctaLink)
+        ? `<a href="${ann.ctaLink}" style="display:block;padding:14px;background:linear-gradient(135deg,#ff6a00,#f107a3);color:#fff;border-radius:12px;font-size:16px;font-weight:800;text-decoration:none;text-align:center;box-shadow:0 6px 16px rgba(241,7,163,.35);">${ann.ctaText} →</a>`
+        : '';
+
+      overlay.innerHTML =
+        '<div style="position:relative;display:flex;flex-direction:column;background:#fff;border-radius:18px;width:100%;max-width:420px;max-height:90vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.4);animation:annPop .28s ease;">'
+          // fixed header with close (X) inside it
+          + '<div style="position:relative;background:linear-gradient(135deg,#ff6a00,#f107a3);color:#fff;padding:14px 44px;text-align:center;font-weight:800;font-size:16px;letter-spacing:.3px;flex-shrink:0;">🎉 Special Offer'
+          +   '<button onclick="document.getElementById(\'annPopup\').remove()" aria-label="Close" style="position:absolute;top:50%;right:10px;transform:translateY(-50%);width:32px;height:32px;border:none;border-radius:50%;background:rgba(255,255,255,0.25);color:#fff;font-size:18px;line-height:1;cursor:pointer;">×</button>'
+          + '</div>'
+          // fixed image (with padding)
+          + imgHtml
+          // scrollable message area ONLY
+          + '<div style="flex:1;overflow-y:auto;padding:16px 20px;text-align:center;-webkit-overflow-scrolling:touch;">' + textHtml + '</div>'
+          // fixed CTA button at bottom
+          + (ctaHtml ? '<div style="padding:14px 16px;border-top:1px solid #eee;flex-shrink:0;">' + ctaHtml + '</div>' : '')
+        + '</div>';
+
+      if (!document.getElementById('annPopStyle')) {
+        const st = document.createElement('style');
+        st.id = 'annPopStyle';
+        st.textContent = '@keyframes annPop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}';
+        document.head.appendChild(st);
+      }
+
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+    }
+
+    // Minimal HTML-escape so admin text can't inject markup (but * highlighting still works)
+    function escapeHtmlLite(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Speak text: native TTS inside the app, Web Speech in browsers
+    function speakText(msg) {
+      if (window.AndroidApp && typeof window.AndroidApp.speak === 'function') {
+        try { window.AndroidApp.speak(msg); return; } catch (e) { /* fall through */ }
+      }
+      if (!('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const speak = () => {
+          const u = new SpeechSynthesisUtterance(msg);
+          u.lang = 'hi-IN'; u.rate = 0.9; u.pitch = 1; u.volume = 1;
+          const voices = window.speechSynthesis.getVoices();
+          const hi = voices.find(v => v.lang === 'hi-IN' || (v.lang || '').toLowerCase().startsWith('hi'));
+          if (hi) u.voice = hi;
+          window.speechSynthesis.speak(u);
+        };
+        if (window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = () => { speak(); window.speechSynthesis.onvoiceschanged = null; };
+          setTimeout(speak, 400);
+        } else { setTimeout(speak, 300); }
+      } catch (e) { /* ignore */ }
+    }
+
+    window.addEventListener('dataLoaded', async () => {
+      // Load config
+      try {
+        const res = await fetch('api/data.php?type=config');
+        siteConfig = await res.json();
+      } catch(e) { siteConfig = { banners: [], ads: [], socialProofMessages: [], socialProofNames: [] }; }
+
+      renderBanners();
+      renderAds();
+      renderCategories();
+      renderPopularProducts();
+
+      // Play the admin's home-page voice announcement (once per message)
+      playAnnouncement();
+      initSlider();
+      startSocialProof();
+      startFestiveAnimation();
+    });
+
+    // ============================================
+    // DYNAMIC BANNERS (Festival-based)
+    // ============================================
+    function resolveBannerImage(src) {
+      if (!src || /^https?:\/\//i.test(src) || /^data:image\//i.test(src)) return src;
+      try { return new URL(src, window.location.href).href; } catch (e) { return src; }
+    }
+
+    function renderBanners() {
+      const track = document.getElementById('sliderTrack');
+      const dotsDiv = document.getElementById('sliderDots');
+      // Read festival from localStorage (set by admin panel)
+      const festival = localStorage.getItem('4astore_festival') || siteConfig.currentFestival || '';
+      
+      // Filter: show general banners + current festival banners
+      let banners = siteConfig.banners.filter(b => b.active && (b.festival === '' || b.festival === festival));
+      if (banners.length === 0) banners = siteConfig.banners.filter(b => b.active && b.festival === '');
+      
+      track.innerHTML = banners.map((b, i) => {
+        const g = Array.isArray(b.gradient) ? b.gradient : ['#ff6600', '#ff9800'];
+        const btn = (b.btnText && b.btnLink)
+          ? `<a href="${b.btnLink}" class="btn-shop">${b.btnText}</a>` : '';
+
+        if (b.image) {
+          // Image banner: image is the background; text + button sit ON TOP
+          // over a dark gradient overlay (so content stays readable).
+          const hasText = (b.title || b.subtitle || btn);
+          const overlay = hasText
+            ? 'linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 55%, rgba(0,0,0,0) 100%), '
+            : '';
+          return `
+            <div class="slide" style="background:${overlay}url('${resolveBannerImage(b.image)}') center/cover no-repeat;">
+              ${hasText ? `<div class="slide-content" style="text-align:left; margin:0; margin-right:auto;">
+                ${b.title ? `<h1>${b.title}</h1>` : ''}
+                ${b.subtitle ? `<p>${b.subtitle}</p>` : ''}
+                ${btn}
+              </div>` : ''}
+            </div>`;
+        }
+
+        // Gradient banner (no image) — original centered layout
+        return `
+        <div class="slide" style="background:linear-gradient(135deg, ${g[0]}, ${g[1]});">
+          <div class="slide-content">
+            <h1>${b.title || ''}</h1>
+            <p>${b.subtitle || ''}</p>
+            ${btn}
+          </div>
+        </div>`;
+      }).join('');
+      
+      dotsDiv.innerHTML = banners.map((_, i) => `<span class="dot ${i===0?'active':''}"></span>`).join('');
+    }
+
+    // ============================================
+    // ADS SECTION
+    // ============================================
+    function renderAds() {
+      const grid = document.getElementById('adsGrid');
+      const ads = siteConfig.ads.filter(a => a.active);
+
+      // Replace delivery placeholders with the live (backend-configured) values.
+      // Supports {{freeDeliveryAbove}} and {{deliveryCharge}}, and also rewrites
+      // any old hardcoded "₹500" free-delivery text to the current setting.
+      const fda = (typeof STORE_CONFIG !== 'undefined' && STORE_CONFIG.freeDeliveryAbove != null) ? STORE_CONFIG.freeDeliveryAbove : 500;
+      const dc = (typeof STORE_CONFIG !== 'undefined' && STORE_CONFIG.deliveryCharge != null) ? STORE_CONFIG.deliveryCharge : 0;
+      const dyn = (txt) => String(txt || '')
+        .replace(/\{\{\s*freeDeliveryAbove\s*\}\}/g, fda)
+        .replace(/\{\{\s*deliveryCharge\s*\}\}/g, dc)
+        .replace(/₹\s*500\+?/g, '₹' + fda)
+        .replace(/₹500\+/g, '₹' + fda);
+
+      grid.innerHTML = ads.map(ad => `
+        <a href="${ad.link}" class="ad-card" style="background:${ad.bgColor}; border-color:${ad.borderColor};">
+          <div class="ad-icon">${ad.icon}</div>
+          <div class="ad-content">
+            <h4 style="color:${ad.borderColor};">${dyn(ad.title)}</h4>
+            <p>${dyn(ad.description)}</p>
+          </div>
+        </a>
+      `).join('');
+    }
+
+    // ============================================
+    // SOCIAL PROOF POPUP ("Someone just ordered...")
+    // ============================================
+    function startSocialProof() {
+      const messages = siteConfig.socialProofMessages || [];
+      const names = siteConfig.socialProofNames || [];
+      if (messages.length === 0 || names.length === 0) return;
+      
+      // Show first after 5 seconds, then every 15-25 seconds
+      setTimeout(showSocialProof, 5000);
+    }
+
+    function showSocialProof() {
+      const messages = siteConfig.socialProofMessages;
+      const names = siteConfig.socialProofNames;
+      
+      // Pick random values
+      const name = names[Math.floor(Math.random() * names.length)];
+      const productNames = products.length > 0 ? products.map(p => p.name) : ['groceries'];
+      const product = productNames[Math.floor(Math.random() * productNames.length)];
+      const amount = (Math.floor(Math.random() * 8) + 2) * 100; // 200-1000
+      
+      let msg = messages[Math.floor(Math.random() * messages.length)];
+      msg = msg.replace('{name}', name).replace('{product}', product).replace('{amount}', amount);
+      
+      // Remove existing
+      const existing = document.querySelector('.social-proof');
+      if (existing) existing.remove();
+      
+      const popup = document.createElement('div');
+      popup.className = 'social-proof';
+      popup.innerHTML = `
+        <div class="sp-icon">🛒</div>
+        <div class="sp-text"><strong>${msg}</strong><br><span style="font-size:11px;color:#999;">just now</span></div>
+        <button class="sp-close" onclick="this.parentElement.remove()">×</button>
+      `;
+      document.body.appendChild(popup);
+      
+      // Auto remove after 5 seconds
+      setTimeout(() => {
+        if (popup.parentElement) {
+          popup.style.animation = 'popOut 0.3s ease forwards';
+          setTimeout(() => popup.remove(), 300);
+        }
+      }, 5000);
+      
+      // Schedule next
+      const nextDelay = 15000 + Math.random() * 15000; // 15-30 seconds
+      setTimeout(showSocialProof, nextDelay);
+    }
+
+    // ============================================
+    // CATEGORIES & PRODUCTS
+    // ============================================
+    function renderCategories() {
+      const grid = document.getElementById('categoriesGrid');
+      // Hide "hidden" categories (e.g. age-restricted) from the homepage
+      grid.innerHTML = categories.filter(cat => !cat.hidden).map(cat => `
+        <a href="products?category=${cat.slug}" class="category-card">
+          <div class="cat-icon">${cat.image ? `<img src="${cat.image}" alt="${cat.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';"><span style="display:none;">${cat.icon || '🛒'}</span>` : (cat.icon || '🛒')}</div>
+          <div class="cat-name">${cat.name}</div>
+        </a>
+      `).join('');
+    }
+
+    function renderPopularProducts() {
+      const grid = document.getElementById('popularProducts');
+      // Don't feature age-restricted products in the homepage "popular" list
+      const restrictedSlugs = categories.filter(c => c.hidden || c.ageRestricted).map(c => c.slug);
+      const popular = products.filter(p => !restrictedSlugs.includes(p.category)).slice(0, 12);
+      grid.innerHTML = popular.map(p => createProductCard(p)).join('');
+    }
+
+    // ============================================
+    // FESTIVE FALLING ANIMATION
+    // ============================================
+    function startFestiveAnimation() {
+      const festival = localStorage.getItem('4astore_festival') || '';
+      if (!festival) return;
+
+      const emojiMap = {
+        'diwali': ['🪔', '✨', '🎆', '🎇', '💫'],
+        'navratri': ['🕉️', '🔱', '🙏', '🌺', '✨'],
+        'rakhi': ['🪢', '🎁', '💝', '🌸', '✨'],
+        'holi': ['🎨', '💜', '💚', '💛', '❤️'],
+        'christmas': ['🎄', '⭐', '❄️', '🎅', '🎁'],
+        'eid': ['☪️', '🌙', '⭐', '✨', '🕌'],
+        'ipl': ['🏏', '🏆', '⚡', '🎯', '🔥'],
+        'independence': ['🇮🇳', '🦚', '⭐', '🪷', '✨']
+      };
+      const emojis = emojiMap[festival] || ['✨', '🎉', '⭐'];
+
+      // Drop particles periodically
+      let count = 0;
+      const interval = setInterval(() => {
+        const particle = document.createElement('div');
+        particle.className = 'festive-particle';
+        particle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        particle.style.left = Math.random() * 100 + 'vw';
+        particle.style.animationDuration = (4 + Math.random() * 4) + 's';
+        document.body.appendChild(particle);
+        setTimeout(() => particle.remove(), 8000);
+        count++;
+        // Stop after 20 particles to not overwhelm
+        if (count > 20) clearInterval(interval);
+      }, 1500);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>4A Store - Coming Soon | 16 September 2026</title>
+  <meta name="description" content="4A Store - Your local grocery store is launching on 16 September 2026. Fresh fruits, vegetables & daily needs delivered in minutes!">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta property="og:title" content="4A Store - Coming Soon!">
+  <meta property="og:description" content="Your local grocery store launching 16 September 2026. Fresh fruits, vegetables & daily needs!">
+  <meta property="og:image" content="https://4astore.com/assets/images/og-image.jpg">
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a5276 0%, #2C6FAD 40%, #148f77 100%);
+      background-attachment: fixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      overflow-y: auto;
+      position: relative;
+      padding: 24px 0;
+    }
+
+    /* Animated background circles */
+    .bg-circle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.08;
+      background: white;
+      animation: float 6s ease-in-out infinite;
+    }
+    .bg-circle:nth-child(1) { width:300px; height:300px; top:-50px; left:-50px; animation-delay:0s; }
+    .bg-circle:nth-child(2) { width:200px; height:200px; bottom:50px; right:50px; animation-delay:2s; }
+    .bg-circle:nth-child(3) { width:150px; height:150px; top:40%; left:70%; animation-delay:4s; }
+    .bg-circle:nth-child(4) { width:100px; height:100px; bottom:30%; left:10%; animation-delay:1s; }
+    .bg-circle:nth-child(5) { width:250px; height:250px; top:60%; right:-80px; animation-delay:3s; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-20px) scale(1.05); }
+    }
+
+    /* Floating grocery emojis */
+    .floating-item {
+      position: absolute;
+      font-size: 2rem;
+      opacity: 0.15;
+      animation: floatItem 8s ease-in-out infinite;
+    }
+    .floating-item:nth-child(6) { top:10%; left:5%; animation-delay:0s; }
+    .floating-item:nth-child(7) { top:20%; right:8%; animation-delay:1.5s; }
+    .floating-item:nth-child(8) { bottom:15%; left:12%; animation-delay:3s; }
+    .floating-item:nth-child(9) { bottom:25%; right:15%; animation-delay:2s; }
+    .floating-item:nth-child(10) { top:50%; left:3%; animation-delay:4s; }
+    .floating-item:nth-child(11) { top:70%; right:5%; animation-delay:5s; }
+
+    @keyframes floatItem {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-15px) rotate(10deg); }
+    }
+
+    .container {
+      text-align: center;
+      padding: 20px 24px;
+      max-width: 600px;
+      z-index: 10;
+      position: relative;
+    }
+
+    .logo-area {
+      margin-bottom: 24px;
+    }
+    .logo-area img {
+      height: 60px;
+      display: inline-block;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(245,166,35,0.9);
+      color: white;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: 1px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    h1 {
+      color: white;
+      font-size: 2.8rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+      text-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.85);
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    /* Countdown */
+    .countdown {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .countdown-box {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 16px;
+      padding: 20px 16px;
+      min-width: 90px;
+      transition: transform 0.3s;
+    }
+    .countdown-box:hover {
+      transform: translateY(-4px);
+      background: rgba(255,255,255,0.2);
+    }
+    .countdown-box .number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: white;
+      line-height: 1;
+    }
+    .countdown-box .label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Launch date */
+    .launch-date {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 16px 28px;
+      display: inline-block;
+      margin-bottom: 30px;
+    }
+    .launch-date .date-icon { font-size: 1.3rem; margin-right: 8px; }
+    .launch-date .date-text {
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* Contact */
+    .contact {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    .contact a {
+      color: #F5A623;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .contact a:hover { text-decoration: underline; }
+
+    /* Footer */
+    .footer {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+    }
+
+    /* Secret dev access */
+    .dev-access {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      opacity: 0;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+    }
+    .dev-modal { position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(9,24,31,.62); }
+    .dev-modal.open { display:flex; }
+    .dev-modal-card { width:min(380px,100%); padding:22px; border-radius:12px; background:#fff; box-shadow:0 18px 55px rgba(0,0,0,.3); color:#19352a; }
+    .dev-modal-card h2 { margin-bottom:8px; font-size:20px; }
+    .dev-modal-card p { margin-bottom:14px; color:#64748b; font-size:13px; }
+    .dev-modal-card input { width:100%; min-height:44px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; }
+    .dev-modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+    .dev-modal-actions button { min-height:40px; padding:8px 14px; border:0; border-radius:7px; font-weight:700; cursor:pointer; }
+    .dev-modal-actions .cancel { background:#eef2f5; color:#334155; }
+    .dev-modal-actions .unlock { background:#217a55; color:#fff; }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 2rem; }
+      .countdown { gap: 10px; }
+      .countdown-box { min-width: 65px; padding: 12px 8px; }
+      .countdown-box .number { font-size: 1.6rem; }
+      .container { padding: 24px 16px; }
+      .logo-area .logo-card { padding: 10px 20px; }
+      .logo-area .logo-card img { height: 38px; }
+      .subtitle { font-size: 0.95rem; margin-bottom: 28px; }
+      .launch-date { padding: 12px 20px; }
+      .launch-date .date-text { font-size: 14px; }
+      .badge { font-size: 12px; padding: 6px 16px; }
+      .contact { font-size: 12px; }
+      .contact p { line-height: 1.8; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Background elements -->
+  <div class="bg-circle"></div>
+  <div class="bg-circle"></div>
+  <div class="bg-circle"></div>
+  <div class="bg-circle"></div>
+  <div class="bg-circle"></div>
+  <div class="floating-item">🍎</div>
+  <div class="floating-item">🥦</div>
+  <div class="floating-item">🍌</div>
+  <div class="floating-item">🥕</div>
+  <div class="floating-item">🛒</div>
+  <div class="floating-item">🧅</div>
+
+  <div class="container">
+    <div class="logo-area">
+      <img src="assets/images/logo.svg?v=2" alt="4A Store">
+    </div>
+
+    <div class="badge">LAUNCHING SOON</div>
+
+    <h1 style="color:#ffffff;">4A Store</h1>
+    <p class="subtitle" style="font-size:1.4rem; font-weight:700; margin-bottom:15px; color:#ffffff; letter-spacing:1px;">
+      Grocery in Minutes
+    </p>
+    <p class="subtitle">
+      Aapka apna local grocery store ab online aa raha hai!<br>
+      Fresh fruits, vegetables & daily needs — delivered fast.
+    </p>
+
+    <!-- Countdown Timer -->
+    <div class="countdown">
+      <div class="countdown-box">
+        <div class="number" id="days">00</div>
+        <div class="label">Days</div>
+      </div>
+      <div class="countdown-box">
+        <div class="number" id="hours">00</div>
+        <div class="label">Hours</div>
+      </div>
+      <div class="countdown-box">
+        <div class="number" id="mins">00</div>
+        <div class="label">Minutes</div>
+      </div>
+      <div class="countdown-box">
+        <div class="number" id="secs">00</div>
+        <div class="label">Seconds</div>
+      </div>
+    </div>
+
+    <!-- Launch date -->
+    <div class="launch-date">
+      <span class="date-icon">📅</span>
+      <span class="date-text">16 September 2026, 3:00 PM</span>
+    </div>
+
+    <!-- Contact -->
+    <div class="contact">
+      <p>📍 Gajana Road, Chandargarh, Nabinagar, Bihar - 824301</p>
+      <p style="margin-top:8px;">📞 <a href="tel:7543888698">7543888698</a> &nbsp;|&nbsp; <a href="tel:8210874123">8210874123</a></p>
+      <p style="margin-top:6px;">WhatsApp: <a href="https://wa.me/917543888698">7543888698</a></p>
+    </div>
+  </div>
+
+  <div class="footer">© 2026 4A Store. All Rights Reserved.</div>
+
+  <!-- Secret Dev Access: Triple click bottom-right corner to go to main site -->
+  <div class="dev-access" id="devAccess" title=""></div>
+  <div class="dev-modal" id="devAccessModal" aria-hidden="true" onclick="if(event.target===this) closeDevAccess()">
+    <section class="dev-modal-card" role="dialog" aria-modal="true" aria-labelledby="devAccessTitle">
+      <h2 id="devAccessTitle">Developer access</h2>
+      <p>Enter the access password to continue.</p>
+      <input id="devAccessPassword" type="password" autocomplete="current-password" aria-label="Access password">
+      <div class="dev-modal-actions">
+        <button class="cancel" type="button" onclick="closeDevAccess()">Cancel</button>
+        <button class="unlock" type="button" onclick="unlockDevAccess()">Continue</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="assets/js/notifications.js"></script>
+  <script>
+    // Countdown to 16 September 2026, 3:00 PM IST
+    const launchDate = new Date('2026-09-16T15:00:00+05:30').getTime();
+
+    function updateCountdown() {
+      const now = new Date().getTime();
+      const diff = launchDate - now;
+
+      if (diff <= 0) {
+        // Launch time! Go to the store. The ?devmode bypass prevents any
+        // redirect loop if the coming-soon rule is ever re-enabled.
+        if (!location.search.includes('mode=4adev')) {
+          window.location.replace('./index.html?devmode=4adev');
+        }
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+      document.getElementById('days').textContent = String(days).padStart(2, '0');
+      document.getElementById('hours').textContent = String(hours).padStart(2, '0');
+      document.getElementById('mins').textContent = String(mins).padStart(2, '0');
+      document.getElementById('secs').textContent = String(secs).padStart(2, '0');
+    }
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+
+    // Secret dev access: Triple click bottom-right corner
+    let clickCount = 0;
+    let clickTimer = null;
+    document.getElementById('devAccess').addEventListener('click', function() {
+      clickCount++;
+      if (clickCount === 3) {
+        openDevAccess();
+        clickCount = 0;
+      }
+      clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => { clickCount = 0; }, 1000);
+    });
+
+    function openDevAccess() {
+      const modal = document.getElementById('devAccessModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      document.getElementById('devAccessPassword').focus();
+    }
+
+    function closeDevAccess() {
+      const modal = document.getElementById('devAccessModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.getElementById('devAccessPassword').value = '';
+    }
+
+    function unlockDevAccess() {
+      const input = document.getElementById('devAccessPassword');
+      if (input.value === '4adev') {
+        window.location.href = './index.html?devmode=4adev';
+        return;
+      }
+      showAppToast('Access password is incorrect.', 'error');
+      input.value = '';
+      input.focus();
+    }
+
+    document.getElementById('devAccessPassword').addEventListener('keydown', event => {
+      if (event.key === 'Enter') unlockDevAccess();
+      if (event.key === 'Escape') closeDevAccess();
+    });
+  </script>
+</body>
+</html>

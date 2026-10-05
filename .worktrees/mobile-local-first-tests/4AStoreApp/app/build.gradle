@@ -1,0 +1,48 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.store4a.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.store4a.app"
+        minSdk 24
+        targetSdk 36
+        versionCode 17
+        versionName "1.7.9"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("${rootProject.projectDir}/4astore-key-new.jks")
+            storePassword findProperty('STORE4A_KEYSTORE_PASSWORD') ?: System.getenv('STORE4A_KEYSTORE_PASSWORD')
+            keyAlias "4astore"
+            keyPassword findProperty('STORE4A_KEY_PASSWORD') ?: System.getenv('STORE4A_KEY_PASSWORD')
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.webkit:webkit:1.8.0'
+    implementation 'com.google.android.material:material:1.10.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'androidx.core:core:1.12.0'
+    implementation 'androidx.activity:activity:1.8.0'
+}

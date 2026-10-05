@@ -1,0 +1,24 @@
+[
+    {
+        "id": 1,
+        "username": "owner",
+        "name": "4A Store Owner",
+        "passwordHash": "$2y$10$1cDQDFBWOr6r2NcLqtYcrOt36BilnJ3lfgPn2OvSZGfs.5FTAYp0G",
+        "role": "owner",
+        "permissions": [
+            "*"
+        ]
+    },
+    {
+        "id": 2,
+        "username": "akgupta",
+        "name": "Ankit",
+        "passwordHash": "$2y$10$tVIqu\/7hcQgicCbzKh\/YDOgqbrahms3bOufbRYRqyNmzzTa2sL1Tu",
+        "role": "admin",
+        "permissions": [
+            "orders",
+            "ads",
+            "users"
+        ]
+    }
+]
