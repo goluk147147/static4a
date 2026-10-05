@@ -7,6 +7,8 @@ const extra = (Constants.expoConfig?.extra || {}) as {
   googleClientId?: string;
   facebookAppId?: string;
   instagramAppId?: string;
+  googleWebClientId?: string;
+  googleAndroidClientId?: string;
 };
 
 export const API_BASE = (extra.apiBase || 'https://4astore.com/api').replace(/\/$/, '');
@@ -17,6 +19,11 @@ export const HAS_PUSH = !!extra.hasPush;
 export const GOOGLE_CLIENT_ID = extra.googleClientId || '';
 export const FACEBOOK_APP_ID = extra.facebookAppId || '';
 export const INSTAGRAM_APP_ID = extra.instagramAppId || '';
+
+// Google Sign-In (expo-auth-session) client IDs — web ID drives the id_token flow, android ID
+// matches the signed build. Empty = Google not provisioned → the button stays on its setup toast.
+export const GOOGLE_WEB_CLIENT_ID = extra.googleWebClientId || '';
+export const GOOGLE_ANDROID_CLIENT_ID = extra.googleAndroidClientId || '';
 
 export const STORE_PHONE_DEFAULT = '7543888698';
 export const STORE_WHATSAPP_DEFAULT = '8210874123';

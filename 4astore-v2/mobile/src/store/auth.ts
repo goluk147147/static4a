@@ -17,6 +17,7 @@ interface AuthState {
   ready: boolean;
   setUser: (u: User | null) => void;
   login: (username: string, password: string) => Promise<User>;
+  socialLogin: (idToken: string) => Promise<User>;
   register: (p: RegisterPayload) => Promise<User>;
   logout: () => Promise<void>;
   bootstrap: () => Promise<void>;
@@ -40,6 +41,17 @@ export const useAuth = create<AuthState>((set) => ({
 
   login: async (username, password) => {
     const data = await api.post('/users/login', { username: username.trim(), password });
+    setAccessToken(data.token);
+    if (data.refreshToken) await saveRefreshToken(data.refreshToken);
+    const user = normalizeUser(data.user)!;
+    set({ user });
+    return user;
+  },
+
+  // Google Sign-In: POST the Google ID token and set the session via the SAME path as login()
+  // (X-Client:mobile → the server returns a refreshToken, mirroring /login exactly).
+  socialLogin: async (idToken) => {
+    const data = await api.post('/users/social-login', { provider: 'google', idToken });
     setAccessToken(data.token);
     if (data.refreshToken) await saveRefreshToken(data.refreshToken);
     const user = normalizeUser(data.user)!;

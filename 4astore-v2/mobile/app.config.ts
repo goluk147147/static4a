@@ -36,7 +36,9 @@ const config: ExpoConfig = {
     versionCode: VERSION_CODE,
     // Allow http:// API only when explicitly testing against a LAN/localhost server
     // (set STORE4A_ALLOW_HTTP=1). Production (https) builds keep cleartext disabled.
-    usesCleartextTraffic: process.env.STORE4A_ALLOW_HTTP === '1' || /^http:\/\//i.test(API_BASE),
+    // The manifest flag is applied by the ./plugins/withCleartext config-plugin (gated on
+    // STORE4A_ALLOW_HTTP=1); the top-level `android.usesCleartextTraffic` field was dropped from
+    // @expo/config-types in SDK 54, so it lives in the plugin only.
     adaptiveIcon: { foregroundImage: './assets/images/adaptive-icon.png', backgroundColor: '#FFFFFF' },
     ...(hasGoogleServices ? { googleServicesFile: './google-services.json' } : {}),
     softwareKeyboardLayoutMode: 'resize',
@@ -75,6 +77,7 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     'expo-secure-store',
+    'expo-web-browser',
     [
       'expo-splash-screen',
       { image: './assets/images/splash.png', imageWidth: 220, resizeMode: 'contain', backgroundColor: '#FFFFFF' },
@@ -130,6 +133,12 @@ const config: ExpoConfig = {
     googleClientId: process.env.STORE4A_GOOGLE_CLIENT_ID || '',
     facebookAppId: process.env.STORE4A_FACEBOOK_APP_ID || '',
     instagramAppId: process.env.STORE4A_INSTAGRAM_APP_ID || '',
+    // Google Sign-In via expo-auth-session needs BOTH OAuth client IDs (web token flow + android).
+    // Not secrets — read from env first, fall back to the owner-provisioned project IDs.
+    googleWebClientId:
+      process.env.STORE4A_GOOGLE_WEB_CLIENT_ID || '707085023016-etp7au34rg3cd5eks6cdu0cs0vkj1svn.apps.googleusercontent.com',
+    googleAndroidClientId:
+      process.env.STORE4A_GOOGLE_ANDROID_CLIENT_ID || '707085023016-pc4gc5271kquti6recqo9juor3p44dn9.apps.googleusercontent.com',
   },
 };
 
