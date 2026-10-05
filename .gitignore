@@ -20,3 +20,6 @@ data/screenshots/*
 4astore-v2/mobile/google-services.json
 **/fcm-service-account.json
 4astore-v2/api-node/fcm-service-account.json
+
+# Git worktrees used for parallel workflow branches (never commit these)
+.worktrees/
