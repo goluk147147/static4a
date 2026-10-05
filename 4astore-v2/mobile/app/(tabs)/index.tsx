@@ -6,7 +6,7 @@ import StoreHeader from '../../src/components/StoreHeader';
 import ProductCard from '../../src/components/ProductCard';
 import AnnouncementPopup from '../../src/components/AnnouncementPopup';
 import SocialProof from '../../src/components/SocialProof';
-import { AnimatedGradient, GradientButton, Loading, styles as ui } from '../../src/components/ui';
+import { AnimatedGradient, GradientButton, ProductGridSkeleton, Shimmer, styles as ui } from '../../src/components/ui';
 import { useCategories, useConfig, useProducts, useSettings, queryClient } from '../../src/queries';
 import { isFeatureOn } from '../../src/features';
 import { fillDeliveryPlaceholders, openLink } from '../../src/links';
@@ -147,7 +147,14 @@ export default function Home() {
           <Text style={ui.sectionTitle}>🛍️ Shop by Category</Text>
         </View>
         {categoriesQ.isLoading ? (
-          <Loading />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 10, gap: 10 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <View key={i} style={[s.cat, { justifyContent: 'center' }]}>
+                <Shimmer style={{ width: 52, height: 52, borderRadius: 26, marginBottom: 6 }} />
+                <Shimmer style={{ width: 56, height: 10 }} />
+              </View>
+            ))}
+          </ScrollView>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 10, gap: 10 }}>
             {categories.map((c) => (
@@ -166,10 +173,18 @@ export default function Home() {
           <Text style={ui.sectionTitle}>🔥 Popular Products</Text>
         </View>
         {productsQ.isLoading ? (
-          <Loading />
+          <ProductGridSkeleton cardWidth={cardW} />
         ) : (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 9 }}>
             {popular.map((p) => <ProductCard key={p.id} product={p} width={cardW} />)}
+          </View>
+        )}
+
+        {/* Error/retry affordance — show instead of silently rendering empty when a load failed. */}
+        {(categoriesQ.isError || productsQ.isError) && !categoriesQ.isLoading && !productsQ.isLoading && !categories.length && !products.length && (
+          <View style={{ alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, gap: 10 }}>
+            <Text style={[ui.muted, { textAlign: 'center' }]}>Load nahi hua / Couldn't load</Text>
+            <GradientButton title="Retry / दोबारा" size="sm" onPress={() => queryClient.invalidateQueries()} />
           </View>
         )}
         <View style={{ padding: 20, alignItems: 'center' }}>

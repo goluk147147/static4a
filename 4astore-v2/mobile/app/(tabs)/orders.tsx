@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import StoreHeader from '../../src/components/StoreHeader';
-import { Button, Card, EmptyState, GradientButton, Screen, Shimmer, StatusChip, styles as ui } from '../../src/components/ui';
+import { Button, Card, EmptyState, GradientButton, OrdersSkeleton, Screen, StatusChip, styles as ui } from '../../src/components/ui';
 import { useAuth } from '../../src/store/auth';
 import { useMyOrders, useSettings } from '../../src/queries';
 import { loadOrdersCache, saveOrdersCache } from '../../src/persistCache';
@@ -11,29 +11,6 @@ import { downloadInvoice } from '../../src/invoice';
 import { showToast } from '../../src/store/ui';
 import { colors } from '../../src/theme';
 import type { Order } from '../../src/types';
-
-/** A few Card-shaped skeleton rows shown only on the first-ever orders load. */
-function OrdersSkeleton() {
-  return (
-    <>
-      {[0, 1, 2].map((i) => (
-        <Card key={i} style={{ marginBottom: 14 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-            <View style={{ flex: 1 }}>
-              <Shimmer style={{ height: 14, width: '35%', marginBottom: 8 }} />
-              <Shimmer style={{ height: 11, width: '55%' }} />
-            </View>
-            <Shimmer style={{ height: 22, width: 70, borderRadius: 11 }} />
-          </View>
-          <Shimmer style={{ height: 12, width: '80%', marginTop: 14 }} />
-          <Shimmer style={{ height: 12, width: '60%', marginTop: 8 }} />
-          <View style={ui.divider} />
-          <Shimmer style={{ height: 16, width: '40%', marginTop: 4 }} />
-        </Card>
-      ))}
-    </>
-  );
-}
 
 export default function Orders() {
   const router = useRouter();

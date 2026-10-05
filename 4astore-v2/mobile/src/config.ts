@@ -1,10 +1,22 @@
 import Constants from 'expo-constants';
 
-const extra = (Constants.expoConfig?.extra || {}) as { apiBase?: string; siteUrl?: string; hasPush?: boolean };
+const extra = (Constants.expoConfig?.extra || {}) as {
+  apiBase?: string;
+  siteUrl?: string;
+  hasPush?: boolean;
+  googleClientId?: string;
+  facebookAppId?: string;
+  instagramAppId?: string;
+};
 
 export const API_BASE = (extra.apiBase || 'https://4astore.com/api').replace(/\/$/, '');
 export const SITE_URL = (extra.siteUrl || 'https://4astore.com').replace(/\/$/, '');
 export const HAS_PUSH = !!extra.hasPush;
+
+// Social-login OAuth client IDs (empty = provider not yet provisioned).
+export const GOOGLE_CLIENT_ID = extra.googleClientId || '';
+export const FACEBOOK_APP_ID = extra.facebookAppId || '';
+export const INSTAGRAM_APP_ID = extra.instagramAppId || '';
 
 export const STORE_PHONE_DEFAULT = '7543888698';
 export const STORE_WHATSAPP_DEFAULT = '8210874123';

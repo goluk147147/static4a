@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import StoreHeader from '../../src/components/StoreHeader';
 import ProductImage from '../../src/components/ProductImage';
-import { Card, EmptyState, GradientButton, Loading, Screen, Stepper, SummaryRow, styles as ui } from '../../src/components/ui';
+import { Card, EmptyState, GradientButton, Screen, Stepper, SummaryRow, styles as ui } from '../../src/components/ui';
 import { useCart } from '../../src/store/cart';
 import { useAuth } from '../../src/store/auth';
 import { useProducts, useSettings } from '../../src/queries';
@@ -18,7 +18,9 @@ export default function Cart() {
   const products = productsQ.data ?? [];
   const user = useAuth((s) => s.user);
 
-  if (productsQ.isLoading && items.length) return <Screen header={<StoreHeader title="Your Cart" />}><Loading /></Screen>;
+  // Cart items are local state (price/weight live on each item), so render rows immediately
+  // instead of blocking the whole screen while useProducts loads. cartTotals degrades
+  // gracefully with an empty products array (lookups fall back to the item's own fields).
   const t = cartTotals(items, products, settings, user);
   const freeAbove = settings?.freeDeliveryAbove ?? 500;
 

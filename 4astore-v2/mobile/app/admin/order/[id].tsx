@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, Linking, Pressable, Text, View } from 'react-
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import StoreHeader from '../../../src/components/StoreHeader';
-import { Button, Card, Loading, Screen, StatusChip, SummaryRow, styles as ui } from '../../../src/components/ui';
+import { Button, Card, Screen, Shimmer, StatusChip, SummaryRow, styles as ui } from '../../../src/components/ui';
 import { useAuth, isOrderStaff } from '../../../src/store/auth';
 import { useOrder, useSettings } from '../../../src/queries';
 import { api, apiError, authHeaders, apiUrl } from '../../../src/api';
@@ -22,17 +22,70 @@ function useScreenshot(orderId: string) {
     queryKey: ['screenshot', orderId],
     retry: false,
     queryFn: async () => {
-      const res = await fetch(apiUrl(`/orders/${encodeURIComponent(orderId)}/screenshot`), { headers: { ...authHeaders() } });
-      if (!res.ok) throw new Error('none');
-      const blob = await res.blob();
-      return await new Promise<string>((resolve, reject) => {
-        const r = new FileReader();
-        r.onloadend = () => resolve(String(r.result));
-        r.onerror = reject;
-        r.readAsDataURL(blob);
-      });
+      // Bound the raw fetch so a slow/hung screenshot can never leave the card's ActivityIndicator
+      // spinning forever: abort after 15s. On abort/network error we throw Error('none') like a 404,
+      // so (retry:false) resolves to shot.data==null and the "No payment screenshot found" empty
+      // state renders and the spinner stops.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const res = await fetch(apiUrl(`/orders/${encodeURIComponent(orderId)}/screenshot`), {
+          headers: { ...authHeaders() },
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error('none');
+        const blob = await res.blob();
+        return await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onloadend = () => resolve(String(r.result));
+          r.onerror = reject;
+          r.readAsDataURL(blob);
+        });
+      } catch {
+        throw new Error('none');
+      } finally {
+        clearTimeout(timeout);
+      }
     },
   });
+}
+
+/** Shimmer mirroring the three cards (customer, items, status) while the order loads. */
+function OrderDetailSkeleton() {
+  return (
+    <>
+      <Card>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Shimmer style={{ height: 12, width: '40%' }} />
+          <Shimmer style={{ height: 22, width: 70, borderRadius: 11 }} />
+        </View>
+        <Shimmer style={{ height: 14, width: '30%', marginTop: 16 }} />
+        <Shimmer style={{ height: 13, width: '55%', marginTop: 8 }} />
+        <Shimmer style={{ height: 11, width: '35%', marginTop: 6 }} />
+        <Shimmer style={{ height: 14, width: '40%', marginTop: 16 }} />
+        <Shimmer style={{ height: 13, width: '80%', marginTop: 8 }} />
+      </Card>
+      <Card style={{ marginTop: 12 }}>
+        <Shimmer style={{ height: 14, width: '25%', marginBottom: 12 }} />
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
+            <Shimmer style={{ height: 12, width: '55%' }} />
+            <Shimmer style={{ height: 12, width: 50 }} />
+          </View>
+        ))}
+        <View style={ui.divider} />
+        <Shimmer style={{ height: 16, width: '40%' }} />
+      </Card>
+      <Card style={{ marginTop: 12 }}>
+        <Shimmer style={{ height: 14, width: '30%', marginBottom: 12 }} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <Shimmer key={i} style={{ height: 34, width: 92, borderRadius: 8 }} />
+          ))}
+        </View>
+      </Card>
+    </>
+  );
 }
 
 /** Admin order detail — kiska order, kahan se, kya items, payment screenshot, status change. */
@@ -50,11 +103,20 @@ export default function AdminOrderDetail() {
     if (ready && !staff) router.replace('/login');
   }, [ready, staff]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (q.isLoading || !staff) return <Screen header={<StoreHeader back title="Order" />}><Loading /></Screen>;
-  if (q.isError || !q.data) {
+  // Cache-first: seed the detail from the already-loaded ['order',id] or the matching entry in
+  // the staff ['all-orders'] list so the screen opens instantly instead of flashing a loader.
+  const cachedOrder =
+    qc.getQueryData<Order>(['order', id]) ??
+    (qc.getQueryData<Order[]>(['all-orders']) || []).find((x) => x.order_id === String(id));
+  const resolved = q.data ?? cachedOrder;
+
+  if (!staff) return <Screen header={<StoreHeader back title="Order" />}><OrderDetailSkeleton /></Screen>;
+  if ((q.isError || !q.data) && !resolved) {
     return <Screen header={<StoreHeader back title="Order" />}><Card><Text style={ui.muted}>{apiError(q.error) || 'Order not found'}</Text></Card></Screen>;
   }
-  const o = q.data;
+  // While loading with no cache to seed from, show the skeleton (this guard also narrows `o` to Order).
+  if (!resolved) return <Screen header={<StoreHeader back title="Order" />}><OrderDetailSkeleton /></Screen>;
+  const o = resolved;
   const c = o.customer || {};
   const dest = o.delivery_address || {};
 

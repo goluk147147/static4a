@@ -1,0 +1,7 @@
+{
+  "task_id": "task-app-slow-loaders-login",
+  "task_description": "4A Store Expo SDK 54 app: kill the client-driven 'Server slow' toast (silent background polls + bounded screenshot fetch), make loaders/skeletons consistent (Shimmer, modeled on OrdersSkeleton), robust static-page open with retry, instant local-first logout, premium login redesign + forgot-password + credential-gated social login (build-safe, no heavy native OAuth dep), and a one-line server hardening (express-async-errors + guarded order list reads). Do NOT break tracking, rider flow, payments, or local-first caching. Keep bilingual Hindi/English copy, a11y labels, design tokens.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

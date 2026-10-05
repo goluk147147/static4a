@@ -70,13 +70,15 @@ export const useMyOrders = (mobile?: string) =>
     queryFn: async () => ((await api.get('/orders', { mobile })).orders as Order[]).map(normalizeOrder),
   });
 
-/** Staff / rider: every order (polled). */
+/** Staff / rider: every order (polled). Silent background poll — a dropped poll fails once
+ *  quietly (no "Server slow" toast, retry:false) and the next interval refetches. */
 export const useAllOrders = (enabled: boolean, refetchInterval = 7000) =>
   useQuery({
     queryKey: ['all-orders'],
     enabled,
     refetchInterval,
-    queryFn: async () => ((await api.get('/orders')).orders as Order[]).map(normalizeOrder),
+    retry: false,
+    queryFn: async () => ((await api('/orders', { method: 'GET', silent: true })).orders as Order[]).map(normalizeOrder),
   });
 
 export const useOrder = (orderId?: string) =>
