@@ -1,0 +1,12 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "non-blocking",
+      "confidence": "confirmed",
+      "label": "Social-login creds read but intentionally unused",
+      "detail": "GOOGLE_CLIENT_ID / FACEBOOK_APP_ID / INSTAGRAM_APP_ID are read and passed to socialLogin(), which voids them and shows a 'setup pending' toast. Intentional and documented in a TODO because the /users/social-login endpoint is not deployed. Listed only so the dead-read is tracked for the follow-up that wires real OAuth."
+    }
+  ],
+  "reviewDoc": "c:\\xampp\\htdocs\\static4a\\.worktrees\\web-login-forgot-social\\.agents\\tasks\\review.md"
+}
