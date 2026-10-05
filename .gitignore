@@ -23,3 +23,6 @@ data/screenshots/*
 
 # Git worktrees used for parallel workflow branches (never commit these)
 .worktrees/
+
+# TypeScript incremental build cache (never commit — causes pull conflicts on deploy)
+*.tsbuildinfo
