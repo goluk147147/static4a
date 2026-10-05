@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import StoreHeader from '../src/components/StoreHeader';
 import ProductImage from '../src/components/ProductImage';
@@ -48,6 +48,13 @@ export default function Checkout() {
   const [payOpen, setPayOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [customer, setCustomer] = useState<any>(null);
+
+  // Editor keyboard handling: own the editor's ScrollView so the focused Village field can be
+  // scrolled above the Android soft keyboard (the field sits far down the form). `villageY` is the
+  // field wrapper's y-offset captured on layout; `onFocus` scrolls to it so the field + its in-flow
+  // dropdown stay visible above the keyboard and the options are scrollable/tappable.
+  const editorScroll = useRef<ScrollView | null>(null);
+  const villageY = useRef(0);
 
   useEffect(() => {
     if (ready && !user) router.replace({ pathname: '/login', params: { next: '/checkout' } } as never);
@@ -286,37 +293,62 @@ export default function Checkout() {
 
       <GradientButton title="📱 Proceed to UPI Payment / UPI भुगतान जारी रखें →" onPress={proceed} disabled={loadingAddr} style={{ marginTop: 18 }} />
 
-      {/* Address editor */}
+      {/* Address editor — owns its own KeyboardAvoidingView + ScrollView (instead of the shared
+          `Screen`) so the focused Village field can be scrolled above the Android soft keyboard. */}
       <Modal visible={editorOpen} animationType="slide" onRequestClose={() => setEditorOpen(false)}>
-        <Screen header={<StoreHeader back title="डिलीवरी का पता भरें" />}>
-          <Card>
-            <Field label="Full Name (पूरा नाम) *" value={name} onChangeText={setName} error={fg('name')} errorText="कृपया अपना नाम लिखें" />
-            <Field label="Mobile Number (मोबाइल) *" value={mobile} onChangeText={(t) => setMobile(t.replace(/\D/g, ''))} keyboardType="phone-pad" maxLength={10} error={fg('mobile')} errorText="सही 10 अंकों का मोबाइल नंबर" />
-            <Field label="Email (ईमेल)" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-            <Field label="Complete Address (पूरा पता) *" value={address} onChangeText={setAddress} multiline error={fg('address')} errorText="कृपया अपना पूरा पता लिखें" placeholder="घर नंबर, टोला/मोहल्ला, गाँव और सड़क" />
-            <Field label="Landmark (पास की जगह)" value={landmark} onChangeText={setLandmark} placeholder="जैसे — स्कूल के पास" />
-            <View style={{ marginBottom: 12 }}>
-              <Field label="Village (गाँव) *" value={city} onChangeText={(t) => { setCity(t); setVillageOpen(true); }} onFocus={() => setVillageOpen(true)} error={fg('city')} errorText="कृपया अपना गाँव चुनें" placeholder="🔎 गाँव का नाम लिखें या चुनें" />
-              {villageOpen && (
-                <View style={st.dropdown}>
-                  <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 180 }}>
-                    {villageMatches.length ? villageMatches.map((v) => (
-                      <Pressable key={v} onPress={() => { setCity(v); setVillageOpen(false); }} style={st.vopt} accessibilityRole="button"><Text style={{ color: colors.dark }}>📍 {v}</Text></Pressable>
-                    )) : <Text style={{ padding: 12, color: colors.accent }}>❌ इस गाँव में डिलीवरी उपलब्ध नहीं है</Text>}
-                  </ScrollView>
+        <View style={{ flex: 1, backgroundColor: colors.lightGray }}>
+          <StoreHeader back title="डिलीवरी का पता भरें" />
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <ScrollView
+              ref={editorScroll}
+              contentContainerStyle={{ padding: 14, paddingBottom: 32 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Card>
+                <Field label="Full Name (पूरा नाम) *" value={name} onChangeText={setName} error={fg('name')} errorText="कृपया अपना नाम लिखें" />
+                <Field label="Mobile Number (मोबाइल) *" value={mobile} onChangeText={(t) => setMobile(t.replace(/\D/g, ''))} keyboardType="phone-pad" maxLength={10} error={fg('mobile')} errorText="सही 10 अंकों का मोबाइल नंबर" />
+                <Field label="Email (ईमेल)" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+                <Field label="Complete Address (पूरा पता) *" value={address} onChangeText={setAddress} multiline error={fg('address')} errorText="कृपया अपना पूरा पता लिखें" placeholder="घर नंबर, टोला/मोहल्ला, गाँव और सड़क" />
+                <Field label="Landmark (पास की जगह)" value={landmark} onChangeText={setLandmark} placeholder="जैसे — स्कूल के पास" />
+                <View
+                  style={{ marginBottom: 12 }}
+                  onLayout={(e) => { villageY.current = e.nativeEvent.layout.y; }}
+                >
+                  <Field
+                    label="Village (गाँव) *"
+                    value={city}
+                    onChangeText={(t) => { setCity(t); setVillageOpen(true); }}
+                    onFocus={() => {
+                      setVillageOpen(true);
+                      // Lift the focused Village field (and its in-flow dropdown) above the keyboard.
+                      setTimeout(() => editorScroll.current?.scrollTo({ y: Math.max(villageY.current - 8, 0), animated: true }), 50);
+                    }}
+                    error={fg('city')}
+                    errorText="कृपया अपना गाँव चुनें"
+                    placeholder="🔎 गाँव का नाम लिखें या चुनें"
+                  />
+                  {villageOpen && (
+                    <View style={st.dropdown}>
+                      <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 180 }}>
+                        {villageMatches.length ? villageMatches.map((v) => (
+                          <Pressable key={v} onPress={() => { setCity(v); setVillageOpen(false); }} style={st.vopt} accessibilityRole="button"><Text style={{ color: colors.dark }}>📍 {v}</Text></Pressable>
+                        )) : <Text style={{ padding: 12, color: colors.accent }}>❌ इस गाँव में डिलीवरी उपलब्ध नहीं है</Text>}
+                      </ScrollView>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-            <Field label="PIN Code (पिन कोड) *" value={pincode} onChangeText={(t) => setPincode(t.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} error={fg('pincode')} errorText="डिलीवरी केवल पिन 824301 पर" />
-            <Text style={[ui.muted, { marginBottom: 6 }]}>Address label / पते का प्रकार</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {(['Home', 'Work', 'Other'] as Label[]).map((l) => (
-                <Button key={l} small outline={label !== l} title={l === 'Home' ? '🏠 Home' : l === 'Work' ? '🏢 Work' : '📍 Other'} onPress={() => setLabel(l)} style={{ flex: 1 }} />
-              ))}
-            </View>
-            <GradientButton title={savingAddr ? '⏳ Saving…' : '💾 Save Address / पता सहेजें'} loading={savingAddr} onPress={saveFromEditor} style={{ marginTop: 16 }} />
-          </Card>
-        </Screen>
+                <Field label="PIN Code (पिन कोड) *" value={pincode} onChangeText={(t) => setPincode(t.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} error={fg('pincode')} errorText="डिलीवरी केवल पिन 824301 पर" />
+                <Text style={[ui.muted, { marginBottom: 6 }]}>Address label / पते का प्रकार</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {(['Home', 'Work', 'Other'] as Label[]).map((l) => (
+                    <Button key={l} small outline={label !== l} title={l === 'Home' ? '🏠 Home' : l === 'Work' ? '🏢 Work' : '📍 Other'} onPress={() => setLabel(l)} style={{ flex: 1 }} />
+                  ))}
+                </View>
+                <GradientButton title={savingAddr ? '⏳ Saving…' : '💾 Save Address / पता सहेजें'} loading={savingAddr} onPress={saveFromEditor} style={{ marginTop: 16 }} />
+              </Card>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {payOpen && customer && (
@@ -335,6 +367,6 @@ export default function Checkout() {
 }
 
 const st = StyleSheet.create({
-  dropdown: { position: 'absolute', top: 70, left: 0, right: 0, backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, zIndex: 20, elevation: 6 },
+  dropdown: { marginTop: 4, backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, zIndex: 20, elevation: 6 },
   vopt: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f6eadb' },
 });

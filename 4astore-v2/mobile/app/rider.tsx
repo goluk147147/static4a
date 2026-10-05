@@ -6,11 +6,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import StoreHeader from '../src/components/StoreHeader';
 import { Button, Card, EmptyState, GradientButton, Loading, Screen, StatusChip, styles as ui } from '../src/components/ui';
 import { useAuth, isRider } from '../src/store/auth';
-import { useAllOrders } from '../src/queries';
+import { useAllOrders, normalizeOrder } from '../src/queries';
 import { api, apiError } from '../src/api';
 import { callNumber, openMapDirections } from '../src/native';
 import { showToast } from '../src/store/ui';
 import { colors, space } from '../src/theme';
+import type { Order } from '../src/types';
 
 const RIDER_STATUS = ['Rider Assigned', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
@@ -21,6 +22,8 @@ export default function Rider() {
   const rider = isRider(user);
   const { data: orders, isLoading } = useAllOrders(rider, 12000);
   const [sharing, setSharing] = useState(false);
+  // The order currently being accepted — disables + spins its Accept button so the tap feels instant.
+  const [accepting, setAccepting] = useState<string | null>(null);
   const watch = useRef<Location.LocationSubscription | null>(null);
 
   useEffect(() => {
@@ -35,12 +38,26 @@ export default function Rider() {
   const mine = list.filter((o) => String(o.rider_id ?? '') === riderId && o.order_status !== 'Delivered' && o.order_status !== 'Cancelled');
 
   async function accept(orderId: string) {
+    if (accepting) return;
+    setAccepting(orderId);
     try {
-      await api.post('/orders/accept', { orderId });
+      const res = await api.post('/orders/accept', { orderId });
+      // Move the order to "My Deliveries" the moment the (single, fast) accept call returns —
+      // update the cache in place with the server's row instead of waiting on a full /orders refetch.
+      if (res?.order) {
+        const updated = normalizeOrder(res.order as Order);
+        qc.setQueryData<Order[]>(['all-orders'], (prev) =>
+          prev ? prev.map((o) => (o.order_id === orderId ? updated : o)) : prev
+        );
+      }
       showToast(`Accepted ${orderId}`, 'success');
+      // Background reconcile — the UI has already updated; this just keeps state correct if two
+      // riders race. It no longer gates the visible update.
       qc.invalidateQueries({ queryKey: ['all-orders'] });
     } catch (e) {
       showToast(apiError(e), 'error');
+    } finally {
+      setAccepting(null);
     }
   }
   async function setStatus(orderId: string, status: string) {
@@ -114,7 +131,7 @@ export default function Rider() {
               <Text style={{ fontWeight: '800', color: colors.dark }}>{o.order_id}</Text>
               <Text style={ui.muted}>{o.customer?.name} · {o.customer?.city} · ₹{o.total_amount}</Text>
             </View>
-            <Button title="Accept" onPress={() => accept(o.order_id)} />
+            <Button title="Accept" onPress={() => accept(o.order_id)} loading={accepting === o.order_id} disabled={!!accepting} />
           </Card>
         ))
       )}
