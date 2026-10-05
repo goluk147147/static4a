@@ -1,0 +1,17 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "non-blocking",
+      "file": "4astore-v2/mobile/plugins/withCleartext.js",
+      "title": "Cleartext plugin reads STORE4A_API_BASE directly instead of the resolved API_BASE",
+      "detail": "The plugin now gates on process.env.STORE4A_API_BASE || '' while app.config.ts computes API_BASE with an https:// default. The behavior is equivalent (the default fallback can never be http://, and an explicit http:// value triggers cleartext in both), so Android cleartext behavior is preserved. Noting only because the two files now derive the http:// test from slightly different expressions; a shared helper would prevent future drift."
+    },
+    {
+      "severity": "non-blocking",
+      "file": "4astore-v2/api-node/src/routes/users.ts",
+      "title": "social-login has no unit/runtime smoke test",
+      "detail": "api-node has no unit-test runner (build/tsc is the gate per context.json), so the 401/400/422 branches and the P2002 retry loop are verified by code review and a clean tsc build only, not by an executed request. Acceptable under the task's stated verification model; a future runtime smoke test against a dev DB would harden it."
+    }
+  ]
+}
