@@ -3,7 +3,7 @@ import { Linking, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import StoreHeader from '../../src/components/StoreHeader';
-import { EmptyState, Shimmer } from '../../src/components/ui';
+import { EmptyState, GradientButton, Shimmer } from '../../src/components/ui';
 import { usePage } from '../../src/queries';
 import { loadPageCache, savePageCache } from '../../src/persistCache';
 import { legacyToRoute } from '../../src/links';
@@ -28,7 +28,7 @@ function PageSkeleton() {
 export default function CmsPage() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
-  const { data, isLoading, isError } = usePage(slug);
+  const { data, isLoading, isError, refetch } = usePage(slug);
   const [cached, setCached] = useState<CmsPageType | null>(null);
 
   // Seed from the per-slug cache so a previously viewed page opens instantly.
@@ -62,7 +62,14 @@ export default function CmsPage() {
       {isLoading && !page ? (
         <PageSkeleton />
       ) : (isError && !page) || !page ? (
-        <View style={{ padding: 14 }}><EmptyState icon="📄" title="Page not found" text="Ye page maujood nahi hai ya abhi published nahi hai." /></View>
+        <View style={{ padding: 14 }}>
+          <EmptyState
+            icon="📄"
+            title="Page not found"
+            text="Ye page maujood nahi hai ya abhi published nahi hai."
+            action={<GradientButton title="Retry / दोबारा कोशिश करें" onPress={() => refetch()} />}
+          />
+        </View>
       ) : (
         <WebView
           // `originWhitelist` must allow the `source.baseUrl` (SITE_URL) origin, otherwise the

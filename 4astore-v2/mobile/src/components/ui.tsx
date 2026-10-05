@@ -333,6 +333,30 @@ export function ProductCardSkeleton({ width }: { width?: number }) {
   );
 }
 
+/** A few Card-shaped skeleton rows shown only on the first-ever orders load. Shared by the
+ *  My Orders tab and the staff Orders screen so both use one source of truth. */
+export function OrdersSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i} style={{ marginBottom: 14 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Shimmer style={{ height: 14, width: '35%', marginBottom: 8 }} />
+              <Shimmer style={{ height: 11, width: '55%' }} />
+            </View>
+            <Shimmer style={{ height: 22, width: 70, borderRadius: 11 }} />
+          </View>
+          <Shimmer style={{ height: 12, width: '80%', marginTop: 14 }} />
+          <Shimmer style={{ height: 12, width: '60%', marginTop: 8 }} />
+          <View style={styles.divider} />
+          <Shimmer style={{ height: 16, width: '40%', marginTop: 4 }} />
+        </Card>
+      ))}
+    </>
+  );
+}
+
 /** A grid of skeleton product cards (2 columns), for the products list loading state. */
 export function ProductGridSkeleton({ cardWidth, count = 6 }: { cardWidth?: number; count?: number }) {
   return (

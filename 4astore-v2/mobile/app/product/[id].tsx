@@ -3,7 +3,7 @@ import { Animated, Modal, Pressable, ScrollView, Share, Text, View, useWindowDim
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import StoreHeader from '../../src/components/StoreHeader';
 import ProductImage from '../../src/components/ProductImage';
-import { Button, Card, EmptyState, GradientButton, Loading, Screen, Stepper, styles as ui } from '../../src/components/ui';
+import { Button, Card, EmptyState, GradientButton, Screen, Shimmer, Stepper, styles as ui } from '../../src/components/ui';
 import { useProducts, useSettings } from '../../src/queries';
 import { useFeature } from '../../src/features';
 import { useCart } from '../../src/store/cart';
@@ -98,6 +98,26 @@ function FeatureRotator({ features }: { features: string[] }) {
   );
 }
 
+/** Shimmer mirroring the product-detail layout (image block + title/price/description bars). */
+function ProductDetailSkeleton() {
+  return (
+    <Screen header={<StoreHeader back hideSearch />}>
+      <Card style={{ padding: 16 }}>
+        <Shimmer style={{ height: 280, borderRadius: radius.sm }} />
+      </Card>
+      <View style={{ paddingVertical: 14 }}>
+        <Shimmer style={{ height: 11, width: '30%', marginBottom: 10 }} />
+        <Shimmer style={{ height: 22, width: '70%', marginBottom: 12 }} />
+        <Shimmer style={{ height: 24, width: '40%', marginBottom: 16 }} />
+        <Shimmer style={{ height: 13, width: '95%', marginBottom: 8 }} />
+        <Shimmer style={{ height: 13, width: '90%', marginBottom: 8 }} />
+        <Shimmer style={{ height: 13, width: '75%', marginBottom: 16 }} />
+        <Shimmer style={{ height: 48, borderRadius: radius.pill }} />
+      </View>
+    </Screen>
+  );
+}
+
 export default function ProductDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -112,7 +132,7 @@ export default function ProductDetails() {
   const canRotate = useFeature('productRotate');
   const rotate = () => setRotation((r) => (r + 90) % 360);
 
-  if (q.isLoading) return <Screen header={<StoreHeader back hideSearch />}><Loading /></Screen>;
+  if (q.isLoading) return <ProductDetailSkeleton />;
   if (!product) {
     return (
       <Screen header={<StoreHeader back hideSearch />}>

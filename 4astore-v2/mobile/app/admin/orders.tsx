@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import StoreHeader from '../../src/components/StoreHeader';
-import { Button, Card, EmptyState, Field, Loading, Screen, StatusChip, styles as ui } from '../../src/components/ui';
+import { Button, Card, EmptyState, Field, OrdersSkeleton, Screen, StatusChip, styles as ui } from '../../src/components/ui';
 import { useAuth, isOrderStaff } from '../../src/store/auth';
 import { useAllOrders } from '../../src/queries';
 import { getPushPermission, registerForPush } from '../../src/push';
@@ -34,7 +34,7 @@ export default function AdminOrders() {
     [orders, q]
   );
 
-  if (!staff) return <Screen header={<StoreHeader back title="Orders" />}><Loading /></Screen>;
+  if (!staff) return <Screen header={<StoreHeader back title="Orders" />}><OrdersSkeleton /></Screen>;
 
   return (
     <Screen header={<StoreHeader back title="🛒 Orders (Staff)" />} refreshing={isLoading} onRefresh={() => qc.invalidateQueries({ queryKey: ['all-orders'] })}>
@@ -53,8 +53,8 @@ export default function AdminOrders() {
 
       <Field label="" placeholder="🔎 Search name, mobile or Order ID" value={search} onChangeText={setSearch} autoCapitalize="none" />
 
-      {isLoading ? (
-        <Loading text="Loading orders..." />
+      {isLoading && !orders.length ? (
+        <OrdersSkeleton />
       ) : filtered.length === 0 ? (
         <EmptyState icon="📋" title={q ? 'No matching orders' : 'No orders yet'} />
       ) : (
