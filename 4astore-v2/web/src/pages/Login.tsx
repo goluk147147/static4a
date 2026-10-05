@@ -1,16 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../store/auth';
-import { api, apiError } from '../lib/api';
+import { api, apiError, setAccessToken } from '../lib/api';
 import { showToast } from '../store/toast';
 import PasswordInput from '../components/PasswordInput';
 
+// Google Identity Services (GIS) is loaded at runtime via a <script> tag — no
+// new web dependency. `window.google` is typed loosely below.
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
+
 // Optional social-login credentials (default '' when unset). Build-safe: with
-// empty creds the buttons no-op with a "setup pending" toast — no OAuth, no dep.
+// an empty Google client ID the button no-ops with a "setup pending" toast —
+// no script load, no OAuth.
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID || '';
 const INSTAGRAM_APP_ID = import.meta.env.VITE_INSTAGRAM_APP_ID || '';
+
+// Facebook/Instagram login hidden until OAuth setup complete — re-enable later
+const SOCIAL_FB_IG_ENABLED = false;
 
 export default function Login() {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
@@ -20,6 +32,10 @@ export default function Login() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = params.get('next') || '/';
+
+  // GIS script-ready flag + guard so initialize() runs only once.
+  const [gisReady, setGisReady] = useState(false);
+  const gisInited = useRef(false);
 
   // login fields
   const [username, setUsername] = useState('');
@@ -102,16 +118,70 @@ export default function Login() {
     } catch (err) { setError(apiError(err)); } finally { setBusy(false); }
   }
 
-  // --- Social login ----------------------------------------------------------
-  // Build-safe buttons only: no OAuth round-trip, no SDK, no new dep. With empty
-  // creds (or no server endpoint) each button shows a per-provider "setup
-  // pending" toast and no-ops.
-  function socialLogin(provider: 'Google' | 'Facebook' | 'Instagram', clientId: string) {
-    // TODO: future — POST /users/social-login (endpoint does not exist yet);
-    // buttons no-op until then. `clientId` is read from VITE_* env; even when set
-    // we still no-op because the server endpoint is not deployed.
+  // --- Social login (Facebook/Instagram plumbing — hidden) -------------------
+  // Kept behind SOCIAL_FB_IG_ENABLED so FB/IG can be re-enabled later without
+  // rewiring. No OAuth round-trip yet — shows a per-provider "setup pending"
+  // toast when the (currently hidden) buttons are re-enabled.
+  function socialLogin(provider: 'Facebook' | 'Instagram', clientId: string) {
     void clientId;
     showToast(`${provider} login setup pending — admin se contact karein. / ${provider} login setup pending — please contact admin.`, 'info');
+  }
+
+  // --- Social login (Google via GIS) -----------------------------------------
+  // Load Google Identity Services once, only when a web client ID is configured.
+  // With VITE_GOOGLE_CLIENT_ID empty the script never loads and the button falls
+  // back to the gated "setup pending" toast (see onGoogleClick).
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+    const SRC = 'https://accounts.google.com/gsi/client';
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${SRC}"]`);
+    if (existing) {
+      if (window.google?.accounts?.id) setGisReady(true);
+      else existing.addEventListener('load', () => setGisReady(true), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setGisReady(true);
+    document.head.appendChild(script);
+  }, []);
+
+  // Initialize GIS once the script is ready.
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !gisReady || gisInited.current) return;
+    if (!window.google?.accounts?.id) return;
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleCredential,
+    });
+    gisInited.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gisReady]);
+
+  // GIS credential callback: exchange the Google ID token for our session and
+  // store it exactly like login() (setAccessToken + setUser), then redirect.
+  async function handleCredential(resp: { credential?: string }) {
+    try {
+      const idToken = resp.credential;
+      const { data } = await api.post('/users/social-login', { provider: 'google', idToken });
+      setAccessToken(data.token);
+      useAuth.getState().setUser(data.user);
+      navigate(next);
+    } catch (err) {
+      showToast(apiError(err), 'error');
+    }
+  }
+
+  // 'Continue with Google' click. If GIS is configured + ready, open the GIS
+  // prompt; otherwise keep the gated "setup pending" toast.
+  function onGoogleClick() {
+    if (GOOGLE_CLIENT_ID && gisReady && window.google?.accounts?.id) {
+      window.google.accounts.id.prompt();
+      return;
+    }
+    showToast('Google login setup pending — admin se contact karein. / Google login setup pending — please contact admin.', 'info');
   }
 
   return (
@@ -128,21 +198,27 @@ export default function Login() {
             <a onClick={() => switchMode('forgot')} style={{ color: 'var(--primary)', cursor: 'pointer', display: 'block', textAlign: 'right', marginBottom: 8 }}>Forgot password? / पासवर्ड भूल गए?</a>
             <button className="btn btn-block" disabled={busy}>{busy ? 'Please wait…' : 'Login'}</button>
 
-            {/* Build-safe social login — gated by VITE_* creds, no OAuth SDK, no new dep. */}
+            {/* Social login — real Google Sign-In via GIS; FB/IG hidden (SOCIAL_FB_IG_ENABLED). */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0 12px' }}>
               <span style={{ flex: 1, height: 1, background: 'var(--border, #e5e5e5)' }} />
               <span className="muted" style={{ fontSize: 12 }}>or continue with / या इसके साथ जारी रखें</span>
               <span style={{ flex: 1, height: 1, background: 'var(--border, #e5e5e5)' }} />
             </div>
-            <button type="button" onClick={() => socialLogin('Google', GOOGLE_CLIENT_ID)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', minHeight: 44, marginBottom: 10, borderRadius: 8, border: '1.5px solid var(--border, #ddd)', background: '#fff', color: '#1f1f1f', fontWeight: 700, cursor: 'pointer' }}>
+            <button type="button" onClick={onGoogleClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', minHeight: 44, marginBottom: 10, borderRadius: 8, border: '1.5px solid var(--border, #ddd)', background: '#fff', color: '#1f1f1f', fontWeight: 700, cursor: 'pointer' }}>
               <span style={{ color: '#4285F4', fontWeight: 800, fontSize: 18 }}>G</span>Continue with Google
             </button>
-            <button type="button" onClick={() => socialLogin('Facebook', FACEBOOK_APP_ID)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', minHeight: 44, marginBottom: 10, borderRadius: 8, border: 'none', background: '#1877F2', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-              <span style={{ fontWeight: 800, fontSize: 18 }}>f</span>Continue with Facebook
-            </button>
-            <button type="button" onClick={() => socialLogin('Instagram', INSTAGRAM_APP_ID)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', minHeight: 44, marginBottom: 10, borderRadius: 8, border: 'none', background: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-              📷 Continue with Instagram
-            </button>
+
+            {/* Facebook/Instagram login hidden until OAuth setup complete — re-enable later. */}
+            {SOCIAL_FB_IG_ENABLED && (
+              <>
+                <button type="button" onClick={() => socialLogin('Facebook', FACEBOOK_APP_ID)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', minHeight: 44, marginBottom: 10, borderRadius: 8, border: 'none', background: '#1877F2', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                  <span style={{ fontWeight: 800, fontSize: 18 }}>f</span>Continue with Facebook
+                </button>
+                <button type="button" onClick={() => socialLogin('Instagram', INSTAGRAM_APP_ID)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', minHeight: 44, marginBottom: 10, borderRadius: 8, border: 'none', background: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                  📷 Continue with Instagram
+                </button>
+              </>
+            )}
 
             <p className="muted" style={{ marginTop: 12, textAlign: 'center' }}>New here? <a onClick={() => switchMode('register')} style={{ color: 'var(--primary)', cursor: 'pointer' }}>Create account</a></p>
           </form>
