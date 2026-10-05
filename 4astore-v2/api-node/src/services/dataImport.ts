@@ -54,10 +54,9 @@ export async function importProducts(dataDir = DEFAULT_DATA_DIR) {
     const mrp = Number(p.mrp) || 0;
     const price = Number(p.price) || 0;
     const discount = p.discount !== undefined ? Math.trunc(Number(p.discount)) : mrp > 0 && price <= mrp ? Math.round(((mrp - price) / mrp) * 100) : 0;
-    // image column is VARCHAR(500). A few legacy rows embed a base64 data-URI (7k–15k chars),
-    // which overflows the column and aborts the whole import. Drop any over-long image so the
-    // product falls back to its generated placeholder instead of crashing the run.
-    const image = typeof p.image === 'string' && p.image.length <= 500 ? p.image : '';
+    // image is a TEXT column (some legacy rows embed a 7k–15k char base64 data-URI), so any
+    // length is fine. Keep a type guard only so a non-string never reaches the column.
+    const image = typeof p.image === 'string' ? p.image : '';
     const data = {
       name: p.name, brand: p.brand ?? '', category: p.category, weight: p.weight ?? '',
       mrp, price, discount, image, description: p.description ?? '',
