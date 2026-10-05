@@ -1,162 +1,93 @@
-# Implementation Plan — 4A Store mobile: local-first & no-stuck-spinner
+# Implementation Plan — App slow/toast kill, loader/skeleton consistency, static-page retry, instant logout, login redesign + forgot-password + social login, server one-line hardening
 
-Scope: make the Expo SDK 54 app (`c:\xampp\htdocs\static4a\.worktrees\app-local-first\4astore-v2\mobile`)
-local-first and resilient so no screen hangs on a bare spinner, and harden the 401/refresh path.
-NO new npm dependency. Do NOT touch tracking (`src/components/TrackMap.tsx`, `app/track/*`) or the
-rider flow (`app/rider.tsx`, `/orders/accept`, `/tracking/*`). Do NOT change the server/API or any
-response shape. No visual restyle — reuse the existing `Shimmer` from `src/components/ui.tsx` only.
+All paths are relative to the worktree `c:\xampp\htdocs\static4a\.worktrees\app-slow-loaders-login`. Mobile root = `4astore-v2/mobile`. Server root = `4astore-v2/api-node`. Root cause for the "Server slow" toast is proven client-side in the audit (`4astore-v2/mobile/.agents/tasks/app-slow-and-loader-audit.md`, read as authoritative): the APP's 15s timeout + GET auto-retry + 7s/12s/8s background polls surface the global toast on any dropped background call; the server is confirmed fast.
 
-## Verification setup (run once before any item)
-
-The worktree has NO `node_modules`. Install first, then every item verifies with the project's real
-typecheck. There is no unit-test framework in this app; `tsc --noEmit` is the build/verification gate.
-
-- Install: from `c:\xampp\htdocs\static4a\.worktrees\app-local-first\4astore-v2\mobile` run `npm install`.
-- Verify command (used by every item below): `npm run typecheck` (i.e. `tsc --noEmit`).
-- KNOWN PRE-EXISTING ERROR TO IGNORE: `app.config.ts` reports a tsc error about `usesCleartextTraffic`
-  on the `android` config object (the Expo `ExpoConfig` type does not declare that key). It exists on
-  the green base and is NOT introduced by this work. "Pass" = no NEW errors beyond this one. Do not
-  "fix" it.
-
-## Discrepancies between the task brief and the actual code (resolved decisions)
-
-- The brief describes `api.ts` features that are NOT in the code: a 15s `AbortController` timeout, a
-  `_netRetried` GET auto-retry, `Connection: keep-alive`, and a `setOnSessionExpired` hook; and an
-  auth `reloadSession`/`/users/session`. The real `api.ts` has: Bearer header, `X-Client: mobile`, a
-  single silent refresh on 401 via `_retried`, and `refreshSession()` that only clears the refresh
-  token on 401/404 (not on network error). The real `auth.ts` logout is already local-first and the
-  401→refresh→retry path already exists. DECISION: plan against the ACTUAL code. Do NOT invent a 15s
-  AbortController or a `setOnSessionExpired` hook; the 401 work is an audit + two small guarantees
-  (see item 7), not a rewrite.
-- The brief lists "staff order delete with a loader" in `app/admin/orders.tsx`. There is NO delete
-  feature anywhere in the mobile app (confirmed by searching `app/` and `src/`). The real staff
-  loader-hang surface is the order **status-change** buttons in `app/admin/order/[id].tsx`
-  (`setStatus()` sets `saving` and each button spins via `loading={saving === st}`), including the
-  `Cancelled` action which is the closest thing to a "delete". DECISION: implement the optimistic
-  pattern on the status change (optimistic cache update + rollback on failure) so the button never
-  hangs. Note this in the code comment so a reviewer understands the mapping.
-- `useMyOrders` keys on `['orders', mobile]` (the user's mobile), not `user.id`. DECISION: the
-  per-user orders cache key uses the mobile string that is already the query key, keeping cache and
-  query aligned.
+## Verification baseline (MUST read before verifying)
+- Mobile: `cd 4astore-v2/mobile; npm install; npx tsc --noEmit` → baseline is **exactly ONE** known error: `app.config.ts(39): error TS2353 ... usesCleartextTraffic`. Any change is "clean" iff this stays the ONLY error (no NEW errors).
+- Server: `cd 4astore-v2/api-node; npm install; npx tsc --noEmit` → baseline in THIS environment is **84 pre-existing errors** across 14 files, ALL from the untyped Prisma client (`$queryRawUnsafe`/`$transaction` are untyped because `prisma generate` cannot download its engine behind the TLS proxy here — codes: 57×TS2347, 18×TS7006, 5×TS2339, 3×TS2345, 1×TS18046). `src/routes/orders.ts(21)` already errors at baseline. **Do NOT attempt to fix these.** The server change is "clean" iff: (a) the error COUNT does not increase beyond 84, (b) no new error code/file appears outside that pre-existing set, and (c) `express-async-errors` resolves (no "Cannot find module" error). If a machine CAN run `prisma generate`, the baseline is 0 and the same no-new-errors rule applies.
 
 ---
 
-- [ ] 1. Create the local-first address store `src/store/addresses.ts`, following `src/persistCache.ts`
-      conventions exactly: `import AsyncStorage from '@react-native-async-storage/async-storage'`,
-      per-user versioned key ``4astore:addresses:v1:${userId}`` and a pending-queue key
-      ``4astore:addresses:pending:v1:${userId}``, `try/catch` around every storage/network call, NO
-      new dependency. Export: `loadLocal(userId): Promise<SavedAddress[]>` (instant read, `[]` on
-      missing/corrupt); `saveLocal(userId, list): Promise<void>`; `upsertLocal(userId, addr):
-      Promise<SavedAddress[]>` (replace by `id`, else prepend; return the new list);
-      `syncFromServer(userId): Promise<SavedAddress[] | null>` (`api.get('/addresses')`, read
-      `d.addresses`, `saveLocal`, return list; `null` on failure, error swallowed);
-      `queuePending(userId, payload): Promise<void>` and `flushPending(userId): Promise<SavedAddress[]
-      | null>` (POST each queued payload via `api.post('/addresses', payload)`, reconcile the
-      server-returned `address.id` over any negative temp id in local storage, clear the queue on
-      success; keep the queue and return `null` on failure). Use NEGATIVE temp ids (`-Date.now()`) for
-      optimistic local-only rows; a create payload must send `id: undefined` (never a temp id) exactly
-      like today's `id: selectedId ?? undefined`. Reuse the `SavedAddress` type from `src/types.ts`.
-      Files: src/store/addresses.ts
-      Verify: `npm run typecheck` — no new errors beyond the known `app.config.ts` one.
+- [ ] 1. api.ts — add a `silent` request flag that suppresses the global toast and disables GET auto-retry for polled/silent calls.
+      In `RequestOpts` add `silent?: boolean`. In the `catch (e)` block: keep the 15s timeout and the normal foreground behavior unchanged, but (a) when `opts.silent` is true, do NOT auto-retry (skip the `method === 'GET' && !opts._netRetried` recursion) and reject quietly; (b) throw an `ApiError` whose message is still correct, but mark silent failures so the global toast layer ignores them. Simplest proven approach: when `silent`, throw `new ApiError(<same msg>, 0)` with an added boolean flag on the error (e.g. extend `ApiError` with an optional `silent` property set from `opts.silent`) so the single global toast surface (the react-query `onError`/mutation cache handler — see item 2) can check `err.silent` and skip the toast. Foreground calls (no `silent`) keep the 15s timeout AND the single GET retry exactly as today. Also thread `silent` through the two internal recursions (`_retried`, `_netRetried`) and through the 401-refresh retry so the flag is preserved.
+      Files: `4astore-v2/mobile/src/api.ts`
+      Verify: `cd 4astore-v2/mobile; npx tsc --noEmit` → still only the one app.config.ts error. Confirm `ApiError` carries the silent flag and `api.get`/`api.post` still compile (they must gain an optional opts passthrough OR callers use `api(path,{method:'GET',params,silent:true})`).
 
-- [ ] 2. Rewire `app/checkout.tsx` address GET to be local-first on mount. Add a `loadingAddr`
-      state (default `true`). In the mount effect keyed on `user?.id`: `await loadLocal(user.id)`
-      FIRST, then `setSaved(list)`, select default (`Number(is_default)===1`) or first via the existing
-      `fill()`, and `setLoadingAddr(false)` with NO network await. Only if local is empty open the
-      editor (`setEditorOpen(true)`) as today. Then, NOT awaited: `syncFromServer(user.id)` — if it
-      returns a list, merge into state preserving `selectedId` when that address still exists; and
-      `flushPending(user.id)` once. Remove the old `loadAddresses()` network-on-mount await (keep a thin
-      helper only if still referenced). Show a spinner only while `loadingAddr && !saved.length`
-      (first-ever use); otherwise render the saved UI immediately.
-      Files: app/checkout.tsx
-      Verify: `npm run typecheck` — no new errors.
+- [ ] 2. queries.ts — mark background polls silent and set react-query defaults so dropped background refetches never raise the global toast.
+      (a) In `useAllOrders` (7s staff / 12s rider poll) pass `silent:true` to the `api.get('/orders')` call (use `api('/orders',{method:'GET',silent:true})`). (b) Any `refetchInterval` query that hits the network in the background must use `silent:true`. (c) For the track poll (8s, in `app/track/[orderId].tsx`) and the rider poll (`app/rider.tsx`) ensure their query functions call the API with `silent:true` (edit those screens' queries or the shared query hooks they use). (d) Keep FOREGROUND user-initiated loads NON-silent: `useMyOrders` (My Orders), `useOrder` (open order), login/register (auth store), checkout `confirmOrder`, `usePage` (foreground). (e) In the `QueryClient` `defaultOptions`, keep `retry:1` for foreground but ensure background refetch failures do not throw into a global handler: set `refetchOnWindowFocus:false` (already set) and make the global error surface (toast) the SINGLE place that inspects `err.silent` from item 1 — do not add a blanket global `onError` that toasts every query error. The polled queries already have `retry` behavior; set `retry:false` on the silent polled queries so a dropped poll fails once quietly and the next interval refetches.
+      Files: `4astore-v2/mobile/src/queries.ts`, `4astore-v2/mobile/app/track/[orderId].tsx`, `4astore-v2/mobile/app/rider.tsx`
+      Verify: `npx tsc --noEmit` → only the app.config.ts error. Read each edited query and confirm: staff/rider/track polls pass `silent:true`; My Orders / open order / login / checkout / foreground page load do NOT. Do NOT change tracking/rider data shapes or polling intervals.
 
-- [ ] 3. Rewire `app/checkout.tsx` `saveFromEditor()` to be optimistic (Save button must never hang on
-      the network). Keep ALL existing validation unchanged: name / `/^[6-9]\d{9}$/` mobile / address /
-      city / `pincode === '824301'`, `verifyVillage`, `setCity(v.match)`, and
-      `resolveDeliveryCoordinates` via the existing `buildCustomer()`. Then build a `SavedAddress`
-      optimistically (`id: selectedId ?? -Date.now()`, mapping `buildCustomer` fields to
-      `receiver_name/phone/house_no/landmark/city/pincode/latitude/longitude/full_address/label`),
-      `await upsertLocal(user.id, addr)`, then synchronously `setSaved(list)`, `setSelectedId(addr.id)`,
-      `setEditorOpen(false)`, success toast — WITHOUT awaiting the network, and WITHOUT leaving
-      `savingAddr` true (do not block the Save button on the POST). Fire the server write in the
-      background: build the same payload the current `saveAddress()` builds (`action`, `id: selectedId
-      ?? undefined`, …), `api.post('/addresses', payload)` then reconcile the real `address.id` into
-      local + state (replace the temp negative id); on failure `queuePending(user.id, payload)` and let
-      the next mount flush. The `GradientButton` `loading={savingAddr}` must reflect only the brief
-      synchronous validation, never the network.
-      Files: app/checkout.tsx
-      Verify: `npm run typecheck` — no new errors.
+- [ ] 3. admin/order/[id].tsx `useScreenshot` — bound the raw fetch with a ~15s AbortController and treat failure as "no screenshot" quietly (never the global toast; must stop spinning).
+      Wrap the raw `fetch(apiUrl('/orders/:id/screenshot'))` in a `new AbortController()` + `setTimeout(()=>controller.abort(),15000)` with `clearTimeout` in a `finally`; on abort/network error throw the existing `new Error('none')` so react-query (already `retry:false`) resolves to `shot.data == null` → the card's existing "⚠️ No payment screenshot found" empty state renders and the `ActivityIndicator` stops. This fetch is NOT routed through `api()` so it already cannot raise the global toast; the ONLY change is bounding the timeout so the card can't spin forever.
+      Files: `4astore-v2/mobile/app/admin/order/[id].tsx` (function `useScreenshot`)
+      Verify: `npx tsc --noEmit` → only app.config.ts error. Re-read `useScreenshot` and confirm there is a timeout + clearTimeout and failure yields the no-screenshot state.
 
-- [ ] 4. Remove the blocking save API call from `app/checkout.tsx` `proceed()`. Today `proceed()` calls
-      `await saveAddress(c, label)` before opening the payment sheet; delete that network call so
-      proceed-to-payment does NO save API call (the address is already persisted locally by item 3 and
-      synced in the background). Keep ALL validation, age-restricted confirm, `buildCustomer`,
-      `setCustomer`, and `setPayOpen(true)` exactly as-is.
-      Files: app/checkout.tsx
-      Verify: `npm run typecheck` — no new errors; manual read-through confirms no `/addresses` POST on
-      the proceed path.
+- [ ] 4. admin/order/[id].tsx — replace the full-screen `<Loading/>` with an order-detail skeleton + cache-first seed (keep the screenshot card's own indicator; keep the optimistic status update EXACTLY as-is).
+      Add a local `OrderDetailSkeleton()` (Shimmer-based, mirrors the three cards: customer card, items card, status card — model after `app/(tabs)/orders.tsx` `OrdersSkeleton`). Replace `if (q.isLoading || !staff) return <...><Loading/></...>` so that: while `staff` and `q.isLoading`, render `<OrderDetailSkeleton/>` instead of `<Loading/>` (keep the `!staff` guard returning quickly). Cache-first: before/when rendering, seed `q` from existing cache so detail opens instantly — read `qc.getQueryData<Order>(['order', id])` and the matching entry in `qc.getQueryData(['all-orders'])`; if present, use it as the initial display data (either via react-query `initialData`/`placeholderData` on `useOrder`, or by rendering the cached order while `q.isLoading`). Do NOT change `setStatus` (optimistic cache update, no button spinner, rollback+toast on failure) — leave it byte-for-byte.
+      Files: `4astore-v2/mobile/app/admin/order/[id].tsx` (and, if `useOrder` gains `placeholderData`, `4astore-v2/mobile/src/queries.ts`)
+      Verify: `npx tsc --noEmit` → only app.config.ts error. Confirm `setStatus` body unchanged; confirm skeleton renders during load and the screenshot `ActivityIndicator` is still present.
 
-- [ ] 5. Add per-user orders cache + skeleton to `app/(tabs)/orders.tsx` so My Orders shows the last
-      list instantly and never a bare infinite spinner. In `src/persistCache.ts`, add a small helper
-      pair for per-user order lists keyed ``4astore:orders:v1:${mobile}`` (own key, same AsyncStorage +
-      try/catch style, NOT in `PERSIST_KEYS`): `loadOrdersCache(mobile)` and `saveOrdersCache(mobile,
-      orders)`. In `orders.tsx`: seed `useMyOrders` from the cache via `initialData` (read synchronously
-      is not possible, so use a local `cached` state hydrated in an effect, or set `queryClient`'s data
-      for `['orders', mobile]` on mount) and persist on success. Replace the bare `<Loading/>` first-load
-      branch with a `Shimmer` skeleton list (3–4 `Card`-shaped shimmer rows reusing `Shimmer`) shown
-      only when there is no cached data; on `isError` keep showing cached rows if any plus the existing
-      "pull down to refresh" line (small retry), never a permanent spinner. Do not change the
-      `useAllOrders` 7s poll.
-      Files: src/persistCache.ts, app/(tabs)/orders.tsx
-      Verify: `npm run typecheck` — no new errors.
+- [ ] 5. product/[id].tsx — replace `<Loading/>` with a product-detail skeleton (image block + title/price/desc bars); cold cache shows skeleton not spinner.
+      Add a local `ProductDetailSkeleton()` (Shimmer: a ~280px image block inside a Card, then title bar, price bar, 3 description bars). Replace `if (q.isLoading) return <Screen ...><Loading/></Screen>` with the skeleton. Keep the `!product` → EmptyState branch and all zoom/rotate/cart logic unchanged.
+      Files: `4astore-v2/mobile/app/product/[id].tsx`
+      Verify: `npx tsc --noEmit` → only app.config.ts error. Confirm skeleton on `q.isLoading`, EmptyState still on `!product`.
 
-- [ ] 6. Cache CMS pages + skeleton in `app/page/[slug].tsx` so Help/Legal open instantly from cache and
-      never hang. The `pages` top-key is already in `persistCache.ts` `PERSIST_KEYS`, but `usePage(slug)`
-      is a separate `['page', slug]` query. Add a per-slug cache helper in `src/persistCache.ts`
-      (``4astore:page:v1:${slug}``) `loadPageCache(slug)` / `savePageCache(slug, page)`, OR seed
-      `['page', slug]` from the already-persisted `['pages']` list when present (prefer this: look up the
-      slug in the `pages` cache and use it as `initialData`/placeholder). In `[slug].tsx` show a
-      `Shimmer` block layout instead of the bare `<Loading/>` only on true first load (no cached
-      content), render cached content immediately when present, and on `isError` show cached content if
-      any else the existing friendly `EmptyState`. Persist the fetched page on success.
-      Files: src/persistCache.ts, app/page/[slug].tsx
-      Verify: `npm run typecheck` — no new errors.
+- [ ] 6. admin/orders.tsx — replace the two `<Loading/>` spinners with the `OrdersSkeleton` card shape.
+      Export the `OrdersSkeleton` component from `app/(tabs)/orders.tsx` (or lift a shared `OrdersSkeleton` into `src/components/ui.tsx` and import it in both — preferred to avoid cross-screen import). Replace the staff-guard `<Loading/>` and the body `<Loading text="Loading orders..."/>` with `<OrdersSkeleton/>` (shown only on first load, i.e. `isLoading && !orders.length` for the body; keep the `!staff` guard behavior). Decision: lift `OrdersSkeleton` into `src/components/ui.tsx` so both `(tabs)/orders.tsx` and `admin/orders.tsx` import one source of truth.
+      Files: `4astore-v2/mobile/src/components/ui.tsx` (add exported `OrdersSkeleton`), `4astore-v2/mobile/app/(tabs)/orders.tsx` (import it, remove local copy), `4astore-v2/mobile/app/admin/orders.tsx` (use it)
+      Verify: `npx tsc --noEmit` → only app.config.ts error. Confirm both screens import the shared `OrdersSkeleton` and `admin/orders.tsx` no longer renders a full-screen `<Loading/>` on first load.
 
-- [ ] 7. Make the staff order status change optimistic in `app/admin/order/[id].tsx` so the status
-      buttons never hang (this is the real "staff delete loader" surface — see discrepancies note). In
-      `setStatus(status)`: optimistically update the React Query caches BEFORE the network — set
-      `['order', o.order_id]` to `{...o, order_status: status}` and update the matching row in
-      `['all-orders']` — clear `saving` quickly; call `api.post('/admin/orders/status', …)` in the
-      background; on success invalidate as today; on failure roll back both caches to the previous
-      values and show the existing error toast. Keep the Bearer/auth path and all copy unchanged. Add a
-      short comment explaining the staff-delete→status-change mapping.
-      Files: app/admin/order/[id].tsx
-      Verify: `npm run typecheck` — no new errors.
+- [ ] 7. (tabs)/index.tsx home — replace the two category/popular `<Loading/>` with Shimmer skeletons and add a small error/retry affordance.
+      Replace `{categoriesQ.isLoading ? <Loading/> : ...}` with a horizontal category-rail Shimmer (a row of ~6 `Shimmer` chips sized like `s.cat`, ~84px wide). Replace `{productsQ.isLoading ? <Loading/> : ...}` with the existing `ProductGridSkeleton` (`cardWidth={cardW}`). Add a lightweight error/retry: when `categoriesQ.isError || productsQ.isError` (and not loading, with empty data), show a small inline row with text ("Load nahi hua / Couldn't load") and a `GradientButton` size `sm` "Retry / दोबारा" that calls `queryClient.invalidateQueries()` — instead of silently rendering empty. Keep cache-first behavior and the hero/ads/banner logic unchanged.
+      Files: `4astore-v2/mobile/app/(tabs)/index.tsx`
+      Verify: `npx tsc --noEmit` → only app.config.ts error. Confirm `Loading` import can be removed if unused; confirm `ProductGridSkeleton` + a category Shimmer rail render during load and a retry affordance appears on error.
 
-- [ ] 8. Audit + harden the 401/refresh/session path in `src/api.ts` and `src/store/auth.ts` WITHOUT
-      weakening security (keep Bearer, keep the refresh token in SecureStore, keep `X-Client: mobile`).
-      Confirm and, where missing, guarantee: (a) a 401 on a non-auth call triggers exactly ONE silent
-      `refreshSession()` + retry (the `_retried` flag already enforces this — add a test-read comment,
-      change only if a path can loop); (b) `refreshSession()` on its own 401/404 clears the refresh
-      token and returns null and is NOT retried (the `isAuthCall` guard covers `/users/refresh`, and the
-      single-flight `refreshing` promise prevents a storm — verify, do not duplicate); (c) when a
-      refresh fails for a request, the caller gets a thrown `ApiError`, NOT an unresolved promise, so no
-      screen spins forever. If, and only if, you find a genuine infinite-loader path (e.g. a query with
-      no error branch), add a bounded outcome at the call site (the per-screen error/empty/retry
-      branches from items 5–7 already cover the targeted screens). Do NOT add a `setOnSessionExpired`
-      hook that the code never defines — if auto-logout-to-login on hard refresh failure is wanted,
-      wire it minimally through the existing `useAuth.logout` + router, and only if a real gap exists;
-      otherwise document that the existing OfflineGate + per-screen error branches already bound every
-      targeted screen.
-      Files: src/api.ts, src/store/auth.ts (comments/guards only; no behavior change unless a real
-      loop/hang is found)
-      Verify: `npm run typecheck` — no new errors; read-through confirms the 401 path cannot loop and
-      every targeted screen has data | empty | error-retry (never an unresolved spinner).
+- [ ] 8. (tabs)/cart.tsx — remove the full-screen `<Loading/>`; render rows directly (cart items are local), optionally a lightweight cart-row skeleton.
+      The current `if (productsQ.isLoading && items.length) return <...><Loading/></...>` blocks the whole screen while products load even though cart items are local state. Remove that early return; render the cart rows immediately from `items` (prices/weights already live on cart items). If a per-row placeholder is wanted while `productsQ.isLoading`, show a tiny `Shimmer` only in the image slot per row; otherwise just render. Totals via `cartTotals` already handle an empty `products` array gracefully (verify) — if a product lookup is needed for category image, it degrades to the item's own fields.
+      Files: `4astore-v2/mobile/app/(tabs)/cart.tsx`
+      Verify: `npx tsc --noEmit` → only app.config.ts error. Confirm no full-screen spinner remains; cart rows render without waiting on `useProducts`.
 
-- [ ] 9. Final integration pass: run the full typecheck once more and read the checkout → save →
-      proceed → pay flow end to end to confirm the Save button and Proceed button are both free of
-      network-blocked spinners, My Orders / CMS pages / admin status all resolve to a bounded state, and
-      nothing in `app/track/*`, `app/rider.tsx`, or the server contract was touched.
-      Files: (none — verification only)
-      Verify: `npm run typecheck` — only the known `app.config.ts` `usesCleartextTraffic` error remains.
+- [ ] 9. page/[slug].tsx — cache-first open + a Retry button on the no-cache error state (do not break the working WebView).
+      The screen already does `loadPageCache` + `page = data ?? cached` + `PageSkeleton` on first load. Change the error branch: when `(isError && !page)` show an `EmptyState` with an `action` = `GradientButton` titled "Retry / दोबारा कोशिश करें" that calls `usePage(slug).refetch()` (destructure `refetch` from `usePage`). Keep `PageSkeleton` only for `isLoading && !page`. Do NOT touch the WebView `source`/`originWhitelist`/`onShouldStartLoadWithRequest` (proven working). Keep bilingual copy.
+      Files: `4astore-v2/mobile/app/page/[slug].tsx` (and `src/queries.ts` only if `usePage` must expose `refetch` — it already returns the full query object, so just destructure it)
+      Verify: `npx tsc --noEmit` → only app.config.ts error. Confirm the error EmptyState has a working Retry action calling `refetch` and the WebView block is unchanged.
+
+- [ ] 10. src/store/auth.ts `logout()` — clear local session FIRST and synchronously; fire the network calls in the background (not awaited).
+      Rewrite `logout()` so it: (1) synchronously `setAccessToken(null)` and `set({ user: null })` (and clear cart here only if cart-clear already happens in logout today — it does NOT currently, so DO NOT add new cart-clear behavior; preserve current semantics, only reorder); (2) returns immediately so the UI logs out instantly; (3) in the background (not awaited) reads the refresh token and fires `unregisterPush().catch(()=>null)`, `api.post('/users/logout',{refreshToken}, )` ideally with `silent:true` `.catch(()=>null)`, and `clearRefreshToken().catch(()=>null)`. Preserve offline-safe logout (local clear must never depend on the network). Only the ORDER changes; signature stays `() => Promise<void>` (can resolve immediately).
+      Files: `4astore-v2/mobile/src/store/auth.ts`
+      Verify: `npx tsc --noEmit` → only app.config.ts error. Re-read `logout` and confirm local clear happens before any `await`, network calls are fire-and-forget with `.catch(()=>null)`.
+
+- [ ] 11. app/login.tsx — premium on-brand redesign; keep KeyboardAvoidingView and ALL existing logic/bilingual copy.
+      Wrap the form in a branded header using `AnimatedGradient` + `warmGradient` (from `src/components/ui.tsx` / `src/theme.ts`) with the 4A Store logo (reuse the asset `StoreHeader` uses, or `assets/images/icon.png`), using `space`/`radius` tokens. Keep the existing `Field`/`PasswordField`/`GradientButton` components and the Login/Create-account toggle, but polish spacing and the toggle. Do NOT change `doLogin`, `sendOtp`, `doRegister`, `done()` (registerForPush on done), the email-OTP register flow, or any state. Keep `KeyboardAvoidingView`.
+      Files: `4astore-v2/mobile/app/login.tsx` (may add a small logo asset reference only if one exists under `assets/`)
+      Verify: `npx tsc --noEmit` → only app.config.ts error. Confirm the three handlers and `done()` are byte-for-byte unchanged; confirm KeyboardAvoidingView present and bilingual copy retained.
+
+- [ ] 12. Forgot Password — add link in login mode + a small reset UI wired to the CLOSEST existing server flow; MUST emit a warning for the missing reset endpoint.
+      PROVEN BY CODE (read `api-node/src/routes/users.ts` + `otp.ts`): there is **NO password-reset endpoint** and **no logged-out recovery OTP flow**. `/users/recovery-email/send` and `/verify` BOTH require `requireAuth` (logged-in only). `/otp/send` is a PUBLIC signup-purpose OTP. So a genuine "email → OTP → new password" reset CANNOT be completed with existing endpoints. Per task contingency: the implementer MUST `send_message` severity "warning" naming the missing endpoint `POST /users/reset-password {email, otp, newPassword}` (and the fact that recovery OTP endpoints are auth-gated), and WAIT. Build a reset UI in login mode: a "Forgot password? / पासवर्ड भूल गए?" link that opens an email→OTP→new-password form; wire the OTP send to the closest existing PUBLIC endpoint (`POST /otp/send`) and clearly LABEL in the UI that password reset is pending backend support (bilingual), so nothing silently appears to work. Do NOT invent an endpoint. Keep the UI build-safe (no new deps).
+      Files: `4astore-v2/mobile/app/login.tsx` (new `mode: 'forgot'` branch or a sibling reset form)
+      Verify: `npx tsc --noEmit` → only app.config.ts error. Confirm the warning was sent (step must call `send_message` warning). Confirm the link renders in login mode and the reset form does not call any non-existent endpoint; the "pending backend" label is visible.
+
+- [ ] 13. Social login (Google/Facebook/Instagram) — BUILD-SAFE, credential-gated fallback (no heavy native OAuth SDK); emit a warning listing prerequisites.
+      DECISION (grounded): `expo-auth-session`/`expo-web-browser` are NOT installed and adding OAuth carries Expo-prebuild/gradle risk; there are NO client IDs and NO `POST /users/social-login` endpoint (grep across `api-node/src` → no match). Per task: ANY build risk → credential-gated fallback. Implement three buttons in `app/login.tsx`: Google (white + "G"), Facebook (#1877F2), Instagram (gradient via `AnimatedGradient`/`offerGradient`), using emoji/text (NO icon font / native dep). Read client IDs from `app.config.ts` `extra.googleClientId/facebookAppId/instagramAppId`, each defaulting to `''` from `process.env` (`STORE4A_GOOGLE_CLIENT_ID`, etc.) — add these to `app.config.ts` `extra` and surface via `src/config.ts`. If a provider's ID is empty, tapping shows toast `'Google login setup pending — admin se contact karein'` (per provider) and does nothing. Buttons MUST render and never crash with empty credentials. The implementer MUST `send_message` severity "warning" listing prerequisites: OAuth client IDs (Google/Facebook/Instagram) + a `POST /users/social-login {provider, token, profile}` server endpoint (document as follow-up; do NOT build the OAuth round-trip now since the endpoint is absent).
+      Files: `4astore-v2/mobile/app/login.tsx`, `4astore-v2/mobile/app.config.ts` (add `extra.googleClientId/facebookAppId/instagramAppId`), `4astore-v2/mobile/src/config.ts` (expose them)
+      Verify: `npx tsc --noEmit` → only app.config.ts error (NO new error from the new `extra` keys — `extra` is an open record). Confirm the three buttons render with empty creds and show the pending toast; confirm the warning was sent.
+
+- [ ] 14. api-node — add `express-async-errors` as the FIRST import in server.ts, pin an Express-4-compatible exact version in package.json deps, and guard the two unguarded `prisma.order.findMany` list reads in orders.ts.
+      (a) In `src/server.ts`, add `import 'express-async-errors';` as the VERY FIRST line (before `import './systemCa';`). (b) In `package.json` `dependencies` add `"express-async-errors": "3.1.1"` (exact; 3.1.1 is compatible with Express 4). Run `npm install` so it resolves. (c) In `src/routes/orders.ts`, wrap BOTH list reads in try/catch (or `.catch`) so a Prisma rejection returns fast instead of hanging: the staff branch `const orders = await prisma.order.findMany({ orderBy: { id: 'desc' } })` and the customer branch `const orders = await prisma.order.findMany({ where, orderBy: { id: 'desc' } })`. On failure, return a fast response (e.g. `return fail(res, 'Could not load orders', 500)`), NOT a hang. Do NOT change the response shape of the success path (`ok(res,{orders})`), tracking, rider, or payments.
+      Files: `4astore-v2/api-node/src/server.ts`, `4astore-v2/api-node/package.json`, `4astore-v2/api-node/src/routes/orders.ts`
+      Verify: `cd 4astore-v2/api-node; npm install; npx tsc --noEmit` → error count must NOT exceed the 84-error baseline and NO "Cannot find module 'express-async-errors'" error may appear (the package ships its own types, so the bare `import 'express-async-errors'` must resolve). The two `findMany` reads must be inside try/catch returning a fast response. (If `prisma generate` can run on the machine, baseline is 0 and the same no-new-errors rule applies.)
+
+---
+
+## Full verification (run after all items)
+1. `cd 4astore-v2/mobile; npm install; npx tsc --noEmit` → ONLY `app.config.ts(39) TS2353 usesCleartextTraffic`. No other error.
+2. `cd 4astore-v2/api-node; npm install; npx tsc --noEmit` → error count ≤ 84 pre-existing (untyped-Prisma family only); `express-async-errors` resolves. No NEW file/code outside the baseline set.
+3. Manual contract checks (read-only): `setStatus` in `admin/order/[id].tsx` unchanged; tracking (`app/track`, TrackMap), rider (`app/rider.tsx`, `/orders/accept`, `/tracking/*`), payments (PaymentSheet) untouched; local-first address/orders/pages caching untouched; bilingual copy + accessibility labels + design tokens preserved.
+
+## Mandatory human-input gates (do not skip)
+- Item 12: `send_message` warning — missing `POST /users/reset-password {email,otp,newPassword}`; recovery OTP endpoints are auth-gated.
+- Item 13: `send_message` warning — prerequisites: OAuth client IDs (Google/Facebook/Instagram) + `POST /users/social-login {provider,token,profile}` endpoint.
+
+## Constraints recap
+No new npm dep EXCEPT possibly `express-async-errors` (server, pinned `3.1.1`). Social login uses the credential-gated fallback — NO new mobile dep (`expo-auth-session`/`expo-web-browser` NOT added, to avoid Expo prebuild/gradle risk). Pin EXACT versions. Keep bilingual Hindi/English copy, accessibility labels, design tokens. Do not change data-fetching/caching logic except the `silent` flag plumbing and the logout reorder.
