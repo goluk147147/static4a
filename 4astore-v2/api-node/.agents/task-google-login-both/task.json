@@ -1,0 +1,7 @@
+{
+  "task_id": "task-google-login-both",
+  "task_description": "Make Google Sign-In actually work end-to-end on BOTH the 4A Store web app and the mobile app (server verifies Google ID tokens whose aud is either the web or android client ID and reuses issueTokens; web uses Google Identity Services via a script tag; mobile uses expo-auth-session), and HIDE the Facebook and Instagram buttons on both platforms. Only Google is visible and functional.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

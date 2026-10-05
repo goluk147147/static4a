@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { OAuth2Client, type TokenPayload } from 'google-auth-library';
 import { prisma } from '../db';
 import { ok, fail } from '../utils/http';
 import { config } from '../config';
@@ -17,6 +19,16 @@ const router = Router();
 
 const REFRESH_COOKIE = 'refresh_token';
 const ACCESS_COOKIE = 'access_token';
+
+// ---- Google Sign-In ----
+// Client IDs are NOT secrets: read from env first, with documented defaults.
+// The server accepts either audience so both web and the Android app can call
+// the same /social-login endpoint. See .env.example for details.
+const GOOGLE_WEB_CLIENT_ID =
+  process.env.GOOGLE_WEB_CLIENT_ID || '707085023016-etp7au34rg3cd5eks6cdu0cs0vkj1svn.apps.googleusercontent.com';
+const GOOGLE_ANDROID_CLIENT_ID =
+  process.env.GOOGLE_ANDROID_CLIENT_ID || '707085023016-pc4gc5271kquti6recqo9juor3p44dn9.apps.googleusercontent.com';
+const googleClient = new OAuth2Client();
 
 function cookieOpts(maxAgeMs: number) {
   return {
@@ -147,6 +159,98 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 
   await prisma.user.update({ where: { id: user.id }, data: { last_login: new Date() } });
+  const { accessToken, refreshToken } = await issueTokens(res, user, isMobileClient(req) ? 'mobile-app' : undefined);
+  return ok(res, { user: safeUser(user), token: accessToken, ...(isMobileClient(req) ? { refreshToken } : {}) });
+});
+
+// ---------- POST /api/users/social-login (PUBLIC, no requireAuth) ----------
+// Verifies a Google ID token (aud = web OR android client ID), upserts the user
+// by email, and returns the SAME { user, token, refreshToken? } shape as /login
+// via issueTokens() (honoring isMobileClient). Both web and the Android app call
+// this endpoint. Provider is currently restricted to 'google'.
+const socialLoginSchema = z.object({
+  provider: z.string().optional(),
+  idToken: z.string().min(1),
+});
+
+type GooglePayload = TokenPayload;
+
+/**
+ * Create a brand-new local user from a verified Google payload. Derives a
+ * unique username + a non-colliding mobile placeholder (prefixed 'g' so it can
+ * never match the /^[6-9]\d{9}$/ register regex). Retries on Prisma P2002
+ * (unique constraint) by re-suffixing both so it never crashes under a race.
+ */
+async function createGoogleUser(p: GooglePayload) {
+  const email = p.email as string;
+  let base = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (base.length < 3) base = (base + 'usr').slice(0, 3) || 'usr';
+  const mobileBase = ('g' + String(p.sub || '').replace(/\D/g, '')).slice(0, 15);
+  const password = bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10);
+
+  let lastErr: unknown = null;
+  for (let i = 0; i < 5; i++) {
+    const suffix = i === 0 ? '' : String(i);
+    const username = (base + suffix).slice(0, 64);
+    const mobile = (mobileBase + suffix).slice(0, 15);
+    try {
+      return await prisma.user.create({
+        data: {
+          name: p.name || base,
+          email,
+          recovery_email: email,
+          recovery_email_verified: true,
+          username,
+          mobile,
+          password,
+          role: 'customer',
+          registered_at: new Date(),
+          last_login: new Date(),
+        },
+      });
+    } catch (err) {
+      // P2002 = unique constraint violation → re-suffix username/mobile and retry.
+      if (err && typeof err === 'object' && (err as { code?: string }).code === 'P2002') {
+        lastErr = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr ?? new Error('Could not create Google user');
+}
+
+router.post('/social-login', async (req: Request, res: Response) => {
+  const parsed = socialLoginSchema.safeParse(req.body);
+  // Reject an explicitly non-google provider before the token check.
+  if (req.body?.provider !== undefined && req.body.provider !== 'google') {
+    return fail(res, 'Unsupported provider', 400);
+  }
+  if (!parsed.success) return fail(res, 'A valid Google idToken is required', 422);
+  const { idToken } = parsed.data;
+
+  let payload: GooglePayload | undefined;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: [GOOGLE_WEB_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID],
+    });
+    payload = ticket.getPayload();
+  } catch {
+    return fail(res, 'Invalid Google token', 401);
+  }
+  const p = payload;
+  if (!p || p.email_verified !== true || !p.email) return fail(res, 'Invalid Google token', 401);
+
+  let user = await prisma.user.findFirst({
+    where: { OR: [{ email: p.email }, { recovery_email: p.email }] },
+  });
+  if (user) {
+    user = await prisma.user.update({ where: { id: user.id }, data: { last_login: new Date() } });
+  } else {
+    user = await createGoogleUser(p);
+  }
+
   const { accessToken, refreshToken } = await issueTokens(res, user, isMobileClient(req) ? 'mobile-app' : undefined);
   return ok(res, { user: safeUser(user), token: accessToken, ...(isMobileClient(req) ? { refreshToken } : {}) });
 });

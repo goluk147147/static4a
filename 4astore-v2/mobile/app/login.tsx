@@ -1,21 +1,38 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import StoreHeader from '../src/components/StoreHeader';
 import { AnimatedGradient, Button, Card, Field, GradientButton, PasswordField, Screen, styles as ui } from '../src/components/ui';
 import { useAuth, isOrderStaff, isRider } from '../src/store/auth';
 import { api, apiError } from '../src/api';
 import { registerForPush } from '../src/push';
 import { showToast } from '../src/store/ui';
-import { GOOGLE_CLIENT_ID, FACEBOOK_APP_ID, INSTAGRAM_APP_ID } from '../src/config';
+import { GOOGLE_WEB_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../src/config';
 import { colors, offerGradient, radius, space } from '../src/theme';
+
+// Finishes the OAuth session when the browser redirects back to the app (expo-auth-session).
+WebBrowser.maybeCompleteAuthSession();
+
+// Facebook/Instagram login is hidden until their OAuth setup is complete — re-enable later.
+const SOCIAL_FB_IG_ENABLED = false;
 
 export default function Login() {
   const router = useRouter();
   const { next } = useLocalSearchParams<{ next?: string }>();
-  const { login, register } = useAuth();
+  const { login, socialLogin, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [busy, setBusy] = useState(false);
+
+  // Google Sign-In via expo-auth-session: the web client ID drives the id_token flow, the android
+  // client ID matches the signed build. Empty web id → the button stays on its setup-pending toast.
+  const [googleReq, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    responseType: 'id_token',
+    scopes: ['openid', 'email', 'profile'],
+  });
   const [error, setError] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -119,16 +136,44 @@ export default function Login() {
   }
 
   // --- Social login (item 13) ------------------------------------------------
-  // Build-safe buttons only: no OAuth round-trip, no native dep. With empty creds
-  // (or no server endpoint) each button shows a per-provider "setup pending" toast.
-  function socialLogin(provider: 'Google' | 'Facebook' | 'Instagram', clientId: string) {
-    if (!clientId) {
-      showToast(`${provider} login setup pending — admin se contact karein. / ${provider} login setup pending — please contact admin.`, 'info');
+  // Real Google Sign-In via expo-auth-session. Tapping the button opens the Google consent
+  // browser; the result lands in `googleResponse`, handled by the effect below. With no web
+  // client ID provisioned the button stays on its "setup pending" toast (build-safe fallback).
+  function startGoogle() {
+    if (!GOOGLE_WEB_CLIENT_ID) {
+      showToast('Google login setup pending — admin se contact karein. / Google login setup pending — please contact admin.', 'info');
       return;
     }
-    // Even with an id, the POST /users/social-login endpoint does not exist yet.
-    showToast(`${provider} login setup pending — admin se contact karein. / ${provider} login setup pending — please contact admin.`, 'info');
+    void googlePromptAsync();
   }
+
+  // When Google returns a successful auth, read the ID token and sign in via the SAME session
+  // path as login() (socialLogin → setAccessToken + saveRefreshToken + user), then run done().
+  useEffect(() => {
+    if (googleResponse?.type !== 'success') return;
+    const idToken = googleResponse.params?.id_token || googleResponse.authentication?.idToken;
+    if (!idToken) {
+      showToast('Google login failed — token missing. / Google login viphal — token nahi mila.', 'error');
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setBusy(true);
+      setError('');
+      try {
+        const user = await socialLogin(idToken);
+        if (!cancelled) done(user);
+      } catch (e) {
+        if (!cancelled) showToast(apiError(e), 'error');
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleResponse]);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -166,7 +211,7 @@ export default function Login() {
               </Pressable>
               <GradientButton title={busy ? 'Please wait…' : 'Login'} onPress={doLogin} loading={busy} disabled={!username || !password} />
 
-              <SocialBlock onPress={socialLogin} />
+              <SocialBlock onGoogle={startGoogle} googleDisabled={busy || (!!GOOGLE_WEB_CLIENT_ID && !googleReq)} />
 
               <Pressable onPress={() => switchMode('register')} style={styles.switchLink} accessibilityRole="button">
                 <Text style={ui.muted}>New here? <Text style={styles.linkStrong}>Create account</Text></Text>
@@ -234,8 +279,12 @@ export default function Login() {
   );
 }
 
-/** Three build-safe social buttons (emoji/text only — no icon font, no native dep). */
-function SocialBlock({ onPress }: { onPress: (provider: 'Google' | 'Facebook' | 'Instagram', clientId: string) => void }) {
+/**
+ * Social sign-in block. Only the Google button renders — Facebook/Instagram stay hidden behind
+ * SOCIAL_FB_IG_ENABLED until their OAuth setup is complete (see FEAT-003). The Google button uses
+ * the real expo-auth-session flow (text/emoji only — no icon font, no extra native dep).
+ */
+function SocialBlock({ onGoogle, googleDisabled }: { onGoogle: () => void; googleDisabled?: boolean }) {
   return (
     <View style={styles.social}>
       <View style={styles.dividerRow}>
@@ -245,34 +294,42 @@ function SocialBlock({ onPress }: { onPress: (provider: 'Google' | 'Facebook' | 
       </View>
 
       <Pressable
-        onPress={() => onPress('Google', GOOGLE_CLIENT_ID)}
-        style={({ pressed }) => [styles.socialBtn, styles.googleBtn, pressed && { opacity: 0.85 }]}
+        onPress={onGoogle}
+        disabled={googleDisabled}
+        style={({ pressed }) => [styles.socialBtn, styles.googleBtn, (pressed || googleDisabled) && { opacity: 0.85 }]}
         accessibilityRole="button"
+        accessibilityState={{ disabled: !!googleDisabled }}
         accessibilityLabel="Continue with Google"
       >
         <Text style={styles.googleG}>G</Text>
         <Text style={styles.socialTextDark}>Continue with Google</Text>
       </Pressable>
 
-      <Pressable
-        onPress={() => onPress('Facebook', FACEBOOK_APP_ID)}
-        style={({ pressed }) => [styles.socialBtn, styles.facebookBtn, pressed && { opacity: 0.85 }]}
-        accessibilityRole="button"
-        accessibilityLabel="Continue with Facebook"
-      >
-        <Text style={styles.socialTextLight}>f   Continue with Facebook</Text>
-      </Pressable>
+      {/* Facebook/Instagram sign-in — hidden until their OAuth setup is complete (FEAT-003). The
+          plumbing stays so re-enabling is a one-line flip of SOCIAL_FB_IG_ENABLED above. */}
+      {SOCIAL_FB_IG_ENABLED && (
+        <>
+          <Pressable
+            onPress={() => showToast('Facebook login setup pending — admin se contact karein. / Facebook login setup pending — please contact admin.', 'info')}
+            style={({ pressed }) => [styles.socialBtn, styles.facebookBtn, pressed && { opacity: 0.85 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Facebook"
+          >
+            <Text style={styles.socialTextLight}>f   Continue with Facebook</Text>
+          </Pressable>
 
-      <Pressable
-        onPress={() => onPress('Instagram', INSTAGRAM_APP_ID)}
-        style={({ pressed }) => [styles.socialBtn, { padding: 0, overflow: 'hidden' }, pressed && { opacity: 0.85 }]}
-        accessibilityRole="button"
-        accessibilityLabel="Continue with Instagram"
-      >
-        <AnimatedGradient colors={offerGradient} animated={false} style={styles.instaGrad}>
-          <Text style={styles.socialTextLight}>📷  Continue with Instagram</Text>
-        </AnimatedGradient>
-      </Pressable>
+          <Pressable
+            onPress={() => showToast('Instagram login setup pending — admin se contact karein. / Instagram login setup pending — please contact admin.', 'info')}
+            style={({ pressed }) => [styles.socialBtn, { padding: 0, overflow: 'hidden' }, pressed && { opacity: 0.85 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Instagram"
+          >
+            <AnimatedGradient colors={offerGradient} animated={false} style={styles.instaGrad}>
+              <Text style={styles.socialTextLight}>📷  Continue with Instagram</Text>
+            </AnimatedGradient>
+          </Pressable>
+        </>
+      )}
     </View>
   );
 }
