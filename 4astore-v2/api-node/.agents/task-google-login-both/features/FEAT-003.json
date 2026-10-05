@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "MOBILE real Google Sign-In via expo-auth-session (Expo SDK 54 managed/config-plugin packages, build-safe) in mobile/app/login.tsx, plus HIDE Facebook/Instagram. Exposes both client IDs through app.config.ts extra + src/config.ts, obtains a Google ID token, POSTs { provider:'google', idToken } to /users/social-login via src/api.ts, and sets the session via the SAME path as login() then runs done()/registerForPush(). CONTAINS A BUILD-SAFETY DECISION POINT: ship expo-auth-session ONLY if the Android prebuild check passes; otherwise gate mobile Google (web still ships) and report. Depends on FEAT-001.",
+  "status": "pending",
+  "steps": [
+    "Expose client IDs: in c:\\xampp\\htdocs\\static4a\\.worktrees\\google-login-both\\4astore-v2\\mobile\\app.config.ts add to `extra`: googleWebClientId: process.env.STORE4A_GOOGLE_WEB_CLIENT_ID || '707085023016-etp7au34rg3cd5eks6cdu0cs0vkj1svn.apps.googleusercontent.com' and googleAndroidClientId: process.env.STORE4A_GOOGLE_ANDROID_CLIENT_ID || '707085023016-pc4gc5271kquti6recqo9juor3p44dn9.apps.googleusercontent.com' (keep the existing googleClientId/facebookAppId/instagramAppId). In c:\\xampp\\htdocs\\static4a\\.worktrees\\google-login-both\\4astore-v2\\mobile\\src\\config.ts extend the extra type and export GOOGLE_WEB_CLIENT_ID and GOOGLE_ANDROID_CLIENT_ID.",
+    "BUILD-SAFETY DECISION POINT (resolve before wiring UI): install the SDK-54-pinned trio with `npx expo install expo-auth-session expo-web-browser expo-crypto` in the mobile dir (expected ~7.0.11 / ~15.0.11 / ~15.0.9 — all managed/config-plugin, autolinked, no bare native module; app scheme 'fourastore' is already set). Then run `npm run typecheck` (must be 0) AND `npx expo prebuild --platform android --clean --no-install` (must complete without error). If prebuild succeeds -> SHIP (continue to the next step). If prebuild or any native-linking/gradle config step fails -> STOP: revert the dependency additions, leave the mobile Google button on its existing 'setup pending' toast (web Google still ships), set this FEAT status to blocked with retryable=false and a detail explaining the prebuild failure, and call send_message severity 'warning'. Do NOT risk breaking the APK build. Delete any generated android/ directory afterward; it must not be committed.",
+    "If SHIP: in c:\\xampp\\htdocs\\static4a\\.worktrees\\google-login-both\\4astore-v2\\mobile\\app\\login.tsx call `WebBrowser.maybeCompleteAuthSession()` at module top (import * as WebBrowser from 'expo-web-browser'). Use `const [req, response, promptAsync] = Google.useAuthRequest({ webClientId: GOOGLE_WEB_CLIENT_ID, androidClientId: GOOGLE_ANDROID_CLIENT_ID, responseType: 'id_token', scopes: ['openid','email','profile'] })` from 'expo-auth-session/providers/google'. Wire the Google button onPress to `promptAsync()` (gate: if GOOGLE_WEB_CLIENT_ID empty, keep the setup-pending toast).",
+    "Handle the response in a useEffect on `response`: when response?.type === 'success', read the id_token from response.params?.id_token (fallback response.authentication?.idToken); `const data = await api.post('/users/social-login', { provider:'google', idToken })`. Set the session via the SAME path as login(): add a `socialLogin(idToken: string)` action to c:\\xampp\\htdocs\\static4a\\.worktrees\\google-login-both\\4astore-v2\\mobile\\src\\store\\auth.ts that mirrors login() exactly (api.post to /users/social-login, setAccessToken(data.token), if data.refreshToken await saveRefreshToken(data.refreshToken), set normalized user, return the user). Call it from login.tsx then run the existing done(user) so registerForPush() + routing run unchanged. On error showToast(apiError(e), 'error').",
+    "HIDE Facebook and Instagram: remove their <Pressable> buttons from the SocialBlock component. Keep remaining plumbing behind `const SOCIAL_FB_IG_ENABLED = false; // Facebook/Instagram login hidden until OAuth setup complete — re-enable later`. Keep the divider and the Google button's bilingual label + styling. (If the build-safety check chose to gate, still hide Facebook/Instagram and leave only the Google button on its setup-pending toast.)"
+  ],
+  "acceptance_criteria": [
+    "`npm run typecheck` in mobile exits 0 AND `npm test` passes.",
+    "If shipped: `npx expo prebuild --platform android --clean --no-install` completes without error (build-safety confirmed), and the generated android/ dir is NOT committed.",
+    "app.config.ts extra exposes googleWebClientId + googleAndroidClientId; src/config.ts exports GOOGLE_WEB_CLIENT_ID + GOOGLE_ANDROID_CLIENT_ID.",
+    "The login screen renders only the Google social button under the divider — no Facebook or Instagram button.",
+    "On a successful Google auth the app POSTs { provider:'google', idToken } to /users/social-login and sets the session via the same setAccessToken + saveRefreshToken + user path as login(), then runs done()/registerForPush().",
+    "If build-unsafe: deps reverted, mobile Google gated to setup-pending toast, Facebook/Instagram still hidden, and a send_message warning was sent."
+  ],
+  "verification": [
+    "Run `npm run typecheck` in c:\\xampp\\htdocs\\static4a\\.worktrees\\google-login-both\\4astore-v2\\mobile (exit 0).",
+    "Run `npm test` in the mobile dir and confirm all tests pass.",
+    "Build-safety gate: run `npx expo prebuild --platform android --clean --no-install` and confirm it completes without error before shipping the mobile Google flow; then remove the generated android/ dir so it is not committed.",
+    "Review the login.tsx diff to confirm only the Google button renders and the success path reuses the login() session logic + done()."
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

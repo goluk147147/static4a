@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "WEB real Google Sign-In via Google Identity Services (loaded by script tag, NO new web dependency) in web/src/pages/Login.tsx, and HIDE the Facebook/Instagram buttons. On receiving a GIS credential, POST { provider:'google', idToken } to /users/social-login via the shared axios api and store the session exactly like the normal login(), then redirect. Depends on FEAT-001 (the endpoint).",
+  "status": "pending",
+  "steps": [
+    "In c:\\xampp\\htdocs\\static4a\\.worktrees\\google-login-both\\4astore-v2\\web\\src\\pages\\Login.tsx add a dynamic loader for https://accounts.google.com/gsi/client inside a useEffect that runs only when GOOGLE_CLIENT_ID (import.meta.env.VITE_GOOGLE_CLIENT_ID) is set: append a single `<script async defer>` once and resolve a ready flag on load. Add `declare global { interface Window { google?: any } }` near the top for typing.",
+    "When GOOGLE_CLIENT_ID is set and the script is ready, call `window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredential })` once. Wire the existing 'Continue with Google' button onClick to trigger the flow via `window.google.accounts.id.prompt()`.",
+    "handleCredential(resp): `const idToken = resp.credential; const { data } = await api.post('/users/social-login', { provider: 'google', idToken }); setAccessToken(data.token); useAuth.getState().setUser(data.user); navigate(next);` using the SAME store setters as login() (import setAccessToken from ../lib/api; useAuth already imported). On error call showToast(apiError(err), 'error').",
+    "If VITE_GOOGLE_CLIENT_ID is empty, keep the current gated 'setup pending' toast behavior for the Google button (no script load, no OAuth).",
+    "HIDE Facebook and Instagram: remove their <button> elements from the rendered JSX. Keep their constants/plumbing behind `const SOCIAL_FB_IG_ENABLED = false; // Facebook/Instagram login hidden until OAuth setup complete — re-enable later` so they can be re-enabled later. Keep the 'or continue with / या इसके साथ जारी रखें' divider and the Google button's existing bilingual label + styling.",
+    "Document the env var in c:\\xampp\\htdocs\\static4a\\.worktrees\\google-login-both\\4astore-v2\\web\\.env.example: add `VITE_GOOGLE_CLIENT_ID=707085023016-etp7au34rg3cd5eks6cdu0cs0vkj1svn.apps.googleusercontent.com` with a comment (the WEB OAuth client ID; leave empty to disable the Google button)."
+  ],
+  "acceptance_criteria": [
+    "`npm run build` in web exits 0.",
+    "The rendered Login page shows only the Google social button under the 'or continue with' divider — no Facebook or Instagram button in the JSX.",
+    "Clicking 'Continue with Google' (with VITE_GOOGLE_CLIENT_ID set) triggers the GIS prompt and, on credential, posts to /users/social-login and stores the session using the same setAccessToken + setUser path as login().",
+    "With VITE_GOOGLE_CLIENT_ID empty, the Google button falls back to the existing 'setup pending' toast.",
+    "Login, register, and forgot-password forms are unchanged."
+  ],
+  "verification": [
+    "Run `npm run build` in c:\\xampp\\htdocs\\static4a\\.worktrees\\google-login-both\\4astore-v2\\web and confirm it exits 0.",
+    "Review the diff of Login.tsx to confirm the Facebook/Instagram buttons are no longer rendered and the Google credential flow calls /users/social-login via the shared api and reuses setAccessToken + setUser."
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
