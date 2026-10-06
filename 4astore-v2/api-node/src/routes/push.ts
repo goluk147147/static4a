@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { ok, fail } from '../utils/http';
 import { requireAuth, requireStaff } from '../auth/middleware';
-import { sendToTopic, sendToTokens, tokensForStaff, syncTokenTopics, clearTokenTopics, recordNotification, PushMessage } from '../services/push';
+import { sendToTopic, sendToTokens, tokensForStaff, syncTokenTopics, clearTokenTopics, recordNotification, PushMessage, NOTIFICATION_LOGO_URL } from '../services/push';
 
 const router = Router();
 
@@ -77,10 +77,12 @@ const sendSchema = z.object({
 router.post('/send', requireAuth, requireStaff('ads'), async (req: Request, res: Response) => {
   const parsed = sendSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 'target, title and body required', 422);
-  const { target, title, body, link, image, productId } = parsed.data;
-  // Keep the existing data.link passthrough unchanged (mobile already routes /product/:id);
-  // only attach an image when the admin provided one (text-only push stays byte-identical).
-  const msg: PushMessage = { title, body, data: link ? { link } : {}, ...(image ? { image } : {}) };
+  const { target, title, body, link, productId } = parsed.data;
+  // Keep the existing data.link passthrough unchanged (mobile already routes /product/:id).
+  // Admin broadcasts default to the colour 4A logo as the big-picture image so a broadcast is
+  // never bare text (Zepto/Flipkart style) — the admin can still override with their own image.
+  const image = parsed.data.image?.trim() || NOTIFICATION_LOGO_URL;
+  const msg: PushMessage = { title, body, data: link ? { link } : {}, image };
   const productIdBig = productId != null && String(productId).trim() !== '' ? BigInt(String(productId).trim()) : null;
 
   let tokens: string[] = [];
@@ -98,7 +100,7 @@ router.post('/send', requireAuth, requireStaff('ads'), async (req: Request, res:
       type: 'broadcast',
       title,
       body,
-      image: image ?? null,
+      image,
       link: link ?? null,
       target,
       product_id: productIdBig,

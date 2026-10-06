@@ -80,7 +80,7 @@ export function listenTokenRotation() {
   return () => sub.remove();
 }
 
-export type PushData = { type?: string; orderId?: string; link?: string; customerName?: string; total?: string; city?: string };
+export type PushData = { type?: string; orderId?: string; link?: string; customerName?: string; total?: string; city?: string; largeIcon?: string };
 
 /** Tap on a notification (warm or cold start) → deep link. */
 export function listenNotificationTaps(onLink: (link: string, data: PushData) => void) {

@@ -19,6 +19,10 @@ const SEGMENTS: [string, string][] = [
 
 const DEEP_LINK_EXAMPLES = ['/products', '/products?festival=diwali', '/product/12', '/orders'];
 
+// Default colour 4A logo used by the API when the admin leaves the image empty, so every
+// broadcast looks polished (matches NOTIFICATION_LOGO_URL on the server; override with env there).
+const DEFAULT_LOGO_URL = '/notification-logo.png';
+
 type FieldRef = HTMLInputElement | HTMLTextAreaElement | null;
 
 /**
@@ -199,7 +203,10 @@ export default function AdminNotify() {
             </button>
             {image && <button type="button" onClick={() => setImage('')} style={{ padding: '7px 12px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>✕ Hataayein</button>}
           </div>
-          <p style={{ fontSize: 11, color: 'var(--gray)', marginTop: 4 }}>Big-picture push me ye image dikhegi. URL de sakte hain ya upload kar sakte hain.</p>
+          <p style={{ fontSize: 11, color: 'var(--gray)', marginTop: 4 }}>
+            Big-picture push me ye image dikhegi. URL de sakte hain ya upload kar sakte hain.
+            {!image.trim() && ' Khaali chhodne par 4A ka logo apne-aap lag jaayega (notification bare nahi dikhega).'}
+          </p>
         </div>
 
         {/* Live preview of how the notification will look on a device. */}
@@ -211,8 +218,10 @@ export default function AdminNotify() {
               <div style={{ fontSize: 11, color: 'var(--gray)', marginBottom: 2 }}>4A Store · now</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{title || 'Title yahan dikhega'}</div>
               <div style={{ fontSize: 13, color: '#334155', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{body || 'Message yahan dikhega'}</div>
-              {image.trim() && (
-                <img src={image.trim()} alt="Push preview" style={{ marginTop: 8, maxWidth: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />
+              {/* Mirror the server default: an empty image falls back to the 4A colour logo. */}
+              <img src={image.trim() || DEFAULT_LOGO_URL} alt="Push preview" style={{ marginTop: 8, maxWidth: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />
+              {!image.trim() && (
+                <div style={{ fontSize: 10, color: 'var(--gray)', marginTop: 4 }}>Default: 4A logo (koi image na chunne par)</div>
               )}
             </div>
           </div>

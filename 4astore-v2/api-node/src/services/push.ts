@@ -15,6 +15,23 @@ function absolutePublicUrl(src: string): string {
   return `${SITE_ORIGIN}/${src.replace(/^\.?\//, '')}`;
 }
 
+/**
+ * Default colour logo used to make pushes look polished (Zepto/Flipkart style).
+ *
+ * Android limitation (honest note): FCM's server payload has no field for a REMOTE
+ * large icon on OS-drawn (background) notifications — `AndroidNotification` only
+ * exposes `icon` (the monochrome small/status-bar icon, always tinted — set in the
+ * app's app.config.ts), `color`, and `imageUrl` (the big-picture banner). So the
+ * colour logo is applied two ways:
+ *   1. As the DEFAULT big-picture `imageUrl` for admin broadcasts (so a broadcast is
+ *      never bare text), resolved to an absolute https URL below.
+ *   2. Carried in the `data.largeIcon` payload so the mobile FOREGROUND handler (and
+ *      any future native extender) can render it as the right-side large icon.
+ * Served in production from web/public: https://4astore.com/notification-logo.png.
+ * Override with NOTIFICATION_LOGO_URL.
+ */
+export const NOTIFICATION_LOGO_URL = (process.env.NOTIFICATION_LOGO_URL || `${SITE_ORIGIN}/notification-logo.png`).replace(/\/+$/, '');
+
 // Lazy-load firebase-admin so the app runs without it in dev.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let admin: any = null;
@@ -60,6 +77,16 @@ export interface PushMessage {
   image?: string;
 }
 
+/**
+ * Merge the colour-logo `largeIcon` hint into the data payload so the mobile foreground
+ * handler can render the right-side app logo. The OS-drawn (background) tray icon stays
+ * the monochrome small icon + tint from app.config.ts — Android gives no server lever for
+ * a remote large icon, so this hint is the only cross-send way to surface the colour logo.
+ */
+function withLargeIcon(data: Record<string, string> | undefined): Record<string, string> {
+  return { largeIcon: NOTIFICATION_LOGO_URL, ...(data || {}) };
+}
+
 function androidConfig(msg: PushMessage) {
   const notification: Record<string, unknown> = {
     channelId: msg.channelId || 'default',
@@ -90,7 +117,8 @@ export async function sendToTopic(topic: string, msg: PushMessage): Promise<bool
       // Big-picture image only when provided — text-only payload stays byte-identical.
       ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
     },
-    data: msg.data || {},
+    // Carry the colour logo as a largeIcon hint for the foreground handler.
+    data: withLargeIcon(msg.data),
     android: androidConfig(msg),
   });
   return true;
@@ -154,7 +182,8 @@ export async function sendToTokens(tokens: string[], msg: PushMessage): Promise<
         // Big-picture image only when provided — text-only payload stays byte-identical.
         ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
       },
-      data: msg.data || {},
+      // Carry the colour logo as a largeIcon hint for the foreground handler.
+      data: withLargeIcon(msg.data),
       android: androidConfig(msg),
     });
     sent += resp.successCount;
