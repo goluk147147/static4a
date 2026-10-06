@@ -1,0 +1,33 @@
+{
+  "project_type": "Expo SDK 54 managed React Native app (prebuild workflow) for Android; part of the 4astore-v2 monorepo alongside a Node/Express api-node and a Vite/React web storefront",
+  "language": "TypeScript (React Native / React)",
+  "build_system": "Expo prebuild + Gradle. app.config.ts is the source of truth for native config; custom config-plugins live in mobile/plugins/*.js. newArchEnabled is true. Release signing uses the original keystore via plugins/withReleaseSigning.js. No NDK (plugins/withNoNdk.js).",
+  "test_framework": "node:test via a custom loader. Run with `npm test` (node --test over src/__tests__/**/*.test.ts, loader at src/__tests__/register.mjs). No RN component/integration test harness.",
+  "build_command": "npm run typecheck  (tsc --noEmit). Native binary: npx expo prebuild --platform android --clean then npm run build:aab / npm run build:apk (Gradle).",
+  "test_command": "npm test  (node test suite); npm run typecheck for type safety; npx expo config --json to validate app config + plugins.",
+  "verification_instructions": "From 4astore-v2/mobile: 1) npm install  2) npm run typecheck (must pass)  3) npm test (must pass)  4) npx expo config --json (config resolves, plugin listed, android.versionCode == 21). The Google button itself can only be exercised on a dev/release build, NOT Expo Go — note this; do not attempt to run it in-agent.",
+  "snapshot_or_generated_files": "expo prebuild generates mobile/android/*; google-services.json is copied to mobile/android/app/google-services.json during prebuild. These are produced by the build, not hand-edited. null hand-authored generated files.",
+  "environment_constraints": "The native library cannot run in Expo Go — requires a development/release build. Do NOT run a native Android build in-agent (needs JDK 17 + Android SDK + keystore passwords via env). Verification is typecheck + node tests + expo config only. google-services.json currently has an EMPTY oauth_client array — owner must re-download after registering SHA-1s; this is an owner action, not a code change.",
+  "contribution_requirements": "No AGENTS.md/CONTRIBUTING.md or .kiro/steering present. Follow existing code conventions: bilingual Hindi/English user-facing toasts, showToast from src/store/ui, apiError from src/api for error messages, graceful 'setup pending' fallback when a client id is empty. Work on branch main. Scope is 4astore-v2/mobile only, plus a verify-only read of 4astore-v2/web. Do NOT change the api-node server.",
+  "key_patterns": "login.tsx uses socialLogin(idToken) from src/store/auth.ts (zustand) which POSTs /users/social-login and sets the session exactly like login(). Client IDs flow app.config.ts extra -> src/config.ts (GOOGLE_WEB_CLIENT_ID / GOOGLE_ANDROID_CLIENT_ID). Empty web id -> 'Google login setup pending' toast. Config plugins are registered as strings or [name, opts] tuples in the plugins array of app.config.ts.",
+  "relevant_files": [
+    "4astore-v2/mobile/package.json (add @react-native-google-signin/google-signin 16.1.5)",
+    "4astore-v2/mobile/app.config.ts (add config plugin, bump VERSION_CODE 20->21, keep googleServicesFile + extra client ids)",
+    "4astore-v2/mobile/app/login.tsx (rewrite Google handler; remove expo-auth-session Google wiring)",
+    "4astore-v2/mobile/src/config.ts (keep GOOGLE_WEB_CLIENT_ID/ANDROID; comment-only update)",
+    "4astore-v2/mobile/src/store/auth.ts (socialLogin(idToken) — DO NOT CHANGE, pattern reference)",
+    "4astore-v2/mobile/google-services.json (oauth_client is EMPTY — owner re-download; study only)",
+    "4astore-v2/api-node/src/routes/users.ts (/social-login accepts WEB+ANDROID audience — DO NOT CHANGE, reference)",
+    "4astore-v2/web/src/pages/Login.tsx (GIS flow — VERIFY ONLY, config-gated by VITE_GOOGLE_CLIENT_ID)",
+    "4astore-v2/mobile/README.md (build instructions)"
+  ],
+  "directory_structure": "4astore-v2/mobile: app/ (expo-router screens incl. login.tsx), src/ (config.ts, api.ts, store/auth.ts, store/ui.ts, components/, __tests__/), plugins/ (custom config-plugins), assets/, app.config.ts, package.json, google-services.json. 4astore-v2/api-node/src/routes/users.ts (auth endpoints). 4astore-v2/web/src/pages/Login.tsx (web storefront login).",
+  "library_facts": {
+    "name": "@react-native-google-signin/google-signin",
+    "pinned_version": "16.1.5",
+    "compatibility_evidence": "npm latest 16.1.5; peerDependencies expo '>=52.0.40' (project is ~54.0.37), react '*', react-native '*' (project RN 0.81.5, react 19.1.0) — all satisfied. New architecture supported. Expo config plugin shipped for the managed prebuild workflow.",
+    "config_plugin": "Firebase variant (project has google-services.json): add bare string '@react-native-google-signin/google-signin' to app.config.ts plugins (NO iosUrlScheme needed — Android-only). googleServicesFile already wired in app.config.ts.",
+    "signin_api": "import { GoogleSignin, isSuccessResponse, statusCodes }. GoogleSignin.configure({ webClientId }) once; await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true }); const res = await GoogleSignin.signIn(); if (isSuccessResponse(res)) use res.data.idToken. webClientId (the WEB client id) is REQUIRED to populate idToken. statusCodes.SIGN_IN_CANCELLED => silent no-op.",
+    "note": "Content was rephrased for compliance with licensing restrictions."
+  }
+}

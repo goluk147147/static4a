@@ -1,0 +1,7 @@
+{
+  "task_id": "task-gsi-native",
+  "task_description": "Fix Google Sign-In on the 4A Store v2 mobile app by migrating from expo-auth-session's Google provider (blocked custom-URI-scheme Android flow) to the native @react-native-google-signin/google-signin library, which produces a WEB-client idToken the existing /social-login server endpoint already verifies. Verify the web storefront GIS path (config-only) and document owner Google Cloud / rebuild requirements.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}
