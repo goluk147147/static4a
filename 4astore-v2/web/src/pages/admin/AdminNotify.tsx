@@ -109,7 +109,7 @@ export default function AdminNotify() {
     setMsg(null);
     try {
       // Send plain text + emoji only — push payloads can't carry HTML.
-      const r = await sendBroadcast(target, title.trim(), body.trim(), link.trim() || undefined, image.trim() || undefined);
+      const r = await sendBroadcast(target, title.trim(), body.trim(), link.trim() || undefined, image.trim() || undefined, productId.trim() || undefined);
       setMsg({ kind: 'ok', text: r.message || 'Notification sent' });
       setTitle('');
       setBody('');

@@ -116,8 +116,8 @@ export async function deleteCategory(id: number) {
 }
 
 // ---- Push ----
-export async function sendBroadcast(target: string, title: string, body: string, link?: string, image?: string) {
-  return (await api.post('/push/send', { target, title, body, link, image })).data;
+export async function sendBroadcast(target: string, title: string, body: string, link?: string, image?: string, productId?: string) {
+  return (await api.post('/push/send', { target, title, body, link, image, productId })).data;
 }
 
 // ---- Notification history (GET /api/admin/notifications) ----
