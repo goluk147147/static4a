@@ -16,17 +16,16 @@ function absolutePublicUrl(src: string): string {
 }
 
 /**
- * Default colour logo used to make pushes look polished (Zepto/Flipkart style).
+ * Colour 4A logo carried as a largeIcon hint on every push.
  *
  * Android limitation (honest note): FCM's server payload has no field for a REMOTE
  * large icon on OS-drawn (background) notifications — `AndroidNotification` only
  * exposes `icon` (the monochrome small/status-bar icon, always tinted — set in the
  * app's app.config.ts), `color`, and `imageUrl` (the big-picture banner). So the
- * colour logo is applied two ways:
- *   1. As the DEFAULT big-picture `imageUrl` for admin broadcasts (so a broadcast is
- *      never bare text), resolved to an absolute https URL below.
- *   2. Carried in the `data.largeIcon` payload so the mobile FOREGROUND handler (and
- *      any future native extender) can render it as the right-side large icon.
+ * colour logo is carried in the `data.largeIcon` payload for the mobile FOREGROUND
+ * handler (and any future native extender) to render as the right-side large icon.
+ * The big-picture `imageUrl` is used ONLY when the admin explicitly provides an image —
+ * text-only broadcasts stay clean (title + body, no banner), like Flipkart.
  * Served in production from web/public: https://4astore.com/notification-logo.png.
  * Override with NOTIFICATION_LOGO_URL.
  */

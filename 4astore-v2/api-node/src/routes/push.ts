@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { ok, fail } from '../utils/http';
 import { requireAuth, requireStaff } from '../auth/middleware';
-import { sendToTopic, sendToTokens, tokensForStaff, syncTokenTopics, clearTokenTopics, recordNotification, PushMessage, NOTIFICATION_LOGO_URL } from '../services/push';
+import { sendToTopic, sendToTokens, tokensForStaff, syncTokenTopics, clearTokenTopics, recordNotification, PushMessage } from '../services/push';
 
 const router = Router();
 
@@ -79,9 +79,9 @@ router.post('/send', requireAuth, requireStaff('ads'), async (req: Request, res:
   if (!parsed.success) return fail(res, 'target, title and body required', 422);
   const { target, title, body, link, productId } = parsed.data;
   // Keep the existing data.link passthrough unchanged (mobile already routes /product/:id).
-  // Admin broadcasts default to the colour 4A logo as the big-picture image so a broadcast is
-  // never bare text (Zepto/Flipkart style) — the admin can still override with their own image.
-  const image = parsed.data.image?.trim() || NOTIFICATION_LOGO_URL;
+  // Image only when the admin explicitly provides one — text-only pushes stay clean (title + body,
+  // no big-picture banner), like Flipkart's minimal notifications.
+  const image = parsed.data.image?.trim() || undefined;
   const msg: PushMessage = { title, body, data: link ? { link } : {}, image };
   const productIdBig = productId != null && String(productId).trim() !== '' ? BigInt(String(productId).trim()) : null;
 

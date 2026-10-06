@@ -122,6 +122,10 @@ const config: ExpoConfig = {
     './plugins/withCleartext',
     // UPI app visibility (PhonePe/GPay/Paytm/BHIM/Amazon Pay + upi: scheme) for Android 11+.
     './plugins/withUpiQueries',
+    // Copy the colour 4A logo (256×256 transparent PNG) into Android drawable resources and
+    // register it as the default notification large icon via AndroidManifest metadata. This is
+    // the rounded colour icon shown on the right side of notifications (like Flipkart's yellow "f").
+    './plugins/withNotificationLargeIcon',
   ],
   experiments: { typedRoutes: false },
   extra: {
