@@ -20,8 +20,9 @@ export const GOOGLE_CLIENT_ID = extra.googleClientId || '';
 export const FACEBOOK_APP_ID = extra.facebookAppId || '';
 export const INSTAGRAM_APP_ID = extra.instagramAppId || '';
 
-// Google Sign-In (expo-auth-session) client IDs — web ID drives the id_token flow, android ID
-// matches the signed build. Empty = Google not provisioned → the button stays on its setup toast.
+// Google Sign-In (@react-native-google-signin/google-signin) client IDs — web ID drives the
+// id_token flow, android ID matches the signed build. Empty = Google not provisioned → the button
+// stays on its setup toast.
 export const GOOGLE_WEB_CLIENT_ID = extra.googleWebClientId || '';
 export const GOOGLE_ANDROID_CLIENT_ID = extra.googleAndroidClientId || '';
 

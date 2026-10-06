@@ -140,8 +140,9 @@ const config: ExpoConfig = {
     googleClientId: process.env.STORE4A_GOOGLE_CLIENT_ID || '',
     facebookAppId: process.env.STORE4A_FACEBOOK_APP_ID || '',
     instagramAppId: process.env.STORE4A_INSTAGRAM_APP_ID || '',
-    // Google Sign-In via expo-auth-session needs BOTH OAuth client IDs (web token flow + android).
-    // Not secrets — read from env first, fall back to the owner-provisioned project IDs.
+    // Native Google Sign-In (@react-native-google-signin/google-signin) uses the WEB client id to
+    // populate idToken; the android id matches the signed build. Not secrets — read from env first,
+    // fall back to the owner-provisioned project IDs.
     googleWebClientId:
       process.env.STORE4A_GOOGLE_WEB_CLIENT_ID || '707085023016-etp7au34rg3cd5eks6cdu0cs0vkj1svn.apps.googleusercontent.com',
     googleAndroidClientId:
