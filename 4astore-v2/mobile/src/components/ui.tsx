@@ -2,6 +2,8 @@ import React, { ReactNode } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -127,13 +129,18 @@ export function Screen({
   return (
     <View style={{ flex: 1, backgroundColor: colors.lightGray }}>
       {header}
-      <ScrollView
-        contentContainerStyle={[{ padding: 14, paddingBottom: 32 }, contentStyle]}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} colors={[colors.primary]} /> : undefined}
-      >
-        {children}
-      </ScrollView>
+      {/* Keyboard avoidance added once at the source so every Screen-based form (profile, roles,
+          track, admin orders) lifts low fields above the keyboard. checkout.tsx (own Modal + KAV)
+          and login.tsx (own KAV) handle it locally and are unaffected. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={[{ padding: 14, paddingBottom: 32 }, contentStyle]}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} colors={[colors.primary]} /> : undefined}
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
