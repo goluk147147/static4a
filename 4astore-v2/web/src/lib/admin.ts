@@ -116,8 +116,92 @@ export async function deleteCategory(id: number) {
 }
 
 // ---- Push ----
-export async function sendBroadcast(target: string, title: string, body: string, link?: string) {
-  return (await api.post('/push/send', { target, title, body, link })).data;
+export async function sendBroadcast(target: string, title: string, body: string, link?: string, image?: string) {
+  return (await api.post('/push/send', { target, title, body, link, image })).data;
+}
+
+// ---- Notification history (GET /api/admin/notifications) ----
+export interface AdminNotification {
+  id: number;
+  type: string;
+  title: string;
+  body: string;
+  image: string | null;
+  link: string | null;
+  target: string;
+  productId: number | null;
+  orderId: string | null;
+  sentBy: string | null;
+  successCount: number;
+  failureCount: number;
+  createdAt: string;
+}
+export interface NotificationPage {
+  notifications: AdminNotification[];
+  nextCursor: string | null;
+}
+export async function fetchNotifications(params: { userId?: string; productId?: string; limit?: number; cursor?: string } = {}): Promise<NotificationPage> {
+  const res = (await api.get('/admin/notifications', { params })).data;
+  return { notifications: (res.notifications as AdminNotification[]) || [], nextCursor: (res.nextCursor as string | null) ?? null };
+}
+
+// ---- Dashboard stats (GET /api/admin/stats) ----
+export interface AdminStats {
+  revenue: { today: number; month: number; allTime: number };
+  deliveredOrders: number;
+  totalOrders: number;
+  statusCounts: Record<string, number>;
+  topProducts: { productId: number | null; name: string; quantity: number }[];
+  outOfStock: number;
+}
+export async function fetchAdminStats(): Promise<AdminStats> {
+  const d = (await api.get('/admin/stats')).data;
+  return {
+    revenue: d.revenue || { today: 0, month: 0, allTime: 0 },
+    deliveredOrders: Number(d.deliveredOrders) || 0,
+    totalOrders: Number(d.totalOrders) || 0,
+    statusCounts: d.statusCounts || {},
+    topProducts: (d.topProducts as AdminStats['topProducts']) || [],
+    outOfStock: Number(d.outOfStock) || 0,
+  };
+}
+
+// ---- App version / force-update (GET /api/version, POST /api/admin/version) ----
+export interface AppVersion {
+  versionCode: number;
+  versionName: string;
+  url: string;
+  message: string;
+  forceUpdate: boolean;
+  assetVersion: number;
+}
+export async function fetchAppVersion(): Promise<AppVersion> {
+  const d = (await api.get('/version', { params: { t: Date.now() } })).data;
+  return {
+    versionCode: Number(d.versionCode) || 1,
+    versionName: String(d.versionName ?? '1.0.0'),
+    url: String(d.url ?? ''),
+    message: String(d.message ?? ''),
+    forceUpdate: !!d.forceUpdate,
+    assetVersion: Number(d.assetVersion) || 1,
+  };
+}
+export async function saveAppVersion(payload: {
+  version_code: number;
+  version_name: string;
+  url: string;
+  message: string;
+  force_update: boolean;
+}): Promise<AppVersion> {
+  const d = (await api.post('/admin/version', payload)).data;
+  return {
+    versionCode: Number(d.versionCode) || payload.version_code,
+    versionName: String(d.versionName ?? payload.version_name),
+    url: String(d.url ?? ''),
+    message: String(d.message ?? ''),
+    forceUpdate: !!d.forceUpdate,
+    assetVersion: Number(d.assetVersion) || 1,
+  };
 }
 
 // ---- Feature flags ----
