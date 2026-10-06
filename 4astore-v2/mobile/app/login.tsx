@@ -1,19 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
+import { GoogleSignin, isSuccessResponse, statusCodes } from '@react-native-google-signin/google-signin';
 import StoreHeader from '../src/components/StoreHeader';
 import { AnimatedGradient, Button, Card, Field, GradientButton, PasswordField, Screen, styles as ui } from '../src/components/ui';
 import { useAuth, isOrderStaff, isRider } from '../src/store/auth';
 import { api, apiError } from '../src/api';
 import { registerForPush } from '../src/push';
 import { showToast } from '../src/store/ui';
-import { GOOGLE_WEB_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../src/config';
+import { GOOGLE_WEB_CLIENT_ID } from '../src/config';
 import { colors, offerGradient, radius, space } from '../src/theme';
-
-// Finishes the OAuth session when the browser redirects back to the app (expo-auth-session).
-WebBrowser.maybeCompleteAuthSession();
 
 // Facebook/Instagram login is hidden until their OAuth setup is complete — re-enable later.
 const SOCIAL_FB_IG_ENABLED = false;
@@ -24,15 +20,6 @@ export default function Login() {
   const { login, socialLogin, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [busy, setBusy] = useState(false);
-
-  // Google Sign-In via expo-auth-session: the web client ID drives the id_token flow, the android
-  // client ID matches the signed build. Empty web id → the button stays on its setup-pending toast.
-  const [googleReq, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    responseType: 'id_token',
-    scopes: ['openid', 'email', 'profile'],
-  });
   const [error, setError] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -45,6 +32,14 @@ export default function Login() {
   // Forgot-password form: identifier = username / mobile / email
   const [resetId, setResetId] = useState('');
   const [resetPassword, setResetPassword] = useState('');
+
+  // Configure native Google Sign-In once. The WEB client id is required to populate idToken;
+  // with no web id provisioned the button stays on its "setup pending" toast (build-safe fallback).
+  useEffect(() => {
+    if (GOOGLE_WEB_CLIENT_ID) {
+      GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
+    }
+  }, []);
 
   function done(user: import('../src/types').User) {
     void registerForPush(); // subscribe to role topics (admins / riders / customers)
@@ -136,44 +131,37 @@ export default function Login() {
   }
 
   // --- Social login (item 13) ------------------------------------------------
-  // Real Google Sign-In via expo-auth-session. Tapping the button opens the Google consent
-  // browser; the result lands in `googleResponse`, handled by the effect below. With no web
-  // client ID provisioned the button stays on its "setup pending" toast (build-safe fallback).
-  function startGoogle() {
+  // Real Google Sign-In via @react-native-google-signin/google-signin. Tapping the button runs the
+  // native sign-in sheet; the WEB-client idToken it returns is passed unchanged to socialLogin —
+  // the SAME session path as login() (socialLogin → setAccessToken + saveRefreshToken + user), then
+  // done(). With no web client ID provisioned the button stays on its "setup pending" toast.
+  async function startGoogle() {
     if (!GOOGLE_WEB_CLIENT_ID) {
       showToast('Google login setup pending — admin se contact karein. / Google login setup pending — please contact admin.', 'info');
       return;
     }
-    void googlePromptAsync();
-  }
-
-  // When Google returns a successful auth, read the ID token and sign in via the SAME session
-  // path as login() (socialLogin → setAccessToken + saveRefreshToken + user), then run done().
-  useEffect(() => {
-    if (googleResponse?.type !== 'success') return;
-    const idToken = googleResponse.params?.id_token || googleResponse.authentication?.idToken;
-    if (!idToken) {
-      showToast('Google login failed — token missing. / Google login viphal — token nahi mila.', 'error');
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      setBusy(true);
-      setError('');
-      try {
+    setBusy(true);
+    setError('');
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const res = await GoogleSignin.signIn();
+      if (isSuccessResponse(res)) {
+        const idToken = res.data.idToken;
+        if (!idToken) {
+          showToast('Google login failed — token missing. / Google login viphal — token nahi mila.', 'error');
+          return;
+        }
         const user = await socialLogin(idToken);
-        if (!cancelled) done(user);
-      } catch (e) {
-        if (!cancelled) showToast(apiError(e), 'error');
-      } finally {
-        if (!cancelled) setBusy(false);
+        done(user);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleResponse]);
+    } catch (e) {
+      // User dismissed the native sheet — not an error, no toast.
+      if ((e as { code?: string })?.code === statusCodes.SIGN_IN_CANCELLED) return;
+      showToast(apiError(e), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -211,7 +199,7 @@ export default function Login() {
               </Pressable>
               <GradientButton title={busy ? 'Please wait…' : 'Login'} onPress={doLogin} loading={busy} disabled={!username || !password} />
 
-              <SocialBlock onGoogle={startGoogle} googleDisabled={busy || (!!GOOGLE_WEB_CLIENT_ID && !googleReq)} />
+              <SocialBlock onGoogle={startGoogle} googleDisabled={busy} />
 
               <Pressable onPress={() => switchMode('register')} style={styles.switchLink} accessibilityRole="button">
                 <Text style={ui.muted}>New here? <Text style={styles.linkStrong}>Create account</Text></Text>
@@ -282,7 +270,7 @@ export default function Login() {
 /**
  * Social sign-in block. Only the Google button renders — Facebook/Instagram stay hidden behind
  * SOCIAL_FB_IG_ENABLED until their OAuth setup is complete (see FEAT-003). The Google button uses
- * the real expo-auth-session flow (text/emoji only — no icon font, no extra native dep).
+ * the native @react-native-google-signin/google-signin flow (text/emoji only — no icon font).
  */
 function SocialBlock({ onGoogle, googleDisabled }: { onGoogle: () => void; googleDisabled?: boolean }) {
   return (

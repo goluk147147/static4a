@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "Rewrite the Google button handler in app/login.tsx to use the native @react-native-google-signin/google-signin flow instead of the blocked expo-auth-session custom-URI web flow. The native signIn returns a WEB-client idToken passed unchanged to the existing socialLogin(idToken) store action. Depends on FEAT-001 (library + plugin). Grounded in the current login.tsx (Google.useAuthRequest wiring, googleResponse effect, startGoogle, SocialBlock) and src/store/auth.ts socialLogin.",
+  "status": "completed",
+  "steps": [
+    "In 4astore-v2/mobile/app/login.tsx, remove the expo-auth-session Google wiring: the `import * as Google from 'expo-auth-session/providers/google'` import, the `import * as WebBrowser from 'expo-web-browser'` import and its `WebBrowser.maybeCompleteAuthSession()` call (verify WebBrowser is used nowhere else in this file — it is not), the `Google.useAuthRequest({...})` hook returning [googleReq, googleResponse, googlePromptAsync], and the `useEffect` that consumes googleResponse.",
+    "Add import { GoogleSignin, isSuccessResponse, statusCodes } from '@react-native-google-signin/google-signin'.",
+    "Configure once: add a useEffect that, when GOOGLE_WEB_CLIENT_ID is non-empty, calls GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID }). The WEB client id is required to populate idToken.",
+    "Rewrite startGoogle() to be async: keep the empty-GOOGLE_WEB_CLIENT_ID 'Google login setup pending' showToast fallback (bilingual, unchanged text). Otherwise: set busy, await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true }); const res = await GoogleSignin.signIn(); if (isSuccessResponse(res)) { const idToken = res.data.idToken; if (!idToken) show a 'token missing' error toast and return; const user = await socialLogin(idToken); done(user); }. Wrap in try/catch: if the caught error code === statusCodes.SIGN_IN_CANCELLED, silently return (no toast); otherwise showToast(apiError(e), 'error'). Reset busy in finally.",
+    "Update the SocialBlock usage: change googleDisabled from `busy || (!!GOOGLE_WEB_CLIENT_ID && !googleReq)` to just `busy` (googleReq no longer exists). Leave the SocialBlock component markup and the FB/IG SOCIAL_FB_IG_ENABLED block untouched; update its JSDoc comment that references 'expo-auth-session flow' to say the native Google Sign-In library.",
+    "Leave the login/register/forgot flows, done(), registerForPush, and all other handlers untouched. Do NOT change src/store/auth.ts socialLogin — it already POSTs /users/social-login and sets the session."
+  ],
+  "acceptance_criteria": [
+    "login.tsx no longer imports expo-auth-session; the Google button handler uses GoogleSignin.configure + hasPlayServices + signIn and extracts res.data.idToken.",
+    "The idToken is passed to the existing socialLogin(idToken) store action with no signature change.",
+    "The empty-web-id 'setup pending' fallback is preserved; SIGN_IN_CANCELLED is a silent no-op.",
+    "`npm run typecheck` passes and `npm test` passes.",
+    "Non-Google login/register/forgot flows and src/store/auth.ts are unchanged."
+  ],
+  "verification": [
+    "cd 4astore-v2/mobile && npm run typecheck",
+    "npm test",
+    "npx expo config --json  (still resolves)"
+  ],
+  "blocked_reason": null,
+  "findings": "Rewrote the Google button handler in app/login.tsx to the native @react-native-google-signin/google-signin flow. Removed the expo-auth-session wiring (providers/google import, expo-web-browser import + maybeCompleteAuthSession(), Google.useAuthRequest, and the googleResponse useEffect). Added import { GoogleSignin, isSuccessResponse, statusCodes }; a useEffect calls GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID }) once, guarded on a non-empty web id. startGoogle() is now async: keeps the empty-web-id 'setup pending' toast, else awaits hasPlayServices({ showPlayServicesUpdateDialog: true }), awaits signIn(), and when isSuccessResponse(res) reads res.data.idToken (guards missing token with the existing bilingual error toast), passes it unchanged to socialLogin(idToken) then done(user); SIGN_IN_CANCELLED is a silent no-op, all other errors show showToast(apiError(e),'error'); busy reset in finally. SocialBlock googleDisabled changed to just `busy` and its JSDoc updated to reference the native library. Side note: the now-unused GOOGLE_ANDROID_CLIENT_ID config import was dropped from login.tsx (it was only consumed by the removed useAuthRequest; the native flow needs only webClientId; src/config.ts export left intact). Login/register/forgot flows, done(), registerForPush, and src/store/auth.ts untouched. Verification: npm run typecheck passed; npm test passed (27/27); npx expo config --json resolved (android.versionCode=21, google-signin plugin registered). The Google button itself can only be exercised on a dev/release build, not Expo Go — not run in-agent per task constraints."
+}
