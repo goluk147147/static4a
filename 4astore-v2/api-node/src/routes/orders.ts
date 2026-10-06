@@ -32,7 +32,24 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   if (mobile && !staff && viewer.mobile !== mobile) return fail(res, 'Access denied', 403);
 
   if (staff && !mobile) {
+    // Opt-in keyset pagination: when EITHER limit or cursor is present, page by
+    // descending id and return { orders, nextCursor }. When BOTH are absent the
+    // behaviour and response shape are exactly the original unpaginated list.
+    const limitRaw = Number(req.query.limit);
+    const cursorRaw = String(req.query.cursor || '').trim();
+    const hasLimit = Number.isFinite(limitRaw);
+    const hasCursor = /^\d+$/.test(cursorRaw);
     try {
+      if (hasLimit || hasCursor) {
+        const take = hasLimit ? Math.min(200, Math.max(1, Math.trunc(limitRaw))) : 50;
+        const orders = await prisma.order.findMany({
+          where: hasCursor ? { id: { lt: BigInt(cursorRaw) } } : {},
+          orderBy: { id: 'desc' },
+          take,
+        });
+        const nextCursor = orders.length === take ? orders[orders.length - 1].id.toString() : null;
+        return ok(res, { orders, nextCursor });
+      }
       const orders = await prisma.order.findMany({ orderBy: { id: 'desc' } });
       return ok(res, { orders });
     } catch {

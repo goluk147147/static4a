@@ -2,6 +2,18 @@ import fs from 'fs';
 import path from 'path';
 import { config } from '../config';
 import { prisma } from '../db';
+import { SITE_ORIGIN } from '../seo/origin';
+
+/**
+ * Resolve a stored image path to an absolute https URL FCM can fetch for the
+ * big-picture notification. Mirrors routes/og.ts absoluteImageUrl(): an already
+ * absolute http(s) URL is returned unchanged, otherwise it is joined onto the
+ * public site origin.
+ */
+function absolutePublicUrl(src: string): string {
+  if (/^https?:\/\//i.test(src)) return src;
+  return `${SITE_ORIGIN}/${src.replace(/^\.?\//, '')}`;
+}
 
 // Lazy-load firebase-admin so the app runs without it in dev.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,16 +56,21 @@ export interface PushMessage {
   data?: Record<string, string>; // e.g. { type: 'new_order', orderId: '4A...', link: '/track/4A...' }
   /** Android notification channel created by the native app ('orders' = loud new-order alert). */
   channelId?: 'default' | 'orders';
+  /** Optional big-picture image (relative path or absolute URL). Omitted keeps text-only payload byte-identical. */
+  image?: string;
 }
 
 function androidConfig(msg: PushMessage) {
+  const notification: Record<string, unknown> = {
+    channelId: msg.channelId || 'default',
+    sound: 'default',
+    defaultVibrateTimings: true,
+  };
+  // Big-picture image only when provided — text-only pushes stay byte-identical.
+  if (msg.image) notification.imageUrl = absolutePublicUrl(msg.image);
   return {
     priority: 'high',
-    notification: {
-      channelId: msg.channelId || 'default',
-      sound: 'default',
-      defaultVibrateTimings: true,
-    },
+    notification,
   };
 }
 
@@ -67,7 +84,12 @@ export async function sendToTopic(topic: string, msg: PushMessage): Promise<bool
   }
   await admin.messaging().send({
     topic,
-    notification: { title: msg.title, body: msg.body },
+    notification: {
+      title: msg.title,
+      body: msg.body,
+      // Big-picture image only when provided — text-only payload stays byte-identical.
+      ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
+    },
     data: msg.data || {},
     android: androidConfig(msg),
   });
@@ -126,7 +148,12 @@ export async function sendToTokens(tokens: string[], msg: PushMessage): Promise<
     const batch = unique.slice(i, i + 500);
     const resp = await admin.messaging().sendEachForMulticast({
       tokens: batch,
-      notification: { title: msg.title, body: msg.body },
+      notification: {
+        title: msg.title,
+        body: msg.body,
+        // Big-picture image only when provided — text-only payload stays byte-identical.
+        ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
+      },
       data: msg.data || {},
       android: androidConfig(msg),
     });
@@ -157,6 +184,85 @@ export async function tokensForStaff(permission = 'orders'): Promise<string[]> {
     JSON.stringify(permission)
   );
   return staff.map((r) => r.token);
+}
+
+/** Metadata persisted for a push on the notifications history table. */
+export interface NotificationMeta {
+  type: string;
+  title: string;
+  body: string;
+  image?: string | null;
+  link?: string | null;
+  target: string;
+  product_id?: bigint | number | null;
+  order_id?: string | null;
+  sent_by?: string | null;
+}
+
+/**
+ * Best-effort history write for a push: one `notifications` row plus one
+ * `notification_recipients` row per token (user_id resolved from device_tokens
+ * in a single query where possible). NEVER throws — a logging failure must not
+ * block the push, so every caller wraps this in .catch() too.
+ */
+export async function recordNotification(
+  meta: NotificationMeta,
+  tokens: string[],
+  successCount: number,
+  failureCount: number
+): Promise<void> {
+  try {
+    const unique = [...new Set((tokens || []).filter(Boolean))];
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO notifications
+         (type, title, body, image, link, target, product_id, order_id, sent_by, success_count, failure_count)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      meta.type,
+      meta.title,
+      meta.body,
+      meta.image ?? null,
+      meta.link ?? null,
+      meta.target,
+      meta.product_id != null ? BigInt(meta.product_id).toString() : null,
+      meta.order_id ?? null,
+      meta.sent_by ?? null,
+      Number(successCount) || 0,
+      Number(failureCount) || 0
+    );
+    // MariaDB 10.4 has no INSERT...RETURNING; LAST_INSERT_ID() is per-connection safe.
+    const idRows = await prisma.$queryRawUnsafe<Array<{ id: bigint | number }>>('SELECT LAST_INSERT_ID() AS id');
+    const notifId = idRows?.[0]?.id;
+    if (notifId == null || Number(notifId) === 0 || unique.length === 0) return;
+
+    // Resolve token -> user_id in one query so recipients carry the owner FK.
+    const rows = await prisma.deviceToken.findMany({
+      where: { token: { in: unique } },
+      select: { token: true, user_id: true },
+    });
+    const tokenToUser = new Map(rows.map((r) => [r.token, r.user_id]));
+
+    // Best-effort delivery status: when FCM reported no failures mark all 'sent',
+    // otherwise fall back to 'failed' (per-token success is not tracked here).
+    const status = failureCount > 0 && successCount === 0 ? 'failed' : 'sent';
+    const values: string[] = [];
+    const params: Array<string | null> = [];
+    for (const token of unique) {
+      const uid = tokenToUser.get(token);
+      values.push('(?, ?, ?, ?)');
+      params.push(
+        BigInt(notifId).toString(),
+        uid != null ? BigInt(uid).toString() : null,
+        token.slice(0, 255),
+        status
+      );
+    }
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO notification_recipients (notification_id, user_id, token, status) VALUES ${values.join(', ')}`,
+      ...params
+    );
+  } catch {
+    // Swallow — history logging must never block or fail a push.
+  }
 }
 
 /** Notify all admin/staff that a new order arrived (topic + direct tokens). */
@@ -208,8 +314,21 @@ export async function notifyStaffNewOrder(order: {
     channelId: loud ? 'orders' : 'default',
   };
   const tokens = await tokensForStaff('orders').catch(() => [] as string[]);
-  if (tokens.length) await sendToTokens(tokens, msg).catch(() => null);
+  let staffSent = 0;
+  if (tokens.length) staffSent = await sendToTokens(tokens, msg).catch(() => 0);
   else await sendToTopic('admins', msg).catch(() => null);
+  await recordNotification(
+    {
+      type: 'new_order',
+      title: msg.title,
+      body: msg.body,
+      target: 'admins',
+      order_id: order.order_id,
+    },
+    tokens,
+    staffSent,
+    tokens.length ? tokens.length - staffSent : 0
+  ).catch(() => null);
 
   // Riders: a new order is available to accept (no customer details in the notification).
   await sendToTopic('riders', {
@@ -232,6 +351,19 @@ export async function notifyCustomerStatus(order: {
     data: { type: 'order_status', orderId: order.order_id, link: `/track/${order.order_id}` },
   };
   const tokens = await tokensForUser(order.user_id).catch(() => [] as string[]);
-  if (tokens.length) await sendToTokens(tokens, msg).catch(() => null);
+  let sent = 0;
+  if (tokens.length) sent = await sendToTokens(tokens, msg).catch(() => 0);
   else await sendToTopic(`order_${order.order_id}`, msg).catch(() => null);
+  await recordNotification(
+    {
+      type: 'order_status',
+      title: msg.title,
+      body: msg.body,
+      target: 'customer',
+      order_id: order.order_id,
+    },
+    tokens,
+    sent,
+    tokens.length ? tokens.length - sent : 0
+  ).catch(() => null);
 }

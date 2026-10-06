@@ -894,4 +894,115 @@ router.post('/seo', requireAuth, requireStaff('settings'), async (req: Request, 
   return ok(res, { message: 'SEO settings saved', seo });
 });
 
+// ---------------- Dashboard stats ----------------
+// GET /api/admin/stats — SQL-aggregated summary for the admin dashboard. Avoids
+// shipping the full orders table: revenue is computed on Delivered orders only,
+// plus per-status counts, top 5 products by quantity sold, and out-of-stock count.
+router.get('/stats', requireAuth, requireStaff('dashboard'), async (_req: Request, res: Response) => {
+  const num = (v: unknown) => Number(v ?? 0) || 0;
+
+  // Revenue (Delivered only) for today / this month / all-time.
+  const revenueRows = await prisma
+    .$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT
+         COALESCE(SUM(CASE WHEN DATE(order_date) = CURDATE() THEN total_amount ELSE 0 END), 0) AS today,
+         COALESCE(SUM(CASE WHEN YEAR(order_date) = YEAR(CURDATE()) AND MONTH(order_date) = MONTH(CURDATE()) THEN total_amount ELSE 0 END), 0) AS month,
+         COALESCE(SUM(total_amount), 0) AS all_time,
+         COUNT(*) AS delivered_orders
+       FROM orders
+      WHERE order_status = 'Delivered'`
+    )
+    .catch(() => [] as Array<Record<string, unknown>>);
+  const rev = revenueRows[0] || {};
+
+  // Per-status order counts.
+  const statusRows = await prisma
+    .$queryRawUnsafe<Array<{ order_status: string; c: unknown }>>(
+      'SELECT order_status, COUNT(*) AS c FROM orders GROUP BY order_status'
+    )
+    .catch(() => [] as Array<{ order_status: string; c: unknown }>);
+  const statusCounts: Record<string, number> = {};
+  let totalOrders = 0;
+  for (const r of statusRows) {
+    const c = num(r.c);
+    statusCounts[String(r.order_status)] = c;
+    totalOrders += c;
+  }
+
+  // Top 5 products by quantity sold, aggregated from the orders JSON items array.
+  const topRows = await prisma
+    .$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT
+         JSON_UNQUOTE(JSON_EXTRACT(it.item, '$.id'))   AS product_id,
+         JSON_UNQUOTE(JSON_EXTRACT(it.item, '$.name')) AS name,
+         SUM(CAST(JSON_EXTRACT(it.item, '$.quantity') AS UNSIGNED)) AS qty
+       FROM orders o
+       JOIN JSON_TABLE(o.items, '$[*]' COLUMNS (item JSON PATH '$')) it
+      GROUP BY product_id, name
+      ORDER BY qty DESC
+      LIMIT 5`
+    )
+    .catch(() => [] as Array<Record<string, unknown>>);
+  const topProducts = topRows.map((r) => ({
+    productId: r.product_id != null ? Number(r.product_id) : null,
+    name: r.name ?? '',
+    quantity: num(r.qty),
+  }));
+
+  // Out-of-stock products.
+  const stockRows = await prisma
+    .$queryRawUnsafe<Array<{ c: unknown }>>('SELECT COUNT(*) AS c FROM products WHERE in_stock = 0')
+    .catch(() => [] as Array<{ c: unknown }>);
+
+  return ok(res, {
+    revenue: {
+      today: num(rev.today),
+      month: num(rev.month),
+      allTime: num(rev.all_time),
+    },
+    deliveredOrders: num(rev.delivered_orders),
+    totalOrders,
+    statusCounts,
+    topProducts,
+    outOfStock: num(stockRows[0]?.c),
+  });
+});
+
+// ---------------- App version / force-update ----------------
+// POST /api/admin/version — edit the single app_version row (id=1). Returns the
+// same shape as GET /api/version so the admin UI can round-trip it.
+const versionSchema = z.object({
+  version_code: z.number().int().positive(),
+  version_name: z.string().max(20),
+  url: z
+    .string()
+    .max(500)
+    .refine((v) => v === '' || /^https:\/\//i.test(v), 'URL must be https or empty'),
+  message: z.string(),
+  force_update: z.boolean(),
+});
+
+router.post('/version', requireAuth, requireStaff('settings'), async (req: Request, res: Response) => {
+  const parsed = versionSchema.safeParse(req.body || {});
+  if (!parsed.success) return fail(res, 'Please check the version values (code, name, https URL, message)', 422);
+  const v = parsed.data;
+  await prisma.$executeRawUnsafe(
+    'UPDATE app_version SET version_code = ?, version_name = ?, url = ?, message = ?, force_update = ? WHERE id = 1',
+    v.version_code,
+    v.version_name,
+    v.url,
+    v.message,
+    v.force_update ? 1 : 0
+  );
+  const row = (await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>('SELECT * FROM app_version WHERE id = 1'))[0] || {};
+  return ok(res, {
+    versionCode: row.version_code ?? v.version_code,
+    versionName: row.version_name ?? v.version_name,
+    url: row.url ?? '',
+    message: row.message ?? '',
+    forceUpdate: !!row.force_update,
+    assetVersion: row.asset_version ?? 1,
+  });
+});
+
 export default router;
