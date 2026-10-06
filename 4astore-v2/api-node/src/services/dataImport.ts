@@ -168,6 +168,49 @@ export async function ensurePlainPasswordColumn(): Promise<void> {
   }
 }
 
+/**
+ * Ensure the notification-history tables exist. Follows the repo's no-migrate
+ * convention: idempotent `CREATE TABLE IF NOT EXISTS` via $executeRawUnsafe
+ * (InnoDB utf8mb4), with column types mirroring the Prisma Notification /
+ * NotificationRecipient models in schema.prisma. Safe to re-run; NO prisma
+ * migrate / db push. Called at startup beside seedDefaultOwner().
+ */
+export async function ensureNotificationTables(): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS notifications (
+       id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       type          VARCHAR(40)  NOT NULL,
+       title         VARCHAR(255) NOT NULL,
+       body          TEXT         NOT NULL,
+       image         VARCHAR(500) NULL,
+       link          VARCHAR(500) NULL,
+       target        VARCHAR(40)  NOT NULL,
+       product_id    BIGINT UNSIGNED NULL,
+       order_id      VARCHAR(20)  NULL,
+       sent_by       VARCHAR(64)  NULL,
+       success_count INT          NOT NULL DEFAULT 0,
+       failure_count INT          NOT NULL DEFAULT 0,
+       created_at    DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       INDEX idx_notifications_created (created_at),
+       INDEX idx_notifications_product (product_id)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS notification_recipients (
+       id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       notification_id BIGINT UNSIGNED NOT NULL,
+       user_id         BIGINT UNSIGNED NULL,
+       token           VARCHAR(255) NOT NULL,
+       status          VARCHAR(20)  NOT NULL,
+       created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       INDEX idx_notif_recipient_notif (notification_id),
+       INDEX idx_notif_recipient_user (user_id)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+}
+
 interface LegacyUser {
   id: number;
   name: string;

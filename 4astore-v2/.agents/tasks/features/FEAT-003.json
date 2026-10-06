@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Mobile wiring for the paginated staff order list (Issue 7) and the Issue 2 asset report. Depends on FEAT-001's opt-in staff pagination. Deep-link tap routing for product pushes (Issue 4) is ALREADY fully wired on mobile (src/push.ts listenNotificationTaps, src/links.ts legacyToRoute, app/_layout.tsx navigateToLink) — confirm only, do not rework. Do NOT touch tracking or rider flows. Verified by mobile typecheck + unit tests. Issue 2 is a report (no code): the notification icon asset is already a valid monochrome white-on-transparent silhouette.",
+  "status": "completed",
+  "steps": [
+    "Issue 7 — in mobile/src/queries.ts update useAllOrders so the staff poll requests the newest page from the now-paginated staff endpoint, i.e. GET /orders with a `limit` query (e.g. 50). Parse the response's orders array exactly as today (the endpoint still returns { orders } plus a nextCursor the poller can ignore). Keep retry:false and the silent background behaviour.",
+    "Issue 7 — confirm mobile/src/components/StaffOrderWatcher.tsx still works against the newest page: it already dedups by order_id via the AsyncStorage seen-set, so fetching only the newest page is sufficient; adjust only if the new response shape requires it (do not change its alert/voice logic).",
+    "Issue 4 — confirm (no change) that src/push.ts listenNotificationTaps reads data.link, src/links.ts legacyToRoute maps product-details?id and /product/:id to /product/[id], and app/_layout.tsx navigateToLink routes it. Note the confirmation in findings.",
+    "Issue 2 — write/append .agents/tasks/verification.md documenting that mobile/assets/images/notification-icon.png is already a 96x96 32bpp white-on-transparent monochrome silhouette (no colour pixels) and the expo-notifications config in app.config.ts is correct, so NO asset change and NO APK rebuild are required for correctness; a wrong icon on an installed build would be a stale install, not a code defect."
+  ],
+  "acceptance_criteria": [
+    "`cd mobile && npm install && npm run typecheck` shows no NEW TypeScript errors (the single pre-existing usesCleartextTraffic error in app.config.ts is expected and ignored).",
+    "`cd mobile && npm run test` passes (existing tests remain green).",
+    "useAllOrders requests the newest page via a limit query and still returns normalized orders; StaffOrderWatcher behaviour is preserved.",
+    "No changes were made to tracking (TrackMap.tsx, app/track/*) or the rider flow.",
+    ".agents/tasks/verification.md records the Issue 2 asset finding."
+  ],
+  "verification": [
+    "cd c:\\xampp\\htdocs\\static4a\\.worktrees\\app-notif-stats-fixes\\4astore-v2\\mobile && npm install && npm run typecheck",
+    "cd c:\\xampp\\htdocs\\static4a\\.worktrees\\app-notif-stats-fixes\\4astore-v2\\mobile && npm run test"
+  ],
+  "blocked_reason": null,
+  "findings": "DONE. mobile typecheck (tsc --noEmit) and `npm run test` (27 tests) are both green; no NEW TS errors (the known-ignorable usesCleartextTraffic error was not fixed and does not surface as a failing exit).\n\nIssue 7 (code): mobile/src/queries.ts useAllOrders now requests only the newest page via params { limit: 50 } against the FEAT-001-paginated staff /orders endpoint. Response shape is unchanged — still parsed as `{ orders }` (the extra nextCursor is ignored by the poller). retry:false + silent:true background behaviour preserved. StaffOrderWatcher.tsx needed NO change: it dedups by order_id via the AsyncStorage seen-set, so the newest page is sufficient to catch new orders; alert/voice logic untouched.\n\nIssue 4 (confirm only, no change): deep-link product tap routing is already wired end to end — src/push.ts listenNotificationTaps reads data.link; src/links.ts legacyToRoute maps product-details?id=<n> -> /product/<n> and a bare /product/:id falls through to /product/:id; app/_layout.tsx navigateToLink runs legacyToRoute and router.replace()s (stashing until auth ready for cold-start taps).\n\nIssue 2 (report only, no asset change / no APK rebuild): mobile/assets/images/notification-icon.png verified as a 96x96 32bpp (colour type 6, bit depth 8) white-on-transparent monochrome silhouette — pixel sampling found 0 colour (non-gray) pixels, only white (R=G=B>240) and fully transparent pixels. app.config.ts expo-notifications config is correct ({ icon, color '#FF7A00', defaultChannel 'default' }). A wrong icon on an installed build is a stale install, not a code defect. Full report appended to .agents/tasks/verification.md.\n\nScope: no changes to tracking (TrackMap.tsx, app/track/*) or the rider flow."
+}

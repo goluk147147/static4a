@@ -178,3 +178,39 @@ model DeviceToken {
   @@index([user_id], map: "idx_device_user")
   @@map("device_tokens")
 }
+
+// Notification history. Tables are created at runtime via the no-migrate raw SQL
+// in ensureNotificationTables() (services/dataImport.ts); these models mirror
+// those columns so Prisma can query them. Do NOT run prisma migrate / db push.
+model Notification {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  type          String   @db.VarChar(40)
+  title         String   @db.VarChar(255)
+  body          String   @db.Text
+  image         String?  @db.VarChar(500)
+  link          String?  @db.VarChar(500)
+  target        String   @db.VarChar(40)
+  product_id    BigInt?  @db.UnsignedBigInt
+  order_id      String?  @db.VarChar(20)
+  sent_by       String?  @db.VarChar(64)
+  success_count Int      @default(0)
+  failure_count Int      @default(0)
+  created_at    DateTime @default(now())
+
+  @@index([created_at], map: "idx_notifications_created")
+  @@index([product_id], map: "idx_notifications_product")
+  @@map("notifications")
+}
+
+model NotificationRecipient {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  notification_id BigInt   @db.UnsignedBigInt
+  user_id         BigInt?  @db.UnsignedBigInt
+  token           String   @db.VarChar(255)
+  status          String   @db.VarChar(20)
+  created_at      DateTime @default(now())
+
+  @@index([notification_id], map: "idx_notif_recipient_notif")
+  @@index([user_id], map: "idx_notif_recipient_user")
+  @@map("notification_recipients")
+}

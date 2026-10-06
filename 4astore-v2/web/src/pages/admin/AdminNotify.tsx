@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
-import { sendBroadcast } from '../../lib/admin';
+import { sendBroadcast, uploadBannerImage } from '../../lib/admin';
 import { apiError } from '../../lib/api';
-import { useConfig } from '../../lib/queries';
+import { useConfig, useProducts } from '../../lib/queries';
 import { isFeatureOn } from '../../lib/features';
 import EmojiPicker from '../../components/EmojiPicker';
 
@@ -37,11 +37,15 @@ function insertAtCaret(el: FieldRef, value: string, ins: string, max: number): {
 export default function AdminNotify() {
   const features = useConfig().data?.features;
   const enabled = isFeatureOn(features, 'bulkPushEnabled');
+  const products = useProducts().data ?? [];
 
   const [target, setTarget] = useState('all');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [link, setLink] = useState('');
+  const [image, setImage] = useState('');
+  const [productId, setProductId] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   // Which field the emoji should insert into (last focused composer field).
@@ -49,6 +53,40 @@ export default function AdminNotify() {
 
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Picking a product sets a /product/<id> deep link and auto-fills the image
+  // from that product (unless the admin already typed an image URL).
+  function pickProduct(id: string) {
+    setProductId(id);
+    if (!id) return;
+    const p = products.find((x) => String(x.id) === id);
+    if (!p) return;
+    setLink(`/product/${id}`);
+    if (p.image) setImage(p.image);
+  }
+
+  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    setUploading(true);
+    setMsg(null);
+    try {
+      const dataUri = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      const url = await uploadBannerImage(dataUri);
+      setImage(url);
+    } catch (err) {
+      setMsg({ kind: 'err', text: apiError(err) });
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const canSend = useMemo(() => !busy && title.trim().length > 0 && body.trim().length > 0, [busy, title, body]);
 
@@ -71,11 +109,13 @@ export default function AdminNotify() {
     setMsg(null);
     try {
       // Send plain text + emoji only — push payloads can't carry HTML.
-      const r = await sendBroadcast(target, title.trim(), body.trim(), link.trim() || undefined);
+      const r = await sendBroadcast(target, title.trim(), body.trim(), link.trim() || undefined, image.trim() || undefined, productId.trim() || undefined);
       setMsg({ kind: 'ok', text: r.message || 'Notification sent' });
       setTitle('');
       setBody('');
       setLink('');
+      setImage('');
+      setProductId('');
     } catch (err) {
       setMsg({ kind: 'err', text: apiError(err) });
     } finally {
@@ -130,11 +170,36 @@ export default function AdminNotify() {
         </div>
 
         <div className="field">
+          <label>Product (optional) / प्रोडक्ट</label>
+          <select value={productId} onChange={(e) => pickProduct(e.target.value)}>
+            <option value="">— Koi product nahi (manual link) —</option>
+            {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+          </select>
+          <p style={{ fontSize: 11, color: 'var(--gray)', marginTop: 4 }}>
+            Product chunne par link <code>/product/&lt;id&gt;</code> ho jaayega aur uski image auto-fill ho jaayegi.
+          </p>
+        </div>
+
+        <div className="field">
           <label>Deep link (optional) / लिंक</label>
           <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="/products?festival=diwali" />
           <p style={{ fontSize: 11, color: 'var(--gray)', marginTop: 4 }}>
             Push pe click karte hi user is page pe khulega. Examples: {DEEP_LINK_EXAMPLES.join(' · ')}
           </p>
+        </div>
+
+        <div className="field">
+          <label>Image (optional) / तस्वीर</label>
+          <input value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://… (poster / product image)" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+            <input ref={fileRef} type="file" accept="image/*" onChange={onUpload} style={{ display: 'none' }} id="notifImageUpload" />
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+              style={{ padding: '7px 14px', background: 'var(--secondary)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: uploading ? 'default' : 'pointer' }}>
+              {uploading ? 'Uploading…' : '📤 Upload image'}
+            </button>
+            {image && <button type="button" onClick={() => setImage('')} style={{ padding: '7px 12px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>✕ Hataayein</button>}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--gray)', marginTop: 4 }}>Big-picture push me ye image dikhegi. URL de sakte hain ya upload kar sakte hain.</p>
         </div>
 
         {/* Live preview of how the notification will look on a device. */}
@@ -146,6 +211,9 @@ export default function AdminNotify() {
               <div style={{ fontSize: 11, color: 'var(--gray)', marginBottom: 2 }}>4A Store · now</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{title || 'Title yahan dikhega'}</div>
               <div style={{ fontSize: 13, color: '#334155', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{body || 'Message yahan dikhega'}</div>
+              {image.trim() && (
+                <img src={image.trim()} alt="Push preview" style={{ marginTop: 8, maxWidth: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />
+              )}
             </div>
           </div>
         </div>

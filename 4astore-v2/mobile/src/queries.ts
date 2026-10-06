@@ -70,15 +70,19 @@ export const useMyOrders = (mobile?: string) =>
     queryFn: async () => ((await api.get('/orders', { mobile })).orders as Order[]).map(normalizeOrder),
   });
 
-/** Staff / rider: every order (polled). Silent background poll — a dropped poll fails once
- *  quietly (no "Server slow" toast, retry:false) and the next interval refetches. */
+/** Staff / rider: newest orders (polled). The staff order endpoint is paginated (keyset, id desc);
+ *  request only the newest page via `limit` — StaffOrderWatcher dedups by order_id, so the latest
+ *  page is enough to catch new orders. The response still carries `{ orders }` (plus a nextCursor
+ *  the poller ignores). Silent background poll — a dropped poll fails once quietly (no "Server slow"
+ *  toast, retry:false) and the next interval refetches. */
 export const useAllOrders = (enabled: boolean, refetchInterval = 7000) =>
   useQuery({
     queryKey: ['all-orders'],
     enabled,
     refetchInterval,
     retry: false,
-    queryFn: async () => ((await api('/orders', { method: 'GET', silent: true })).orders as Order[]).map(normalizeOrder),
+    queryFn: async () =>
+      ((await api('/orders', { method: 'GET', params: { limit: 50 }, silent: true })).orders as Order[]).map(normalizeOrder),
   });
 
 export const useOrder = (orderId?: string) =>

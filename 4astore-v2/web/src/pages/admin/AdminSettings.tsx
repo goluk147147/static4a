@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   fetchAdminSettings, saveAdminSettings, fetchAnnouncement, saveAnnouncement, saveFestival, bumpCache, downloadText,
   saveFeatures, saveSeo, saveProduct, importDummyData, factoryReset, AdminSettings as SettingsT,
+  fetchAppVersion, saveAppVersion,
 } from '../../lib/admin';
 import { apiError } from '../../lib/api';
 import { useAuth } from '../../store/auth';
@@ -26,6 +27,7 @@ const SUBS = [
   { key: 'features', label: '🧩 Features' },
   { key: 'seo', label: '🔎 SEO' },
   { key: 'cache', label: '🔄 Cache / Update' },
+  { key: 'appupdate', label: '📲 App Update' },
   { key: 'data', label: '💾 Data' },
 ] as const;
 type SubKey = (typeof SUBS)[number]['key'];
@@ -443,6 +445,93 @@ function CacheSettings() {
       <h4 style={{ marginBottom: 6 }}>🔄 Push Update / Clear Cache</h4>
       <p style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 12, maxWidth: 600 }}>Jab bhi aap naya code (files) server pe daalein, ye button dabayein. Sabhi users ko browser me automatically naya code mil jaayega (purana cache clear ho jaayega).</p>
       <button type="button" onClick={push} style={{ padding: '11px 26px', background: '#e65100', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>🔄 Clear Cache &amp; Update All Users</button>
+    </>
+  );
+}
+
+// App force-update channel — reads the current app_version row (GET /api/version)
+// and writes it back (POST /api/admin/version). Controls the native app's update
+// prompt: version_code / name shown, download url, message, and whether the
+// update is forced (blocks the app until the user updates).
+function AppUpdateSettings() {
+  const [v, setV] = useState<{ version_code: string; version_name: string; url: string; message: string; force_update: boolean } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetchAppVersion()
+      .then((d) => {
+        if (!alive) return;
+        setV({ version_code: String(d.versionCode), version_name: d.versionName, url: d.url, message: d.message, force_update: d.forceUpdate });
+      })
+      .catch((e) => showToast(apiError(e) || 'Failed to load app version', 'error'))
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
+
+  if (loading || !v) return <p style={{ color: 'var(--gray)' }}>Loading app version…</p>;
+  const set = (k: keyof typeof v, val: string | boolean) => setV((c) => (c ? { ...c, [k]: val } : c));
+
+  async function save() {
+    const code = parseInt(v!.version_code, 10);
+    if (!Number.isInteger(code) || code <= 0) return showToast('Version code ek positive number hona chahiye', 'error');
+    if (v!.version_name.length > 20) return showToast('Version name 20 characters se chhota rakhein', 'error');
+    const url = v!.url.trim();
+    if (url && !/^https:\/\//i.test(url)) return showToast('Download URL https:// se shuru hona chahiye (ya khaali)', 'error');
+    setBusy(true);
+    try {
+      const saved = await saveAppVersion({
+        version_code: code,
+        version_name: v!.version_name.trim(),
+        url,
+        message: v!.message,
+        force_update: v!.force_update,
+      });
+      setV({ version_code: String(saved.versionCode), version_name: saved.versionName, url: saved.url, message: saved.message, force_update: saved.forceUpdate });
+      showToast('App update settings saved', 'success');
+    } catch (e) {
+      showToast(apiError(e) || 'Failed to save app version', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <h4 style={{ marginBottom: 6 }}>📲 App Update / Force Update</h4>
+      <p style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 16, maxWidth: 620 }}>
+        Native app ko update prompt yahan se control hota hai. Naya version chadhne ke baad version code badhayein. <strong>Force update</strong> on karne par purane version wale users ko update kiye bina app aage nahi chalega.
+      </p>
+      <div style={{ maxWidth: 520, display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <label style={lbl} htmlFor="av_code">🔢 Version Code</label>
+            <input id="av_code" type="number" min={1} value={v.version_code} onChange={(e) => set('version_code', e.target.value)} style={inp} />
+            <p style={hint}>Har naye build me badhega (integer).</p>
+          </div>
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <label style={lbl} htmlFor="av_name">🏷️ Version Name</label>
+            <input id="av_name" value={v.version_name} maxLength={20} onChange={(e) => set('version_name', e.target.value)} placeholder="1.2.0" style={inp} />
+          </div>
+        </div>
+        <div>
+          <label style={lbl} htmlFor="av_url">🔗 Download URL (Play Store / APK)</label>
+          <input id="av_url" value={v.url} onChange={(e) => set('url', e.target.value)} placeholder="https://play.google.com/store/apps/details?id=…" style={inp} />
+          <p style={hint}>https:// se shuru ho (ya khaali). Update button isi link pe khulega.</p>
+        </div>
+        <div>
+          <label style={lbl} htmlFor="av_msg">💬 Update Message</label>
+          <textarea id="av_msg" rows={3} value={v.message} onChange={(e) => set('message', e.target.value)} placeholder="Naya version aa gaya hai — behtar speed aur bug fixes." style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }} />
+        </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--primary-dark)', background: '#fff3e6', padding: 12, borderRadius: 8 }}>
+          <input type="checkbox" checked={v.force_update} onChange={(e) => set('force_update', e.target.checked)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
+          ⚠️ Force update (purane version block ho jaayega)
+        </label>
+        <button type="button" onClick={save} disabled={busy} style={{ justifySelf: 'start', padding: '11px 26px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          💾 {busy ? 'Saving…' : 'Save App Update'}
+        </button>
+      </div>
     </>
   );
 }
@@ -971,6 +1060,7 @@ export default function AdminSettings() {
         {sub === 'features' && <FeaturesSettings />}
         {sub === 'seo' && <SeoSettings />}
         {sub === 'cache' && <CacheSettings />}
+        {sub === 'appupdate' && <AppUpdateSettings />}
         {sub === 'data' && <DataSettings />}
       </div>
     </>

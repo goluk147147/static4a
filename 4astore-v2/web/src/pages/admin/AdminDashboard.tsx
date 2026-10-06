@@ -1,7 +1,9 @@
 import { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../store/auth';
 import { useProducts, useCategories } from '../../lib/queries';
+import { fetchAdminStats } from '../../lib/admin';
 import { useAdminOrders, useAdminUsers, statusColor, canAdmin } from './adminData';
 
 // Port of the original renderDashboardTab().
@@ -31,6 +33,10 @@ export default function AdminDashboard() {
   const { data: users = [] } = useAdminUsers(canAdmin(user?.role, user?.permissions, 'users'));
   const prods = useProducts().data ?? [];
   const cats = useCategories().data ?? [];
+  // SQL-aggregated summary (GET /api/admin/stats). On error we fall back to the
+  // client-side computation from useAdminOrders() below, so the dashboard never
+  // breaks if the stats endpoint is unavailable.
+  const { data: stats } = useQuery({ queryKey: ['admin-stats'], queryFn: fetchAdminStats, staleTime: 30_000, retry: false });
 
   if (isLoading) return <p style={{ textAlign: 'center', padding: 30, color: 'var(--gray)' }}>Loading dashboard...</p>;
 
@@ -41,24 +47,36 @@ export default function AdminDashboard() {
   const isDelivered = (s: string) => s === 'Delivered';
 
   const delivered = orders.filter((o) => isDelivered(o.order_status));
-  const revToday = delivered.filter((o) => new Date(o.order_date).toDateString() === today).reduce((s, o) => s + o.total_amount, 0);
-  const revMonth = delivered
+  const cRevToday = delivered.filter((o) => new Date(o.order_date).toDateString() === today).reduce((s, o) => s + o.total_amount, 0);
+  const cRevMonth = delivered
     .filter((o) => { const d = new Date(o.order_date); return d.getMonth() === month && d.getFullYear() === year; })
     .reduce((s, o) => s + o.total_amount, 0);
-  const revAll = delivered.reduce((s, o) => s + o.total_amount, 0);
+  const cRevAll = delivered.reduce((s, o) => s + o.total_amount, 0);
   const pendingValue = orders.filter((o) => !isDelivered(o.order_status) && o.order_status !== 'Cancelled').reduce((s, o) => s + o.total_amount, 0);
-  const avgOrder = delivered.length ? Math.round(revAll / delivered.length) : 0;
 
-  const statusCounts: Record<string, number> = {};
-  orders.forEach((o) => { const st = o.order_status || 'Order Placed'; statusCounts[st] = (statusCounts[st] || 0) + 1; });
+  const cStatusCounts: Record<string, number> = {};
+  orders.forEach((o) => { const st = o.order_status || 'Order Placed'; cStatusCounts[st] = (cStatusCounts[st] || 0) + 1; });
 
   const qtyMap: Record<string, number> = {};
   orders.forEach((o) => o.items.forEach((it) => { const key = it.name || `#${it.id}`; qtyMap[key] = (qtyMap[key] || 0) + it.quantity; }));
-  const topProducts = Object.entries(qtyMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const maxQty = topProducts.length ? topProducts[0][1] : 1;
+  const cTopProducts = Object.entries(qtyMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-  const outOfStock = prods.filter((p) => !p.in_stock).length;
-  const inStock = prods.length - outOfStock;
+  const cOutOfStock = prods.filter((p) => !p.in_stock).length;
+
+  // Prefer SQL-aggregated stats; fall back to the client-side numbers above.
+  const revToday = stats ? stats.revenue.today : cRevToday;
+  const revMonth = stats ? stats.revenue.month : cRevMonth;
+  const revAll = stats ? stats.revenue.allTime : cRevAll;
+  const deliveredCount = stats ? stats.deliveredOrders : delivered.length;
+  const totalOrders = stats ? stats.totalOrders : orders.length;
+  const avgOrder = deliveredCount ? Math.round(revAll / deliveredCount) : 0;
+  const statusCounts = stats ? stats.statusCounts : cStatusCounts;
+  const topProducts: [string, number][] = stats
+    ? stats.topProducts.map((p) => [p.name || (p.productId != null ? `#${p.productId}` : '-'), p.quantity] as [string, number])
+    : cTopProducts;
+  const maxQty = topProducts.length ? topProducts[0][1] : 1;
+  const outOfStock = stats ? stats.outOfStock : cOutOfStock;
+  const inStock = Math.max(0, prods.length - outOfStock);
   const recent = orders.slice(0, 5);
 
   return (
@@ -72,8 +90,8 @@ export default function AdminDashboard() {
       </div>
 
       <div className="stats-grid" style={{ marginBottom: 22 }}>
-        <StatCard icon="📦" value={orders.length} label="Total Orders" />
-        <StatCard icon="✅" value={delivered.length} label="Delivered" accent="#059669" />
+        <StatCard icon="📦" value={totalOrders} label="Total Orders" />
+        <StatCard icon="✅" value={deliveredCount} label="Delivered" accent="#059669" />
         <StatCard icon="👥" value={users.length} label="Registered Users" accent="#6a1b9a" />
         <StatCard icon="🛍️" value={prods.length} label="Products" accent="#ef6c00" />
         <StatCard icon="🗂️" value={cats.length} label="Categories" accent="#0891b2" />
