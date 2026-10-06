@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Add the native Google Sign-In library and wire its Expo config plugin so the managed prebuild produces the native Android sign-in code. Depends on nothing; must land before FEAT-002 (login.tsx needs the module). Grounded in app.config.ts (plugins array + extra client ids + VERSION_CODE) and package.json dependencies.",
+  "status": "completed",
+  "steps": [
+    "In 4astore-v2/mobile/package.json, add \"@react-native-google-signin/google-signin\": \"16.1.5\" to dependencies (exact version, no caret). Compatibility: peerDependencies expo '>=52.0.40' (project ~54.0.37), react '*' (19.1.0), react-native '*' (0.81.5) — all satisfied. Do not touch any other dependency.",
+    "Run `npm install` in 4astore-v2/mobile so the lockfile/node_modules resolve the new module.",
+    "In 4astore-v2/mobile/app.config.ts, add the bare string '@react-native-google-signin/google-signin' to the plugins array (Firebase config-plugin variant — the project already wires googleServicesFile; NO iosUrlScheme because this is an Android-only Play target). Place it among the existing plugin entries; do not alter the existing googleServicesFile branch or any other plugin.",
+    "In 4astore-v2/mobile/app.config.ts, change the VERSION_CODE default from Number(process.env.STORE4A_VERSION_CODE || 20) to || 21 (keep the env override). The fix requires a new binary.",
+    "Keep the googleWebClientId / googleAndroidClientId entries in app.config.ts `extra` unchanged — the WEB client id is still needed by GoogleSignin.configure() at runtime (FEAT-002)."
+  ],
+  "acceptance_criteria": [
+    "package.json dependencies include \"@react-native-google-signin/google-signin\": \"16.1.5\" (exact).",
+    "`npm run typecheck` (tsc --noEmit) passes with the new module resolvable.",
+    "`npx expo config --json` resolves without plugin errors, lists the google-signin plugin, and reports android.versionCode == 21.",
+    "No other dependency version changed; googleServicesFile wiring and extra client ids intact."
+  ],
+  "verification": [
+    "cd 4astore-v2/mobile && npm install",
+    "npm run typecheck",
+    "npx expo config --json  (confirm plugin present and android.versionCode == 21)"
+  ],
+  "blocked_reason": null,
+  "findings": "Done. Installed @react-native-google-signin/google-signin@16.1.5 (exact, confirmed via `npm ls`). npm install succeeded with no peer-dep errors (reported pre-existing audit warnings: 19 moderate + 24 high, unrelated to this change). Added the bare plugin string '@react-native-google-signin/google-signin' to app.config.ts plugins (Firebase variant, no iosUrlScheme), placed right after 'expo-web-browser'. Bumped VERSION_CODE default 20 -> 21 (env override STORE4A_VERSION_CODE preserved). googleServicesFile branch and extra.googleWebClientId / googleAndroidClientId left unchanged. Verification: `npm run typecheck` (tsc --noEmit) passed clean; `npx expo config --json` succeeded (exit 0, no stderr) with the google-signin plugin listed and android.versionCode == 21. Note for FEAT-002: GoogleSignin.configure() needs the WEB client id (extra.googleWebClientId); google-services.json oauth_client is still EMPTY (owner must re-download after SHA-1 registration before native sign-in works). Native sign-in cannot be exercised in-agent/Expo Go — requires a dev/release build."
+}
