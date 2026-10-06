@@ -171,11 +171,12 @@ router.post('/status', requireAuth, async (req: Request, res: Response) => {
   const order = await ensureTrackingRow(orderId, riderKey);
   if (!order) return fail(res, 'This order is not assigned to you', 403);
 
-  await prisma.$executeRawUnsafe('UPDATE tracking SET status=?, updated_at=NOW() WHERE order_id=?', status, orderId);
   const updated = await prisma.order.update({
     where: { order_id: orderId },
     data: { order_status: status, ...(status === 'Delivered' ? { delivered_at: new Date() } : {}) },
   });
+  // Fire-and-forget tracking sync (like the customer push below): never block the response on it.
+  prisma.$executeRawUnsafe('UPDATE tracking SET status=?, updated_at=NOW() WHERE order_id=?', status, orderId).catch(() => null);
   notifyCustomerStatus({ order_id: orderId, customer: updated.customer, order_status: status, user_id: updated.user_id }).catch(() => null);
   return ok(res, { message: 'Status set' });
 });

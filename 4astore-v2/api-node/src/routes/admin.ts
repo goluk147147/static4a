@@ -343,12 +343,23 @@ router.post('/orders/status', requireAuth, requireStaff('orders'), async (req: R
   const orderId = String(req.body?.orderId || '');
   const status = String(req.body?.status || '');
   if (!orderId || !status) return fail(res, 'Order ID and status required', 422);
-  const updated = await prisma.order
-    .update({ where: { order_id: orderId }, data: { order_status: status, ...(status === 'Delivered' ? { delivered_at: new Date() } : {}) } })
-    .catch(() => null);
-  if (!updated) return fail(res, 'Order not found', 404);
+  // Do NOT swallow the update error into a generic 404: only a genuinely missing order is a 404
+  // (Prisma P2025), while a real DB/connection/pool error must surface truthfully (500 + message)
+  // so admins see the actual cause instead of a misleading "Order not found".
+  let updated;
+  try {
+    updated = await prisma.order.update({
+      where: { order_id: orderId },
+      data: { order_status: status, ...(status === 'Delivered' ? { delivered_at: new Date() } : {}) },
+    });
+  } catch (e) {
+    if ((e as { code?: string })?.code === 'P2025') return fail(res, 'Order not found', 404);
+    // Surface the real DB/connection error to the admin (not a false 404 or a generic 500).
+    return fail(res, `Status update failed: ${(e as Error)?.message || 'database error'}`, 500);
+  }
   // Keep the customer's live-tracking status in sync (original syncTrackingStatus()).
-  await prisma.$executeRawUnsafe('UPDATE tracking SET status = ?, updated_at = NOW() WHERE order_id = ?', status, orderId).catch(() => null);
+  // Fire-and-forget (like the push below): never hold the status response open on the tracking write.
+  prisma.$executeRawUnsafe('UPDATE tracking SET status = ?, updated_at = NOW() WHERE order_id = ?', status, orderId).catch(() => null);
   notifyCustomerStatus({ order_id: orderId, customer: updated.customer, order_status: status, user_id: updated.user_id }).catch(() => null);
   return ok(res, { message: 'Status updated' });
 });
