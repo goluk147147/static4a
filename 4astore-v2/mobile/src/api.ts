@@ -52,6 +52,9 @@ interface RequestOpts {
   _retried?: boolean;
   /** internal: already retried once after a transient network/timeout blip (GET only) */
   _netRetried?: boolean;
+  /** Per-request abort timeout (ms). Defaults to 15 s; order placement raises it to 30 s so a
+   *  slow-but-successful create isn't aborted mid-flight. */
+  timeoutMs?: number;
 }
 
 function buildUrl(path: string, params?: Query) {
@@ -106,7 +109,7 @@ export async function api<T = any>(path: string, opts: RequestOpts = {}): Promis
   let res: Response;
   // Hard timeout so a slow/hung server never leaves a button spinning forever.
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15000);
   try {
     res = await fetch(buildUrl(path, opts.params), {
       method,
@@ -168,7 +171,8 @@ export async function api<T = any>(path: string, opts: RequestOpts = {}): Promis
 }
 
 api.get = <T = any>(path: string, params?: Query) => api<T>(path, { method: 'GET', params });
-api.post = <T = any>(path: string, body: unknown = {}) => api<T>(path, { method: 'POST', body });
+api.post = <T = any>(path: string, body: unknown = {}, opts?: Pick<RequestOpts, 'timeoutMs'>) =>
+  api<T>(path, { method: 'POST', body, ...opts });
 
 export function apiError(e: unknown): string {
   if (e instanceof ApiError) return e.message;

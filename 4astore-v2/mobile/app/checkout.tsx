@@ -8,7 +8,7 @@ import { Button, Card, Field, GradientButton, Screen, SummaryRow, styles as ui }
 import { useAuth } from '../src/store/auth';
 import { useCart } from '../src/store/cart';
 import { useProducts, useCategories, useSettings } from '../src/queries';
-import { api, apiError } from '../src/api';
+import { api, apiError, ApiError } from '../src/api';
 import { loadLocal, saveLocal, upsertLocal, syncFromServer, queuePending, flushPending } from '../src/store/addresses';
 import { showToast, showConfirm } from '../src/store/ui';
 import { cartTotals, cartHasAgeRestricted, getServiceableVillages, verifyVillage, resolveDeliveryCoordinates } from '../src/checkout';
@@ -214,27 +214,55 @@ export default function Checkout() {
   async function confirmOrder(utr: string, screenshot: string): Promise<string | null> {
     if (!customer) return 'Customer details missing';
     setPlacing(true);
+    // Generate the orderId on the CLIENT (same shape the server uses: '4A' + 8 uppercase hex) so a
+    // slow create can be recovered idempotently — the server upserts on o.orderId, so a retry is an
+    // upsert, not a 409 "payment reference already used".
+    const clientOrderId = '4A' + genHex8();
+    const orderItems = items.map((i) => ({ id: Number(i.id), name: i.name, weight: i.weight ?? '', price: Number(i.price), quantity: i.quantity }));
     try {
       const payload = {
         order: {
+          orderId: clientOrderId,
           customer, addressLabel: label,
-          items: items.map((i) => ({ id: Number(i.id), name: i.name, weight: i.weight ?? '', price: Number(i.price), quantity: i.quantity })),
+          items: orderItems,
           subtotal: totals.subtotal, discount: totals.discount, deliveryCharge: totals.deliveryCharge, handlingCharge: totals.handlingCharge, totalAmount: totals.total,
           paymentMethod: 'UPI', paymentReference: utr,
         },
       };
-      const d = await api.post('/orders', payload);
+      // Raise the order-placement POST timeout to 30 s (all other requests stay at 15 s) so a
+      // slow-but-successful create isn't aborted mid-flight.
+      const d = await api.post('/orders', payload, { timeoutMs: 30000 });
       const orderId = d.order.order_id as string;
-      api.post(`/orders/${encodeURIComponent(orderId)}/screenshot`, { image: screenshot }).catch(() => null);
-      clear();
-      setPayOpen(false);
-      router.replace({ pathname: '/order-success', params: { orderId, name: customer.name, total: String(totals.total), address: [customer.address, customer.city, customer.pincode].filter(Boolean).join(', '), items: JSON.stringify(payload.order.items) } } as never);
+      navigateToSuccess(orderId, orderItems, screenshot);
       return null;
     } catch (e) {
+      // On a timeout/abort (ApiError status 0), the order may well have been created server-side.
+      // Do a bounded idempotent recovery: GET the order by the client-generated id; if it exists,
+      // treat the placement as SUCCESS instead of showing a false timeout.
+      if (e instanceof ApiError && e.status === 0) {
+        try {
+          const r = await api.get(`/orders/${encodeURIComponent(clientOrderId)}`);
+          if (r?.order?.order_id) {
+            navigateToSuccess(r.order.order_id as string, orderItems, screenshot);
+            return null;
+          }
+        } catch {
+          // Recovery lookup failed too → fall through to the normal timeout/retry message.
+        }
+      }
       return apiError(e);
     } finally {
       setPlacing(false);
     }
+  }
+
+  // Shared success path: fire-and-forget the screenshot upload, clear the cart, close the sheet,
+  // and navigate to /order-success. Used by both the normal success and the timeout-recovery path.
+  function navigateToSuccess(orderId: string, orderItems: unknown, screenshot: string) {
+    api.post(`/orders/${encodeURIComponent(orderId)}/screenshot`, { image: screenshot }).catch(() => null);
+    clear();
+    setPayOpen(false);
+    router.replace({ pathname: '/order-success', params: { orderId, name: customer.name, total: String(totals.total), address: [customer.address, customer.city, customer.pincode].filter(Boolean).join(', '), items: JSON.stringify(orderItems) } } as never);
   }
 
   if (!items.length) {
@@ -364,6 +392,13 @@ export default function Checkout() {
       )}
     </Screen>
   );
+}
+
+// 8 uppercase hex chars — matches the server's crypto.randomBytes(4).toString('hex').toUpperCase().
+function genHex8(): string {
+  let s = '';
+  for (let i = 0; i < 8; i++) s += Math.floor(Math.random() * 16).toString(16).toUpperCase();
+  return s;
 }
 
 const st = StyleSheet.create({
