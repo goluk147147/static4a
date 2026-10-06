@@ -28,7 +28,6 @@ export const ADMIN_TABS = [
   { path: 'pages', key: 'settings', icon: '📄', label: 'Pages', title: '📄 Pages (Privacy, Terms, Help…)' },
   { path: 'team', key: 'team', icon: '🔐', label: 'Team Access', title: '🔐 Team Access' },
   { path: 'notify', key: 'ads', icon: '🔔', label: 'Push Notifications', title: '🔔 Push Notifications' },
-  { path: 'notify-log', key: 'ads', icon: '🗂️', label: 'Notification Log', title: '🗂️ Notification Log' },
 ];
 
 function useBodyClass(className: string, on: boolean) {
