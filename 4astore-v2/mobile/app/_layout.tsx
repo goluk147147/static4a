@@ -6,6 +6,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppState } from 'react-native';
+import { setOnSessionExpired } from '../src/api';
 import { queryClient } from '../src/queries';
 import { restoreCache, startPersisting } from '../src/persistCache';
 import { useAuth } from '../src/store/auth';
@@ -19,6 +20,13 @@ import StaffOrderWatcher from '../src/components/StaffOrderWatcher';
 
 SplashScreen.preventAutoHideAsync().catch(() => null);
 SplashScreen.setOptions?.({ duration: 400, fade: true });
+
+// Wire the auto-logout hook ONCE at module load (not per render): when a request's token is dead
+// AND the silent refresh also fails, api.ts calls this so we clear the user state. The per-screen
+// `if (ready && !user) router.replace('/login')` guards then bounce the user to Login instead of
+// leaving a stale "logged-in" shell that can't load data. Manual logout already clears user itself,
+// so a dead session and a manual logout both converge on the same clear with no double-clear issue.
+setOnSessionExpired(() => useAuth.getState().setUser(null));
 
 export default function RootLayout() {
   const router = useRouter();

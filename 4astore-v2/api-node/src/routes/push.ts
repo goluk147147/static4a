@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { ok, fail } from '../utils/http';
 import { requireAuth, requireStaff } from '../auth/middleware';
-import { sendToTopic, sendToTokens, tokensForStaff, syncTokenTopics, clearTokenTopics, recordNotification, PushMessage } from '../services/push';
+import { sendToTopic, sendToTokens, tokensForStaff, tokensForTopic, syncTokenTopics, clearTokenTopics, recordNotification, PushMessage } from '../services/push';
 
 const router = Router();
 
@@ -85,14 +85,22 @@ router.post('/send', requireAuth, requireStaff('ads'), async (req: Request, res:
   const msg: PushMessage = { title, body, data: link ? { link } : {}, image };
   const productIdBig = productId != null && String(productId).trim() !== '' ? BigInt(String(productId).trim()) : null;
 
-  let tokens: string[] = [];
+  // Prefer an explicit-token multicast for every segment so the history row records a REAL
+  // per-device success count (and prunes dead tokens). Fall back to a topic send only when no
+  // tokens are subscribed in the DB (e.g. topic-only web devices), and when that topic send is a
+  // no-op (FCM disabled → sendToTopic returns false) record the row as failed so the admin can
+  // tell nothing actually went out instead of a misleading 0/0 "sent".
+  const tokens =
+    target === 'admins' ? await tokensForStaff('orders') : await tokensForTopic(target);
   let successCount = 0;
-  if (target === 'admins') {
-    tokens = await tokensForStaff('orders');
-    if (tokens.length) successCount = await sendToTokens(tokens, msg);
-    else await sendToTopic('admins', msg);
+  let failureCount = 0;
+  if (tokens.length) {
+    successCount = await sendToTokens(tokens, msg);
+    failureCount = tokens.length - successCount;
   } else {
-    await sendToTopic(target, msg);
+    const delivered = await sendToTopic(target, msg);
+    // No tokens to count: mark the row failed when the topic send didn't go out (FCM disabled/threw).
+    failureCount = delivered ? 0 : 1;
   }
   // Best-effort history write — never blocks the push.
   await recordNotification(
@@ -108,7 +116,7 @@ router.post('/send', requireAuth, requireStaff('ads'), async (req: Request, res:
     },
     tokens,
     successCount,
-    tokens.length ? tokens.length - successCount : 0
+    failureCount
   ).catch(() => null);
   return ok(res, { message: 'Notification sent' });
 });

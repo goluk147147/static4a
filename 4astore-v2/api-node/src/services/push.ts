@@ -199,6 +199,19 @@ export async function sendToTokens(tokens: string[], msg: PushMessage): Promise<
   return sent;
 }
 
+/**
+ * Device tokens subscribed (in the DB) to a given broadcast topic ('all' | 'customers' | 'riders').
+ * Lets a broadcast go out as an explicit multicast so we get a real per-device success count and
+ * dead-token pruning, instead of a topic send that returns only a boolean.
+ */
+export async function tokensForTopic(topic: string): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ token: string }>>(
+    `SELECT token FROM device_tokens WHERE JSON_CONTAINS(topics, ?) = 1`,
+    JSON.stringify(topic)
+  );
+  return rows.map((r) => r.token);
+}
+
 /** All device tokens belonging to users who are owner/superadmin or admins with the given permission. */
 export async function tokensForStaff(permission = 'orders'): Promise<string[]> {
   const staff = await prisma.$queryRawUnsafe<Array<{ token: string }>>(
