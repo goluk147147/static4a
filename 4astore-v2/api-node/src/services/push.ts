@@ -130,40 +130,32 @@ function withLargeIcon(data: Record<string, string> | undefined): Record<string,
 }
 
 /**
- * Build the DATA-ONLY FCM payload expo-notifications parses on Android.
+ * Build the DATA-ONLY FCM payload the mobile Notifee presenter parses on Android.
  *
- * expo-notifications reads a specific data shape (verified against the vendored Android source
- * in mobile/node_modules/expo-notifications — NotificationData.kt, RemoteNotificationContent.kt,
- * NotificationSerializer.java, FirebaseNotificationTrigger.kt):
- *   - data.title    -> NotificationData.title    -> content title
- *   - data.message  -> NotificationData.message  -> content body text
- *   - data.channelId-> FirebaseNotificationTrigger.getNotificationChannel() -> Android channel
- *   - data.sound    -> NotificationData.sound    -> 'default' plays the default sound
- *   - data.body     -> a JSON *string*; NotificationSerializer detects valid JSON here and exposes
- *                      it to JS as `request.content.data` (so `data.link`, `type`, `orderId`,
- *                      `largeIcon` must live INSIDE this JSON, matching mobile/src/push.ts which
- *                      reads resp.notification.request.content.data for tap routing).
- * All values must be strings (FCM data maps are string->string).
- *
- * IMPORTANT (image trade-off): a data-only message has no `remoteMessage.notification`, and
- * expo-notifications only reads an image from `notification.imageUrl` (RemoteNotificationContent
- * .getImage/containsImage). So an admin-supplied image is NOT rendered as a big-picture banner by
- * this path. We still pass the resolved image URL inside the body JSON (`data.image`) so a future
- * custom/Notifee builder can render it; today it simply doesn't draw a banner. See audit §7.2.
+ * This is the SERVER half of the shared Notifee data-key contract (plan.md D4). FCM data maps are
+ * string->string, so every value here is a plain top-level string key — NO nested JSON `body`
+ * string and NO legacy expo `message` key. The mobile presenter (FEAT-003) reads these exact flat
+ * keys to build the Notifee notification and route taps (`link`):
+ *   - title      -> notification title (always)
+ *   - body       -> notification body text (always)
+ *   - channelId  -> Android channel ('orders'|'default', defaults to 'default')
+ *   - sound      -> 'default' plays the default sound (always)
+ *   - largeIcon  -> colour 4A logo URL for the right-side large icon (always)
+ *   - image      -> absolute big-picture URL, ONLY when the admin supplied msg.image
+ *   - ...msg.data-> every caller data key spread as top-level strings (link, type, orderId,
+ *                   customerName, city, total, ...), so tap routing reads data.link directly.
  */
 function dataOnlyPayload(msg: PushMessage): Record<string, string> {
-  // Everything the JS layer consumes (tap routing reads data.link) goes into the body JSON,
-  // plus the colour-logo URL and the resolved admin image (if any).
-  const jsData = withLargeIcon({
-    ...(msg.data || {}),
-    ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
-  });
   return {
     title: msg.title,
-    message: msg.body,
+    body: msg.body,
     channelId: msg.channelId || 'default',
     sound: 'default',
-    body: JSON.stringify(jsData),
+    largeIcon: NOTIFICATION_LOGO_URL,
+    // Big-picture image only when the admin supplied one — text-only pushes stay clean.
+    ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
+    // Spread caller data (link, type, orderId, customerName, city, total, ...) as top-level strings.
+    ...(msg.data || {}),
   };
 }
 
@@ -412,10 +404,9 @@ export async function notifyStaffNewOrder(order: {
       link: staffOrderLink(order.order_id),
     },
     channelId: loud ? 'orders' : 'default',
-    // Business-critical, latency-sensitive: use the OS-drawn (notification-type) message so it
-    // reliably wakes the device in background/killed/Doze. Trade-off: no colour large icon on this
-    // one alert. Customer/broadcast/rider pushes stay data-only for the Rapido/Zepto look.
-    reliable: true,
+    // Data-only path (no reliable flag) so Notifee draws this staff alert exactly once with the
+    // colour large icon, on the loud 'orders' channel (or quiet 'default' when muted), matching
+    // customer/broadcast/rider pushes for the Rapido/Zepto look.
   };
   const tokens = await tokensForStaff('orders').catch(() => [] as string[]);
   let staffSent = 0;
