@@ -812,6 +812,12 @@ function SeoSettings() {
       try {
         await saveProduct('update', {
           id: selProd!.id,
+          // The /admin/products handler validates name + a valid selling price on every
+          // update, so carry the product's existing values through (auto-filled from the
+          // selected product) — otherwise a SEO-only save fails with
+          // "Product name and a valid selling price are required".
+          name: selProd!.name,
+          price: selProd!.price,
           seoTitle: t.trim(),
           seoDescription: d.trim(),
           seoKeywords: kw.trim(),
