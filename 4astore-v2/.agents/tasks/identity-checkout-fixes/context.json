@@ -1,0 +1,27 @@
+{
+  "project_type": "4A Store v2 — monorepo folder with api-node (Express + TypeScript + Prisma/MySQL) backend and mobile (Expo / React Native / expo-router) app",
+  "language": "TypeScript",
+  "build_system": "api-node: tsc (npm run build). mobile: Expo SDK 54 / React Native 0.81, tsc for typecheck, Gradle for APK/AAB. No workspace tooling linking the two; each has its own package.json and node_modules.",
+  "test_framework": "api-node: NONE (no test script; verification is tsc build + prisma validate). mobile: node:test via a custom loader at mobile/src/__tests__/register.mjs that mocks '../api' and '@react-native-async-storage/async-storage'; it ONLY loads pure-TS modules under mobile/src/__tests__/**/*.test.ts and does NOT render React screens.",
+  "build_command": "api-node: (cd api-node) npm run build && npx prisma validate.  mobile: (cd mobile) npm run typecheck && npm test",
+  "test_command": "mobile: (cd mobile) npm test",
+  "verification_instructions": "Run per-FEAT: for server work, cd c:\\xampp\\htdocs\\static4a\\.worktrees\\identity-checkout-fixes\\4astore-v2\\api-node then `npm run build` (expect tsc exits 0) and `npx prisma validate` (expect 'The schema ... is valid'). For mobile work, cd c:\\xampp\\htdocs\\static4a\\.worktrees\\identity-checkout-fixes\\4astore-v2\\mobile then `npm run typecheck` (one PRE-EXISTING error about android.usesCleartextTraffic from @expo/config-types is KNOWN and must be IGNORED; no NEW errors allowed) and `npm test` (all node:test cases pass).",
+  "snapshot_or_generated_files": "None checked in by build/test. prisma generate is not required for these edits (no schema changes). Do NOT run prisma migrate or db push (schema.prisma has an explicit DO-NOT-migrate note re: plain_password raw column).",
+  "environment_constraints": "Windows + PowerShell. Always use ABSOLUTE paths; cwd defaults to the MAIN workspace c:\\xampp\\htdocs\\static4a, NOT the worktree — a relative path lands in the wrong tree. Use `git -C c:\\xampp\\htdocs\\static4a\\.worktrees\\identity-checkout-fixes` for all git. NEVER touch notification code or the .worktrees/notifee-rich-push worktree. IGNORE legacy 4AStoreApp and PHP /api. No DB available — do not attempt runtime/integration tests that need MySQL; rely on tsc build + prisma validate + mobile node:test.",
+  "contribution_requirements": "Commit locally on branch 'identity-checkout-fixes'; never push. Keep each FEAT's change set coherent and buildable. Do not run prisma migrate/db push. Email/recovery_email columns already exist; mobile is @unique NOT NULL (that is why Google users get a 'g<digits>' placeholder).",
+  "key_patterns": "OTP flow: EmailOtp model (email, otp, purpose, expires_at, consumed) + sendMail(to, subject, body). The recovery-email/send + recovery-email/verify handlers in api-node/src/routes/users.ts are the exact template for 'email a 6-digit OTP -> verify latest unconsumed -> prisma.user.update'. findUserByIdentifier() in users.ts already does the 4-way OR [username, mobile, email, recovery_email]. Mobile auth state: useAuth() zustand store (src/store/auth.ts) with reloadSession() at ~line 97. Local-first addresses: src/store/addresses.ts (loadLocal/upsertLocal/syncFromServer/queuePending/flushPending), per-user key keyed by user.id. Mobile unit tests follow src/__tests__/addresses.test.ts (import from helpers.ts: resetMocks/apiCalls/setGet/setPost/seedRaw/readRaw).",
+  "relevant_files": [
+    "api-node/src/routes/users.ts (login lookup ~line 149-151 to fix; recovery-email/send+verify handlers as the template; findUserByIdentifier ~line 290; social-login/createGoogleUser mints 'g<digits>' placeholder mobile)",
+    "api-node/src/routes/otp.ts (purpose:'signup' sender — DO NOT reuse; model the new sender on recovery-email/send instead)",
+    "api-node/prisma/schema.prisma (User.mobile @unique @db.VarChar(15); EmailOtp.purpose; DO NOT migrate)",
+    "mobile/app/login.tsx (login Field label + email-OTP UI pattern sendOtp + OTP Field to mirror)",
+    "mobile/app/checkout.tsx (saveFromEditor ~line 116-162 build/post block; proceed() ~line 206-233 that never persists; email prefill ~line 63-67; editor email Field)",
+    "mobile/app/_layout.tsx (bootstrap + ready; place the gate trigger after ready)",
+    "mobile/src/store/auth.ts (useAuth, reloadSession ~line 97, User type usage)",
+    "mobile/src/store/addresses.ts (local-first API + PendingPayload shape)",
+    "mobile/src/types.ts (User: mobile, email?, recovery_email?)",
+    "mobile/app.config.ts (VERSION_CODE default 23 -> 25)",
+    "mobile/src/__tests__/addresses.test.ts and mobile/src/__tests__/helpers.ts (node:test harness pattern for new pure-helper tests)"
+  ],
+  "directory_structure": "4astore-v2/api-node/src/routes/*.ts (Express routers: users, otp, addresses, orders, pages, catalog). 4astore-v2/api-node/prisma/schema.prisma. 4astore-v2/mobile/app/*.tsx (expo-router screens incl. login.tsx, checkout.tsx, _layout.tsx, (tabs)/). 4astore-v2/mobile/src/ (store/, components/, queries.ts, api.ts, types.ts, __tests__/). 4astore-v2/.agents/tasks/ (audit + plan + these FEAT artifacts)."
+}
