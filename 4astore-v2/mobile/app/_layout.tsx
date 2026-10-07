@@ -10,6 +10,7 @@ import { setOnSessionExpired } from '../src/api';
 import { queryClient } from '../src/queries';
 import { restoreCache, startPersisting } from '../src/persistCache';
 import { useAuth } from '../src/store/auth';
+import { needsRealMobile } from '../src/profileGate';
 import { ensureChannels, listenForeground, listenNotificationTaps, listenTokenRotation, registerForPush } from '../src/push';
 import { legacyToRoute } from '../src/links';
 import { showToast } from '../src/store/ui';
@@ -33,8 +34,9 @@ export default function RootLayout() {
   const bootstrap = useAuth((s) => s.bootstrap);
   const reloadSession = useAuth((s) => s.reloadSession);
   const ready = useAuth((s) => s.ready);
-  const userId = useAuth((s) => s.user?.id);
-  const role = useAuth((s) => s.user?.role);
+  const user = useAuth((s) => s.user);
+  const userId = user?.id;
+  const role = user?.role;
 
   useEffect(() => {
     void ensureChannels();
@@ -51,6 +53,20 @@ export default function RootLayout() {
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => null);
   }, [ready]);
+
+  // One-time "Complete your profile" gate (Issue 6): a Google user is minted with a `g<digits>`
+  // placeholder mobile, so once bootstrap is `ready` and a user exists with no real 10-digit mobile
+  // we send them to /complete-profile to set + verify one. gatedRef makes it fire at most ONCE per
+  // app launch so it never loops; subscribing to `user` means a successful verify (reloadSession
+  // sets a real mobile) makes needsRealMobile false and we never redirect again.
+  const gatedRef = useRef(false);
+  useEffect(() => {
+    if (!ready || gatedRef.current) return;
+    if (user && needsRealMobile(user)) {
+      gatedRef.current = true;
+      router.replace('/complete-profile');
+    }
+  }, [ready, user, router]);
 
   // (Re)register the device token whenever the user or role changes → correct topics
   // (admins / riders / customers) so role changes made by the owner take effect.
