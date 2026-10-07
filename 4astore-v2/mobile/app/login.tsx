@@ -192,7 +192,7 @@ export default function Login() {
 
           {mode === 'login' ? (
             <>
-              <Field label="Username or Mobile" value={username} onChangeText={setUsername} autoCapitalize="none" autoComplete="username" />
+              <Field label="Username, Mobile or Email" value={username} onChangeText={setUsername} autoCapitalize="none" autoComplete="username" keyboardType="email-address" />
               <PasswordField label="Password" value={password} onChangeText={setPassword} autoComplete="password" onSubmitEditing={doLogin} />
               <Pressable onPress={() => switchMode('forgot')} style={styles.forgotLink} accessibilityRole="button">
                 <Text style={[ui.muted, { color: colors.primary, fontWeight: '700' }]}>Forgot password? / पासवर्ड भूल गए?</Text>

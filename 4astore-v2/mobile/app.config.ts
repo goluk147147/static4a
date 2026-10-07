@@ -10,7 +10,8 @@ import type { ExpoConfig } from 'expo/config';
  */
 const SITE_HOST = process.env.STORE4A_SITE_HOST || '4astore.com';
 const API_BASE = process.env.STORE4A_API_BASE || `https://${SITE_HOST}/api`;
-const VERSION_CODE = Number(process.env.STORE4A_VERSION_CODE || 24);
+// Single AAB at versionCode 25 carries BOTH change sets: Notifee rich-push + identity/checkout.
+const VERSION_CODE = Number(process.env.STORE4A_VERSION_CODE || 25);
 const VERSION_NAME = process.env.STORE4A_VERSION_NAME || '2.0.0';
 
 // FCM needs google-services.json (Firebase console → Project settings → Android app com.store4a.app).

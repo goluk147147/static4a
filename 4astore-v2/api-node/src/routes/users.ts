@@ -137,7 +137,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
 // ---------- POST /api/users/login ----------
 const loginSchema = z.object({
-  username: z.string().min(1), // username OR mobile
+  username: z.string().min(1), // username OR mobile OR email
   password: z.string().min(1),
 });
 
@@ -146,8 +146,9 @@ router.post('/login', async (req: Request, res: Response) => {
   if (!parsed.success) return fail(res, 'Username and password required', 422);
   const { username, password } = parsed.data;
 
+  const lower = username.toLowerCase();
   const user = await prisma.user.findFirst({
-    where: { OR: [{ username: username.toLowerCase() }, { mobile: username }] },
+    where: { OR: [{ username: lower }, { mobile: username }, { email: lower }, { recovery_email: lower }] },
   });
   if (!user) return fail(res, 'Account not found. Please sign up first.', 404);
 
@@ -433,6 +434,65 @@ router.post('/recovery-email/verify', requireAuth, async (req: Request, res: Res
     }),
   ]);
   return ok(res, { message: 'Recovery email verified' });
+});
+
+// ---------- Set mobile (Google users) via EMAIL OTP ----------
+// Lets an authenticated user (typically a Google sign-in with a 'g<digits>'
+// placeholder mobile) set a real mobile number, verified by a code sent to
+// their recovery/primary email. Modeled on recovery-email/send+verify; uses
+// purpose='set_mobile' (NOT the signup OTP path).
+
+// POST /api/users/mobile/send → emails a 6-digit code (10 min) to recovery/primary email
+router.post('/mobile/send', requireAuth, async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: BigInt(req.user!.sub) } });
+  if (!user) return fail(res, 'User not found', 404);
+
+  const target = user.recovery_email || user.email;
+  if (!target) return fail(res, 'Add a recovery email first to receive the code.', 400);
+
+  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  await prisma.emailOtp.create({
+    data: { email: target.toLowerCase(), otp, purpose: 'set_mobile', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
+  });
+  await sendMail(target, '4A Store mobile verification code', `Your 4A Store code is ${otp}. It expires in 10 minutes.`).catch(() => null);
+  return ok(res, { message: 'Code sent', devOtp: config.env !== 'production' ? otp : undefined });
+});
+
+const mobileVerifySchema = z.object({
+  mobile: z.string().regex(/^[6-9]\d{9}$/),
+  otp: z.string().trim().regex(/^\d{6}$/),
+});
+
+// POST /api/users/mobile/verify { mobile, otp } → verifies the code and saves the mobile
+router.post('/mobile/verify', requireAuth, async (req: Request, res: Response) => {
+  const parsed = mobileVerifySchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, 'Enter a valid 10-digit mobile and the 6-digit code.', 422);
+  const { mobile, otp } = parsed.data;
+  const id = BigInt(req.user!.sub);
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) return fail(res, 'User not found', 404);
+  const target = user.recovery_email || user.email;
+  if (!target) return fail(res, 'Add a recovery email first to receive the code.', 422);
+
+  const row = await prisma.emailOtp.findFirst({
+    where: { email: target.toLowerCase(), purpose: 'set_mobile', consumed: false, expires_at: { gt: new Date() } },
+    orderBy: { id: 'desc' },
+  });
+  if (!row || row.otp !== otp) return fail(res, 'Invalid or expired code.', 422);
+
+  try {
+    await prisma.user.update({ where: { id }, data: { mobile } });
+  } catch (err) {
+    if (err && typeof err === 'object' && (err as { code?: string }).code === 'P2002') {
+      return fail(res, 'This mobile number is already registered to another account.', 409);
+    }
+    throw err;
+  }
+  await prisma.emailOtp.update({ where: { id: row.id }, data: { consumed: true } });
+
+  const updatedUser = await prisma.user.findUnique({ where: { id } });
+  return ok(res, { user: updatedUser ? safeUser(updatedUser) : null });
 });
 
 export default router;

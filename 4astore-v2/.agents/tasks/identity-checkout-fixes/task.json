@@ -1,0 +1,7 @@
+{
+  "task_id": "task-identity-checkout-fixes",
+  "task_description": "Fix 4A Store v2 identity + checkout issues (audit Issues 1,2,3,6): login must accept email/recovery_email (server); Google users capture a real mobile verified by email OTP (server endpoints + mobile gate screen); saved address must persist on checkout proceed and reappear (mobile); minor checkout email already-known polish (mobile); bump versionCode to 25. Do NOT touch notification code or the notifee-rich-push worktree; ignore legacy 4AStoreApp and PHP.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}
