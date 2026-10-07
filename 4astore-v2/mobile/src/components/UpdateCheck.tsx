@@ -3,15 +3,8 @@ import { Linking, Modal, Text, View } from 'react-native';
 import { api } from '../api';
 import { appVersion } from '../native';
 import { colors } from '../theme';
+import { shouldShowUpdate, type VersionInfo } from '../updatePolicy';
 import { Button } from './ui';
-
-interface VersionInfo {
-  versionCode: number;
-  versionName: string;
-  url: string;
-  message: string;
-  forceUpdate: boolean;
-}
 
 const PLAY_URL = 'market://details?id=com.store4a.app';
 
@@ -24,7 +17,7 @@ export default function UpdateCheck() {
       try {
         const v = (await api.get('/version')) as VersionInfo;
         const current = appVersion().versionCode;
-        if (current && Number(v.versionCode) > current) setInfo(v);
+        if (shouldShowUpdate(v, current)) setInfo(v);
       } catch {
         /* ignore */
       }
