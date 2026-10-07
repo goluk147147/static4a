@@ -18,14 +18,18 @@ function absolutePublicUrl(src: string): string {
 /**
  * Colour 4A logo carried as a largeIcon hint on every push.
  *
- * Android limitation (honest note): FCM's server payload has no field for a REMOTE
- * large icon on OS-drawn (background) notifications — `AndroidNotification` only
- * exposes `icon` (the monochrome small/status-bar icon, always tinted — set in the
- * app's app.config.ts), `color`, and `imageUrl` (the big-picture banner). So the
- * colour logo is carried in the `data.largeIcon` payload for the mobile FOREGROUND
- * handler (and any future native extender) to render as the right-side large icon.
- * The big-picture `imageUrl` is used ONLY when the admin explicitly provides an image —
- * text-only broadcasts stay clean (title + body, no banner), like Flipkart.
+ * How the colour logo actually reaches the tray (Rapido/Zepto-style right-side large icon):
+ * we send DATA-ONLY FCM messages (no top-level `notification` block). A data-only message is
+ * delivered to expo-notifications' `onMessageReceived()` in foreground AND background/killed, so
+ * `ExpoNotificationBuilder.build()` always runs. When the remote message has no `notification`
+ * block, `RemoteNotificationContent.containsImage()` is false, so the builder falls through to
+ * `builder.setLargeIcon(largeIcon)`, decoding the manifest resource
+ * `expo.modules.notifications.large_notification_icon` (= @drawable/notification_large_icon,
+ * already in mobile/android/.../AndroidManifest.xml). That is the colour logo, with no extra
+ * native code. See notification-appearance-audit.md §5 and §7.2 Option 1.
+ *
+ * `data.largeIcon` is also kept in the JS-facing payload (the `body` JSON) so the foreground
+ * handler / any future custom builder can still reach the colour logo URL.
  * Served in production from web/public: https://4astore.com/notification-logo.png.
  * Override with NOTIFICATION_LOGO_URL.
  */
@@ -74,29 +78,92 @@ export interface PushMessage {
   channelId?: 'default' | 'orders';
   /** Optional big-picture image (relative path or absolute URL). Omitted keeps text-only payload byte-identical. */
   image?: string;
+  /**
+   * Force the OS-drawn `notification`-type FCM message instead of the data-only one.
+   *
+   * Trade-off (honest note): data-only messages are what let expo-notifications draw the colour
+   * logo as the right-side large icon in background (see dataOnlyPayload), BUT they can be delayed
+   * or dropped under Doze and are NOT delivered while the app is force-stopped on some OEMs.
+   * The loud staff "new order" alert is latency-sensitive and business-critical, so it opts into
+   * the OS/Firebase-drawn path (reliable wake-up, no colour large icon) via this flag. Customer /
+   * broadcast / rider pushes stay data-only for the Rapido/Zepto look. See audit §7.2 Option 1.
+   */
+  reliable?: boolean;
 }
 
 /**
- * Merge the colour-logo `largeIcon` hint into the data payload so the mobile foreground
- * handler can render the right-side app logo. The OS-drawn (background) tray icon stays
- * the monochrome small icon + tint from app.config.ts — Android gives no server lever for
- * a remote large icon, so this hint is the only cross-send way to surface the colour logo.
+ * Legacy OS-drawn `notification`-type payload (title/body + optional big-picture image + channel).
+ * Used only for latency-sensitive sends (`msg.reliable`) where guaranteed background wake-up beats
+ * the colour large icon. Android draws this directly when the app is backgrounded/killed, so
+ * expo-notifications' builder never runs and the manifest large icon is not applied here.
+ */
+function notificationTypeMessage(msg: PushMessage) {
+  return {
+    notification: {
+      title: msg.title,
+      body: msg.body,
+      // Big-picture image only when the admin supplied one — text-only pushes stay clean.
+      ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
+    },
+    // Carry the colour logo + JS data so tap routing (data.link) still works on this path.
+    data: withLargeIcon(msg.data),
+    android: {
+      priority: 'high' as const,
+      notification: {
+        channelId: msg.channelId || 'default',
+        sound: 'default',
+        defaultVibrateTimings: true,
+        ...(msg.image ? { imageUrl: absolutePublicUrl(msg.image) } : {}),
+      },
+    },
+  };
+}
+
+/**
+ * Merge the colour-logo `largeIcon` hint into the JS-facing data payload so the foreground
+ * handler / any future custom builder can reach the colour logo URL. The right-side large icon
+ * on the OS tray is produced by expo-notifications' own builder from the manifest large-icon
+ * resource (see NOTIFICATION_LOGO_URL doc) because we send data-only messages.
  */
 function withLargeIcon(data: Record<string, string> | undefined): Record<string, string> {
   return { largeIcon: NOTIFICATION_LOGO_URL, ...(data || {}) };
 }
 
-function androidConfig(msg: PushMessage) {
-  const notification: Record<string, unknown> = {
+/**
+ * Build the DATA-ONLY FCM payload expo-notifications parses on Android.
+ *
+ * expo-notifications reads a specific data shape (verified against the vendored Android source
+ * in mobile/node_modules/expo-notifications — NotificationData.kt, RemoteNotificationContent.kt,
+ * NotificationSerializer.java, FirebaseNotificationTrigger.kt):
+ *   - data.title    -> NotificationData.title    -> content title
+ *   - data.message  -> NotificationData.message  -> content body text
+ *   - data.channelId-> FirebaseNotificationTrigger.getNotificationChannel() -> Android channel
+ *   - data.sound    -> NotificationData.sound    -> 'default' plays the default sound
+ *   - data.body     -> a JSON *string*; NotificationSerializer detects valid JSON here and exposes
+ *                      it to JS as `request.content.data` (so `data.link`, `type`, `orderId`,
+ *                      `largeIcon` must live INSIDE this JSON, matching mobile/src/push.ts which
+ *                      reads resp.notification.request.content.data for tap routing).
+ * All values must be strings (FCM data maps are string->string).
+ *
+ * IMPORTANT (image trade-off): a data-only message has no `remoteMessage.notification`, and
+ * expo-notifications only reads an image from `notification.imageUrl` (RemoteNotificationContent
+ * .getImage/containsImage). So an admin-supplied image is NOT rendered as a big-picture banner by
+ * this path. We still pass the resolved image URL inside the body JSON (`data.image`) so a future
+ * custom/Notifee builder can render it; today it simply doesn't draw a banner. See audit §7.2.
+ */
+function dataOnlyPayload(msg: PushMessage): Record<string, string> {
+  // Everything the JS layer consumes (tap routing reads data.link) goes into the body JSON,
+  // plus the colour-logo URL and the resolved admin image (if any).
+  const jsData = withLargeIcon({
+    ...(msg.data || {}),
+    ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
+  });
+  return {
+    title: msg.title,
+    message: msg.body,
     channelId: msg.channelId || 'default',
     sound: 'default',
-    defaultVibrateTimings: true,
-  };
-  // Big-picture image only when provided — text-only pushes stay byte-identical.
-  if (msg.image) notification.imageUrl = absolutePublicUrl(msg.image);
-  return {
-    priority: 'high',
-    notification,
+    body: JSON.stringify(jsData),
   };
 }
 
@@ -108,18 +175,14 @@ export async function sendToTopic(topic: string, msg: PushMessage): Promise<bool
     console.log(`[push:dev] topic=${topic} title="${msg.title}" body="${msg.body}"`);
     return false;
   }
-  await admin.messaging().send({
-    topic,
-    notification: {
-      title: msg.title,
-      body: msg.body,
-      // Big-picture image only when provided — text-only payload stays byte-identical.
-      ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
-    },
-    // Carry the colour logo as a largeIcon hint for the foreground handler.
-    data: withLargeIcon(msg.data),
-    android: androidConfig(msg),
-  });
+  // Default: DATA-ONLY message (no `notification` block) so expo-notifications' builder runs in
+  // background/killed too and applies the manifest large-icon (colour logo). See dataOnlyPayload.
+  // `msg.reliable` opts into the OS-drawn path for latency-sensitive alerts.
+  await admin.messaging().send(
+    msg.reliable
+      ? { topic, ...notificationTypeMessage(msg) }
+      : { topic, data: dataOnlyPayload(msg), android: { priority: 'high' } }
+  );
   return true;
 }
 
@@ -173,18 +236,14 @@ export async function sendToTokens(tokens: string[], msg: PushMessage): Promise<
   let sent = 0;
   for (let i = 0; i < unique.length; i += 500) {
     const batch = unique.slice(i, i + 500);
-    const resp = await admin.messaging().sendEachForMulticast({
-      tokens: batch,
-      notification: {
-        title: msg.title,
-        body: msg.body,
-        // Big-picture image only when provided — text-only payload stays byte-identical.
-        ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
-      },
-      // Carry the colour logo as a largeIcon hint for the foreground handler.
-      data: withLargeIcon(msg.data),
-      android: androidConfig(msg),
-    });
+    // Default: DATA-ONLY message (no `notification` block) so expo-notifications' builder runs in
+    // background/killed too and applies the manifest large-icon (colour logo). See dataOnlyPayload.
+    // `msg.reliable` opts into the OS-drawn path for latency-sensitive alerts.
+    const resp = await admin.messaging().sendEachForMulticast(
+      msg.reliable
+        ? { tokens: batch, ...notificationTypeMessage(msg) }
+        : { tokens: batch, data: dataOnlyPayload(msg), android: { priority: 'high' } }
+    );
     sent += resp.successCount;
     // Drop tokens FCM says are gone (app uninstalled / token rotated).
     const dead: string[] = [];
@@ -353,6 +412,10 @@ export async function notifyStaffNewOrder(order: {
       link: staffOrderLink(order.order_id),
     },
     channelId: loud ? 'orders' : 'default',
+    // Business-critical, latency-sensitive: use the OS-drawn (notification-type) message so it
+    // reliably wakes the device in background/killed/Doze. Trade-off: no colour large icon on this
+    // one alert. Customer/broadcast/rider pushes stay data-only for the Rapido/Zepto look.
+    reliable: true,
   };
   const tokens = await tokensForStaff('orders').catch(() => [] as string[]);
   let staffSent = 0;
