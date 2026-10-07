@@ -10,6 +10,7 @@ import { useCart } from '../src/store/cart';
 import { useProducts, useCategories, useSettings } from '../src/queries';
 import { api, apiError, ApiError } from '../src/api';
 import { loadLocal, saveLocal, upsertLocal, syncFromServer, queuePending, flushPending } from '../src/store/addresses';
+import { buildAddressPayload } from '../src/addressPayload';
 import { showToast, showConfirm } from '../src/store/ui';
 import { cartTotals, cartHasAgeRestricted, getServiceableVillages, verifyVillage, resolveDeliveryCoordinates } from '../src/checkout';
 import { DEFAULT_UPI_ID } from '../src/config';
@@ -38,6 +39,11 @@ export default function Checkout() {
   const [pincode, setPincode] = useState('824301');
   const [label, setLabel] = useState<Label>('Other');
   const [errors, setErrors] = useState<Set<string>>(new Set());
+  // Issue 2: when the account already has a known email, show it as confirmed/read-only
+  // with a small "change" affordance that flips to the editable Field. Email stays
+  // OPTIONAL and never blocks proceed().
+  const [emailEditing, setEmailEditing] = useState(false);
+  const knownEmail = (user?.recovery_email || user?.email || '').trim();
 
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -162,13 +168,7 @@ export default function Checkout() {
     // Fire the server write in the background — never block the Save button on it.
     // A NEGATIVE id is an optimistic temp row the server has never seen, so it must go
     // up as a CREATE with id:undefined — never send a temp id to the server.
-    const serverId = selectedId != null && selectedId > 0 ? selectedId : undefined;
-    const payload = {
-      action: serverId ? 'update' : 'create', id: serverId, label,
-      receiver_name: c.name, phone: c.mobile, house_no: c.address, landmark: c.landmark, city: c.city,
-      district: 'Aurangabad', state: 'Bihar', pincode: c.pincode, latitude: c.deliveryLat, longitude: c.deliveryLng,
-      full_address: [c.address, c.city, c.pincode].filter(Boolean).join(', '),
-    } as const;
+    const payload = buildAddressPayload(c, label, selectedId);
     api.post('/addresses', payload)
       .then(async (res) => {
         const serverAddr = res.address as SavedAddress;
@@ -205,8 +205,47 @@ export default function Checkout() {
     }
 
     const c = buildCustomer(vr.match);
-    // No save round-trip here — the address is already saved locally (and synced
-    // in the background). Proceed must open payment instantly, never network-block.
+
+    // Persist an inline-entered address that was never explicitly "Save Address"-ed:
+    // when no POSITIVE selectedId exists (null or a negative temp), save it exactly
+    // like saveFromEditor so the saved list is not empty on the next visit. When an
+    // existing saved address (selectedId > 0) was chosen, nothing is re-saved.
+    // The network write is NOT awaited — payment still opens instantly.
+    if (user && !(selectedId != null && selectedId > 0)) {
+      const userId = user.id;
+      const addr: SavedAddress = {
+        id: selectedId ?? -Date.now(),
+        label,
+        receiver_name: c.name,
+        phone: c.mobile,
+        house_no: c.address,
+        landmark: c.landmark,
+        city: c.city,
+        pincode: c.pincode,
+        latitude: c.deliveryLat,
+        longitude: c.deliveryLng,
+        full_address: [c.address, c.city, c.pincode].filter(Boolean).join(', '),
+      };
+      const list = await upsertLocal(userId, addr);
+      setSaved(list);
+      setSelectedId(addr.id);
+
+      const payload = buildAddressPayload(c, label, selectedId);
+      api.post('/addresses', payload)
+        .then(async (res) => {
+          const serverAddr = res.address as SavedAddress;
+          if (!serverAddr) return;
+          // Reconcile: drop the optimistic temp row, keep the server's real one.
+          const current = await loadLocal(userId);
+          const next = [serverAddr, ...current.filter((a) => a.id !== addr.id && a.id !== serverAddr.id)];
+          await saveLocal(userId, next);
+          setSaved(next);
+          setSelectedId((prev) => (prev === addr.id ? serverAddr.id : prev));
+        })
+        .catch(() => queuePending(userId, payload));
+    }
+
+    // Proceed must open payment instantly, never network-block.
     setCustomer(c);
     setPayOpen(true);
   }
@@ -335,7 +374,17 @@ export default function Checkout() {
               <Card>
                 <Field label="Full Name (पूरा नाम) *" value={name} onChangeText={setName} error={fg('name')} errorText="कृपया अपना नाम लिखें" />
                 <Field label="Mobile Number (मोबाइल) *" value={mobile} onChangeText={(t) => setMobile(t.replace(/\D/g, ''))} keyboardType="phone-pad" maxLength={10} error={fg('mobile')} errorText="सही 10 अंकों का मोबाइल नंबर" />
-                <Field label="Email (ईमेल)" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+                {knownEmail && !emailEditing ? (
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={[ui.muted, { marginBottom: 6 }]}>Email (ईमेल)</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <Text style={{ flex: 1, color: colors.dark }}>✅ {email || knownEmail}</Text>
+                      <Button small outline title="बदलें / change" onPress={() => setEmailEditing(true)} />
+                    </View>
+                  </View>
+                ) : (
+                  <Field label="Email (ईमेल)" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+                )}
                 <Field label="Complete Address (पूरा पता) *" value={address} onChangeText={setAddress} multiline error={fg('address')} errorText="कृपया अपना पूरा पता लिखें" placeholder="घर नंबर, टोला/मोहल्ला, गाँव और सड़क" />
                 <Field label="Landmark (पास की जगह)" value={landmark} onChangeText={setLandmark} placeholder="जैसे — स्कूल के पास" />
                 <View
