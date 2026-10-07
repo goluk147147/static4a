@@ -10,7 +10,7 @@ import type { ExpoConfig } from 'expo/config';
  */
 const SITE_HOST = process.env.STORE4A_SITE_HOST || '4astore.com';
 const API_BASE = process.env.STORE4A_API_BASE || `https://${SITE_HOST}/api`;
-const VERSION_CODE = Number(process.env.STORE4A_VERSION_CODE || 23);
+const VERSION_CODE = Number(process.env.STORE4A_VERSION_CODE || 24);
 const VERSION_NAME = process.env.STORE4A_VERSION_NAME || '2.0.0';
 
 // FCM needs google-services.json (Firebase console → Project settings → Android app com.store4a.app).
@@ -78,6 +78,12 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-secure-store',
     'expo-web-browser',
+    // Rich/native notifications (Rapido-style tray) via @notifee/react-native + FCM.
+    // Notifee has NO Expo config plugin for v9.1.8 (no app.plugin.js); it works purely through
+    // React Native autolinking, so it is NOT listed here — only installed as a dependency.
+    // @react-native-firebase/app provides the google-services config plugin that
+    // @react-native-firebase/messaging builds on, so it must be registered.
+    '@react-native-firebase/app',
     // Native Google Sign-In. Firebase config-plugin variant (google-services.json is already
     // wired via googleServicesFile above) — no iosUrlScheme (Android-only Play target).
     '@react-native-google-signin/google-signin',

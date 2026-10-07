@@ -1,7 +1,7 @@
 {
   "name": "4astore-mobile",
   "version": "2.0.0",
-  "main": "expo-router/entry",
+  "main": "./index.js",
   "private": true,
   "scripts": {
     "start": "expo start",
@@ -15,7 +15,10 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
+    "@notifee/react-native": "9.1.8",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-firebase/app": "22.4.0",
+    "@react-native-firebase/messaging": "22.4.0",
     "@react-native-community/netinfo": "11.4.1",
     "@react-native-google-signin/google-signin": "16.1.5",
     "@react-native-ml-kit/text-recognition": "2.0.0",
