@@ -136,6 +136,11 @@ const config: ExpoConfig = {
     // register it as the default notification large icon via AndroidManifest metadata. This is
     // the rounded colour icon shown on the right side of notifications (like Flipkart's yellow "f").
     './plugins/withNotificationLargeIcon',
+    // Resolve the manifest-merger conflict between expo-notifications and
+    // @react-native-firebase/messaging on the com.google.firebase.messaging
+    // default_notification_* meta-data (adds tools:replace so our values win).
+    // Must run after expo-notifications (which seeds those entries).
+    './plugins/withFirebaseNotificationMetaFix',
   ],
   experiments: { typedRoutes: false },
   extra: {
