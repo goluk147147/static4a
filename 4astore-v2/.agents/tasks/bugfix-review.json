@@ -1,0 +1,11 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "info",
+      "label": "UTR 409 precedes idempotent upsert",
+      "detail": "On the order-create path the payment_reference uniqueness check returns 409 before the order_id upsert runs, so idempotency on a manual retry depends on the client's timeout-recovery GET catching the already-created order first. The recovery path is correct and covers this; non-blocking. Preserve the GET-before-retry ordering if the recovery logic is revisited."
+    }
+  ],
+  "reviewDoc": "c:\\xampp\\htdocs\\static4a\\4astore-v2/.agents/tasks/bugfix-review.md"
+}
