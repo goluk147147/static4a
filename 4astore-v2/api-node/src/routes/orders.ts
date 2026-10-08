@@ -64,7 +64,10 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   // set, ordering (id desc) and JSON shape are unchanged.
   // Prisma JSON-path filter (not raw SQL): raw queries return JSON columns as
   // strings, which broke `items.map` on the client.
-  const canUseOwnerId = !mobile && viewer.sub && target === viewer.mobile;
+  // The app always sends ?mobile=<own mobile>, so also use the owner id when the
+  // requested mobile IS the viewer's own — otherwise orders placed with a different
+  // delivery phone would never appear in My Orders.
+  const canUseOwnerId = !!viewer.sub && target === viewer.mobile;
   const where = canUseOwnerId
     ? {
         OR: [
@@ -132,9 +135,17 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   const dup = await prisma.order.findUnique({ where: { payment_reference: utr } }).catch(() => null);
   if (dup) return fail(res, 'This payment reference has already been used', 409);
 
-  // Order owner must match the logged-in customer (unless superadmin).
-  if (req.user!.role !== 'superadmin' && req.user!.mobile && c.mobile !== req.user!.mobile) {
-    return fail(res, 'Order owner mismatch', 403);
+  // Ownership is the logged-in account (user_id = JWT sub), NOT the delivery phone.
+  // customer.mobile is the receiver's phone from the address form and may legitimately
+  // differ from the account mobile (saved address for family, Google users whose account
+  // mobile is a `g<digits>` placeholder, a JWT minted before /users/mobile/verify).
+  // Comparing them blocked valid orders with "Order owner mismatch".
+  // Guard instead against re-saving (upserting) an orderId that belongs to someone else.
+  if (o.orderId) {
+    const existing = await prisma.order.findUnique({ where: { order_id: o.orderId } }).catch(() => null);
+    if (existing && req.user!.role !== 'superadmin' && existing.user_id != null && existing.user_id !== BigInt(req.user!.sub)) {
+      return fail(res, 'Order owner mismatch', 403);
+    }
   }
 
   // Serviceability: PIN 824301 OR serviceable village OR current GPS within 100km.
@@ -238,7 +249,8 @@ async function canAccessOrder(req: Request, orderId: string) {
   if (!order) return { order: null, allowed: false };
   const viewer = req.user!;
   const cust = (order.customer || {}) as { mobile?: string };
-  const allowed = isStaff(viewer.role, viewer.permissions) || cust.mobile === viewer.mobile;
+  const isOwnerById = order.user_id != null && viewer.sub != null && order.user_id === BigInt(viewer.sub);
+  const allowed = isStaff(viewer.role, viewer.permissions) || isOwnerById || (!!viewer.mobile && cust.mobile === viewer.mobile);
   return { order, allowed };
 }
 

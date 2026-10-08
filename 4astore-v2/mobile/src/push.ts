@@ -81,11 +81,62 @@ export type PushData = {
 };
 
 /**
+ * Normalise every FCM payload shape we can receive into the flat Notifee contract:
+ *  - NEW server (flat):   { title, body, channelId, link, ... }
+ *  - OLD server (expo):   { title, message, channelId, body: '<JSON string with link/type/...>' }
+ *  - notification-type:   remoteMessage.notification { title, body } + data { link, ... }
+ * Without this, an older API build shows a raw-JSON body or an empty title/body.
+ */
+export function normalizePush(
+  raw: Record<string, unknown> | undefined,
+  notification?: { title?: string; body?: string; android?: { channelId?: string; imageUrl?: string } } | null,
+): PushData {
+  const src: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw || {})) if (v != null) src[k] = String(v);
+  let extra: Record<string, string> = {};
+  const b = src.body;
+  if (b && b.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(b) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(parsed)) if (v != null) extra[k] = String(v);
+      delete src.body; // JSON blob is data, not display text
+    } catch {
+      extra = {};
+    }
+  }
+  const out: PushData = { ...extra, ...src };
+  out.title = src.title || notification?.title || extra.title || '';
+  out.body = src.body || src.message || notification?.body || extra.body || extra.message || '';
+  out.channelId = src.channelId || notification?.android?.channelId || extra.channelId || 'default';
+  if (!out.image && notification?.android?.imageUrl) out.image = notification.android.imageUrl;
+  return out;
+}
+
+/**
  * The single Notifee presenter. Draws one rich notification: colour large icon on the right
  * (always), monochrome small icon tinted brand orange, and a BIGPICTURE banner only when the
  * server supplied an `image`. Used by foreground, background/killed, and local-order paths.
  */
-export async function displayPush(data: PushData) {
+export async function displayPush(input: PushData) {
+  const data = normalizePush(input as Record<string, unknown>);
+  if (!data.title && !data.body) return;
+  try {
+    await drawRich(data);
+  } catch (e) {
+    // A bad largeIcon/image URL or a missing resource must never swallow the push:
+    // fall back to a plain notification with only the bundled small icon.
+    console.warn('[push] rich display failed, falling back to plain', e);
+    await notifee.displayNotification({
+      id: data.orderId || undefined,
+      title: data.title || '4A Store',
+      body: data.body || '',
+      data: data as Record<string, string>,
+      android: { channelId: data.channelId || 'default', smallIcon: SMALL_ICON, color: BRAND_COLOR, pressAction: { id: 'default' } },
+    });
+  }
+}
+
+async function drawRich(data: PushData) {
   await notifee.displayNotification({
     id: data.orderId || undefined,
     title: data.title || '',
@@ -145,7 +196,8 @@ export function listenTokenRotation() {
 /** Notification received while the app is in the foreground → draw it once via Notifee. */
 export function listenForeground(onData: (data: PushData, title: string, body: string) => void) {
   return messaging().onMessage(async (remoteMessage) => {
-    const data = (remoteMessage.data || {}) as PushData;
+    const data = normalizePush(remoteMessage.data, remoteMessage.notification);
+    if (!data.title && !data.body) return; // nothing displayable
     await ensureChannels();
     await displayPush(data);
     if (data.type === 'new_order' || data.type === 'order_reminder') Vibration.vibrate([0, 400, 200, 400]);

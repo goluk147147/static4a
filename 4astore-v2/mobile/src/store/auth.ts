@@ -1,7 +1,27 @@
 import { create } from 'zustand';
 import { api, setAccessToken, saveRefreshToken, clearRefreshToken, refreshSession, getRefreshToken } from '../api';
 import { unregisterPush } from '../push';
+import { queryClient } from '../queries';
+import { useCart } from './cart';
 import type { User } from '../types';
+
+// Per-user React Query data. Storefront data (products/categories/config/settings/pages) is shared.
+const USER_SCOPED_KEYS = ['orders', 'order', 'all-orders', 'track', 'screenshot'];
+
+/** Drop everything that belongs to the previous account so a new login never sees old data. */
+function clearUserScopedData() {
+  for (const k of USER_SCOPED_KEYS) queryClient.removeQueries({ queryKey: [k] });
+  useCart.getState().clear();
+}
+
+let lastUserId: number | null = null;
+/** Clear per-user data whenever the signed-in account changes (logout, or login as someone else). */
+function trackIdentity(next: User | null) {
+  const nextId = next?.id ?? null;
+  if (lastUserId != null && nextId !== lastUserId) clearUserScopedData();
+  if (nextId != null) lastUserId = nextId;
+  else if (lastUserId != null) lastUserId = null;
+}
 
 interface RegisterPayload {
   name: string;
@@ -103,6 +123,12 @@ export const useAuth = create<AuthState>((set) => ({
     if (session) set({ user: normalizeUser(session.user) });
   },
 }));
+
+// Every path that changes `user` (login, social, register, logout, bootstrap, session-expired
+// setUser(null), reloadSession) goes through set(), so one subscription covers them all.
+useAuth.subscribe((s, prev) => {
+  if (s.user?.id !== prev.user?.id) trackIdentity(s.user);
+});
 
 export const STAFF_ROLES = ['owner', 'superadmin', 'admin'];
 

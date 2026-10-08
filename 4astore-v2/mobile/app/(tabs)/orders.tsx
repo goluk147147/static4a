@@ -25,6 +25,8 @@ export default function Orders() {
 
   // Hydrate the last-cached order list so a warm start shows orders instantly.
   useEffect(() => {
+    // Drop the previous account's cached list first — otherwise it stays on screen for a new login.
+    setCached(null);
     if (!user?.mobile) return;
     let active = true;
     loadOrdersCache(user.mobile).then((o) => {

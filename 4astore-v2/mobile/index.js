@@ -11,7 +11,12 @@ import notifee, { EventType } from '@notifee/react-native';
 import { ensureChannels, displayPush } from './src/push';
 
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+  // A notification-type message (older API builds / `reliable` alerts) is already drawn by
+  // Android itself in background — drawing again here would show it twice.
+  if (remoteMessage.notification) return;
   await ensureChannels();
+  // displayPush normalises both the new flat payload and the older expo-style payload
+  // ({ title, message, body: '<json>' }) so pushes from any deployed API version show up.
   await displayPush(remoteMessage.data || {});
 });
 

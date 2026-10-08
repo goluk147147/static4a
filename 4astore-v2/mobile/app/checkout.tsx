@@ -66,10 +66,25 @@ export default function Checkout() {
     if (ready && !user) router.replace({ pathname: '/login', params: { next: '/checkout' } } as never);
   }, [ready, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Account switched (logout → login as someone else while this screen stayed mounted):
+  // wipe the previous account's form + address state so it is never shown or submitted.
+  const formOwner = useRef<number | null>(null);
+  useEffect(() => {
+    const id = user?.id ?? null;
+    if (formOwner.current !== null && formOwner.current !== id) {
+      setName(''); setMobile(''); setEmail(''); setAddress(''); setLandmark(''); setCity('');
+      setPincode('824301'); setLabel('Other'); setSaved([]); setSelectedId(null);
+      setCustomer(null); setPayOpen(false); setEmailEditing(false); setLoadingAddr(true);
+    }
+    formOwner.current = id;
+  }, [user?.id]);
+
   useEffect(() => {
     if (!user) return;
+    // Only a real 10-digit mobile is a usable default (Google accounts start with a `g<digits>` placeholder).
+    const ownMobile = /^[6-9]\d{9}$/.test(user.mobile || '') ? user.mobile : '';
     setName((v) => v || user.name || '');
-    setMobile((v) => v || user.mobile || '');
+    setMobile((v) => v || ownMobile || '');
     setEmail((v) => v || user.recovery_email || user.email || '');
   }, [user]);
 
