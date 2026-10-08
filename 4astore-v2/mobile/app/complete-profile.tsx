@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import StoreHeader from '../src/components/StoreHeader';
 import { Button, Card, Field, GradientButton, Screen, styles as ui } from '../src/components/ui';
@@ -53,8 +53,9 @@ export default function CompleteProfile() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Screen header={<StoreHeader back hideSearch />}>
+    // `Screen` already has its own KeyboardAvoidingView — a second one here fought it on Android and
+    // pushed the focused field out of view. Use Screen's single KAV only (see login.tsx).
+    <Screen header={<StoreHeader back hideSearch />}>
         <Card style={styles.card}>
           <Text style={styles.title}>Complete your profile</Text>
           <Text style={[ui.muted, { marginBottom: space.md }]}>
@@ -104,8 +105,7 @@ export default function CompleteProfile() {
             </>
           )}
         </Card>
-      </Screen>
-    </KeyboardAvoidingView>
+    </Screen>
   );
 }
 

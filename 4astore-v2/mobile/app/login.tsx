@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { GoogleSignin, isSuccessResponse, statusCodes } from '@react-native-google-signin/google-signin';
 import StoreHeader from '../src/components/StoreHeader';
@@ -164,9 +164,12 @@ export default function Login() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Screen header={<StoreHeader back hideSearch />}>
-        {/* Branded gradient hero — same warm gradient family as buttons/header. */}
+    // NOTE: `Screen` already provides its own KeyboardAvoidingView + ScrollView. Wrapping it in a
+    // SECOND KeyboardAvoidingView here made the two fight on Android (one lifts the layout, the
+    // other adds offset on top), so a focused field jumped out of view the moment the keyboard
+    // opened. One KAV (inside Screen) + app.config `softwareKeyboardLayoutMode: 'resize'` is enough.
+    <Screen header={<StoreHeader back hideSearch />}>
+      {/* Branded gradient hero — same warm gradient family as buttons/header. */}
         <AnimatedGradient style={styles.hero}>
           <View style={styles.heroInner}>
             <Image source={require('../assets/images/icon.png')} style={styles.heroLogo} resizeMode="contain" accessibilityLabel="4A Store" />
@@ -262,8 +265,7 @@ export default function Login() {
             </>
           )}
         </Card>
-      </Screen>
-    </KeyboardAvoidingView>
+    </Screen>
   );
 }
 

@@ -68,11 +68,15 @@ export default function RootLayout() {
     }
   }, [ready, user, router]);
 
-  // (Re)register the device token whenever the user or role changes → correct topics
-  // (admins / riders / customers) so role changes made by the owner take effect.
+  // (Re)register the device token on every launch once the session is ready, and whenever the
+  // user or role changes. Depending on `ready` (not just userId) is the fix for "no push after an
+  // app update": a lifelong-logged-in user keeps the SAME userId across an update, so a
+  // userId-only effect never re-ran and the NEW build's fresh FCM token was never sent to the
+  // server — the device kept getting pushes aimed at a stale token (or none). registerForPush is
+  // idempotent, so re-running it is safe.
   useEffect(() => {
-    if (userId) void registerForPush();
-  }, [userId, role]);
+    if (ready && userId) void registerForPush();
+  }, [ready, userId, role]);
 
   useEffect(() => listenTokenRotation(), []);
 
@@ -81,6 +85,9 @@ export default function RootLayout() {
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active' && useAuth.getState().user) {
         void reloadSession();
+        // Re-assert the FCM token on resume too — covers a token rotated/invalidated while the app
+        // was backgrounded (common cause of pushes silently stopping after a while).
+        void registerForPush();
         void queryClient.invalidateQueries({ queryKey: ['all-orders'] });
       }
     });

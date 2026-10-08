@@ -129,13 +129,27 @@ export function Screen({
   return (
     <View style={{ flex: 1, backgroundColor: colors.lightGray }}>
       {header}
-      {/* Keyboard avoidance added once at the source so every Screen-based form (profile, roles,
-          track, admin orders) lifts low fields above the keyboard. checkout.tsx (own Modal + KAV)
-          and login.tsx (own KAV) handle it locally and are unaffected. */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Keyboard handling (single source for every Screen-based form):
+          - Android: the activity is `adjustResize` (AndroidManifest) + app.config
+            `softwareKeyboardLayoutMode: 'resize'`, so the window shrinks when the keyboard opens.
+            A KeyboardAvoidingView on top of that double-adjusts and actually BLOCKS the ScrollView
+            from scrolling the focused field into view (the reported "password field cut off, no
+            auto/manual scroll"). So on Android KAV is disabled — the ScrollView handles it via
+            `automaticallyAdjustKeyboardInsets`, which adds a bottom inset equal to the keyboard and
+            scrolls the focused input above it.
+          - iOS: no window resize, so KeyboardAvoidingView stays enabled with `padding`.
+          Big bottom padding guarantees the last field can always scroll clear of the keyboard. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
+      >
         <ScrollView
-          contentContainerStyle={[{ padding: 14, paddingBottom: 32 }, contentStyle]}
+          contentContainerStyle={[{ padding: 14, paddingBottom: 120 }, contentStyle]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets
+          showsVerticalScrollIndicator={false}
           refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} colors={[colors.primary]} /> : undefined}
         >
           {children}

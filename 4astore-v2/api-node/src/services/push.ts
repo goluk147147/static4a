@@ -129,36 +129,6 @@ function withLargeIcon(data: Record<string, string> | undefined): Record<string,
   return { largeIcon: NOTIFICATION_LOGO_URL, ...(data || {}) };
 }
 
-/**
- * Build the DATA-ONLY FCM payload the mobile Notifee presenter parses on Android.
- *
- * This is the SERVER half of the shared Notifee data-key contract (plan.md D4). FCM data maps are
- * string->string, so every value here is a plain top-level string key — NO nested JSON `body`
- * string and NO legacy expo `message` key. The mobile presenter (FEAT-003) reads these exact flat
- * keys to build the Notifee notification and route taps (`link`):
- *   - title      -> notification title (always)
- *   - body       -> notification body text (always)
- *   - channelId  -> Android channel ('orders'|'default', defaults to 'default')
- *   - sound      -> 'default' plays the default sound (always)
- *   - largeIcon  -> colour 4A logo URL for the right-side large icon (always)
- *   - image      -> absolute big-picture URL, ONLY when the admin supplied msg.image
- *   - ...msg.data-> every caller data key spread as top-level strings (link, type, orderId,
- *                   customerName, city, total, ...), so tap routing reads data.link directly.
- */
-function dataOnlyPayload(msg: PushMessage): Record<string, string> {
-  return {
-    title: msg.title,
-    body: msg.body,
-    channelId: msg.channelId || 'default',
-    sound: 'default',
-    largeIcon: NOTIFICATION_LOGO_URL,
-    // Big-picture image only when the admin supplied one — text-only pushes stay clean.
-    ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
-    // Spread caller data (link, type, orderId, customerName, city, total, ...) as top-level strings.
-    ...(msg.data || {}),
-  };
-}
-
 /** Send to an FCM topic (e.g. 'admins', 'customers', 'riders', 'order_4A...'). */
 export async function sendToTopic(topic: string, msg: PushMessage): Promise<boolean> {
   initFirebase();
@@ -170,11 +140,11 @@ export async function sendToTopic(topic: string, msg: PushMessage): Promise<bool
   // Default: DATA-ONLY message (no `notification` block) so expo-notifications' builder runs in
   // background/killed too and applies the manifest large-icon (colour logo). See dataOnlyPayload.
   // `msg.reliable` opts into the OS-drawn path for latency-sensitive alerts.
-  await admin.messaging().send(
-    msg.reliable
-      ? { topic, ...notificationTypeMessage(msg) }
-      : { topic, data: dataOnlyPayload(msg), android: { priority: 'high' } }
-  );
+  // Always use the notification-type message: it carries a `notification` block so Android/FCM
+  // reliably wakes the device and draws the push in background/killed/Doze (data-only messages are
+  // dropped there by OEM battery managers — the root cause of "push only when app is open"). The
+  // mobile app skips its own draw when `remoteMessage.notification` is present, so no double show.
+  await admin.messaging().send({ topic, ...notificationTypeMessage(msg) });
   return true;
 }
 
@@ -231,11 +201,9 @@ export async function sendToTokens(tokens: string[], msg: PushMessage): Promise<
     // Default: DATA-ONLY message (no `notification` block) so expo-notifications' builder runs in
     // background/killed too and applies the manifest large-icon (colour logo). See dataOnlyPayload.
     // `msg.reliable` opts into the OS-drawn path for latency-sensitive alerts.
-    const resp = await admin.messaging().sendEachForMulticast(
-      msg.reliable
-        ? { tokens: batch, ...notificationTypeMessage(msg) }
-        : { tokens: batch, data: dataOnlyPayload(msg), android: { priority: 'high' } }
-    );
+    // Notification-type for reliable background/killed delivery (see sendToTopic). The app
+    // suppresses its own draw when remoteMessage.notification is set, so there is no double show.
+    const resp = await admin.messaging().sendEachForMulticast({ tokens: batch, ...notificationTypeMessage(msg) });
     sent += resp.successCount;
     // Drop tokens FCM says are gone (app uninstalled / token rotated).
     const dead: string[] = [];

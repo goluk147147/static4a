@@ -23,6 +23,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Vibration } from 'react-native';
 import { api, getAccessToken } from './api';
 import { HAS_PUSH } from './config';
+import { normalizePush } from './pushPayload';
+import type { PushData } from './pushPayload';
 
 const TOKEN_KEY = '4astore_push_token';
 
@@ -40,13 +42,18 @@ const BRAND_COLOR = '#FF7A00';
  *  expo-notifications importance / vibration / light config, now created via Notifee. */
 export async function ensureChannels() {
   if (Platform.OS !== 'android') return;
+  try {
   await notifee.createChannel({
     id: 'default',
     name: 'Order updates & offers',
     importance: AndroidImportance.HIGH,
     sound: 'default',
     vibration: true,
-    vibrationPattern: [0, 250, 150, 250],
+    // Notifee requires an EVEN count of strictly POSITIVE ms values (unlike expo-notifications,
+    // which tolerated a leading 0). A leading 0 here threw "expected an array containing an even
+    // number of positive values", which crashed ensureChannels() and silently aborted BOTH token
+    // registration and every displayPush — the real reason pushes stopped after the Notifee switch.
+    vibrationPattern: [250, 150, 250, 150],
     lights: true,
     lightColor: BRAND_COLOR,
   });
@@ -57,60 +64,19 @@ export async function ensureChannels() {
     importance: AndroidImportance.HIGH,
     sound: 'default',
     vibration: true,
-    vibrationPattern: [0, 500, 250, 500, 250, 500],
+    vibrationPattern: [500, 250, 500, 250, 500, 250],
     lights: true,
     lightColor: BRAND_COLOR,
     visibility: AndroidVisibility.PUBLIC,
   });
-}
-
-export type PushData = {
-  type?: string;
-  orderId?: string;
-  link?: string;
-  customerName?: string;
-  total?: string;
-  city?: string;
-  largeIcon?: string;
-  // Flat keys emitted by the server (FEAT-002 dataOnlyPayload).
-  title?: string;
-  body?: string;
-  channelId?: string;
-  image?: string;
-  sound?: string;
-};
-
-/**
- * Normalise every FCM payload shape we can receive into the flat Notifee contract:
- *  - NEW server (flat):   { title, body, channelId, link, ... }
- *  - OLD server (expo):   { title, message, channelId, body: '<JSON string with link/type/...>' }
- *  - notification-type:   remoteMessage.notification { title, body } + data { link, ... }
- * Without this, an older API build shows a raw-JSON body or an empty title/body.
- */
-export function normalizePush(
-  raw: Record<string, unknown> | undefined,
-  notification?: { title?: string; body?: string; android?: { channelId?: string; imageUrl?: string } } | null,
-): PushData {
-  const src: Record<string, string> = {};
-  for (const [k, v] of Object.entries(raw || {})) if (v != null) src[k] = String(v);
-  let extra: Record<string, string> = {};
-  const b = src.body;
-  if (b && b.trim().startsWith('{')) {
-    try {
-      const parsed = JSON.parse(b) as Record<string, unknown>;
-      for (const [k, v] of Object.entries(parsed)) if (v != null) extra[k] = String(v);
-      delete src.body; // JSON blob is data, not display text
-    } catch {
-      extra = {};
-    }
+  } catch (e) {
+    // Channel creation must NEVER abort token registration or a notification draw. If a channel
+    // config is ever rejected, log and continue — Android falls back to a default channel.
+    console.warn('[push] ensureChannels failed (non-fatal)', e);
   }
-  const out: PushData = { ...extra, ...src };
-  out.title = src.title || notification?.title || extra.title || '';
-  out.body = src.body || src.message || notification?.body || extra.body || extra.message || '';
-  out.channelId = src.channelId || notification?.android?.channelId || extra.channelId || 'default';
-  if (!out.image && notification?.android?.imageUrl) out.image = notification.android.imageUrl;
-  return out;
 }
+
+export type { PushData };
 
 /**
  * The single Notifee presenter. Draws one rich notification: colour large icon on the right
@@ -127,7 +93,7 @@ export async function displayPush(input: PushData) {
     // fall back to a plain notification with only the bundled small icon.
     console.warn('[push] rich display failed, falling back to plain', e);
     await notifee.displayNotification({
-      id: data.orderId || undefined,
+      id: notifId(data),
       title: data.title || '4A Store',
       body: data.body || '',
       data: data as Record<string, string>,
@@ -136,9 +102,18 @@ export async function displayPush(input: PushData) {
   }
 }
 
+// Notifee rejects an `id` that is undefined/empty — it must be a unique non-empty string, or the
+// key must be absent. A broadcast/test push has no orderId, so `data.orderId || undefined` threw
+// "invalid notification ID". Use the orderId when present (so order updates REPLACE in the tray),
+// else a unique id so each broadcast shows as its own notification.
+function notifId(data: PushData): string {
+  const oid = (data.orderId || '').trim();
+  return oid || `4a_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+}
+
 async function drawRich(data: PushData) {
   await notifee.displayNotification({
-    id: data.orderId || undefined,
+    id: notifId(data),
     title: data.title || '',
     body: data.body || '',
     data,
