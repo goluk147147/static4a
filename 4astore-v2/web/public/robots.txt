@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Private / non-indexable app routes
+Disallow: /admin
+Disallow: /login
+Disallow: /cart
+Disallow: /checkout
+Disallow: /profile
+Disallow: /orders
+Disallow: /order-history
+Disallow: /rider
+Disallow: /track
+Disallow: /api/
+
+Sitemap: https://4astore.com/sitemap.xml

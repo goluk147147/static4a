@@ -6,11 +6,64 @@
     <meta name="theme-color" content="#0FA958" />
     <meta name="description" content="4A Store - Apna local grocery store. Fresh fruits, vegetables & daily essentials delivered fast in Chandargarh, Nabinagar, Bihar - 824301." />
     <title>4A Store | Online Grocery Delivery in Chandargarh</title>
+    <link rel="canonical" href="https://4astore.com/" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="4A Store" />
+    <meta property="og:title" content="4A Store | Online Grocery Delivery in Chandargarh" />
+    <meta property="og:description" content="Fresh fruits, vegetables & daily essentials delivered fast in Chandargarh, Nabinagar, Bihar - 824301." />
+    <meta property="og:url" content="https://4astore.com/" />
+    <!-- Static LocalBusiness JSON-LD in the raw HTML so crawlers get structured data even before the
+         SPA's client-side Helmet runs. The app still emits richer per-page JSON-LD on top. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "GroceryStore",
+      "name": "4A Store",
+      "url": "https://4astore.com/",
+      "image": "https://4astore.com/notification-logo.png",
+      "priceRange": "₹",
+      "openingHours": "Mo-Su 07:00-21:00",
+      "telephone": "+91-7543888698",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Chandargarh, Nabinagar",
+        "addressLocality": "Nabinagar",
+        "addressRegion": "Bihar",
+        "postalCode": "824301",
+        "addressCountry": "IN"
+      },
+      "areaServed": [
+        { "@type": "Place", "name": "Chandargarh" },
+        { "@type": "Place", "name": "Nabinagar" },
+        { "@type": "Place", "name": "Aurangabad" }
+      ]
+    }
+    </script>
     <!-- Original 4AStore stylesheet (exact look) -->
     <link rel="stylesheet" href="/legacy/css/style.css" />
   </head>
   <body>
     <div id="root"></div>
+    <!-- Crawl / no-JS fallback: real text + internal links so the homepage is never an empty shell
+         to a crawler that doesn't run JavaScript. The SPA replaces #root on load; this stays only
+         for no-JS agents. -->
+    <noscript>
+      <main style="max-width:720px;margin:0 auto;padding:24px;font-family:system-ui,Arial,sans-serif">
+        <h1>4A Store — Online Grocery Delivery in Chandargarh</h1>
+        <p>4A Store aapka local kirana store hai. Fresh fruits, vegetables aur daily essentials ki
+          fast home delivery Chandargarh, Nabinagar aur aas-paas (PIN 824301), Aurangabad, Bihar me.</p>
+        <nav>
+          <ul>
+            <li><a href="/products">Browse all products</a></li>
+            <li><a href="/page/help-support">Help &amp; Support</a></li>
+            <li><a href="/page/privacy-policy">Privacy Policy</a></li>
+            <li><a href="/page/terms">Terms &amp; Conditions</a></li>
+          </ul>
+        </nav>
+        <p>Order karne ke liye app ya website kholें — delivery sirf PIN 824301 me uplabdh hai.</p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
