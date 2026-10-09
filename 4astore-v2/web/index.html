@@ -4,21 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0FA958" />
-    <!-- Favicons: SVG for modern browsers, PNG fallbacks, apple-touch for iOS home screen.
+    <!-- Favicons: PNG first (Google reads PNG far more reliably than SVG for search-result icons),
+         then SVG for modern browsers, apple-touch for iOS home screen. Root /favicon.ico is the
+         path Google and most crawlers probe by default.
          Files live in web/public/legacy/images/ (shipped to the site root under /legacy/images/). -->
-    <link rel="icon" type="image/svg+xml" href="/legacy/images/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/legacy/images/favicon-48.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/legacy/images/icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/legacy/images/icon-512.png" />
+    <link rel="icon" type="image/svg+xml" href="/legacy/images/favicon.svg" />
     <link rel="apple-touch-icon" href="/legacy/images/icon-192.png" />
-    <link rel="shortcut icon" href="/legacy/images/favicon.svg" />
-    <meta name="description" content="4A Store - Apna local grocery store. Fresh fruits, vegetables & daily essentials delivered fast in Chandargarh, Nabinagar, Bihar - 824301." />
-    <title>4A Store | Online Grocery Delivery in Chandargarh</title>
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <meta name="description" content="4A Store - Online kirana & grocery store in Chandargarh, Nabinagar (Aurangabad, Bihar - 824301). Fresh fruits, vegetables, daily essentials & general store saman — fast local home delivery." />
+    <title>4A Store | Online Kirana &amp; Grocery Delivery in Chandargarh, Nabinagar</title>
     <link rel="canonical" href="https://4astore.com/" />
     <meta name="robots" content="index, follow" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="4A Store" />
-    <meta property="og:title" content="4A Store | Online Grocery Delivery in Chandargarh" />
-    <meta property="og:description" content="Fresh fruits, vegetables & daily essentials delivered fast in Chandargarh, Nabinagar, Bihar - 824301." />
+    <meta property="og:title" content="4A Store | Online Kirana &amp; Grocery Delivery in Chandargarh, Nabinagar" />
+    <meta property="og:description" content="Online kirana & grocery store in Chandargarh, Nabinagar (Aurangabad, Bihar - 824301). Fresh fruits, vegetables & daily essentials — fast local home delivery." />
     <meta property="og:url" content="https://4astore.com/" />
     <!-- Static LocalBusiness JSON-LD in the raw HTML so crawlers get structured data even before the
          SPA's client-side Helmet runs. The app still emits richer per-page JSON-LD on top. -->
