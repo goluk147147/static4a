@@ -13,6 +13,18 @@
 //   ogShareImages     — server-rendered OG share images + meta for links
 //   webLocalCache     — localStorage persistence of the web React-Query cache
 //   seoModule         — extra schema.org JSON-LD (Product/LocalBusiness/Organization)
+//   seoAuto           — master kill-switch for the automatic SEO engine
+//   seoAutoGsc        — PHASE-2: Google Search Console integration
+//   seoAutoGa4        — PHASE-2: Google Analytics 4 integration
+//   seoAutoGbp        — PHASE-2: Google Business Profile integration
+//   seoAutoCrawler    — PHASE-2: site crawler (broken-link / orphan / status audit)
+//
+// INVERTED CONVENTION for the PHASE-2 keys: unlike every other key here (and
+// unlike `seoAuto`, the master, which keeps the normal "absent = ON" default),
+// the seoAutoGsc/seoAutoGa4/seoAutoGbp/seoAutoCrawler keys default OFF so the
+// automation stays dark until an admin explicitly enables it. Every PHASE-2
+// call site therefore reads the flag as `isFeatureOn(features, key, false)`
+// (pass def=false), while `seoAuto` uses the normal `isFeatureOn(features, 'seoAuto')`.
 
 export type FeatureKey =
   | 'socialProof'
@@ -22,7 +34,12 @@ export type FeatureKey =
   | 'bulkPushEnabled'
   | 'ogShareImages'
   | 'webLocalCache'
-  | 'seoModule';
+  | 'seoModule'
+  | 'seoAuto'
+  | 'seoAutoGsc'
+  | 'seoAutoGa4'
+  | 'seoAutoGbp'
+  | 'seoAutoCrawler';
 
 export const FEATURE_KEYS: FeatureKey[] = [
   'socialProof',
@@ -33,6 +50,11 @@ export const FEATURE_KEYS: FeatureKey[] = [
   'ogShareImages',
   'webLocalCache',
   'seoModule',
+  'seoAuto',
+  'seoAutoGsc',
+  'seoAutoGa4',
+  'seoAutoGbp',
+  'seoAutoCrawler',
 ];
 
 /** Bilingual (Hindi/English) labels for the admin Features toggles UI. */
@@ -45,6 +67,11 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   ogShareImages: 'OG share images / शेयर इमेज',
   webLocalCache: 'Web local cache / वेब लोकल कैश',
   seoModule: 'SEO module / एसईओ मॉड्यूल',
+  seoAuto: 'Auto SEO engine / ऑटो एसईओ इंजन',
+  seoAutoGsc: 'Search Console (PHASE-2) / सर्च कंसोल',
+  seoAutoGa4: 'Analytics GA4 (PHASE-2) / एनालिटिक्स GA4',
+  seoAutoGbp: 'Business Profile (PHASE-2) / बिज़नेस प्रोफ़ाइल',
+  seoAutoCrawler: 'Site crawler (PHASE-2) / साइट क्रॉलर',
 };
 
 /**

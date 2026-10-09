@@ -931,6 +931,14 @@ function SeoSettings() {
             <input id="seo_tpl" value={seo.titleTemplate} onChange={(e) => set('titleTemplate', e.target.value)} placeholder="%s | 4A Store" style={inp} />
           </div>
           <div>
+            <label style={albl} htmlFor="seo_lang">Auto SEO default language / ऑटो एसईओ डिफ़ॉल्ट भाषा</label>
+            <select id="seo_lang" value={seo.defaultLang ?? 'hi'} onChange={(e) => set('defaultLang', e.target.value === 'en' ? 'en' : 'hi')} style={inp}>
+              <option value="hi">Hindi / हिन्दी</option>
+              <option value="en">English / अंग्रेज़ी</option>
+            </select>
+            <p style={hint}>Auto-generated product/category descriptions ki default bhasha.</p>
+          </div>
+          <div>
             <label style={albl} htmlFor="seo_desc">Default description</label>
             <textarea id="seo_desc" rows={2} value={seo.defaultDescription} onChange={(e) => set('defaultDescription', e.target.value)} style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }} />
           </div>

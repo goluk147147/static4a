@@ -25,6 +25,7 @@ export const ADMIN_TABS = [
   { path: 'users', key: 'users', icon: '👥', label: 'Users', title: '👥 Users' },
   { path: 'earnings', key: 'earnings', icon: '💰', label: 'Earnings', title: '💰 Earnings' },
   { path: 'settings', key: 'settings', icon: '⚙️', label: 'Settings', title: '⚙️ Settings' },
+  { path: 'seo', key: 'settings', icon: '🔍', label: 'SEO', title: '🔍 SEO Engine' },
   { path: 'pages', key: 'settings', icon: '📄', label: 'Pages', title: '📄 Pages (Privacy, Terms, Help…)' },
   { path: 'team', key: 'team', icon: '🔐', label: 'Team Access', title: '🔐 Team Access' },
   { path: 'notify', key: 'ads', icon: '🔔', label: 'Push Notifications', title: '🔔 Push Notifications' },

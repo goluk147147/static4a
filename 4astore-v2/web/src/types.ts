@@ -17,6 +17,11 @@ export interface Product {
   seo_description?: string | null;
   seo_keywords?: string | null;
   og_image?: string | null;
+  // Automatic SEO engine metadata (ADD-only; FEAT-002/003).
+  seo_slug?: string | null;
+  seo_score?: number | null;
+  seo_problems?: string[] | null;
+  seo_overrides?: Record<string, boolean> | null;
 }
 
 /** Mirrors the API SeoConfig (api-node/src/seo/localSeo.ts). config.seo is always complete. */
@@ -44,6 +49,8 @@ export interface SeoConfig {
   robotsExtra: string;
   social: SeoSocial;
   business: SeoBusiness;
+  /** Default language for auto-generated descriptions (automatic SEO engine). */
+  defaultLang?: 'hi' | 'en';
 }
 
 export interface Category {
@@ -55,6 +62,120 @@ export interface Category {
   hidden?: boolean;
   age_restricted?: boolean;
   warning?: string;
+  // Automatic SEO engine metadata (ADD-only; FEAT-002/003).
+  seo_title?: string | null;
+  seo_description?: string | null;
+  seo_keywords?: string | null;
+  seo_intro?: string | null;
+  og_image?: string | null;
+  seo_score?: number | null;
+  seo_problems?: string[] | null;
+  seo_overrides?: Record<string, boolean> | null;
+}
+
+// ---- Automatic SEO engine dashboard types (FEAT-003; mirror /api/admin/seo-auto/*) ----
+
+/** Explicit unavailable states for PHASE-2 metrics — never a fabricated number. */
+export type SeoUnavailable = 'unavailable' | 'not_connected';
+
+export interface SeoDashboardCounters {
+  products: {
+    total: number;
+    optimized: number;
+    needingAttention: number;
+    withProblems: number;
+    missingMetadata: number;
+  };
+  categories: {
+    total: number;
+    optimized: number;
+    needingAttention: number;
+  };
+  duplicates: {
+    titles: number;
+    descriptions: number;
+    slugs: number;
+  };
+  // PHASE-2 metrics surface as an explicit unavailable/not-connected string.
+  brokenLinks: SeoUnavailable;
+  coreWebVitals: SeoUnavailable;
+  organicPerformance: SeoUnavailable;
+}
+
+export type SeoJobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
+
+export interface SeoJobLogEntry {
+  entityType?: string;
+  id?: number;
+  action?: string;
+  problem?: string;
+}
+
+export interface SeoJobView {
+  id: number;
+  type: 'optimize_all' | 'optimize_selected' | 'optimize_category' | 'audit';
+  status: SeoJobStatus;
+  scope: { productIds?: number[]; category?: string } | null;
+  total: number;
+  processed: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  progress: number;
+  backupId: number | null;
+  log: SeoJobLogEntry[];
+  error: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+}
+
+export interface SeoIntegrationStatus {
+  provider: 'gsc' | 'ga4' | 'gbp';
+  status: 'connected' | 'disconnected' | 'error';
+  accountRef: string | null;
+  lastSyncAt: string | null;
+  lastError: string | null;
+  credsPresent: boolean;
+  message: string;
+}
+
+export interface SeoRecentChange {
+  entityType: string;
+  entityId: string;
+  action: string;
+  field: string | null;
+  reason: string | null;
+  actor: string | null;
+  at: string;
+}
+
+export interface SeoDashboard {
+  counters: SeoDashboardCounters;
+  attentionThreshold: number;
+  jobs: SeoJobView[];
+  integrations: SeoIntegrationStatus[];
+  recentChanges: SeoRecentChange[];
+}
+
+export type SeoProductsFilter = 'all' | 'needs-attention' | 'duplicate';
+export type SeoOptimizeMode = 'all' | 'selected' | 'category';
+
+export interface SeoProductRow {
+  id: number;
+  name: string;
+  title: string | null;
+  slug: string | null;
+  score: number | null;
+  problems: string[];
+  needsAttention: boolean;
+  generatedAt: string | null;
+}
+
+export interface SeoProductsPage {
+  products: SeoProductRow[];
+  nextCursor: number | null;
 }
 
 export interface Banner {

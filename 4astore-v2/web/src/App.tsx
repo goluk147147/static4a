@@ -27,6 +27,7 @@ import AdminEarnings from './pages/admin/AdminEarnings';
 import AdminAds from './pages/admin/AdminAds';
 import AdminTeam from './pages/admin/AdminTeam';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminSeo from './pages/admin/AdminSeo';
 import { useAuth } from './store/auth';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="users" element={<AdminUsers />} />
         <Route path="earnings" element={<AdminEarnings />} />
         <Route path="settings" element={<AdminSettings />} />
+        <Route path="seo" element={<AdminSeo />} />
         <Route path="team" element={<AdminTeam />} />
         <Route path="pages" element={<AdminPages />} />
         <Route path="notify" element={<AdminNotify />} />
