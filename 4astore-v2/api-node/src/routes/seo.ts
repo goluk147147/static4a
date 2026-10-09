@@ -26,6 +26,16 @@ async function cached(key: string, load: () => Promise<string>): Promise<string>
   return body;
 }
 
+/**
+ * Bust the sitemap + robots caches so a crawler sees fresh content immediately after
+ * an SEO publish/change (used by the audit sweep + rollback in FEAT-002). Clears BOTH
+ * keys — a robots/canonical policy change must not leave robots.txt stale.
+ */
+export function invalidateSeoCaches(): void {
+  cache.delete('sitemap');
+  cache.delete('robots');
+}
+
 function xmlEscape(s: string): string {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -45,7 +55,7 @@ router.get('/sitemap.xml', async (_req: Request, res: Response) => {
   const xml = await cached('sitemap', async () => {
     const [products, categories, pages] = await Promise.all([
       prisma.product.findMany({ select: { id: true, updated_at: true }, orderBy: { id: 'asc' } }).catch(() => []),
-      prisma.category.findMany({ where: { hidden: false }, select: { slug: true }, orderBy: { sort_order: 'asc' } }).catch(() => []),
+      prisma.category.findMany({ where: { hidden: false }, select: { slug: true, seo_generated_at: true }, orderBy: { sort_order: 'asc' } }).catch(() => []),
       prisma
         .$queryRawUnsafe<Array<{ slug: string; updated_at: Date }>>(
           'SELECT slug, updated_at FROM pages WHERE published = 1 ORDER BY sort_order ASC, id ASC'
@@ -54,7 +64,7 @@ router.get('/sitemap.xml', async (_req: Request, res: Response) => {
     ]);
 
     const entries: string[] = [urlEntry(`${SITE_ORIGIN}/`)];
-    for (const c of categories) entries.push(urlEntry(`${SITE_ORIGIN}/category/${c.slug}`));
+    for (const c of categories) entries.push(urlEntry(`${SITE_ORIGIN}/category/${c.slug}`, c.seo_generated_at));
     for (const p of products) entries.push(urlEntry(`${SITE_ORIGIN}/product/${Number(p.id)}`, p.updated_at));
     for (const pg of pages) entries.push(urlEntry(`${SITE_ORIGIN}/page/${pg.slug}`, pg.updated_at));
 

@@ -12,6 +12,7 @@ import { toPage, PageRow } from './pages';
 import { FEATURE_KEYS, mergeFeatures } from '../utils/features';
 import { mergeSeoConfig, type SettingsRow } from '../seo/localSeo';
 import { slugify } from '../utils/slug';
+import { runProductSeo, runCategorySeo } from '../seo/persist';
 
 const router = Router();
 
@@ -19,6 +20,19 @@ function computeDiscount(mrp: number, price: number, provided?: number): number 
   if (provided !== undefined && !Number.isNaN(provided)) return Math.trunc(provided);
   if (mrp > 0 && price >= 0 && price <= mrp) return Math.round(((mrp - price) / mrp) * 100);
   return 0;
+}
+
+/**
+ * Build the seo_overrides JSON for a SEO save. A field is flagged `true` (a protected
+ * human edit the auto engine will never clobber) ONLY when the admin sent a non-empty
+ * string; an empty string or absent value is a reset-to-auto and the flag is omitted.
+ */
+function seoOverrideFlags(fields: Record<string, unknown>): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const [key, raw] of Object.entries(fields)) {
+    if (typeof raw === 'string' && raw.trim() !== '') out[key] = true;
+  }
+  return out;
 }
 
 // ---------------- Products ----------------
@@ -67,14 +81,26 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
       seo_keywords: p.seoKeywords || null,
       og_image: p.ogImage || null,
     };
+    // SEO override flags: set true ONLY when the admin sent a non-empty string value
+    // (an explicit human edit). An empty string / absent value clears the flag (reset to
+    // auto). Read the RAW body before productSchema's `|| null` coercion so an explicit
+    // empty-string clear is distinguishable from a truly absent field.
+    const rawSeo = (req.body?.product || {}) as Record<string, unknown>;
+    const seoOverrides = seoOverrideFlags({ title: rawSeo.seoTitle, description: rawSeo.seoDescription, keywords: rawSeo.seoKeywords });
+    const dataWithOverrides = { ...data, seo_overrides: seoOverrides };
+    const actor = req.user?.username || 'admin';
+
     if (action === 'add') {
-      const product = await prisma.product.create({ data });
+      const product = await prisma.product.create({ data: dataWithOverrides });
+      // Fire-and-forget: never block or fail the product save on an SEO error.
+      void runProductSeo(Number(product.id), { actor }).catch(() => undefined);
       return ok(res, { message: 'Product added', product });
     }
     const id = Number(req.body.product?.id || req.body.id || 0);
     if (!id) return fail(res, 'Product id is required', 422);
-    const product = await prisma.product.update({ where: { id: BigInt(id) }, data }).catch(() => null);
+    const product = await prisma.product.update({ where: { id: BigInt(id) }, data: dataWithOverrides }).catch(() => null);
     if (!product) return fail(res, 'Product not found', 404);
+    void runProductSeo(Number(product.id), { actor }).catch(() => undefined);
     return ok(res, { message: 'Product updated', product });
   }
 
@@ -123,25 +149,47 @@ router.post('/categories', requireAuth, requireStaff('categories'), async (req: 
   const clash = await prisma.category.findUnique({ where: { slug } });
   if (clash && (action === 'add' || Number(clash.id) !== c.id)) return fail(res, `Slug "${slug}" is already used by "${clash.name}"`, 409);
 
+  // Category SEO override flags (same non-empty-string rule as products). Read raw body
+  // so an explicit empty-string clear is distinguishable from an absent field.
+  const rawCat = (req.body?.category || {}) as Record<string, unknown>;
+  const seoOverrides = seoOverrideFlags({
+    title: rawCat.seoTitle,
+    description: rawCat.seoDescription,
+    keywords: rawCat.seoKeywords,
+    intro: rawCat.seoIntro,
+  });
   const data = {
     name: c.name, slug, icon: c.icon || null, image: c.image || null,
     hidden: c.hidden, age_restricted: c.ageRestricted, warning: c.warning || null,
+    seo_overrides: seoOverrides,
   };
+  const actor = req.user?.username || 'admin';
 
   if (action === 'add') {
     const max = await prisma.category.aggregate({ _max: { sort_order: true } });
     const category = await prisma.category.create({ data: { ...data, sort_order: (max._max.sort_order ?? 0) + 1 } });
+    // Fire-and-forget: never block the category save on an SEO error.
+    void runCategorySeo(Number(category.id), { actor }).catch(() => undefined);
     return ok(res, { message: 'Category added', category });
   }
   if (!c.id) return fail(res, 'Category id required', 422);
   const existing = await prisma.category.findUnique({ where: { id: BigInt(c.id) } });
   if (!existing) return fail(res, 'Category not found', 404);
+  const slugRenamed = existing.slug !== slug;
   const category = await prisma.$transaction(async (tx) => {
     const updated = await tx.category.update({ where: { id: BigInt(c.id!) }, data });
     // Keep products attached when the slug is renamed.
-    if (existing.slug !== slug) await tx.product.updateMany({ where: { category: existing.slug }, data: { category: slug } });
+    if (slugRenamed) await tx.product.updateMany({ where: { category: existing.slug }, data: { category: slug } });
     return updated;
   });
+  void runCategorySeo(Number(category.id), { actor }).catch(() => undefined);
+  // On slug rename, reprocess the reassigned products (their canonical category changed).
+  if (slugRenamed) {
+    void (async () => {
+      const reassigned = await prisma.product.findMany({ where: { category: slug }, select: { id: true } }).catch(() => []);
+      for (const p of reassigned) await runProductSeo(Number(p.id), { actor }).catch(() => undefined);
+    })();
+  }
   return ok(res, { message: 'Category updated', category });
 });
 

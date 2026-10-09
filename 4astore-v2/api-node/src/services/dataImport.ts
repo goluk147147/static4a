@@ -19,6 +19,8 @@ import path from 'path';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../db';
+import { loadFeatures } from '../seo/persist';
+import { enqueueSeoJob, hasPendingCatalogueJob } from './seoQueue';
 
 /** Default data dir resolves to the repo-root `data/` folder (c:\xampp\htdocs\static4a\data). */
 export const DEFAULT_DATA_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'data');
@@ -461,6 +463,17 @@ export interface ImportSummary {
  * Both the admin route (POST /api/admin/data/import) and the CLI call this, so
  * they stay in lockstep through one code path. addresses.json is NOT imported.
  */
+/**
+ * Enqueue a single changed-only SEO `audit` job after an import. Skipped when the
+ * seoAuto master flag is off, or when an audit/optimize_all job is already pending.
+ */
+async function enqueueImportSeoAudit(): Promise<void> {
+  const features = await loadFeatures();
+  if (!features.seoAuto) return; // master kill-switch
+  if (await hasPendingCatalogueJob()) return; // de-dupe with the cron sweep
+  await enqueueSeoJob('audit', null, 'auto:import');
+}
+
 export async function runImport(dataDir = DEFAULT_DATA_DIR): Promise<ImportSummary> {
   if (!exists(dataDir, 'products.json')) throw new Error(`No products.json in ${dataDir}`);
   const ads = await importAdCreatives(dataDir);
@@ -471,6 +484,10 @@ export async function runImport(dataDir = DEFAULT_DATA_DIR): Promise<ImportSumma
   await importAnnouncement(dataDir);
   const usersResult = await importUsers(dataDir);
   const orders = await importOrders(dataDir, usersResult.userIdMap);
+  // Enqueue ONE changed-only `audit` SEO job (not optimize_all) so a routine reload is a
+  // near-no-op on unchanged products. Gated by the seoAuto kill-switch and de-duped
+  // against any audit/optimize_all already queued/running. Never fails the import.
+  await enqueueImportSeoAudit().catch(() => undefined);
   return {
     categories,
     products,

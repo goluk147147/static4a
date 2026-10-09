@@ -19,6 +19,7 @@ import {
   buildBreadcrumbJsonLd,
   buildOrganizationJsonLd,
   buildLocalBusinessJsonLd,
+  buildItemListJsonLd,
   type SeoConfig,
   type SettingsRow,
 } from '../seo/localSeo';
@@ -238,6 +239,93 @@ router.get('/image/page/:slug', async (req: Request, res: Response) => {
     title: page.title,
     subtitle: '4A Store',
     imageUrl: null, // logo card
+  });
+  res.setHeader('Content-Type', img.contentType);
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.setHeader('Content-Length', String(img.buffer.length));
+  return res.end(img.buffer);
+});
+
+// Category slug bound matches categorySchema.slug (max 120) in routes/admin.ts — a
+// legitimately stored long category slug (81–120 chars) must not 404.
+const CATEGORY_SLUG_RE = /^[a-z0-9-]{1,120}$/;
+
+interface CategoryShareRow {
+  id: bigint | number;
+  name: string;
+  slug: string;
+  og_image: string | null;
+  image: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  seo_keywords: string | null;
+}
+
+// GET /api/og/category/:slug — share HTML for a category link (effective SEO columns +
+// breadcrumb + ItemList of member products). og:image points at the paired image route.
+router.get('/category/:slug', async (req: Request, res: Response) => {
+  const slug = String(req.params.slug || '').toLowerCase();
+  if (!CATEGORY_SLUG_RE.test(slug)) return res.status(404).json({ success: false, message: 'Category not found' });
+  const rows = await prisma
+    .$queryRawUnsafe<CategoryShareRow[]>('SELECT * FROM categories WHERE slug = ? AND hidden = 0 LIMIT 1', slug)
+    .catch(() => [] as CategoryShareRow[]);
+  const category = rows[0];
+  if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+
+  const cfg = await loadSeoConfig();
+  const url = `${SITE_ORIGIN}/category/${slug}`;
+  const members = await prisma
+    .$queryRawUnsafe<Array<{ id: bigint | number; name: string }>>(
+      'SELECT id, name FROM products WHERE category = ? ORDER BY name ASC LIMIT 50',
+      slug,
+    )
+    .catch(() => [] as Array<{ id: bigint | number; name: string }>);
+
+  const title = category.seo_title || `${category.name} online — ${cfg.business.name}`;
+  const description = category.seo_description || `${category.name} online ${cfg.business.name} par — fast home delivery.`;
+  const jsonLd: object[] = [
+    buildBreadcrumbJsonLd([
+      { name: 'Home', url: `${SITE_ORIGIN}/` },
+      { name: category.name, url },
+    ]),
+    buildItemListJsonLd(members.map((m) => ({ name: m.name, url: `${SITE_ORIGIN}/product/${Number(m.id)}` }))),
+    buildLocalBusinessJsonLd(cfg),
+  ];
+
+  const html = shareHtml({
+    title,
+    description,
+    keywords: category.seo_keywords || cfg.defaultKeywords,
+    image: `${API_ORIGIN}/og/image/category/${slug}`,
+    url,
+    redirect: url,
+    jsonLd,
+  });
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  return res.send(html);
+});
+
+// GET /api/og/image/category/:slug — share card: the category og_image override if set,
+// else a logo-or-sample-product card (mirrors /image/page/:slug via getOrRenderOg).
+router.get('/image/category/:slug', async (req: Request, res: Response) => {
+  const slug = String(req.params.slug || '').toLowerCase();
+  if (!CATEGORY_SLUG_RE.test(slug)) return res.status(404).json({ success: false, message: 'Category not found' });
+  const rows = await prisma
+    .$queryRawUnsafe<Array<{ name: string; og_image: string | null; image: string | null }>>(
+      'SELECT name, og_image, image FROM categories WHERE slug = ? AND hidden = 0 LIMIT 1',
+      slug,
+    )
+    .catch(() => [] as Array<{ name: string; og_image: string | null; image: string | null }>);
+  const category = rows[0];
+  if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+
+  // Prefer the admin override image, else a category image, else the logo card.
+  const cardImage = absoluteImageUrl(category.og_image || category.image);
+  const img = await getOrRenderOg(`category-${slug}`, {
+    title: category.name,
+    subtitle: '4A Store',
+    imageUrl: cardImage,
   });
   res.setHeader('Content-Type', img.contentType);
   res.setHeader('Cache-Control', 'public, max-age=86400');

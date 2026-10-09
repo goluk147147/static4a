@@ -13,6 +13,12 @@
 //   webLocalCache     — localStorage persistence of the web React-Query cache
 //   seoModule         — SEO meta/JSON-LD on storefront pages + admin SEO tab
 //                       (sitemap.xml / robots.txt are NEVER gated by this flag)
+//   seoAuto           — master kill-switch for the AUTOMATIC SEO engine (create/update
+//                       hook, import audit enqueue, 15-min cron). Normal "absent = ON".
+//   seoAutoGsc        — PHASE-2 Google Search Console data import (default OFF)
+//   seoAutoGa4        — PHASE-2 Google Analytics 4 data import (default OFF)
+//   seoAutoGbp        — PHASE-2 Google Business Profile sync (default OFF)
+//   seoAutoCrawler    — PHASE-2 daily technical crawler checks (default OFF)
 
 export type FeatureKey =
   | 'socialProof'
@@ -22,7 +28,12 @@ export type FeatureKey =
   | 'bulkPushEnabled'
   | 'ogShareImages'
   | 'webLocalCache'
-  | 'seoModule';
+  | 'seoModule'
+  | 'seoAuto'
+  | 'seoAutoGsc'
+  | 'seoAutoGa4'
+  | 'seoAutoGbp'
+  | 'seoAutoCrawler';
 
 export const FEATURE_KEYS: FeatureKey[] = [
   'socialProof',
@@ -33,11 +44,16 @@ export const FEATURE_KEYS: FeatureKey[] = [
   'ogShareImages',
   'webLocalCache',
   'seoModule',
+  'seoAuto',
+  'seoAutoGsc',
+  'seoAutoGa4',
+  'seoAutoGbp',
+  'seoAutoCrawler',
 ];
 
 export type Features = Record<FeatureKey, boolean>;
 
-// Every known flag defaults to ON.
+// Every known flag defaults to ON, EXCEPT the PHASE-2 seoAuto* keys below.
 export const DEFAULT_FEATURES: Features = {
   socialProof: true,
   productZoom: true,
@@ -47,6 +63,16 @@ export const DEFAULT_FEATURES: Features = {
   ogShareImages: true,
   webLocalCache: true,
   seoModule: true,
+  // Master kill-switch for the automatic SEO engine: ships ON (absent = ON, like the
+  // other keys). Flip it to a stored `false` to halt all automation without a redeploy.
+  seoAuto: true,
+  // PHASE-2 keys INVERT the "absent = ON" convention — they default OFF so the
+  // integrations/crawler stay dark until an admin explicitly stores `true`. mergeFeatures
+  // is unchanged: it seeds from DEFAULT_FEATURES, so a never-stored key keeps this `false`.
+  seoAutoGsc: false,
+  seoAutoGa4: false,
+  seoAutoGbp: false,
+  seoAutoCrawler: false,
 };
 
 /**
