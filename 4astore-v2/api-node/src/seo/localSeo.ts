@@ -45,6 +45,7 @@ export interface SeoConfig {
   defaultKeywords: string;
   defaultOgImage: string;
   robotsExtra: string;
+  defaultLang: 'hi' | 'en';
   social: SeoSocial;
   business: SeoBusiness;
 }
@@ -77,6 +78,7 @@ export function defaultSeoConfig(settingsRow?: SettingsRow | null): SeoConfig {
     defaultKeywords: [...LOCAL.keywordSeeds, ...LOCAL.areaServed, LOCAL.storeName].join(', '),
     defaultOgImage: `${SITE_ORIGIN}/assets/og-default.png`,
     robotsExtra: '',
+    defaultLang: 'hi',
     social: { whatsapp: '', instagram: '', facebook: '' },
     business: {
       name: LOCAL.storeName,
@@ -111,6 +113,7 @@ export function mergeSeoConfig(raw: unknown, settingsRow?: SettingsRow | null): 
     defaultKeywords: str(r.defaultKeywords, base.defaultKeywords) || base.defaultKeywords,
     defaultOgImage: str(r.defaultOgImage, base.defaultOgImage) || base.defaultOgImage,
     robotsExtra: str(r.robotsExtra, base.robotsExtra),
+    defaultLang: r.defaultLang === 'en' ? 'en' : 'hi',
     social: {
       whatsapp: str(social.whatsapp, base.social.whatsapp),
       instagram: str(social.instagram, base.social.instagram),
@@ -140,6 +143,7 @@ export interface ProductLike {
   mrp?: number | string | { toString(): string } | null;
   image?: string | null;
   description?: string | null;
+  in_stock?: boolean | null;
   seo_title?: string | null;
   seo_description?: string | null;
   seo_keywords?: string | null;
@@ -210,7 +214,10 @@ export function buildProductJsonLd(product: ProductLike, cfg: SeoConfig, url: st
       '@type': 'Offer',
       price: price.toFixed(2),
       priceCurrency: 'INR',
-      availability: 'https://schema.org/InStock',
+      availability:
+        product.in_stock === false
+          ? 'https://schema.org/OutOfStock'
+          : 'https://schema.org/InStock',
       url,
       seller: { '@type': 'Organization', name: cfg.business.name },
     };
@@ -232,6 +239,29 @@ export function buildBreadcrumbJsonLd(items: BreadcrumbItem[]) {
       position: i + 1,
       name: it.name,
       item: it.url,
+    })),
+  };
+}
+
+export interface ItemListEntry {
+  name: string;
+  url: string;
+}
+
+/**
+ * Ordered ItemList of entries (used by the category share route in FEAT-002 to
+ * describe the member products of a category page). Mirrors buildBreadcrumbJsonLd.
+ */
+export function buildItemListJsonLd(items: ItemListEntry[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    numberOfItems: items.length,
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.name,
+      url: it.url,
     })),
   };
 }

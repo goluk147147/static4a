@@ -11,6 +11,7 @@ import { notifyCustomerStatus } from '../services/push';
 import { toPage, PageRow } from './pages';
 import { FEATURE_KEYS, mergeFeatures } from '../utils/features';
 import { mergeSeoConfig, type SettingsRow } from '../seo/localSeo';
+import { slugify } from '../utils/slug';
 
 const router = Router();
 
@@ -90,9 +91,6 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
 // ---------------- Categories ----------------
 // Mirrors the original api/categories.php: slug auto-generated from the name,
 // optional hidden / ageRestricted / warning flags.
-const slugify = (s: string) =>
-  s.toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-
 const categorySchema = z.object({
   id: z.number().int().positive().optional(),
   name: z.string().trim().min(1).max(120),
@@ -868,6 +866,7 @@ const seoSchema = z.object({
   defaultKeywords: z.string().trim().max(1000).optional(),
   defaultOgImage: z.string().trim().max(500).optional(),
   robotsExtra: z.string().max(2000).optional(),
+  defaultLang: z.enum(['hi', 'en']).optional(),
   social: z
     .object({
       whatsapp: z.string().trim().max(300).optional().default(''),

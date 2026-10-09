@@ -82,6 +82,19 @@ model Category {
   warning        String? @db.VarChar(255)
   sort_order     Int     @default(0)
 
+  // Automatic SEO engine columns (added via prisma/seo-auto.sql; all optional).
+  seo_title        String?   @db.VarChar(255)
+  seo_description  String?   @db.Text
+  seo_keywords     String?   @db.VarChar(500)
+  seo_intro        String?   @db.Text
+  og_image         String?   @db.VarChar(500)
+  seo_overrides    Json?
+  seo_auto_json    Json?
+  seo_score        Int?      @db.UnsignedTinyInt
+  seo_problems     Json?
+  seo_generated_at DateTime? @db.DateTime(3)
+  seo_source_hash  String?   @db.Char(40)
+
   @@map("categories")
 }
 
@@ -101,6 +114,14 @@ model Product {
   seo_description String? @db.Text
   seo_keywords    String? @db.VarChar(500)
   og_image        String? @db.VarChar(500)
+  // Automatic SEO engine columns (added via prisma/seo-auto.sql; all optional).
+  seo_slug         String?   @db.VarChar(200)
+  seo_overrides    Json?
+  seo_auto_json    Json?
+  seo_score        Int?      @db.UnsignedTinyInt
+  seo_problems     Json?
+  seo_generated_at DateTime? @db.DateTime(3)
+  seo_source_hash  String?   @db.Char(40)
   in_stock    Boolean  @default(true)
   featured    Boolean  @default(false) // daily "Aaj ka Special" video picks these first
   created_at  DateTime @default(now())
@@ -213,4 +234,76 @@ model NotificationRecipient {
   @@index([notification_id], map: "idx_notif_recipient_notif")
   @@index([user_id], map: "idx_notif_recipient_user")
   @@map("notification_recipients")
+}
+
+// Automatic SEO engine tables. Created at runtime via prisma/seo-auto.sql
+// (CREATE TABLE IF NOT EXISTS); these models mirror those columns so Prisma can
+// query them. Do NOT run prisma migrate / db push.
+model SeoJob {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  type        String    @db.VarChar(32)
+  status      String    @db.VarChar(16)
+  scope       Json?
+  total       Int       @default(0)
+  processed   Int       @default(0)
+  updated     Int       @default(0)
+  skipped     Int       @default(0)
+  failed      Int       @default(0)
+  progress    Int       @default(0) @db.UnsignedTinyInt
+  backup_id   BigInt?   @db.UnsignedBigInt
+  log         Json?
+  error       String?   @db.Text
+  created_by  String?   @db.VarChar(64)
+  created_at  DateTime  @default(now()) @db.DateTime(3)
+  started_at  DateTime? @db.DateTime(3)
+  finished_at DateTime? @db.DateTime(3)
+
+  @@index([status], map: "idx_seo_jobs_status")
+  @@index([created_at], map: "idx_seo_jobs_created")
+  @@map("seo_jobs")
+}
+
+model SeoAuditLog {
+  id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  entity_type String   @db.VarChar(16)
+  entity_id   String   @db.VarChar(64)
+  action      String   @db.VarChar(32)
+  field       String?  @db.VarChar(32)
+  before_val  String?  @db.Text
+  after_val   String?  @db.Text
+  reason      String?  @db.VarChar(255)
+  job_id      BigInt?  @db.UnsignedBigInt
+  actor       String?  @db.VarChar(64)
+  created_at  DateTime @default(now()) @db.DateTime(3)
+
+  @@index([entity_type, entity_id], map: "idx_seo_audit_entity")
+  @@index([job_id], map: "idx_seo_audit_job")
+  @@index([created_at], map: "idx_seo_audit_created")
+  @@map("seo_audit_log")
+}
+
+model SeoBackup {
+  id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  job_id      BigInt?  @db.UnsignedBigInt
+  entity_type String   @db.VarChar(16)
+  scope       Json?
+  snapshot    String   @db.LongText
+  created_by  String?  @db.VarChar(64)
+  created_at  DateTime @default(now()) @db.DateTime(3)
+
+  @@index([job_id], map: "idx_seo_backups_job")
+  @@index([created_at], map: "idx_seo_backups_created")
+  @@map("seo_backups")
+}
+
+model SeoIntegration {
+  id           BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  provider     String    @unique(map: "uq_seo_integrations_provider") @db.VarChar(16)
+  status       String    @default("disconnected") @db.VarChar(16)
+  account_ref  String?   @db.VarChar(190)
+  last_sync_at DateTime? @db.DateTime(3)
+  last_error   String?   @db.VarChar(255)
+  updated_at   DateTime  @updatedAt @db.DateTime(3)
+
+  @@map("seo_integrations")
 }
