@@ -1,0 +1,43 @@
+# 4A Store web SPA (4astore.com) — Apache config for the Vite build output.
+#
+# Goal: serve real static files (sitemap.xml, robots.txt, /assets/*, images) DIRECTLY,
+# and only fall back to index.html for client-side (React Router) routes. Without this file
+# an rsync --delete wipes the document-root .htaccess and Apache 500s / mis-serves routes.
+#
+# Ships from web/public/ so Vite copies it into dist/ on every build (never lost again).
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Already pointing at index.html → stop (prevents the index.html -> index.html rewrite loop
+  # that caused "Request exceeded the limit of 10 internal redirects" / HTTP 500).
+  RewriteRule ^index\.html$ - [L]
+
+  # Leave the Node API alone — /api is reverse-proxied to the backend, not the SPA.
+  RewriteCond %{REQUEST_URI} !^/api
+  # Never rewrite a request that maps to an existing file or directory
+  # (sitemap.xml, robots.txt, /assets/*.js|css, images, .well-known, etc.).
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else is a SPA route → serve index.html so React Router renders it.
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# Correct content types (so sitemap.xml is served as XML, not HTML).
+<IfModule mod_mime.c>
+  AddType application/xml .xml
+  AddType text/plain .txt
+</IfModule>
+
+# Don't let the SPA shell get stuck in caches; keep hashed assets cacheable.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  <FilesMatch "\.(xml|txt)$">
+    Header set Cache-Control "public, max-age=3600"
+  </FilesMatch>
+</IfModule>
