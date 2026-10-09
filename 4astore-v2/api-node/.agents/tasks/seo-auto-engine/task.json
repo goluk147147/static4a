@@ -1,0 +1,7 @@
+{
+  "task_id": "task-seo-auto-engine",
+  "task_description": "Build a fully automatic, zero-manual-entry SEO engine on top of the existing admin-managed SEO foundation in 4astore-v2: auto-derive/validate/persist/publish all SEO fields from real product/category/store data, bulk Auto SEO Optimize with batching+retry+idempotence+rollback, a 15-min cron audit job, category SEO, technical SEO freshness, schema+social metadata, GSC/GA4/GBP safe-no-op plumbing, per-entity completeness score, a pre-publish validation gate, and a new SEO admin dashboard wired into AdminApp.tsx. Implements the MUST-HAVE-NOW capabilities from the APPROVED design.md revision 4. ADD-only, reuse-first, feature-flagged, server-side secrets, never fabricate data.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

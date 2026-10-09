@@ -1,0 +1,16 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "detail": "seoQueue.processJob scans the full products/categories tables into memory for optimize_all/audit (no DB-level pagination), and snapshotBackup serializes every affected row into one seo_backups.snapshot JSON blob. Fine for the current ~202-product catalogue and consistent with the approved in-memory batch design, but it will not scale to a large catalogue. Not blocking.",
+      "file": "4astore-v2/api-node/src/services/seoQueue.ts"
+    },
+    {
+      "severity": "NIT",
+      "detail": "validateProductSeo computes expectedAvailability but intentionally defers the availability/price DB-truth assertion to checkDbTruth (called from persist.ts), leaving a `void expectedAvailability;` no-op in the pure validator. Documented deviation from FEAT-001; behavior is correct (AVAILABILITY_MISMATCH/PRICE_MISMATCH are enforced at publish). Cosmetic only.",
+      "file": "4astore-v2/api-node/src/seo/validate.ts"
+    }
+  ],
+  "summary": "SEO auto engine meets the APPROVED design and all hard constraints. ADD-only guarded SQL (information_schema + CREATE TABLE IF NOT EXISTS) and ?-optional Prisma columns leave commerce untouched. seoAuto master kill-switch genuinely gates all three entry points: the fire-and-forget hooks (runProductSeo/runCategorySeo in persist.ts), the import audit enqueue (dataImport.enqueueImportSeoAudit), and the cron sweep + whole-job processor (seoAuditJob.runAuditSweep / seoQueue.processJob). Gating is correct: /api/admin/seo-auto mounted with requireAuth BEFORE generic /api/admin and every route behind requireStaff('settings'); POST /products keeps requireStaff('products') and POST /categories keeps requireStaff('categories'). Jobs are idempotent (shared ATTENTION_THRESHOLD skip), race-safe (seo_source_hash re-checked inside the publish transaction), retried 2x per entity, backed up to seo_backups before writing with rollback restoring effective columns only (overrides untouched), and recoverSeoQueue marks interrupted jobs failed on start. The never-fabricate gate (FABRICATION/CANONICAL_BAD/BLOCKED_PUBLIC are fatal, skip publish, keep prior values) is enforced; integrations never return secrets and PHASE-2 metrics surface as unavailable/not-connected. buildProductJsonLd availability now derives from in_stock (OutOfStock when false, else InStock), invalidateSeoCaches clears BOTH 'sitemap' and 'robots', and the sitemap category select carries seo_generated_at for lastmod. Verification: `npx tsc --noEmit` (api-node) exits 0 and `npm run build` (web) exits 0, both re-run and confirmed in this review. No blocking findings; two NITs recorded for context."
+}

@@ -1,0 +1,58 @@
+{
+  "verdict": "APPROVED",
+  "approvedRevision": 4,
+  "note": "All rev-3 findings (0 HIGH, 2 MEDIUM, 3 NIT) were applied to design.md in revision 4: category OG-route slug regex unified to ^[a-z0-9-]{1,120}$ in both routes and the §10 validator (matching categorySchema max(120)); the seoAuto master kill-switch is now wired via a single mergeFeatures(config.features) gate at the top of runProductSeo/runCategorySeo/runAuditSweep, referenced in §6.1/§6.9/§11; invalidateSeoCaches() now clears both the 'sitemap' and 'robots' cache keys (§6.9/§13/§15); the JSON-LD image argument is documented as left unchanged (§5.1/§6.8); and the §6.2 queue skip uses the same ATTENTION_THRESHOLD as the needs-attention predicate. See 'Responses to design review (revision 4)' in design.md.",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "MEDIUM",
+      "resolved": true,
+      "title": "Category OG-route slug regex conflicts with real category slug length and with \u00a710",
+      "where": "\u00a76.6 (^[a-z0-9-]{1,80}$) vs \u00a710 (^[a-z0-9-]{1,120}$)",
+      "problem": "categorySchema.slug is max(120) in routes/admin.ts, so stored category slugs can be 81-120 chars. The {1,80} regex copied from the page route would 404 the new GET /api/og/category/:slug and /api/og/image/category/:slug for valid long slugs, silently breaking the category share HTML and share image. \u00a76.6 and \u00a710 also disagree (80 vs 120).",
+      "fix": "Use ^[a-z0-9-]{1,120}$ in both new category OG routes and in the \u00a710 optimize.category validator, matching categorySchema max(120); state in \u00a76.6 that the category bound is 120 (not the page route's 80) and why.",
+      "resolution": "\u00a76.6 now uses ^[a-z0-9-]{1,120}$ for both GET /api/og/category/:slug and GET /api/og/image/category/:slug and adds a sentence explaining the 120 bound (vs the page route's 80) because category slugs can be 81-120 chars. \u00a710 optimize.category already used {1,120}; the two now agree."
+    },
+    {
+      "id": 2,
+      "severity": "MEDIUM",
+      "resolved": true,
+      "title": "seoAuto master feature flag declared but never wired to the auto-generation hooks",
+      "where": "\u00a73/\u00a77/\u00a714 declare seoAuto; \u00a76.1, \u00a75.3, \u00a76.9 describe hooks/cron as unconditional",
+      "problem": "The brief requires high-impact automation to be feature-flagged. The flag is added and merge logic verified (utils/features.ts), but no write path (POST /products hook, import audit enqueue, 15-min cron) is said to read seoAuto. As written seoAuto=false would not disable automation \u2014 the kill-switch is cosmetic. The design also never names where server-side features are loaded for the gate.",
+      "fix": "Specify a single gate point in runProductSeo/runCategorySeo/runAuditSweep that reads mergeFeatures(...) and early-returns when seoAuto is off; name the server-side features source (e.g. config.features, same blob POST /api/admin/features writes); add the gate to \u00a76.1, \u00a76.9 and the \u00a711 invariant table.",
+      "resolution": "\u00a76.1 now specifies a single gate at the top of runProductSeo/runCategorySeo/runAuditSweep that reads mergeFeatures(loadStoredFeatures()) over the config.features blob (the same source POST /api/admin/features writes) and early-returns when seoAuto is off. \u00a76.1.2 (import audit enqueue) and \u00a76.9 (15-min cron) reference the gate, and \u00a711 adds an invariant row. The kill-switch now disables the create/update hook, import audit enqueue, and cron while leaving commerce untouched."
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "resolved": true,
+      "title": "invalidateSitemapCache() must also bust the robots cache entry",
+      "where": "\u00a76.9 step 2, \u00a713",
+      "problem": "routes/seo.ts caches two keys ('sitemap' and 'robots') in one Map; clearing only 'sitemap' leaves a stale robots.txt for up to 5 min after a policy change. The function name implies sitemap-only.",
+      "fix": "Export a function that clears both keys (or cache.clear()), e.g. invalidateSeoCaches(); reference it in \u00a76.9/\u00a713/\u00a715.",
+      "resolution": "\u00a76.9 step 2 now defines invalidateSeoCaches() clearing both 'sitemap' and 'robots'; \u00a713 and \u00a715 reference the renamed function."
+    },
+    {
+      "id": 4,
+      "severity": "NIT",
+      "resolved": true,
+      "title": "JSON-LD image argument semantics under-specified vs the real call site",
+      "where": "\u00a74.1 note / \u00a75.1",
+      "problem": "routes/og.ts passes JSON-LD image as absoluteImageUrl(product.og_image || product.image) || renderedCard. The design does not state whether generateProductSeo should touch this call site; silence invites an implementer to change crawler output.",
+      "fix": "Add a sentence to \u00a75.1/\u00a76.8: the existing JSON-LD image resolution is left unchanged; the engine only adds imageAlt and never rewrites the builder's image argument.",
+      "resolution": "\u00a75.1 and \u00a76.8 now state the existing JSON-LD image resolution (og_image || product.image || rendered card) is left unchanged; the engine only adds imageAlt and never rewrites the builder's image argument."
+    },
+    {
+      "id": 5,
+      "severity": "NIT",
+      "resolved": true,
+      "title": "needs-attention predicate and idempotent-skip predicate use an unreconciled threshold",
+      "where": "\u00a75.4 (ATTENTION_THRESHOLD=80) vs \u00a76.2 (skip when score >= threshold)",
+      "problem": "Only ATTENTION_THRESHOLD is pinned. If the queue skip threshold differs, an entity could be skipped by the optimizer yet flagged 'needs attention' on the dashboard (or vice-versa).",
+      "fix": "State that the queue skip uses the same ATTENTION_THRESHOLD (score >= ATTENTION_THRESHOLD AND no problems AND unchanged hash => skip).",
+      "resolution": "\u00a76.2 now states the queue idempotent-skip uses the same ATTENTION_THRESHOLD constant (\u00a75.4): skip when seo_score >= ATTENTION_THRESHOLD AND no seo_problems AND unchanged seo_source_hash, so the two surfaces can never disagree."
+    }
+  ],
+  "reviewDoc": "c:\\xampp\\htdocs\\static4a\\.worktrees\\seo-auto-engine\\4astore-v2\\api-node\\.agents\\tasks\\seo-auto-engine\\design-review.md"
+}
