@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { useProducts, useCategories, useConfig } from '../lib/queries';
 import ProductCard from '../components/ProductCard';
+import Seo from '../components/Seo';
+import { buildCanonical, breadcrumbJsonLd, type JsonLd } from '../lib/seo';
 import { legacyToRoute } from '../lib/links';
 import './products.css';
 
@@ -139,12 +140,75 @@ export default function Products() {
   const showWarning = !!category && !!activeCat && (activeCat.age_restricted || activeCat.hidden);
   const midBanner = festAds?.midBanner;
 
+  // ---- SEO: unique, crawlable title/meta/H1 per category (and per search) ----
+  const seoCfg = config?.seo;
+  const area = seoCfg?.business.areaServed?.[0] || 'Chandargarh';
+  const catName = activeCat?.name?.replace(/^[^\p{L}]+/u, '').trim() || activeCat?.name;
+  const seo = useMemo(() => {
+    if (activeCat && catName) {
+      return {
+        title: `${catName} - Online ${catName} Delivery in ${area}`,
+        description: `Order ${catName.toLowerCase()} online from 4A Store — fresh stock, best prices, fast home delivery in ${area} (PIN 824301). ${result.length} item${result.length !== 1 ? 's' : ''} available.`,
+        canonical: buildCanonical(`/products?category=${category}`),
+        h1: catName,
+      };
+    }
+    if (search) {
+      return {
+        title: `Search "${search}" - 4A Store`,
+        description: `Search results for "${search}" at 4A Store — groceries & daily essentials with fast delivery in ${area}.`,
+        canonical: buildCanonical('/products'),
+        robots: 'noindex,follow', // search result pages: crawl links but don't index the query page
+        h1: `Results for "${search}"`,
+      };
+    }
+    return {
+      title: 'All Products - Shop Groceries Online',
+      description: `Browse all products at 4A Store — fresh fruits, vegetables, snacks, oil, ghee, atta, dal & daily essentials at best prices. Fast home delivery in ${area}, PIN 824301.`,
+      canonical: buildCanonical('/products'),
+      h1: 'All Products',
+    };
+  }, [activeCat, catName, area, category, search, result.length]);
+
+  // ItemList JSON-LD for the visible products (helps product-rich results) + breadcrumb.
+  const jsonLd = useMemo<JsonLd[]>(() => {
+    const items: JsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: seo.h1,
+      numberOfItems: result.length,
+      itemListElement: result.slice(0, 30).map((p, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: buildCanonical(`/product/${p.id}`),
+        name: p.name,
+      })),
+    };
+    const crumbs = breadcrumbJsonLd(
+      [
+        { name: 'Home', url: buildCanonical('/') },
+        { name: 'Products', url: buildCanonical('/products') },
+        ...(activeCat && catName ? [{ name: catName, url: buildCanonical(`/products?category=${category}`) }] : []),
+      ],
+    );
+    return [items, crumbs];
+  }, [result, seo.h1, activeCat, catName, category]);
+
   return (
     <>
-      <Helmet>
-        <title>Products - 4A Store | Shop Groceries Online</title>
-        <meta name="description" content="4A Store - Browse all products. Fresh groceries, fruits, vegetables, snacks, oil, ghee & daily essentials at best prices." />
-      </Helmet>
+      <Seo
+        title={seo.title}
+        description={seo.description}
+        canonical={seo.canonical}
+        robots={seo.robots}
+        jsonLd={jsonLd}
+        cfg={seoCfg}
+        features={config?.features}
+      />
+      {/* Visible, crawlable H1 — a real heading per category/search instead of an empty SPA shell. */}
+      <h1 className="sr-cat-heading" style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }}>
+        {seo.h1} — 4A Store, {area}
+      </h1>
 
       {festInfo && (
         <div className="fest-header" style={{ background: `linear-gradient(135deg,${festInfo.colors[0]},${festInfo.colors[1]})` }}>

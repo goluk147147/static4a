@@ -31,6 +31,8 @@ export default function ProductDetails() {
   const hideMrp = settings?.hideMrp;
 
   const seoCfg = config?.seo;
+  const deliveryArea = seoCfg?.business.areaServed?.[0] || 'Chandargarh';
+  const freeAbove = Number(settings?.freeDeliveryAbove ?? 0);
   const derived = deriveProductSeo(product);
   const canonical = buildCanonical(`/product/${product.id}`);
   const seoImage = product.og_image || buildCanonical(productImageSrc(product));
@@ -63,13 +65,30 @@ export default function ProductDetails() {
         </div>
         <div>
           {product.brand && <div className="muted">{product.brand}</div>}
-          <h2>{product.name}</h2>
+          {/* Single <h1> per product page (was <h2>) — the primary heading SEO/crawlers expect. */}
+          <h1 style={{ fontSize: 22, margin: '4px 0' }}>{product.name}</h1>
           {product.weight && <p className="muted">{product.weight}</p>}
           <div className="price-row" style={{ margin: '12px 0' }}>
             <span className="price" style={{ fontSize: 24 }}>₹{product.price}</span>
             {!hideMrp && product.mrp > product.price && <span className="mrp">₹{product.mrp}</span>}
             {!hideMrp && product.discount > 0 && <span className="disc">{product.discount}% OFF</span>}
           </div>
+
+          {/* P2: product-level delivery estimate + service-area so eligibility is obvious on the PDP. */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '10px 0' }}>
+            <span style={{ background: '#e8f5e9', color: '#1b5e20', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontWeight: 600 }}>
+              🚚 {product.in_stock ? 'Same-day / fast delivery' : 'Currently unavailable'}
+            </span>
+            <span style={{ background: '#fff3e0', color: '#e65100', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontWeight: 600 }}>
+              📍 Delivers in {deliveryArea} — PIN 824301
+            </span>
+            {freeAbove > 0 && (
+              <span style={{ background: '#e3f2fd', color: '#0d47a1', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontWeight: 600 }}>
+                🆓 Free delivery above ₹{freeAbove}
+              </span>
+            )}
+          </div>
+
           {product.description && <p style={{ margin: '12px 0', lineHeight: 1.6 }}>{product.description}</p>}
 
           {!product.in_stock ? (

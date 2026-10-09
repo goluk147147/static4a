@@ -37,6 +37,7 @@ export default function Home() {
   const ads = (config?.ads ?? []).filter((a) => a.active !== false);
   const fda = Number(settings?.freeDeliveryAbove ?? 500);
   const dc = Number(settings?.deliveryCharge ?? 0);
+  const deliveryArea = config?.seo?.business.areaServed?.[0] || 'Chandargarh';
   // Original: first 12 products, excluding hidden / age-restricted categories.
   const restricted = new Set(allCategories.filter((c) => c.hidden || c.age_restricted).map((c) => c.slug));
   const popular = products.filter((p) => !restricted.has(p.category)).slice(0, 12);
@@ -103,6 +104,28 @@ export default function Home() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* P2: value proposition + delivery eligibility, visible immediately below the hero so a
+          first-time visitor instantly sees what the store is, where it delivers, and the free-
+          delivery rule. Plain text (crawlable) + internal links to products/track. */}
+      <section className="value-strip" aria-label="Why 4A Store" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, padding: '14px 12px', maxWidth: 1100, margin: '0 auto' }}>
+        <div className="value-item" style={{ background: '#e8f5e9', borderRadius: 10, padding: '10px 12px' }}>
+          <strong style={{ display: 'block', color: '#1b5e20' }}>🚚 Fast local delivery</strong>
+          <span style={{ fontSize: 13, color: '#33691e' }}>Fresh groceries delivered in {deliveryArea}</span>
+        </div>
+        <div className="value-item" style={{ background: '#fff3e0', borderRadius: 10, padding: '10px 12px' }}>
+          <strong style={{ display: 'block', color: '#e65100' }}>📍 Delivery area</strong>
+          <span style={{ fontSize: 13, color: '#bf360c' }}>PIN 824301 — {deliveryArea}, Nabinagar, Bihar</span>
+        </div>
+        <div className="value-item" style={{ background: '#e3f2fd', borderRadius: 10, padding: '10px 12px' }}>
+          <strong style={{ display: 'block', color: '#0d47a1' }}>🆓 Free delivery</strong>
+          <span style={{ fontSize: 13, color: '#1565c0' }}>{fda > 0 ? `On orders above ₹${fda}` : 'On eligible orders'}</span>
+        </div>
+        <Link to="/track" className="value-item" style={{ background: '#f3e5f5', borderRadius: 10, padding: '10px 12px', textDecoration: 'none' }}>
+          <strong style={{ display: 'block', color: '#6a1b9a' }}>📦 Track your order</strong>
+          <span style={{ fontSize: 13, color: '#8e24aa' }}>Live status &amp; rider location</span>
+        </Link>
       </section>
 
       {/* Ads / Offers */}
