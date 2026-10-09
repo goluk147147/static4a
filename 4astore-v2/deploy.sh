@@ -1,94 +1,101 @@
 #!/usr/bin/env bash
-# ============================================================================
-# 4A Store v2 — Safe Deploy Script
-# ----------------------------------------------------------------------------
-# Pulls the latest code and redeploys api-node + web to /var/www/html WITHOUT
-# ever touching the server-only secret/data files:
-#   - api-node/.env, web/.env            (environment secrets)
-#   - api-node/fcm-service-account.json  (FCM push credentials)
-#   - api-node/uploads/                  (user-uploaded files)
-#   - web/public/data/                   (runtime data)
+# =============================================================================
+# 4A Store — safe one-command deploy (api + web/admin)
 #
-# Usage:   bash ~/4astore/4astore-v2/deploy.sh
-# ============================================================================
+# Server pe chalao:   bash ~/4astore/4astore-v2/deploy.sh
+#
+# Ye script:
+#   - git pull karti hai (branch: main)
+#   - api-node: npm install -> prisma generate -> build -> pm2 restart
+#   - web/admin: npm run build -> /var/www/html me rsync
+#   - .env, fcm-service-account.json, aur /var/www/html/.htaccess ko
+#     KABHI touch/delete NAHI karti (rsync --exclude + no --delete)
+#   - deploy se pehle zaroori files maujood hain ye verify karti hai (fail-fast)
+#
+# Jo aaj issues aaye (galat folder, .htaccess loop, .env delete, prisma stale)
+# un sabke against ye script guarded hai.
+# =============================================================================
+
 set -euo pipefail
 
-# ---- Paths (edit here if the server layout changes) ------------------------
-REPO_DIR="/home/ec2-user/4astore"
-SRC_API="$REPO_DIR/4astore-v2/api-node"
-SRC_WEB="$REPO_DIR/4astore-v2/web"
-LIVE_API="/var/www/html/api-node"
-LIVE_WEB="/var/www/html/web"
+# ---- CONFIRMED PATHS (server se verify kiye hue) ---------------------------
+REPO_ROOT="/home/ec2-user/4astore"
+API_DIR="$REPO_ROOT/4astore-v2/api-node"
+WEB_DIR="$REPO_ROOT/4astore-v2/web"
+WEB_ROOT="/var/www/html"          # Apache DocumentRoot (HTTP + HTTPS dono)
 PM2_APP="4astore-api"
-WEB_OWNER="ec2-user:apache"
+BRANCH="main"
 
-# rsync excludes: these NEVER get overwritten or deleted on the live server
-API_EXCLUDES=(--exclude='.env' --exclude='node_modules' --exclude='fcm-service-account.json' --exclude='uploads' --exclude='*.log')
-WEB_EXCLUDES=(--exclude='.env' --exclude='node_modules' --exclude='dist' --exclude='public/data')
+# NODE_ENV production hone pe tsc/vite/prisma (devDeps) skip ho jaate hain
+unset NODE_ENV || true
 
-echo "=============================================="
-echo " 4A Store deploy — $(date '+%Y-%m-%d %H:%M:%S')"
-echo "=============================================="
+say() { printf "\n\033[1;36m==== %s ====\033[0m\n" "$1"; }
+die() { printf "\n\033[1;31mABORT: %s\033[0m\n" "$1" >&2; exit 1; }
 
-# ---- 0. Pre-flight: confirm the secret files exist BEFORE we touch anything -
-echo "[0/6] Pre-flight check of required server files..."
-MISSING=0
-for f in "$LIVE_API/.env" "$LIVE_API/fcm-service-account.json" "$LIVE_WEB/.env"; do
-  if [ -e "$f" ]; then
-    echo "   OK   $f"
-  else
-    echo "   MISSING  $f"
-    MISSING=1
-  fi
-done
-if [ "$MISSING" = "1" ]; then
-  echo "ABORT: a required server file is missing. Fix it before deploying."
-  exit 1
-fi
+# ---- 0. PRE-FLIGHT: zaroori files maujood hain? ----------------------------
+say "0/6  Pre-flight check"
+[ -d "$REPO_ROOT/.git" ]                        || die "git repo nahi mila: $REPO_ROOT"
+[ -e "$API_DIR/.env" ]                          || die "api-node/.env missing (secrets symlink toota?)"
+[ -e "$API_DIR/fcm-service-account.json" ]      || die "fcm-service-account.json missing"
+[ -f "$WEB_DIR/package.json" ]                  || die "web/package.json missing"
+[ -f "$API_DIR/package.json" ]                  || die "api-node/package.json missing"
+echo "  OK: repo, .env, fcm-service-account.json, package.json sab maujood"
 
-# ---- 1. Pull latest code ----------------------------------------------------
-echo "[1/6] Pulling latest code in $REPO_DIR ..."
-cd "$REPO_DIR"
-git pull origin main
+# ---- 1. GIT PULL -----------------------------------------------------------
+say "1/6  git pull ($BRANCH)"
+git -C "$REPO_ROOT" fetch origin "$BRANCH"
+git -C "$REPO_ROOT" checkout "$BRANCH"
+git -C "$REPO_ROOT" pull --ff-only origin "$BRANCH"
+echo "  HEAD: $(git -C "$REPO_ROOT" rev-parse --short HEAD)"
 
-# ---- 2. Sync api-node (secrets/uploads preserved via excludes) --------------
-echo "[2/6] Syncing api-node -> $LIVE_API (preserving .env, fcm, uploads) ..."
-sudo rsync -a --delete "${API_EXCLUDES[@]}" "$SRC_API/" "$LIVE_API/"
+# ---- 2. API: install -> prisma generate -> build ---------------------------
+say "2/6  api-node: install + prisma generate + build"
+cd "$API_DIR"
+npm install --include=dev --no-audit --no-fund
+npx prisma generate          # <-- stale Prisma client wala crash yahin rukta hai
+npm run build                # dist/server.js
+[ -f "$API_DIR/dist/server.js" ] || die "api build fail: dist/server.js nahi bana"
 
-# ---- 3. Build + restart api-node -------------------------------------------
-echo "[3/6] Building api-node ..."
-cd "$LIVE_API"
-npm install
-npx prisma generate
-npm run build
-echo "   Restarting $PM2_APP ..."
-pm2 restart "$PM2_APP"
-
-# ---- 4. Sync web (secrets/data preserved via excludes) ----------------------
-echo "[4/6] Syncing web -> $LIVE_WEB (preserving .env, public/data) ..."
-sudo rsync -a --delete "${WEB_EXCLUDES[@]}" "$SRC_WEB/" "$LIVE_WEB/"
-
-# ---- 5. Build web -----------------------------------------------------------
-echo "[5/6] Building web ..."
-cd "$LIVE_WEB"
-npm install
-npm run build
-sudo chown -R "$WEB_OWNER" "$LIVE_WEB/dist" || true
-
-# ---- 6. Post-deploy verification -------------------------------------------
-echo "[6/6] Verifying required files survived + services are up ..."
-for f in "$LIVE_API/.env" "$LIVE_API/fcm-service-account.json" "$LIVE_WEB/.env"; do
-  [ -e "$f" ] && echo "   OK   $f" || echo "   LOST!!!  $f  <-- investigate"
-done
-# FCM must be a real file with content, not an empty/broken link
-if head -c 20 "$LIVE_API/fcm-service-account.json" >/dev/null 2>&1; then
-  echo "   OK   fcm-service-account.json is readable"
+# ---- 3. API: pm2 restart ---------------------------------------------------
+say "3/6  pm2 restart $PM2_APP"
+if pm2 describe "$PM2_APP" >/dev/null 2>&1; then
+  pm2 restart "$PM2_APP" --update-env
 else
-  echo "   WARN fcm-service-account.json is NOT readable — push will be disabled!"
+  pm2 start "$API_DIR/dist/server.js" --name "$PM2_APP" --cwd "$API_DIR"
 fi
-pm2 status "$PM2_APP" || true
+pm2 save
+sleep 2
+pm2 list | grep "$PM2_APP" || true
 
-echo "=============================================="
-echo " Deploy complete."
-echo " Tip: check FCM init ->  pm2 logs $PM2_APP --lines 20 --nostream | grep -i fcm"
-echo "=============================================="
+# ---- 4. WEB/ADMIN: build ---------------------------------------------------
+say "4/6  web/admin build"
+cd "$WEB_DIR"
+npm install --include=dev --no-audit --no-fund
+npm run build                # tsc -b && vite build -> dist/
+[ -f "$WEB_DIR/dist/index.html" ] || die "web build fail: dist/index.html nahi bana"
+
+# ---- 5. WEB: deploy to /var/www/html (SAFE: .htaccess + .env exclude) ------
+# --delete JAAN-BUJH KE nahi (purani zaroori files na udein).
+# .htaccess exclude = live loop-safe .htaccess chhedo mat.
+say "5/6  web -> $WEB_ROOT (rsync, .htaccess/.env protected)"
+sudo rsync -a \
+  --exclude='.htaccess' \
+  --exclude='.env' \
+  --exclude='.well-known' \
+  "$WEB_DIR/dist/" "$WEB_ROOT/"
+sudo chown -R apache:apache "$WEB_ROOT" 2>/dev/null || true
+echo "  web files synced ( .htaccess / .env / .well-known chhoda )"
+
+# ---- 6. HEALTH CHECK -------------------------------------------------------
+say "6/6  Health check"
+code() { curl -s -o /dev/null -w "%{http_code}" "$@"; }
+LOGIN=$(code -X POST https://4astore.com/api/users/login -H "Content-Type: application/json" -d '{"u":"x"}' || true)
+SEO=$(code https://4astore.com/api/admin/seo-auto/dashboard || true)
+HOME=$(code https://4astore.com/ || true)
+MAP=$(code https://4astore.com/sitemap.xml || true)
+ROB=$(code https://4astore.com/robots.txt || true)
+FAV=$(code https://4astore.com/favicon.ico || true)
+printf "  home=%s  login=%s  seo=%s  sitemap=%s  robots=%s  favicon=%s\n" "$HOME" "$LOGIN" "$SEO" "$MAP" "$ROB" "$FAV"
+echo "  (login 4xx = backend zinda; seo 401 = route live; baaki 200 chahiye)"
+
+say "DONE ✅  — browser me Ctrl+Shift+R (ya Cloudflare purge agar zaroorat ho)"
