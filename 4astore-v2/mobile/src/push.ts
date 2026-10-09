@@ -16,6 +16,7 @@
 // Net: data-only server + single Notifee presenter per lifecycle = one notification.
 // ─────────────────────────────────────────────────────────────────────────────
 import notifee, { AndroidImportance, AndroidStyle, AndroidVisibility, EventType } from '@notifee/react-native';
+import type { AndroidBigPictureStyle, AndroidBigTextStyle } from '@notifee/react-native';
 import messaging from '@react-native-firebase/messaging';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -28,9 +29,13 @@ import type { PushData } from './pushPayload';
 
 const TOKEN_KEY = '4astore_push_token';
 
-// Bundled colour 4A logo used as the notification large icon (right-side rounded icon,
-// Rapido/Flipkart style). Falls back to data.largeIcon (a URL) when the server supplies one.
-const LARGE_ICON = require('../assets/images/notification-large-icon.png');
+// Colour 4A logo for the notification large icon (right-side rounded icon, Rapido/Flipkart style).
+// IMPORTANT: in a RELEASE build a Metro `require('...png')` ref does NOT resolve to a path Notifee
+// can load, so the large icon silently disappeared (worked in debug via Metro). Instead we point at
+// the NATIVE Android drawable `@drawable/notification_large_icon` (already bundled by the
+// withNotificationLargeIcon plugin + registered in AndroidManifest). A resource name string works in
+// both debug and release. The server's absolute `data.largeIcon` URL is preferred when present.
+const LARGE_ICON_RESOURCE = 'notification_large_icon';
 
 // Exact Android small (status-bar) icon drawable name. This is the monochrome silhouette the
 // expo-notifications config plugin copies in as `@drawable/notification_icon` (see
@@ -92,12 +97,20 @@ export async function displayPush(input: PushData) {
     // A bad largeIcon/image URL or a missing resource must never swallow the push:
     // fall back to a plain notification with only the bundled small icon.
     console.warn('[push] rich display failed, falling back to plain', e);
+    const body = data.body || '';
     await notifee.displayNotification({
       id: notifId(data),
       title: data.title || '4A Store',
-      body: data.body || '',
+      body,
       data: data as Record<string, string>,
-      android: { channelId: data.channelId || 'default', smallIcon: SMALL_ICON, color: BRAND_COLOR, pressAction: { id: 'default' } },
+      android: {
+        channelId: data.channelId || 'default',
+        smallIcon: SMALL_ICON,
+        color: BRAND_COLOR,
+        largeIcon: LARGE_ICON_RESOURCE, // native drawable — safe in release even if the URL failed
+        pressAction: { id: 'default' },
+        ...(body.length > 40 ? { style: { type: AndroidStyle.BIGTEXT, text: body } } : {}),
+      },
     });
   }
 }
@@ -112,18 +125,30 @@ function notifId(data: PushData): string {
 }
 
 async function drawRich(data: PushData) {
+  const body = data.body || '';
+  // Prefer the server's absolute logo URL; else the native drawable resource (release-safe).
+  const largeIcon = (data.largeIcon && /^https?:\/\//.test(data.largeIcon)) ? data.largeIcon : LARGE_ICON_RESOURCE;
+
+  // Style: a server image → BIGPICTURE (expandable banner). Otherwise, for anything beyond a short
+  // line, BIGTEXT so long bodies EXPAND instead of being truncated/cut off in the tray.
+  const style: AndroidBigPictureStyle | AndroidBigTextStyle | undefined = data.image
+    ? { type: AndroidStyle.BIGPICTURE, picture: data.image }
+    : body.length > 40
+      ? { type: AndroidStyle.BIGTEXT, text: body }
+      : undefined;
+
   await notifee.displayNotification({
     id: notifId(data),
     title: data.title || '',
-    body: data.body || '',
+    body,
     data,
     android: {
       channelId: data.channelId || 'default',
       smallIcon: SMALL_ICON,
       color: BRAND_COLOR,
-      largeIcon: data.largeIcon || LARGE_ICON,
+      largeIcon,
       pressAction: { id: 'default' },
-      ...(data.image ? { style: { type: AndroidStyle.BIGPICTURE, picture: data.image } } : {}),
+      ...(style ? { style } : {}),
     },
   });
 }
