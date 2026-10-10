@@ -16,6 +16,9 @@ data/mail-config.php
 data/screenshots/*
 !data/screenshots/.gitkeep
 
+# Subdomain provisioning secrets (Cloudflare token etc.) — SECRET, never commit
+4astore-v2/subdomain-provision.env
+
 # Firebase credentials — SECRET, never commit
 4astore-v2/mobile/google-services.json
 **/fcm-service-account.json
