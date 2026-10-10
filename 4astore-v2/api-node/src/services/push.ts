@@ -122,11 +122,50 @@ function notificationTypeMessage(msg: PushMessage) {
 /**
  * Merge the colour-logo `largeIcon` hint into the JS-facing data payload so the foreground
  * handler / any future custom builder can reach the colour logo URL. The right-side large icon
- * on the OS tray is produced by expo-notifications' own builder from the manifest large-icon
+ * on the OS tray is produced by Notifee's own builder from the manifest large-icon
  * resource (see NOTIFICATION_LOGO_URL doc) because we send data-only messages.
  */
 function withLargeIcon(data: Record<string, string> | undefined): Record<string, string> {
   return { largeIcon: NOTIFICATION_LOGO_URL, ...(data || {}) };
+}
+
+/**
+ * DEFAULT send path: a DATA-ONLY FCM message (no top-level `notification` block, no
+ * `android.notification` block). With no notification block, Android/FCM never auto-draws the
+ * tray notification, so the shipped mobile app's Notifee presenter runs on every app state
+ * (foreground: onMessage; background/killed: setBackgroundMessageHandler in mobile/index.js —
+ * which `return`s early when a notification block IS present). Notifee then applies the colour
+ * large icon (right-side logo) AND tap routing reads `data.link` via getInitialNotification.
+ *
+ * The data map carries EVERY flat key the shipped app reads in pushPayload.ts normalizePush and
+ * push.ts displayPush/drawRich — title, body, link, largeIcon, channelId (+ image when present),
+ * plus the caller's existing data fields (type, orderId, …). FCM requires ALL data values to be
+ * strings, so each is coerced with String().
+ *
+ * `android: { priority: 'high' }` + top-level `priority`/apns push the message as reliably as a
+ * data-only message can be delivered. Latency-critical staff alerts opt into the OS-drawn
+ * notification-type path instead via `msg.reliable` (see notificationTypeMessage / sendToTopic).
+ */
+function dataOnlyPayload(msg: PushMessage) {
+  const data: Record<string, string> = {
+    ...withLargeIcon(msg.data),
+    title: String(msg.title ?? ''),
+    body: String(msg.body ?? ''),
+    channelId: String(msg.channelId || 'default'),
+    ...(msg.data?.link ? { link: String(msg.data.link) } : {}),
+    ...(msg.image ? { image: absolutePublicUrl(msg.image) } : {}),
+  };
+  return {
+    data,
+    android: { priority: 'high' as const },
+    apns: { headers: { 'apns-priority': '10' } },
+  };
+}
+
+/** Pick the OS-drawn notification-type payload only for latency-critical alerts (`msg.reliable`),
+ *  else the data-only default so Notifee draws the colour large icon + handles tap routing. */
+function buildMessage(msg: PushMessage) {
+  return msg.reliable ? notificationTypeMessage(msg) : dataOnlyPayload(msg);
 }
 
 /** Send to an FCM topic (e.g. 'admins', 'customers', 'riders', 'order_4A...'). */
@@ -137,14 +176,11 @@ export async function sendToTopic(topic: string, msg: PushMessage): Promise<bool
     console.log(`[push:dev] topic=${topic} title="${msg.title}" body="${msg.body}"`);
     return false;
   }
-  // Default: DATA-ONLY message (no `notification` block) so expo-notifications' builder runs in
-  // background/killed too and applies the manifest large-icon (colour logo). See dataOnlyPayload.
-  // `msg.reliable` opts into the OS-drawn path for latency-sensitive alerts.
-  // Always use the notification-type message: it carries a `notification` block so Android/FCM
-  // reliably wakes the device and draws the push in background/killed/Doze (data-only messages are
-  // dropped there by OEM battery managers — the root cause of "push only when app is open"). The
-  // mobile app skips its own draw when `remoteMessage.notification` is present, so no double show.
-  await admin.messaging().send({ topic, ...notificationTypeMessage(msg) });
+  // Default: DATA-ONLY message (no `notification` block) so the shipped app's Notifee presenter
+  // runs in foreground AND background/killed and applies the colour large-icon (right-side logo)
+  // + reads data.link for tap routing. See dataOnlyPayload. `msg.reliable` opts into the OS-drawn
+  // notification-type path for latency-critical staff alerts (guaranteed wake-up, no colour icon).
+  await admin.messaging().send({ topic, ...buildMessage(msg) });
   return true;
 }
 
@@ -198,12 +234,11 @@ export async function sendToTokens(tokens: string[], msg: PushMessage): Promise<
   let sent = 0;
   for (let i = 0; i < unique.length; i += 500) {
     const batch = unique.slice(i, i + 500);
-    // Default: DATA-ONLY message (no `notification` block) so expo-notifications' builder runs in
-    // background/killed too and applies the manifest large-icon (colour logo). See dataOnlyPayload.
-    // `msg.reliable` opts into the OS-drawn path for latency-sensitive alerts.
-    // Notification-type for reliable background/killed delivery (see sendToTopic). The app
-    // suppresses its own draw when remoteMessage.notification is set, so there is no double show.
-    const resp = await admin.messaging().sendEachForMulticast({ tokens: batch, ...notificationTypeMessage(msg) });
+    // Default: DATA-ONLY message (no `notification` block) so the shipped app's Notifee presenter
+    // runs in foreground AND background/killed and applies the colour large-icon (right-side logo)
+    // + reads data.link for tap routing. See dataOnlyPayload / sendToTopic. `msg.reliable` opts
+    // into the OS-drawn notification-type path for latency-critical staff alerts.
+    const resp = await admin.messaging().sendEachForMulticast({ tokens: batch, ...buildMessage(msg) });
     sent += resp.successCount;
     // Drop tokens FCM says are gone (app uninstalled / token rotated).
     const dead: string[] = [];
