@@ -16,6 +16,8 @@
 
   # Leave the Node API alone — /api is reverse-proxied to the backend, not the SPA.
   RewriteCond %{REQUEST_URI} !^/api
+  # Leave phpMyAdmin alone — it is a separate PHP app at /var/www/html/phpmyadmin.
+  RewriteCond %{REQUEST_URI} !^/phpmyadmin
   # Never rewrite a request that maps to an existing file or directory
   # (sitemap.xml, robots.txt, /assets/*.js|css, images, .well-known, etc.).
   RewriteCond %{REQUEST_FILENAME} -f [OR]
