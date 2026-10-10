@@ -11,8 +11,8 @@ import type { ExpoConfig } from 'expo/config';
 const SITE_HOST = process.env.STORE4A_SITE_HOST || '4astore.com';
 const API_BASE = process.env.STORE4A_API_BASE || `https://${SITE_HOST}/api`;
 // Single AAB at versionCode 25 carries BOTH change sets: Notifee rich-push + identity/checkout.
-// Bumped to 30 for the production release (upload code must exceed the last uploaded bundle).
-const VERSION_CODE = Number(process.env.STORE4A_VERSION_CODE || 30);
+// Bumped to 31: remove READ_MEDIA_* for Google Play photo/video policy (Android Photo Picker).
+const VERSION_CODE = Number(process.env.STORE4A_VERSION_CODE || 31);
 const VERSION_NAME = process.env.STORE4A_VERSION_NAME || '2.0.0';
 
 // FCM needs google-services.json (Firebase console → Project settings → Android app com.store4a.app).
@@ -58,6 +58,12 @@ const config: ExpoConfig = {
       'android.permission.READ_EXTERNAL_STORAGE',
       'android.permission.WRITE_EXTERNAL_STORAGE',
       'android.permission.SYSTEM_ALERT_WINDOW',
+      // Google Play photo/video policy: remove broad media permissions — expo-image-picker
+      // falls back to the Android system Photo Picker (no permission needed) for screenshot upload.
+      'android.permission.READ_MEDIA_IMAGES',
+      'android.permission.READ_MEDIA_VIDEO',
+      'android.permission.READ_MEDIA_AUDIO',
+      'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
     ],
     // Smart links (Android App Links) — host assetlinks.json with the signing SHA-256.
     intentFilters: [
