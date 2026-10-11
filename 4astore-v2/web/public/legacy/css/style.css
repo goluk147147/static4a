@@ -2440,38 +2440,42 @@ img {
 /* Keeps a nice wide banner shape on every screen — web + app WebView */
 .hero-slider { width: 100%; margin: 0 auto 24px; }   /* full width + gap below */
 .slide {
-  aspect-ratio: 3 / 1;      /* matches 1200x400 images (proportional) */
+  aspect-ratio: 3 / 1;      /* wide banner on desktop (16:9 images center-crop top/bottom here) */
   min-height: 0;            /* let aspect-ratio drive the height */
   max-height: 420px;
   overflow: hidden;         /* keep overlay text inside the banner */
+}
+/* 16:9 image banners: always center-fill (cover) so nothing stretches; desktop crops a little
+   top/bottom (3:1 frame), phones show the full 16:9 image (matching 16:9 frame below). */
+.hero-slider .slide[style*="url("] {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 }
 /* Responsive banner text so it always fits inside the banner height */
 .slide-content h1 { font-size: clamp(1.05rem, 4.2vw, 2.2rem); line-height: 1.15; }
 .slide-content p  { font-size: clamp(0.8rem, 2.6vw, 1.1rem); line-height: 1.3; }
 .slide-content .btn-shop { padding: 8px 20px; font-size: clamp(0.8rem, 2.6vw, 1rem); }
 
+/* Banners are 16:9 images (1280x720 recommended). Slide is 16:9 on phones so a `cover`
+   background fills the whole area with NO crop (image ratio == container ratio). */
 @media (max-width: 768px) {
-  /* Keep the slide ratio close to the banner image's own 3:1 so `cover` barely crops
-     (5/2 and 16/9 cropped the left/right of 1200x400 banners on phones). `contain` shows
-     the WHOLE image with no crop; the gradient slides still fill via background-size below. */
-  .slide { aspect-ratio: 3 / 1; }
+  .slide { aspect-ratio: 16 / 9; }
   .slide-content { padding: 0 8px; }
   .slide-content p { margin-bottom: 10px; }
-  /* Image banners: show the full image (no crop) on phones. */
   .hero-slider .slide[style*="url("] {
-    background-size: contain !important;
+    background-size: cover !important;
     background-repeat: no-repeat !important;
     background-position: center !important;
-    background-color: #fff;   /* fills any letterbox gap cleanly */
   }
 }
 @media (max-width: 480px) {
-  .slide { aspect-ratio: 3 / 1; }
+  .slide { aspect-ratio: 16 / 9; }
 }
 
 @media (min-width: 769px) {
   .hero-slider .slide[style*="url("] {
-    background-position: center top !important;
+    background-position: center !important;
   }
 }
 
