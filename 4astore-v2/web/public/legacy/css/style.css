@@ -2440,17 +2440,18 @@ img {
 /* Keeps a nice wide banner shape on every screen — web + app WebView */
 .hero-slider { width: 100%; margin: 0 auto 24px; }   /* full width + gap below */
 .slide {
-  aspect-ratio: 3 / 1;      /* wide banner on desktop (16:9 images center-crop top/bottom here) */
+  aspect-ratio: 16 / 9;     /* SAME ratio as the 1280x720 / 1920x1080 banner images */
   min-height: 0;            /* let aspect-ratio drive the height */
-  max-height: 420px;
-  overflow: hidden;         /* keep overlay text inside the banner */
+  max-height: 560px;        /* cap height on very wide desktops */
+  overflow: hidden;
 }
-/* 16:9 image banners: always center-fill (cover) so nothing stretches; desktop crops a little
-   top/bottom (3:1 frame), phones show the full 16:9 image (matching 16:9 frame below). */
+/* 16:9 image banners: the frame is 16:9 and the image is 16:9, so `contain` shows the WHOLE
+   image with ZERO crop on BOTH desktop and mobile. White fills any tiny edge gap. */
 .hero-slider .slide[style*="url("] {
-  background-size: cover !important;
+  background-size: contain !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
+  background-color: #fff;
 }
 /* Responsive banner text so it always fits inside the banner height */
 .slide-content h1 { font-size: clamp(1.05rem, 4.2vw, 2.2rem); line-height: 1.15; }
