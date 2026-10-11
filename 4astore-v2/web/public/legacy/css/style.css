@@ -2441,17 +2441,17 @@ img {
 .hero-slider { width: 100%; margin: 0 auto 24px; }   /* full width + gap below */
 .slide {
   aspect-ratio: 16 / 9;     /* SAME ratio as the 1280x720 / 1920x1080 banner images */
-  min-height: 0;            /* let aspect-ratio drive the height */
-  max-height: 560px;        /* cap height on very wide desktops */
+  min-height: 0;
+  max-height: 560px;
   overflow: hidden;
 }
-/* 16:9 image banners: the frame is 16:9 and the image is 16:9, so `contain` shows the WHOLE
-   image with ZERO crop on BOTH desktop and mobile. White fills any tiny edge gap. */
+/* Image banners FILL the whole frame edge-to-edge (no grey/white letterbox) and the frame is
+   the image's 16:9 ratio, so a correctly-sized 16:9 image fills completely with no crop.
+   `100% 100%` stretches the image to the frame — upload true 16:9 art and it looks perfect. */
 .hero-slider .slide[style*="url("] {
-  background-size: contain !important;
+  background-size: 100% 100% !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
-  background-color: #fff;
 }
 /* Responsive banner text so it always fits inside the banner height */
 .slide-content h1 { font-size: clamp(1.05rem, 4.2vw, 2.2rem); line-height: 1.15; }
@@ -2465,7 +2465,7 @@ img {
   .slide-content { padding: 0 8px; }
   .slide-content p { margin-bottom: 10px; }
   .hero-slider .slide[style*="url("] {
-    background-size: cover !important;
+    background-size: 100% 100% !important;   /* fill frame edge-to-edge, no letterbox */
     background-repeat: no-repeat !important;
     background-position: center !important;
   }
