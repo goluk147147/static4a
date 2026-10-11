@@ -2451,12 +2451,22 @@ img {
 .slide-content .btn-shop { padding: 8px 20px; font-size: clamp(0.8rem, 2.6vw, 1rem); }
 
 @media (max-width: 768px) {
-  .slide { aspect-ratio: 5 / 2; }   /* a touch taller on phones for readable text */
+  /* Keep the slide ratio close to the banner image's own 3:1 so `cover` barely crops
+     (5/2 and 16/9 cropped the left/right of 1200x400 banners on phones). `contain` shows
+     the WHOLE image with no crop; the gradient slides still fill via background-size below. */
+  .slide { aspect-ratio: 3 / 1; }
   .slide-content { padding: 0 8px; }
   .slide-content p { margin-bottom: 10px; }
+  /* Image banners: show the full image (no crop) on phones. */
+  .hero-slider .slide[style*="url("] {
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-color: #fff;   /* fills any letterbox gap cleanly */
+  }
 }
 @media (max-width: 480px) {
-  .slide { aspect-ratio: 16 / 9; }
+  .slide { aspect-ratio: 3 / 1; }
 }
 
 @media (min-width: 769px) {
