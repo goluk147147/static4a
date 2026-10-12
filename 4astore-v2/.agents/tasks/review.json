@@ -1,0 +1,20 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "info",
+      "label": "Manual-confirm UTR scope",
+      "confidence": "possible",
+      "blocking": false,
+      "detail": "POST /admin/orders/status validates/writes payment_reference for any target status, not only confirmed states as the plan worded it. Harmless (still 12-digit-validated, clears on empty, untouched when absent); no action required unless the owner wants it gated to confirmed states."
+    },
+    {
+      "severity": "info",
+      "label": "Abandoned-pending growth",
+      "confidence": "confirmed",
+      "blocking": false,
+      "detail": "Every Proceed writes a 'Pending Payment' row and most will never be paid; by design there is no TTL cleanup, only the admin pending filter. Monitor table growth; a future TTL job marking stale pendings 'Cancelled' is the documented follow-up."
+    }
+  ],
+  "reviewDoc": "c:\\xampp\\htdocs\\static4a\\.worktrees\\order-pending-cache\\4astore-v2\\.agents\\tasks\\review.md"
+}
