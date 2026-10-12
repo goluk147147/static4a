@@ -30,17 +30,24 @@ export function normalizeOrder(o: Order): Order {
   };
 }
 
+// Catalog freshness: a short staleTime + refetch on focus/reconnect so admin product/category edits
+// appear within seconds. The server's catalog_version ETag + `no-cache, must-revalidate` (catalog.ts)
+// keeps these refetches cheap 304s until an edit actually changes the catalog.
 export const useProducts = () =>
   useQuery({
     queryKey: ['products'],
-    staleTime: 5 * 60_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     queryFn: async () => ((await api.get('/products')).products as Product[]).map(normalizeProduct),
   });
 
 export const useCategories = () =>
   useQuery({
     queryKey: ['categories'],
-    staleTime: 10 * 60_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     queryFn: async () => ((await api.get('/categories')).categories as Category[]).map((c) => ({ ...c, id: Number(c.id) })),
   });
 

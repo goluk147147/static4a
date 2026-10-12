@@ -8,9 +8,15 @@ function normalizeProduct(p: Product): Product {
   return { ...p, id: Number(p.id), price: Number(p.price) || 0, mrp: Number(p.mrp) || 0, discount: Number(p.discount) || 0 };
 }
 
+// Catalog freshness: staleTime 0 + refetch on focus so admin product/category edits appear within
+// seconds for shoppers (overriding the global staleTime 60s / refetchOnWindowFocus false). The
+// server catalog_version ETag + `no-cache, must-revalidate` (catalog.ts) keeps these refetches
+// cheap 304s until an edit actually changes the catalog.
 export function useProducts() {
   return useQuery({
     queryKey: ['products'],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => ((await api.get('/products')).data.products as Product[]).map(normalizeProduct),
   });
 }
@@ -18,6 +24,8 @@ export function useProducts() {
 export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => (await api.get('/categories')).data.categories as Category[],
   });
 }

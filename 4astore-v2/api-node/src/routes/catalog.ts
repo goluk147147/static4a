@@ -27,13 +27,48 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 // weak ETag on the JSON body) and skip the DB, removing most connection
 // pressure. Only HTTP headers are added — the JSON body stays byte-identical.
 const STATIC_CACHE = 'public, max-age=30';
-// Keep /products fresher so admin stock/price edits appear quickly.
-const PRODUCTS_CACHE = 'public, max-age=15';
+
+// Catalog freshness: /products and /categories always revalidate but return a cheap 304 until an
+// admin edit bumps `catalog_version` (bumped in admin.ts after every product/category write), at
+// which point the next request gets fresh data immediately — regardless of any shared/edge cache.
+const CATALOG_CACHE = 'no-cache, must-revalidate';
+
+// The version read is tiny and cached behind the existing 10s ttlCache so it never adds a query per
+// catalog request. Falls back to 1 when the `catalog_version` column/row is absent (before
+// prisma/catalog-version.sql has run on the live DB).
+async function catalogVersion(): Promise<number> {
+  return cached('catalog_version', async () => {
+    try {
+      const rows = await prisma.$queryRawUnsafe<Array<{ catalog_version?: unknown }>>(
+        'SELECT catalog_version FROM app_version WHERE id = 1'
+      );
+      const v = Number(rows[0]?.catalog_version);
+      return Number.isFinite(v) && v > 0 ? v : 1;
+    } catch {
+      return 1;
+    }
+  });
+}
+
+// Set the catalog ETag + must-revalidate headers and, when the client's If-None-Match matches the
+// current version, short-circuit with a 304 (no body). Returns true when a 304 was sent.
+function serveCatalogConditional(req: Request, res: Response, version: number): boolean {
+  const etag = `"cat-v${version}"`;
+  res.setHeader('Cache-Control', CATALOG_CACHE);
+  res.setHeader('ETag', etag);
+  const inm = req.headers['if-none-match'];
+  if (inm && inm === etag) {
+    res.status(304).end();
+    return true;
+  }
+  return false;
+}
 
 // GET /api/products — public product list (hidden/age-restricted handled by category flags on the client)
-router.get('/products', async (_req: Request, res: Response) => {
+router.get('/products', async (req: Request, res: Response) => {
+  const version = await catalogVersion();
+  if (serveCatalogConditional(req, res, version)) return;
   const products = await prisma.product.findMany({ orderBy: { id: 'asc' } });
-  res.setHeader('Cache-Control', PRODUCTS_CACHE);
   return ok(res, { products });
 });
 
@@ -45,9 +80,10 @@ router.get('/products/:id', async (req: Request, res: Response) => {
 });
 
 // GET /api/categories — public
-router.get('/categories', async (_req: Request, res: Response) => {
+router.get('/categories', async (req: Request, res: Response) => {
+  const version = await catalogVersion();
+  if (serveCatalogConditional(req, res, version)) return;
   const categories = await prisma.category.findMany({ orderBy: { sort_order: 'asc' } });
-  res.setHeader('Cache-Control', STATIC_CACHE);
   return ok(res, { categories });
 });
 
