@@ -14,6 +14,15 @@
   # that caused "Request exceeded the limit of 10 internal redirects" / HTTP 500).
   RewriteRule ^index\.html$ - [L]
 
+  # --- Social-share crawlers (WhatsApp/Facebook/etc.) get the per-product/page OG HTML ---
+  # Humans fall through to the SPA; only known link-preview bots are proxied to the Node OG
+  # routes which emit product-specific og:title/og:description/og:image. Needs mod_proxy_http
+  # ([P]); /api is already reverse-proxied to the backend. These run BEFORE the SPA fallback.
+  RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Facebot|WhatsApp|Twitterbot|Slackbot|LinkedInBot|Discordbot|TelegramBot|Pinterest|redditbot|Googlebot|bingbot) [NC]
+  RewriteRule ^product/([A-Za-z0-9]+)/?$ /api/og/product/$1 [P,L]
+  RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Facebot|WhatsApp|Twitterbot|Slackbot|LinkedInBot|Discordbot|TelegramBot|Pinterest|redditbot|Googlebot|bingbot) [NC]
+  RewriteRule ^page/([a-z0-9-]+)/?$ /api/og/page/$1 [P,L]
+
   # Leave the Node API alone — /api is reverse-proxied to the backend, not the SPA.
   RewriteCond %{REQUEST_URI} !^/api
   # Leave phpMyAdmin alone — it is a separate PHP app at /var/www/html/phpmyadmin.
