@@ -2,7 +2,7 @@
 
 **Verdict:** APPROVED (`.agents/tasks/review.json`) — two info findings, both non-blocking.
 **Integration:** rebased `order-pending-cache` onto `main` (clean, no conflicts) and fast-forwarded `main`.
-**Final commit on `main`:** `7b6981fdd43397b8b145e267ec598b9b1fa9745c`
+**Final commit on `main`:** `01bb8a2ce4048964ed8788327df006a1405b1688` (this report commit; feature tip `7b6981fd`)
 **Not pushed** to any remote; worktree left in place for the orchestrator to remove.
 
 Commits now on `main` (on top of `527bcf2d`):
