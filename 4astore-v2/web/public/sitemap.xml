@@ -11,7 +11,6 @@
   <url><loc>https://4astore.com/product/4</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/5</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/6</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://4astore.com/product/7</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/9</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/10</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/12</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
@@ -167,13 +166,9 @@
   <url><loc>https://4astore.com/product/174</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/175</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/176</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://4astore.com/product/177</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/178</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://4astore.com/product/179</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://4astore.com/product/180</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/181</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/182</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://4astore.com/product/183</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/184</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/185</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/186</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
@@ -190,10 +185,6 @@
   <url><loc>https://4astore.com/product/197</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/198</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/199</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://4astore.com/product/200</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://4astore.com/product/201</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://4astore.com/product/202</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://4astore.com/product/203</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/204</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/205</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/206</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
@@ -208,4 +199,12 @@
   <url><loc>https://4astore.com/product/215</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/216</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://4astore.com/product/217</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://4astore.com/product/218</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://4astore.com/product/219</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://4astore.com/product/220</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://4astore.com/product/221</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://4astore.com/product/222</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://4astore.com/product/223</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://4astore.com/product/224</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://4astore.com/product/225</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
 </urlset>
