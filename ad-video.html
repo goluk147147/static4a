@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4A Store - Ad Video</title>
+<style>
+  :root{
+    --primary:#ff7a00;
+    --primary-dark:#c62828;
+    --primary-light:#fff0d8;
+    --secondary:#ffd166;
+    --green:#0FA958;
+    --wa:#25D366;
+    --ink:#2d211d;
+    --gray:#7a6a60;
+    --border:#e8e0d9;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI','Noto Sans Devanagari',system-ui,sans-serif;}
+  html,body{height:100%;}
+  body{background:#0d0d0f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:100vh;padding:16px;overflow:hidden;}
+
+  /* ---- Android phone frame: fixed 9:19.5 aspect ratio ---- */
+  .phone{
+    position:relative;
+    /* fit within viewport while keeping phone aspect ratio */
+    height:min(96vh, calc((100vw - 32px) * 2.1667));
+    aspect-ratio:9 / 19.5;
+    max-height:960px;
+    background:#000;
+    border-radius:38px;
+    padding:10px;
+    box-shadow:0 24px 70px rgba(0,0,0,.6), 0 0 0 2px #1c1c1f;
+  }
+  /* side buttons for realism */
+  .phone::before{content:"";position:absolute;right:-3px;top:120px;width:3px;height:70px;background:#2a2a2e;border-radius:0 3px 3px 0;}
+  .phone::after{content:"";position:absolute;left:-3px;top:150px;width:3px;height:48px;background:#2a2a2e;border-radius:3px 0 0 3px;}
+
+  .screen{position:relative;width:100%;height:100%;background:#fff;overflow:hidden;border-radius:30px;container-type:size;font-size:4cqw;}
+  /* everything inside scales with the phone width (cqw = 1% of screen width) */
+  /* camera punch-hole */
+  .notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:9px;height:9px;background:#000;border-radius:50%;z-index:1000;}
+
+  /* replay button OUTSIDE the phone (won't appear in a cropped phone recording) */
+  .replay-outside{
+    border:0;border-radius:24px;padding:10px 22px;
+    background:var(--primary);color:#fff;font-weight:800;font-size:14px;cursor:pointer;
+    box-shadow:0 6px 18px rgba(255,122,0,.4);
+  }
+  .replay-outside:hover{background:var(--primary-dark);}
+
+  @media(max-width:430px){
+    body{padding:0;gap:0;}
+    .phone{height:100vh;max-height:none;width:100vw;aspect-ratio:auto;border-radius:0;padding:0;box-shadow:none;}
+    .phone::before,.phone::after{display:none;}
+    .screen{border-radius:0;}
+    .notch{display:none;}
+    .replay-outside{position:absolute;bottom:14px;right:14px;z-index:2000;opacity:.85;}
+  }
+
+  .progress{position:absolute;top:0;left:0;height:4px;width:0;background:var(--primary);z-index:999;transition:width .25s linear;}
+
+  .scene{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;visibility:hidden;transition:opacity .5s ease;background:#fff;}
+  .scene.active{opacity:1;visibility:visible;}
+
+  .caption{position:absolute;left:0;right:0;bottom:0;height:22%;display:flex;flex-direction:column;justify-content:flex-end;padding:0 5cqw 5cqw;background:linear-gradient(to top,rgba(0,0,0,.9),rgba(0,0,0,.55) 55%,transparent);color:#fff;z-index:50;}
+  .caption h2{font-size:5cqw;line-height:1.25;font-weight:800;text-shadow:0 2px 8px rgba(0,0,0,.6);}
+  .caption p{font-size:3.4cqw;margin-top:1cqw;opacity:.95;line-height:1.3;}
+
+  /* content area leaves room for the caption so nothing overlaps */
+  .center{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3cqw;padding:5cqw;padding-bottom:24%;text-align:center;overflow:hidden;}
+  /* scenes whose whole screen is the content (no caption) use full height */
+  .s-intro .center,.s-cta .center{padding-bottom:5cqw;}
+
+  /* ---------- Intro ---------- */
+  .s-intro{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;}
+  .logo-badge{width:26cqw;height:26cqw;border-radius:6cqw;background:#fff;display:flex;align-items:center;justify-content:center;padding:3cqw;box-shadow:0 14px 40px rgba(0,0,0,.3);animation:pop .7s ease both;}
+  .logo-badge svg{width:100%;height:100%;}
+  .s-intro h1{font-size:8.5cqw;font-weight:900;text-shadow:0 3px 10px rgba(0,0,0,.25);animation:fadeUp .7s .2s both;}
+  .s-intro .tag{font-size:4cqw;opacity:.95;animation:fadeUp .7s .4s both;}
+  @keyframes pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+  @keyframes fadeUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+  /* ---------- Play Store ---------- */
+  .ps-card{width:88%;background:#fff;border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.12);text-align:left;}
+  .ps-top{display:flex;gap:14px;align-items:center;}
+  .ps-icon{width:64px;height:64px;border-radius:16px;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;padding:6px;flex-shrink:0;}
+  .ps-icon svg{width:100%;height:100%;}
+  .ps-name{font-size:19px;font-weight:800;color:var(--ink);}
+  .ps-sub{font-size:13px;color:var(--gray);}
+  .ps-stars{color:#fbc02d;font-size:14px;margin-top:3px;}
+  .ps-install{margin-top:18px;background:var(--green);color:#fff;border:0;border-radius:30px;padding:13px;width:100%;font-size:16px;font-weight:800;transition:.3s;}
+  .scene.active .ps-install{animation:tap 2.6s .3s both;}
+  @keyframes tap{0%,22%{transform:scale(1)}26%{transform:scale(.92);background:#0b8f4a}30%,100%{transform:scale(1)}}
+  .ps-bar{margin-top:14px;height:7px;border-radius:5px;background:var(--border);overflow:hidden;}
+  .ps-bar span{display:block;height:100%;width:0;background:var(--green);}
+  .scene.active .ps-bar span{animation:fill 2.6s .9s ease forwards;}
+  @keyframes fill{to{width:100%}}
+  .ps-dl-txt{margin-top:8px;font-size:12px;color:var(--gray);font-weight:600;}
+
+  /* ---------- app header ---------- */
+  .app-head{background:var(--primary);color:#fff;padding:4cqw 4cqw 3.5cqw;display:flex;align-items:center;gap:2.6cqw;flex-shrink:0;}
+  .app-head .mini-logo{width:9cqw;height:9cqw;border-radius:2.2cqw;background:#fff;display:flex;align-items:center;justify-content:center;padding:.8cqw;flex-shrink:0;}
+  .app-head .mini-logo svg{width:100%;height:100%;}
+  .app-head .ht{font-weight:800;font-size:4.6cqw;}
+  .app-head .loc{font-size:2.8cqw;opacity:.9;}
+
+  /* ---------- Login / Signup ---------- */
+  .auth-box{width:88%;}
+  .auth-logo{font-size:10cqw;margin-bottom:1cqw;}
+  .auth-box h3{font-size:5.4cqw;color:var(--primary);margin-bottom:.5cqw;}
+  .auth-box .sub{color:var(--gray);font-size:3.3cqw;margin-bottom:4cqw;}
+  .auth-tabs{display:flex;gap:2cqw;margin-bottom:4cqw;}
+  .auth-tabs button{flex:1;padding:2.8cqw;border:1px solid var(--border);border-radius:2.5cqw;background:#faf7f5;color:var(--gray);font-weight:800;font-size:3.5cqw;}
+  .auth-tabs button.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .fld{width:100%;border:1px solid var(--border);border-radius:2.8cqw;padding:3.2cqw;font-size:3.8cqw;margin-bottom:2.6cqw;color:var(--ink);background:#faf7f5;text-align:left;}
+  .fld.label{font-size:3cqw;color:var(--gray);padding:1cqw .5cqw;background:none;border:0;margin-bottom:.6cqw;font-weight:700;}
+  .otp-boxes{display:flex;gap:2cqw;justify-content:center;margin:1.5cqw 0 3cqw;}
+  .otp-boxes span{width:10cqw;height:12cqw;border:2px solid var(--primary);border-radius:2.5cqw;display:flex;align-items:center;justify-content:center;font-size:5.5cqw;font-weight:900;color:var(--ink);background:#fff;}
+  .btn-primary{width:100%;background:var(--primary);color:#fff;border:0;border-radius:2.8cqw;padding:3.4cqw;font-size:3.9cqw;font-weight:800;}
+  .btn-wa{background:var(--wa);}
+  .email-ok{color:#087a3d;font-size:3cqw;margin-bottom:2.5cqw;font-weight:700;}
+
+  /* email notification toast */
+  .notif{position:absolute;top:4cqw;left:3cqw;right:3cqw;background:#fff;border-radius:3.5cqw;padding:3cqw 3.5cqw;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;gap:3cqw;align-items:center;z-index:80;border-left:4px solid var(--primary);}
+  .notif .ic{width:10cqw;height:10cqw;border-radius:2.5cqw;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:5cqw;flex-shrink:0;}
+  .notif .ti{font-weight:800;font-size:3.6cqw;color:var(--ink);text-align:left;}
+  .notif .ds{font-size:3cqw;color:var(--gray);text-align:left;margin-top:.3cqw;}
+  .scene.active .notif{animation:slideDown .6s .3s both;}
+  @keyframes slideDown{from{transform:translateY(-120%);opacity:0}to{transform:translateY(0);opacity:1}}
+
+  /* ---------- Categories ---------- */
+  .cat-grid{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr 1fr;grid-auto-rows:min-content;gap:3cqw;padding:4cqw 4cqw 24%;overflow:hidden;align-content:center;}
+  .cat{background:var(--primary-light);border:1px solid #ffe0c2;border-radius:4cqw;padding:4cqw 2cqw;text-align:center;}
+  .cat .emo{font-size:8.5cqw;}
+  .cat .nm{font-size:2.8cqw;font-weight:700;color:var(--ink);margin-top:1.5cqw;line-height:1.2;}
+  .scene.active .cat{animation:fadeUp .5s both;}
+  .scene.active .cat:nth-child(1){animation-delay:.1s}.scene.active .cat:nth-child(2){animation-delay:.18s}
+  .scene.active .cat:nth-child(3){animation-delay:.26s}.scene.active .cat:nth-child(4){animation-delay:.34s}
+  .scene.active .cat:nth-child(5){animation-delay:.42s}.scene.active .cat:nth-child(6){animation-delay:.5s}
+  .scene.active .cat:nth-child(7){animation-delay:.58s}.scene.active .cat:nth-child(8){animation-delay:.66s}
+  .scene.active .cat:nth-child(9){animation-delay:.74s}
+
+  /* ---------- Product ---------- */
+  .prod{width:86%;background:#fff;border:1px solid #eee;border-radius:4.5cqw;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.1);}
+  .prod .img{height:38cqw;background:#fff;display:flex;align-items:center;justify-content:center;padding:2.5cqw;}
+  .prod .img img{max-height:100%;max-width:100%;object-fit:contain;}
+  .prod .body{padding:4cqw;text-align:left;}
+  .prod .pn{font-size:4.4cqw;font-weight:800;color:var(--ink);}
+  .prod .pw{font-size:3.3cqw;color:var(--gray);margin-top:.5cqw;}
+  .prod .pr{margin-top:2.5cqw;display:flex;align-items:center;gap:2cqw;}
+  .prod .pr .now{font-size:5.6cqw;font-weight:900;color:var(--ink);}
+  .prod .pr .mrp{font-size:3.6cqw;color:var(--gray);text-decoration:line-through;}
+  .prod .pr .off{font-size:3cqw;font-weight:800;color:var(--green);background:#e8f8ef;padding:.5cqw 2cqw;border-radius:5cqw;}
+  .atc{margin-top:3.5cqw;width:100%;background:var(--primary);color:#fff;border:0;border-radius:3cqw;padding:3.6cqw;font-size:4cqw;font-weight:800;}
+  .scene.active .atc{animation:tap2 3s 1s both;}
+  @keyframes tap2{0%,30%{transform:scale(1)}34%{transform:scale(.93);background:var(--primary-dark)}38%,100%{transform:scale(1)}}
+  .cart-fly{position:absolute;top:4cqw;right:4cqw;background:#fff;color:var(--primary-dark);border-radius:7cqw;padding:2cqw 3.5cqw;font-weight:800;font-size:3.6cqw;box-shadow:0 6px 18px rgba(0,0,0,.15);z-index:60;transition:transform .3s;}
+  .free-pill{margin-top:3.5cqw;background:#e8f8ef;color:#087a3d;font-weight:800;font-size:3.3cqw;padding:2.5cqw 3.5cqw;border-radius:7cqw;display:inline-block;}
+
+  /* ---------- Address ---------- */
+  .addr-list{width:88%;text-align:left;}
+  .addr{border:1px solid var(--border);border-radius:3.5cqw;padding:3.5cqw;margin-bottom:2.6cqw;display:flex;gap:3cqw;align-items:center;background:#faf7f5;}
+  .addr.sel{border-color:var(--primary);background:var(--primary-light);}
+  .addr .pin{font-size:6cqw;}
+  .addr .nm{font-weight:800;color:var(--ink);font-size:3.8cqw;}
+  .addr .ad{font-size:3cqw;color:var(--gray);margin-top:.5cqw;}
+
+  /* ---------- UPI scanner opening ---------- */
+  .scanner{width:84%;}
+  .upi-app-bar{display:flex;align-items:center;gap:2.6cqw;background:#5f259f;color:#fff;padding:2.6cqw 3.5cqw;border-radius:3cqw 3cqw 0 0;}
+  .upi-app-bar .dot{width:7cqw;height:7cqw;border-radius:1.8cqw;background:#fff;color:#5f259f;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:3.6cqw;flex-shrink:0;}
+  .scan-area{position:relative;background:#111;border-radius:0;padding:4.5cqw;overflow:hidden;}
+  .scan-frame{position:relative;width:38cqw;height:38cqw;margin:0 auto;}
+  .scan-frame .qr{width:100%;height:100%;background:repeating-linear-gradient(90deg,#000 0 8px,#fff 8px 16px);border:2.4cqw solid #fff;border-radius:3cqw;position:relative;}
+  .scan-frame .qr .qr-logo{position:absolute;inset:0;margin:auto;width:11cqw;height:11cqw;background:#fff;border-radius:2.5cqw;padding:.8cqw;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+  .scan-frame .qr .qr-logo svg{width:100%;height:100%;}
+  .corner{position:absolute;width:7cqw;height:7cqw;border:1cqw solid var(--green);}
+  .corner.tl{top:-1.5cqw;left:-1.5cqw;border-right:0;border-bottom:0;}
+  .corner.tr{top:-1.5cqw;right:-1.5cqw;border-left:0;border-bottom:0;}
+  .corner.bl{bottom:-1.5cqw;left:-1.5cqw;border-right:0;border-top:0;}
+  .corner.br{bottom:-1.5cqw;right:-1.5cqw;border-left:0;border-top:0;}
+  .scan-line{position:absolute;left:0;right:0;height:3px;background:var(--green);box-shadow:0 0 12px 2px var(--green);}
+  .scene.active .scan-line{animation:scanmove 1.6s ease-in-out infinite;}
+  @keyframes scanmove{0%{top:4%}50%{top:96%}100%{top:4%}}
+  .pay-to{margin-top:3.5cqw;background:#f3eefc;border-radius:3cqw;padding:3cqw;text-align:left;}
+  .pay-to .nm{font-weight:800;color:#5f259f;font-size:3.8cqw;}
+  .pay-to .id{font-size:3cqw;color:var(--gray);}
+  .pay-to .amt{font-size:6cqw;font-weight:900;color:var(--ink);margin-top:1cqw;}
+
+  /* ---------- Payment success ---------- */
+  .s-success{background:#fff;}
+  .tick{width:29cqw;height:29cqw;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;animation:pop .6s ease both;}
+  .tick svg{width:14cqw;height:14cqw;}
+  .tick path{stroke:#fff;stroke-width:8;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:draw .5s .35s ease forwards;}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .utr-chip{background:#e8f8ef;color:#087a3d;font-weight:800;font-size:3.3cqw;padding:2cqw 3.5cqw;border-radius:7cqw;}
+
+  /* ---------- WhatsApp message ---------- */
+  .s-wa{background:#e5ddd5;}
+  .wa-head{background:#075e54;color:#fff;padding:3.5cqw 4cqw;display:flex;align-items:center;gap:2.6cqw;flex-shrink:0;}
+  .wa-head .av{width:9.5cqw;height:9.5cqw;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;padding:.8cqw;flex-shrink:0;}
+  .wa-head .av svg{width:100%;height:100%;}
+  .wa-head .nm{font-weight:800;font-size:4cqw;}
+  .wa-head .st{font-size:2.8cqw;opacity:.85;}
+  .wa-body{flex:1;min-height:0;padding:4cqw 4cqw 2cqw;display:flex;flex-direction:column;justify-content:center;gap:2cqw;background-image:linear-gradient(rgba(229,221,213,.5),rgba(229,221,213,.5));}
+  .s-wa .wa-input{margin-bottom:22%;}
+  .wa-msg{align-self:flex-end;max-width:85%;background:#dcf8c6;border-radius:3cqw 3cqw .5cqw 3cqw;padding:2.8cqw 3.2cqw;box-shadow:0 1px 2px rgba(0,0,0,.12);text-align:left;}
+  .wa-msg .t{font-size:3.3cqw;color:#1f2c33;line-height:1.5;white-space:pre-line;}
+  .wa-msg .meta{display:block;text-align:right;font-size:2.5cqw;color:#667781;margin-top:.8cqw;}
+  .wa-msg .meta b{color:#34b7f1;}
+  .scene.active .wa-msg{animation:fadeUp .5s .4s both;}
+  .wa-input{background:#f0f0f0;padding:2.4cqw 3cqw;display:flex;gap:2cqw;align-items:center;flex-shrink:0;}
+  .wa-input .box{flex:1;background:#fff;border-radius:5.5cqw;padding:2.6cqw 3.5cqw;font-size:3.3cqw;color:var(--gray);text-align:left;}
+  .wa-input .send{width:11cqw;height:11cqw;border-radius:50%;background:var(--wa);color:#fff;display:flex;align-items:center;justify-content:center;font-size:5cqw;flex-shrink:0;}
+
+  /* ---------- CTA ---------- */
+  .s-cta{background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;}
+  .s-cta h1{font-size:7cqw;font-weight:900;text-shadow:0 3px 10px rgba(0,0,0,.25);line-height:1.15;}
+  .s-cta p{font-size:3.8cqw;line-height:1.3;}
+  .s-cta .play-badge{margin-top:1cqw;background:#000;color:#fff;border-radius:2.5cqw;padding:2.2cqw 4cqw;display:inline-flex;align-items:center;gap:2cqw;font-weight:700;font-size:3.2cqw;white-space:nowrap;}
+  .s-cta .play-badge .tri{font-size:4.5cqw;}
+  .qr-small{width:22cqw;height:22cqw;background:repeating-linear-gradient(90deg,#000 0 7px,#fff 7px 14px);border:1.4cqw solid #fff;border-radius:2.5cqw;margin-top:1cqw;}
+
+  /* ---------- Play Store flow ---------- */
+  /* phone home screen */
+  .home-wall{background:linear-gradient(160deg,#1e3c72,#2a5298,#6dd5ed);}
+  .status-row{display:flex;justify-content:space-between;align-items:center;padding:3.5cqw 4.5cqw 1.5cqw;color:#fff;font-size:3.3cqw;font-weight:600;flex-shrink:0;}
+  .app-dock{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3.5cqw;}
+  .ps-launch{display:flex;flex-direction:column;align-items:center;gap:2.5cqw;}
+  .ps-launch .play-ico{width:23cqw;height:23cqw;border-radius:5.5cqw;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.3);}
+  .ps-launch .play-ico svg{width:13cqw;height:13cqw;}
+  .ps-launch .lbl{color:#fff;font-size:3.8cqw;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.4);}
+  .tap-ring{position:absolute;width:23cqw;height:23cqw;border-radius:5.5cqw;border:3px solid #fff;opacity:0;}
+  .scene.active .tap-ring{animation:tapRing 1.6s .6s ease-out infinite;}
+  @keyframes tapRing{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.5);opacity:0}}
+  .finger{position:absolute;font-size:10cqw;filter:drop-shadow(0 4px 6px rgba(0,0,0,.4));}
+  .scene.active .finger{animation:fingerTap 1.6s .6s ease-in-out infinite;}
+  @keyframes fingerTap{0%,100%{transform:translateY(10px);opacity:.9}30%{transform:translateY(0);opacity:1}}
+
+  /* full-screen screenshot */
+  .shot-wrap{position:relative;flex:1;min-height:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+  /* inner box matches the screenshot aspect ratio so % overlays land exactly on the image */
+  .shot-inner{position:relative;height:100%;aspect-ratio:9 / 19.5;max-width:100%;}
+  .shot-inner img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;}
+  .shot-wrap .missing{position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;color:#9aa0a6;font-size:3.4cqw;padding:10cqw 6cqw;text-align:center;line-height:1.8;}
+  /* highlight ring over a spot in the screenshot */
+  .spot{position:absolute;border:.8cqw solid #ff7a00;border-radius:3.5cqw;box-shadow:0 0 0 4px rgba(255,122,0,.25);}
+  .scene.active .spot{animation:spotPulse 1.4s ease-in-out infinite;}
+  @keyframes spotPulse{0%,100%{box-shadow:0 0 0 4px rgba(255,122,0,.25)}50%{box-shadow:0 0 0 10px rgba(255,122,0,0)}}
+  .shot-finger{position:absolute;font-size:9cqw;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));z-index:5;}
+  .scene.active .shot-finger{animation:fingerTap 1.5s .5s ease-in-out infinite;}
+</style>
+</head>
+<body>
+<!-- Reusable 4A Store logo (from assets/images/favicon.svg) -->
+<svg style="position:absolute;width:0;height:0" aria-hidden="true"><defs>
+  <linearGradient id="bagGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#A8D4F5"/><stop offset="100%" stop-color="#5BA3D9"/>
+  </linearGradient>
+  <symbol id="logo4a" viewBox="0 0 64 64">
+    <rect x="8" y="20" width="48" height="40" rx="8" ry="8" fill="url(#bagGrad)"/>
+    <path d="M22 22 C22 12, 42 12, 42 22" fill="none" stroke="#F5A623" stroke-width="5" stroke-linecap="round"/>
+    <text x="18" y="50" font-family="Arial Black, sans-serif" font-size="26" font-weight="900" fill="#F5A623">4</text>
+    <text x="35" y="50" font-family="Arial Black, sans-serif" font-size="26" font-weight="900" fill="#4CAF50">A</text>
+    <circle cx="16" cy="18" r="4" fill="#E53935"/>
+    <path d="M16 14 C16 12, 18 11, 18 13" fill="#4CAF50" stroke="none"/>
+    <ellipse cx="48" cy="17" rx="5" ry="3" fill="#388E3C" transform="rotate(-20 48 17)"/>
+  </symbol>
+</defs></svg>
+
+<div class="phone">
+  <span class="notch"></span>
+  <div class="screen" id="screen">
+    <div class="progress" id="progress"></div>
+
+  <!-- 1. Intro -->
+  <section class="scene s-intro" data-dur="3200">
+    <div class="center">
+      <div class="logo-badge"><svg><use href="#logo4a"/></svg></div>
+      <h1>4A Store</h1>
+      <div class="tag">घर बैठे ताज़ा किराना सामान 🛒</div>
+    </div>
+  </section>
+
+  <!-- 2a. Phone home screen -> tap Play Store icon -->
+  <section class="scene home-wall" data-dur="3200">
+    <div class="status-row"><span>16:19</span><span>📶 🔋 78%</span></div>
+    <div class="app-dock">
+      <div class="ps-launch" style="position:relative;">
+        <div class="play-ico">
+          <!-- Google Play triangle -->
+          <svg viewBox="0 0 40 44">
+            <path d="M3 2 L30 22 L3 42 Z" fill="#00c3ff"/>
+            <path d="M3 2 L21 15 L3 22 Z" fill="#00e676"/>
+            <path d="M3 22 L21 29 L3 42 Z" fill="#ff5252"/>
+            <path d="M21 15 L30 22 L21 29 L21 15 Z" fill="#ffd600"/>
+          </svg>
+        </div>
+        <span class="tap-ring"></span>
+        <span class="finger" style="right:-18px;bottom:-26px;">👆</span>
+        <div class="lbl">Play Store</div>
+      </div>
+    </div>
+    <div class="caption"><h2>स्टेप 1: Play Store खोलें</h2><p>फ़ोन में Play Store आइकॉन पर टैप करें</p></div>
+  </section>
+
+  <!-- 2b. Search results screenshot (real) -->
+  <section class="scene" data-dur="4000">
+    <div class="shot-wrap">
+      <div class="shot-inner">
+        <img src="ad-assets/playstore-search.jpeg" alt="Play Store search results"
+             data-base="ad-assets/playstore-search" data-tried="jpeg"
+             onerror="imgFallback(this);">
+        <!-- highlight the top 4A Store result + tap finger -->
+        <div class="spot" style="top:19.5%;left:3%;right:6%;height:8.5%;"></div>
+        <span class="shot-finger" style="top:24%;left:44%;">👆</span>
+      </div>
+      <div class="missing" style="display:none;">📷 यहाँ Search results screenshot आएगा<br><br>File रखें:<br><b>ad-assets/playstore-search.png</b></div>
+    </div>
+    <div class="caption"><h2>स्टेप 2: "4a store" सर्च करें</h2><p>लिस्ट में सबसे ऊपर 4A Store पर टैप करें</p></div>
+  </section>
+
+  <!-- 2c. App detail screenshot -> Open -->
+  <section class="scene" data-dur="4200">
+    <div class="shot-wrap">
+      <div class="shot-inner">
+        <img src="ad-assets/playstore-detail.jpeg" alt="4A Store app page"
+             data-base="ad-assets/playstore-detail" data-tried="jpeg"
+             onerror="imgFallback(this);">
+        <!-- highlight Open button + tap finger -->
+        <div class="spot" style="top:28.5%;left:51%;right:5%;height:5.5%;"></div>
+        <span class="shot-finger" style="top:33%;left:74%;">👆</span>
+      </div>
+      <div class="missing" style="display:none;">📷 यहाँ App page screenshot आएगा<br><br>File रखें:<br><b>ad-assets/playstore-detail.png</b></div>
+    </div>
+    </div>
+    <div class="caption"><h2>स्टेप 3: Install करें, फिर Open दबाएं</h2><p>App install होने पर "Open" पर टैप करें</p></div>
+  </section>
+
+  <!-- 3. Login -->
+  <section class="scene" data-dur="3600">
+    <div class="center">
+      <div class="auth-box">
+        <div class="auth-logo">🛒</div>
+        <h3>Welcome to 4astore</h3>
+        <div class="sub">Login or create account to start shopping</div>
+        <div class="auth-tabs"><button class="active">🔑 Login</button><button>📝 Sign Up</button></div>
+        <div class="fld label">Username / Mobile *</div>
+        <div class="fld">📱 9821xxxxxx</div>
+        <div class="fld label">Password *</div>
+        <div class="fld">🔒 ••••••••</div>
+        <button class="btn-primary">� Login</button>
+      </div>
+    </div>
+    <div class="caption"><h2>लॉगिन करें</h2><p>Username/Mobile और Password डालें</p></div>
+  </section>
+
+  <!-- 4. Sign Up + Email OTP -->
+  <section class="scene" data-dur="4200">
+    <div class="center">
+      <div class="auth-box">
+        <div class="auth-tabs"><button>🔑 Login</button><button class="active">📝 Sign Up</button></div>
+        <div class="email-ok">✅ Email verified: you@example.com</div>
+        <div class="fld label">6-digit email code</div>
+        <div class="otp-boxes"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+        <div class="fld label">Full Name *</div>
+        <div class="fld">👤 Ravi Kumar</div>
+        <div class="fld label">Mobile Number *</div>
+        <div class="fld">📱 9821xxxxxx</div>
+        <button class="btn-primary">📝 Create Account</button>
+      </div>
+    </div>
+    <div class="caption"><h2>Sign Up — Email OTP से</h2><p>Email verify कीजिए, account बनाइए</p></div>
+  </section>
+
+  <!-- 5. Email notification -->
+  <section class="scene" data-dur="3400" style="background:var(--primary-light);">
+    <div class="notif">
+      <div class="ic">✉️</div>
+      <div>
+        <div class="ti">4A Store</div>
+        <div class="ds">Welcome Ravi! Aapka account ban gaya 🎉 Happy shopping!</div>
+      </div>
+    </div>
+    <div class="center">
+      <div style="font-size:16cqw;">📧</div>
+      <h2 style="color:var(--ink);font-size:5.4cqw;font-weight:900;">Email आ गई!</h2>
+      <p style="color:var(--gray);font-size:3.6cqw;">हर अपडेट की जानकारी ईमेल पर मिलती है</p>
+    </div>
+    <div class="caption"><h2>Email Notification</h2><p>Account व ऑर्डर की पुष्टि ईमेल पर</p></div>
+  </section>
+
+  <!-- 6. Categories -->
+  <section class="scene" data-dur="3800">
+    <div class="app-head"><div class="mini-logo"><svg><use href="#logo4a"/></svg></div><div><div class="ht">क्या चाहिए आज?</div><div class="loc">15 कैटेगरी उपलब्ध</div></div></div>
+    <div class="cat-grid">
+      <div class="cat"><div class="emo">🥬</div><div class="nm">फल-सब्ज़ी</div></div>
+      <div class="cat"><div class="emo">🌾</div><div class="nm">चावल-दाल-आटा</div></div>
+      <div class="cat"><div class="emo">🫒</div><div class="nm">तेल व घी</div></div>
+      <div class="cat"><div class="emo">🍪</div><div class="nm">बिस्कुट-स्नैक्स</div></div>
+      <div class="cat"><div class="emo">☕</div><div class="nm">चाय-कॉफ़ी</div></div>
+      <div class="cat"><div class="emo">🥤</div><div class="nm">कोल्ड ड्रिंक</div></div>
+      <div class="cat"><div class="emo">🥛</div><div class="nm">डेयरी-बेकरी</div></div>
+      <div class="cat"><div class="emo">🧴</div><div class="nm">पर्सनल केयर</div></div>
+      <div class="cat"><div class="emo">🧹</div><div class="nm">घर की सफाई</div></div>
+    </div>
+    <div class="caption"><h2>15 कैटेगरी, पूरा किराना</h2><p>अपनी पसंद की चीज़ चुनें</p></div>
+  </section>
+
+  <!-- 7. Product + Add to cart -->
+  <section class="scene" data-dur="4000">
+    <div class="app-head"><div class="mini-logo"><svg><use href="#logo4a"/></svg></div><div><div class="ht">प्रोडक्ट</div></div></div>
+    <div class="cart-fly" id="cartFly">🛒 <span id="cartCount">1</span></div>
+    <div class="center">
+      <div class="prod">
+        <div class="img"><img src="https://www.bbassets.com/media/uploads/p/m/276756_16-fortune-fortune-premium-kachi-ghani-pure-mustard-oil.jpg?tr=w-154,q-80" alt="Fortune Mustard Oil" onerror="this.parentElement.textContent='🛢️';this.parentElement.style.fontSize='72px';"></div>
+        <div class="body">
+          <div class="pn">Fortune Mustard Oil</div>
+          <div class="pw">1 Litre &middot; Fortune</div>
+          <div class="pr"><span class="now">₹195</span><span class="mrp">₹210</span><span class="off">7% OFF</span></div>
+          <button class="atc">Add to Cart +</button>
+        </div>
+      </div>
+      <div class="free-pill">🚚 ₹500 से ऊपर डिलीवरी फ्री!</div>
+    </div>
+    <div class="caption"><h2>कार्ट में डालें</h2><p>असली ब्रांड, सबसे अच्छे दाम</p></div>
+  </section>
+
+  <!-- 8. Address -->
+  <section class="scene" data-dur="3200">
+    <div class="app-head"><div class="mini-logo"><svg><use href="#logo4a"/></svg></div><div><div class="ht">डिलीवरी पता</div></div></div>
+    <div class="center">
+      <div class="addr-list">
+        <div class="addr sel"><div class="pin">📍</div><div><div class="nm">घर — चंद्रगढ़</div><div class="ad">गजना रोड, चंद्रगढ़, नबीनगर, औरंगाबाद</div></div></div>
+        <div class="addr"><div class="pin">🏢</div><div><div class="nm">अन्य गाँव चुनें</div><div class="ad">सिंहपुर, महदुआ, रतनवां, पटना…</div></div></div>
+      </div>
+    </div>
+    <div class="caption"><h2>अपना गाँव चुनें</h2><p>लोकेशन डिटेक्ट या लिस्ट से चुनें</p></div>
+  </section>
+
+  <!-- 9. UPI scanner opens + scan QR -->
+  <section class="scene" data-dur="4200">
+    <div class="app-head"><div class="mini-logo"><svg><use href="#logo4a"/></svg></div><div><div class="ht">पेमेंट</div></div></div>
+    <div class="center">
+      <div class="scanner">
+        <div class="upi-app-bar"><div class="dot">P</div><div style="text-align:left;"><div style="font-weight:800;font-size:3.8cqw;">PhonePe / GPay</div><div style="font-size:2.8cqw;opacity:.85;">Scan &amp; Pay</div></div></div>
+        <div class="scan-area">
+          <div class="scan-frame">
+            <div class="qr"><span class="qr-logo"><svg><use href="#logo4a"/></svg></span></div>
+            <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+            <span class="scan-line"></span>
+          </div>
+        </div>
+        <div class="pay-to">
+          <div class="nm">4A kirana store</div>
+          <div class="id">Q623952089@ybl</div>
+          <div class="amt">₹545</div>
+        </div>
+      </div>
+    </div>
+    <div class="caption"><h2>Scanner खुला, QR स्कैन करें</h2><p>UPI से झटपट — GPay/PhonePe से Pay करें</p></div>
+  </section>
+
+  <!-- 10. Payment success -->
+  <section class="scene s-success" data-dur="3400">
+    <div class="center">
+      <div class="tick"><svg viewBox="0 0 100 100"><path d="M28 52 L44 68 L74 34"/></svg></div>
+      <h2 style="color:var(--ink);font-size:6cqw;font-weight:900;">पेमेंट सफल ✅</h2>
+      <div class="utr-chip">UTR: 4521 8890 2341</div>
+      <p style="color:var(--gray);font-size:3.6cqw;">₹545 का पेमेंट हो गया</p>
+    </div>
+    <div class="caption"><h2>Payment Successful</h2><p>UPI से सुरक्षित भुगतान</p></div>
+  </section>
+
+  <!-- 11. WhatsApp order message -->
+  <section class="scene s-wa" data-dur="4400">
+    <div class="wa-head">
+      <div class="av"><svg><use href="#logo4a"/></svg></div>
+      <div><div class="nm">4A Kirana Store</div><div class="st">online</div></div>
+    </div>
+    <div class="wa-body">
+      <div class="wa-msg">
+        <div class="t">🛒 New Order — 4A Kirana Store
+Order ID: 4A1072
+1. Fortune Mustard Oil – 1 Qty
+2. Aashirvaad Atta – 1 Qty
+Amount: ₹545
+Payment Ref: 4521889023
+📍 Chandargarh, Bihar</div>
+        <span class="meta">10:42 AM <b>✓✓</b></span>
+      </div>
+    </div>
+    <div class="wa-input"><div class="box">Message</div><div class="send">➤</div></div>
+    <div class="caption"><h2>ऑर्डर WhatsApp पर भेजा गया</h2><p>Store को तुरंत notification मिल जाती है</p></div>
+  </section>
+
+  <!-- 12. CTA -->
+  <section class="scene s-cta" data-dur="3800">
+    <div class="center">
+      <div class="logo-badge"><svg><use href="#logo4a"/></svg></div>
+      <h1>अभी डाउनलोड करें!</h1>
+      <p style="opacity:.95;">घर बैठे ताज़ा सामान, सबसे आसान</p>
+      <div class="play-badge"><span class="tri">▶</span> GET IT ON Google Play</div>
+      <div class="qr-small"></div>
+    </div>
+  </section>
+  </div><!-- /.screen -->
+</div><!-- /.phone -->
+
+<button class="replay-outside" onclick="start()">↻ फिर से चलाएं</button>
+
+<script>
+  // Try multiple image extensions before giving up (jpeg -> jpg -> png).
+  function imgFallback(img){
+    const order=['jpeg','jpg','png','JPG','JPEG','PNG'];
+    const tried=(img.dataset.tried||'').split(',');
+    const next=order.find(ext=>!tried.includes(ext));
+    if(next){
+      img.dataset.tried=tried.concat(next).join(',');
+      img.src=img.dataset.base+'.'+next;
+      return;
+    }
+    // all failed -> show placeholder
+    const inner=img.closest('.shot-inner');
+    if(inner) inner.style.display='none';
+    const miss=img.closest('.shot-wrap').querySelector('.missing');
+    if(miss) miss.style.display='flex';
+  }
+
+  const scenes=[...document.querySelectorAll('.scene')];
+  const bar=document.getElementById('progress');
+  const durations=scenes.map(s=>+s.dataset.dur||3500);
+  const total=durations.reduce((a,b)=>a+b,0);
+  let timers=[];
+  function clearTimers(){timers.forEach(clearTimeout);timers=[];}
+
+  function start(){
+    clearTimers();
+    scenes.forEach(s=>s.classList.remove('active'));
+    bar.style.transition='none';bar.style.width='0';
+    const cc=document.getElementById('cartCount');if(cc)cc.textContent='1';
+
+    let elapsed=0;
+    scenes.forEach((sc,i)=>{
+      timers.push(setTimeout(()=>{
+        scenes.forEach(s=>s.classList.remove('active'));
+        sc.classList.add('active');
+        bar.style.transition='none';
+        bar.style.width=((elapsed/total)*100)+'%';
+        requestAnimationFrame(()=>{
+          bar.style.transition='width '+(durations[i]/1000)+'s linear';
+          bar.style.width=(((elapsed+durations[i])/total)*100)+'%';
+        });
+        const el=sc.querySelector('#cartCount');
+        if(el){
+          setTimeout(()=>{el.textContent='2';el.parentElement.style.transform='scale(1.3)';},1400);
+          setTimeout(()=>{el.parentElement.style.transform='scale(1)';},1750);
+        }
+      },elapsed));
+      elapsed+=durations[i];
+    });
+    timers.push(setTimeout(start,total+500));
+  }
+  window.addEventListener('load',start);
+</script>
+</body>
+</html>
