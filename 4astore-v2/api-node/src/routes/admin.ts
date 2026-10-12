@@ -23,6 +23,20 @@ function computeDiscount(mrp: number, price: number, provided?: number): number 
 }
 
 /**
+ * Bump the catalog freshness counter after a product/category mutation. GET /products and
+ * GET /categories expose this as an ETag + `no-cache, must-revalidate`, so storefront clients
+ * revalidate cheaply (304) until an edit changes the version, then get fresh data at once.
+ * Fire-and-forget: never block or fail a save on it. The `catalog_version` column is added by
+ * prisma/catalog-version.sql — on a DB that hasn't run that yet the UPDATE throws and is swallowed,
+ * so saves never 500 (catalog freshness simply falls back to the old TTL behaviour until the SQL runs).
+ */
+function bumpCatalogVersion(): void {
+  prisma
+    .$executeRawUnsafe('UPDATE app_version SET catalog_version = catalog_version + 1 WHERE id = 1')
+    .catch(() => undefined);
+}
+
+/**
  * Build the seo_overrides JSON for a SEO save. A field is flagged `true` (a protected
  * human edit the auto engine will never clobber) ONLY when the admin sent a non-empty
  * string; an empty string or absent value is a reset-to-auto and the flag is omitted.
@@ -92,6 +106,7 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
 
     if (action === 'add') {
       const product = await prisma.product.create({ data: dataWithOverrides });
+      bumpCatalogVersion();
       // Fire-and-forget: never block or fail the product save on an SEO error.
       void runProductSeo(Number(product.id), { actor }).catch(() => undefined);
       return ok(res, { message: 'Product added', product });
@@ -100,6 +115,7 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
     if (!id) return fail(res, 'Product id is required', 422);
     const product = await prisma.product.update({ where: { id: BigInt(id) }, data: dataWithOverrides }).catch(() => null);
     if (!product) return fail(res, 'Product not found', 404);
+    bumpCatalogVersion();
     void runProductSeo(Number(product.id), { actor }).catch(() => undefined);
     return ok(res, { message: 'Product updated', product });
   }
@@ -108,6 +124,7 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
     const id = Number(req.body?.id || 0);
     if (!id) return fail(res, 'Product id is required', 422);
     await prisma.product.delete({ where: { id: BigInt(id) } }).catch(() => null);
+    bumpCatalogVersion();
     return ok(res, { message: 'Product deleted' });
   }
 
@@ -136,6 +153,7 @@ router.post('/categories', requireAuth, requireStaff('categories'), async (req: 
     if (!id) return fail(res, 'Category id required', 422);
     const removed = await prisma.category.delete({ where: { id: BigInt(id) } }).catch(() => null);
     if (!removed) return fail(res, 'Category not found', 404);
+    bumpCatalogVersion();
     return ok(res, { message: 'Category deleted' });
   }
   if (action !== 'add' && action !== 'update') return fail(res, 'Invalid action', 400);
@@ -168,6 +186,7 @@ router.post('/categories', requireAuth, requireStaff('categories'), async (req: 
   if (action === 'add') {
     const max = await prisma.category.aggregate({ _max: { sort_order: true } });
     const category = await prisma.category.create({ data: { ...data, sort_order: (max._max.sort_order ?? 0) + 1 } });
+    bumpCatalogVersion();
     // Fire-and-forget: never block the category save on an SEO error.
     void runCategorySeo(Number(category.id), { actor }).catch(() => undefined);
     return ok(res, { message: 'Category added', category });
@@ -182,6 +201,7 @@ router.post('/categories', requireAuth, requireStaff('categories'), async (req: 
     if (slugRenamed) await tx.product.updateMany({ where: { category: existing.slug }, data: { category: slug } });
     return updated;
   });
+  bumpCatalogVersion();
   void runCategorySeo(Number(category.id), { actor }).catch(() => undefined);
   // On slug rename, reprocess the reassigned products (their canonical category changed).
   if (slugRenamed) {
@@ -389,6 +409,21 @@ router.post('/orders/status', requireAuth, requireStaff('orders'), async (req: R
   const orderId = String(req.body?.orderId || '');
   const status = String(req.body?.status || '');
   if (!orderId || !status) return fail(res, 'Order ID and status required', 422);
+
+  // Manual-confirm passthrough: an admin confirming a 'Pending Payment' order to a confirmed state
+  // ('Order Placed'/'Confirmed') may optionally supply/clear a UTR. Validate a non-empty value as a
+  // 12-digit reference; an explicit empty string clears it (back to null). When payment_reference is
+  // absent from the body it is left untouched. The customer push + tracking sync below already run
+  // on every status change, so a manual confirm triggers the same downstream as a normal confirm.
+  const hasPayRef = Object.prototype.hasOwnProperty.call(req.body || {}, 'payment_reference');
+  let payRefData: { payment_reference?: string | null } = {};
+  if (hasPayRef) {
+    const raw = String(req.body?.payment_reference ?? '').replace(/\D+/g, '');
+    if (raw === '') payRefData = { payment_reference: null };
+    else if (/^\d{12}$/.test(raw)) payRefData = { payment_reference: raw };
+    else return fail(res, 'Payment reference must be a 12-digit number (or empty to clear)', 422);
+  }
+
   // Do NOT swallow the update error into a generic 404: only a genuinely missing order is a 404
   // (Prisma P2025), while a real DB/connection/pool error must surface truthfully (500 + message)
   // so admins see the actual cause instead of a misleading "Order not found".
@@ -396,7 +431,7 @@ router.post('/orders/status', requireAuth, requireStaff('orders'), async (req: R
   try {
     updated = await prisma.order.update({
       where: { order_id: orderId },
-      data: { order_status: status, ...(status === 'Delivered' ? { delivered_at: new Date() } : {}) },
+      data: { order_status: status, ...payRefData, ...(status === 'Delivered' ? { delivered_at: new Date() } : {}) },
     });
   } catch (e) {
     if ((e as { code?: string })?.code === 'P2025') return fail(res, 'Order not found', 404);

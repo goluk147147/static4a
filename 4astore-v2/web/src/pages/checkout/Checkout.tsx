@@ -36,6 +36,13 @@ interface CustomerInfo {
   deliverySource: 'manual';
 }
 
+/** Client-generated order id — same shape the server mints: '4A' + 8 uppercase hex chars. */
+function genOrderId(): string {
+  let s = '';
+  for (let i = 0; i < 8; i++) s += Math.floor(Math.random() * 16).toString(16).toUpperCase();
+  return '4A' + s;
+}
+
 /** Original resolveDeliveryCoordinates(): known local names → store point, else a small stable offset. */
 function resolveDeliveryCoordinates(settings: Settings | undefined, address: string, city: string, pincode: string) {
   const lat = Number(settings?.storeLatitude ?? 24.580164);
@@ -91,6 +98,9 @@ export default function Checkout() {
   const [payOpen, setPayOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
+  // Two-phase order: the orderId is generated ONCE in proceedToPayment() so the pending-lead POST
+  // and the later confirm POST hit the SAME row (the server upserts on orderId and flips it to paid).
+  const pendingOrderId = useRef<string | null>(null);
 
   const markError = (key: FieldKey) => setErrors((prev) => new Set(prev).add(key));
   const fg = (key: FieldKey) => `form-group${errors.has(key) ? ' error' : ''}`;
@@ -386,6 +396,26 @@ export default function Checkout() {
     }
     setCustomerInfo(c);
     setPayOpen(true);
+
+    // TWO-PHASE ORDER — create the PENDING lead the moment Proceed is tapped, so a shopper who pays
+    // and never returns to upload the screenshot is still captured as a follow-up lead. Fire-and-forget:
+    // a failed pending create must never block payment; confirmOrder() still creates the order (old path).
+    const orderId = genOrderId();
+    pendingOrderId.current = orderId;
+    api.post('/orders', {
+      order: {
+        orderId,
+        phase: 'pending',
+        customer: c,
+        addressLabel: label,
+        items: items.map((i) => ({ id: Number(i.id), name: i.name, weight: i.weight ?? '', price: Number(i.price), quantity: i.quantity })),
+        subtotal: totals.subtotal,
+        discount: totals.discount,
+        deliveryCharge: totals.deliveryCharge,
+        totalAmount: totals.total,
+        paymentMethod: 'UPI',
+      },
+    }).catch(() => {});
   }
 
   /** Called by the payment modal once a 12-digit UTR was detected from the screenshot. */
@@ -393,8 +423,13 @@ export default function Checkout() {
     if (!customerInfo) return 'Customer details missing';
     setPlacing(true);
     try {
+      // Reuse the SAME orderId from proceedToPayment() so this confirm flips the pending lead row to
+      // the paid state (server upserts on orderId) instead of creating a second order.
+      const orderId = pendingOrderId.current || genOrderId();
       const payload = {
         order: {
+          orderId,
+          phase: 'confirm' as const,
           customer: customerInfo,
           addressLabel: label,
           items: items.map((i) => ({ id: Number(i.id), name: i.name, weight: i.weight ?? '', price: Number(i.price), quantity: i.quantity })),
@@ -407,13 +442,15 @@ export default function Checkout() {
         },
       };
       const { data } = await api.post('/orders', payload);
-      const orderId = data.order.order_id as string;
+      // The server upserts on our client orderId, so data.order.order_id === orderId; prefer the
+      // response value defensively, falling back to the client id.
+      const placedOrderId = (data.order?.order_id as string) || orderId;
       // Screenshot upload is best-effort (the original also uploaded it asynchronously).
-      api.post(`/orders/${encodeURIComponent(orderId)}/screenshot`, { image: screenshot }).catch(() =>
+      api.post(`/orders/${encodeURIComponent(placedOrderId)}/screenshot`, { image: screenshot }).catch(() =>
         console.warn('Screenshot upload failed')
       );
       setPlaced({
-        orderId,
+        orderId: placedOrderId,
         customer: customerInfo,
         items: payload.order.items,
         totalAmount: totals.total,

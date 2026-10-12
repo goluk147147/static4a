@@ -11,7 +11,10 @@ import { useAdminOrders, AdminOrderFull, formatDate, ADMIN_ORDERS_KEY } from './
 import AdminModal from './AdminModal';
 
 // Original status <select> options (plus any other status the order already has).
+// 'Pending Payment' = the early two-phase lead (Proceed tapped, screenshot/UTR not yet uploaded).
+// It is a follow-up state for the owner, NOT a paid order — kept distinct from 'Order Placed'.
 const STATUS_OPTIONS: [string, string][] = [
+  ['Pending Payment', '⏳ Pending Payment'],
   ['Order Placed', '📋 Order Placed'],
   ['Confirmed', '✅ Confirmed'],
   ['Processing', '⚙️ Processing'],
@@ -20,6 +23,7 @@ const STATUS_OPTIONS: [string, string][] = [
 ];
 
 const STATUS_CLASS: Record<string, string> = {
+  'Pending Payment': 'status-pending',
   'Order Placed': 'status-placed', Confirmed: 'status-confirmed', Processing: 'status-processing',
   'Out for Delivery': 'status-out', Delivered: 'status-delivered',
 };
@@ -121,6 +125,8 @@ export default function AdminOrders() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  // Follow-up filter: show only the 'Pending Payment' leads (paid-but-unconfirmed / abandoned).
+  const [pendingOnly, setPendingOnly] = useState(false);
 
   const viewId = params.get('view');
   const viewing = viewId ? orders.find((o) => o.order_id === viewId) : undefined;
@@ -130,10 +136,12 @@ export default function AdminOrders() {
   if (isLoading) return <p style={{ textAlign: 'center', padding: 40, color: 'var(--gray)' }}>Loading orders...</p>;
   if (orders.length === 0) return <p style={{ textAlign: 'center', padding: 40, color: 'var(--gray)' }}>No orders yet</p>;
 
+  const pendingCount = orders.filter((o) => o.order_status === 'Pending Payment').length;
   const q = search.trim().toLowerCase();
+  const base = pendingOnly ? orders.filter((o) => o.order_status === 'Pending Payment') : orders;
   const filtered = q
-    ? orders.filter((o) => String(o.customer?.name || '').toLowerCase().includes(q) || o.order_id.toLowerCase().includes(q))
-    : orders;
+    ? base.filter((o) => String(o.customer?.name || '').toLowerCase().includes(q) || o.order_id.toLowerCase().includes(q))
+    : base;
   // Same as the original: searching shows every match on one page.
   const pageSize = q ? Math.max(filtered.length, 1) : PAGE_SIZE;
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -149,6 +157,22 @@ export default function AdminOrders() {
     try {
       await updateOrderStatus(orderId, status);
       showToast(`Order #${orderId} → ${status}`, 'success');
+      qc.invalidateQueries({ queryKey: ADMIN_ORDERS_KEY });
+    } catch (e) {
+      showToast(apiError(e), 'error');
+    }
+  }
+
+  // Admin manual confirm: flip a 'Pending Payment' lead to the paid state 'Order Placed'. Reuses the
+  // same status-update endpoint, so it triggers the same tracking sync + customer push as a normal confirm.
+  async function confirmPending(orderId: string) {
+    const ok = await showConfirm(`Confirm order #${orderId} as paid? This moves it out of the pending list.`, {
+      title: 'Confirm order', confirmText: 'Confirm',
+    });
+    if (!ok) return;
+    try {
+      await updateOrderStatus(orderId, 'Order Placed');
+      showToast(`Order #${orderId} confirmed`, 'success');
       qc.invalidateQueries({ queryKey: ADMIN_ORDERS_KEY });
     } catch (e) {
       showToast(apiError(e), 'error');
@@ -177,6 +201,10 @@ export default function AdminOrders() {
           onKeyDown={(e) => e.key === 'Enter' && applySearch(searchInput)}
           style={{ flex: 1, minWidth: 220, maxWidth: 380, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }} />
         <button type="button" onClick={() => applySearch(searchInput)} style={{ padding: '10px 14px', border: 0, borderRadius: 8, background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Search</button>
+        <button type="button" onClick={() => { setPendingOnly((v) => !v); setPage(1); }} aria-pressed={pendingOnly}
+          style={{ padding: '10px 14px', border: `1px solid ${pendingOnly ? '#b96500' : 'var(--border)'}`, borderRadius: 8, background: pendingOnly ? '#fff4e5' : '#fff', color: '#b96500', fontWeight: 700, cursor: 'pointer' }}>
+          ⏳ Pending{pendingCount ? ` (${pendingCount})` : ''}
+        </button>
         <span style={{ fontSize: 12, color: 'var(--gray)' }}>{filtered.length} order{filtered.length === 1 ? '' : 's'}</span>
       </div>
 
@@ -203,6 +231,11 @@ export default function AdminOrders() {
                       </select>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
+                      {o.order_status === 'Pending Payment' && (
+                        <>
+                          <button type="button" onClick={() => confirmPending(o.order_id)} title="Manually confirm this pending order as paid" aria-label={`Confirm order ${o.order_id}`} style={{ padding: '6px 10px', background: '#087a3d', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>✅ Confirm</button>{' '}
+                        </>
+                      )}
                       <button type="button" onClick={() => openView(o.order_id)} style={{ padding: '6px 10px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>👁️ View</button>{' '}
                       <button type="button" onClick={() => remove(o.order_id)} title="Delete fake or test order" aria-label={`Delete order ${o.order_id}`} style={{ padding: '6px 10px', background: '#c62828', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>🗑️ Delete</button>
                     </td>

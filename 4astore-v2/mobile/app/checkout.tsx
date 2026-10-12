@@ -54,6 +54,9 @@ export default function Checkout() {
   const [payOpen, setPayOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [customer, setCustomer] = useState<any>(null);
+  // Two-phase order: the orderId is generated ONCE in proceed() (so the pending-lead POST and the
+  // later confirm POST hit the SAME row — the server upserts on orderId and flips it to paid).
+  const pendingOrderId = useRef<string | null>(null);
 
   // Editor keyboard handling: own the editor's ScrollView so the focused Village field can be
   // scrolled above the Android soft keyboard (the field sits far down the form). `villageY` is the
@@ -263,20 +266,45 @@ export default function Checkout() {
     // Proceed must open payment instantly, never network-block.
     setCustomer(c);
     setPayOpen(true);
+
+    // TWO-PHASE ORDER — create the PENDING lead the moment Proceed is tapped, BEFORE the user
+    // leaves for their UPI app. This is the owner's #1 fix: a pay-and-never-return session is no
+    // longer silently lost. Fire-and-forget — a failed pending create must NEVER block payment;
+    // the normal confirm (below) still creates the order via the old path if this fails.
+    const orderId = '4A' + genHex8();
+    pendingOrderId.current = orderId;
+    api.post('/orders', {
+      order: {
+        orderId,
+        phase: 'pending',
+        customer: c,
+        addressLabel: label,
+        items: items.map((i) => ({ id: Number(i.id), name: i.name, weight: i.weight ?? '', price: Number(i.price), quantity: i.quantity })),
+        subtotal: totals.subtotal,
+        discount: totals.discount,
+        deliveryCharge: totals.deliveryCharge,
+        handlingCharge: totals.handlingCharge,
+        totalAmount: totals.total,
+        paymentMethod: 'UPI',
+      },
+    }).catch(() => null);
   }
 
   async function confirmOrder(utr: string, screenshot: string): Promise<string | null> {
     if (!customer) return 'Customer details missing';
     setPlacing(true);
-    // Generate the orderId on the CLIENT (same shape the server uses: '4A' + 8 uppercase hex) so a
-    // slow create can be recovered idempotently — the server upserts on o.orderId, so a retry is an
-    // upsert, not a 409 "payment reference already used".
-    const clientOrderId = '4A' + genHex8();
+    // Reuse the SAME orderId generated in proceed() so this confirm UPSERTS (flips) the pending
+    // lead row to the paid state instead of creating a second order. If proceed() somehow ran
+    // without setting one (edge), fall back to a fresh client id. Client-generated so a slow create
+    // can be recovered idempotently — the server upserts on orderId, so a retry is an upsert, not a
+    // 409 "payment reference already used".
+    const clientOrderId = pendingOrderId.current || '4A' + genHex8();
     const orderItems = items.map((i) => ({ id: Number(i.id), name: i.name, weight: i.weight ?? '', price: Number(i.price), quantity: i.quantity }));
     try {
       const payload = {
         order: {
           orderId: clientOrderId,
+          phase: 'confirm' as const,
           customer, addressLabel: label,
           items: orderItems,
           subtotal: totals.subtotal, discount: totals.discount, deliveryCharge: totals.deliveryCharge, handlingCharge: totals.handlingCharge, totalAmount: totals.total,

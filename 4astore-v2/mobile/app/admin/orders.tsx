@@ -19,6 +19,8 @@ export default function AdminOrders() {
   const { data: orders = [], isLoading } = useAllOrders(staff, 7000);
   const [search, setSearch] = useState('');
   const [push, setPush] = useState('');
+  // Follow-up filter: show only the 'Pending Payment' leads (paid-but-unconfirmed / abandoned).
+  const [pendingOnly, setPendingOnly] = useState(false);
 
   useEffect(() => {
     if (ready && !staff) router.replace({ pathname: '/login', params: { next: '/admin/orders' } } as never);
@@ -27,12 +29,13 @@ export default function AdminOrders() {
     getPushPermission().then(setPush).catch(() => null);
   }, []);
 
-  const pending = orders.filter((o) => o.order_status === 'Order Placed');
+  // 'Pending Payment' leads are the paid-but-unconfirmed / abandoned follow-ups the owner must work.
+  const pending = orders.filter((o) => o.order_status === 'Pending Payment');
   const q = search.trim().toLowerCase();
-  const filtered = useMemo(
-    () => (q ? orders.filter((o) => (o.customer?.name || '').toLowerCase().includes(q) || o.order_id.toLowerCase().includes(q) || (o.customer?.mobile || '').includes(q)) : orders),
-    [orders, q]
-  );
+  const filtered = useMemo(() => {
+    const base = pendingOnly ? orders.filter((o) => o.order_status === 'Pending Payment') : orders;
+    return q ? base.filter((o) => (o.customer?.name || '').toLowerCase().includes(q) || o.order_id.toLowerCase().includes(q) || (o.customer?.mobile || '').includes(q)) : base;
+  }, [orders, q, pendingOnly]);
 
   if (!staff) return <Screen header={<StoreHeader back title="Orders" />}><OrdersSkeleton /></Screen>;
 
@@ -46,9 +49,11 @@ export default function AdminOrders() {
       )}
 
       {pending.length > 0 && (
-        <View style={{ backgroundColor: '#fff3cd', borderRadius: 10, borderLeftWidth: 5, borderLeftColor: '#e0a800', padding: 12, marginBottom: 12 }}>
-          <Text style={{ fontWeight: '800', color: '#664d03' }}>⏳ {pending.length} naya/pending order confirm karna baaki hai</Text>
-        </View>
+        <Pressable onPress={() => setPendingOnly((v) => !v)} accessibilityRole="button">
+          <View style={{ backgroundColor: pendingOnly ? '#ffe8c2' : '#fff3cd', borderRadius: 10, borderLeftWidth: 5, borderLeftColor: '#e0a800', padding: 12, marginBottom: 12 }}>
+            <Text style={{ fontWeight: '800', color: '#664d03' }}>⏳ {pending.length} payment-pending lead{pending.length === 1 ? '' : 's'} — follow up karein {pendingOnly ? '(sab dekhein ↺)' : '(sirf ye dekhein →)'}</Text>
+          </View>
+        </Pressable>
       )}
 
       <Field label="" placeholder="🔎 Search name, mobile or Order ID" value={search} onChangeText={setSearch} autoCapitalize="none" />
@@ -59,7 +64,9 @@ export default function AdminOrders() {
         <EmptyState icon="📋" title={q ? 'No matching orders' : 'No orders yet'} />
       ) : (
         filtered.map((o) => {
-          const isNew = o.order_status === 'Order Placed';
+          // Flag the unpaid 'Pending Payment' lead as the one needing follow-up (🆕), the real
+          // paid-but-unconfirmed order the owner would otherwise lose.
+          const isNew = o.order_status === 'Pending Payment';
           return (
             <Pressable key={o.order_id} onPress={() => router.push(`/admin/order/${o.order_id}`)} accessibilityRole="button" accessibilityLabel={`Order ${o.order_id} from ${o.customer?.name}`}>
               <Card style={[{ marginBottom: 10 }, isNew && { borderColor: '#e0a800', borderWidth: 1.5 }]}>

@@ -40,6 +40,9 @@ export const shadow = {
 
 // Order status chip colours (web .status-* classes / admin STATUS_COLOR).
 export const STATUS_STYLE: Record<string, { bg: string; fg: string }> = {
+  // Two-phase order: 'Pending Payment' is the early lead (Proceed tapped, not yet paid) — a distinct
+  // amber chip so staff never mistake it for a paid 'Order Placed' order.
+  'Pending Payment': { bg: '#fff4e5', fg: '#b96500' },
   'Order Placed': { bg: colors.secondaryLight, fg: '#b96500' },
   Confirmed: { bg: colors.primaryLight, fg: colors.primaryDark },
   Processing: { bg: colors.primaryLight, fg: colors.primaryDark },

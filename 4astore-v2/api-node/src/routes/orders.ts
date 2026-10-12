@@ -96,9 +96,21 @@ const itemSchema = z.object({
   quantity: z.number().min(1).max(999),
 });
 
+// Two-phase order lifecycle (status labels used verbatim across api + web + mobile):
+//   'Pending Payment' = EARLY state. Created the moment the customer taps "Proceed to UPI
+//                       Payment" (before they leave to pay). payment_reference is NULL, NO
+//                       staff/customer push fires, excluded from the rider available-pool.
+//                       This is the owner's follow-up lead so a pay-and-never-return is not lost.
+//   'Order Placed'    = CONFIRMED / PAID state (unchanged meaning). Set when the screenshot +
+//                       12-digit UTR confirm arrives (or on a normal single-POST confirm, or an
+//                       admin manual confirm). The rider pool, staff new-order push and revenue
+//                       logic all key off this label, so it keeps its original semantics.
+// `phase` defaults to 'confirm' so old app/web builds (which send no phase and no client orderId)
+// run the exact current UTR-required single-POST path — the pending flow is purely additive.
 const saveSchema = z.object({
   order: z.object({
     orderId: z.string().optional(),
+    phase: z.enum(['pending', 'confirm']).optional().default('confirm'),
     customer: z.object({
       name: z.string().min(1),
       mobile: z.string().regex(/^[6-9]\d{9}$/),
@@ -119,7 +131,8 @@ const saveSchema = z.object({
     handlingCharge: z.number().optional().default(0),
     totalAmount: z.number(),
     paymentMethod: z.string().optional().default('UPI'),
-    paymentReference: z.string(),
+    // Optional on a pending create (no UTR yet); required+validated on confirm (see handler).
+    paymentReference: z.string().optional().default(''),
   }),
 });
 
@@ -129,11 +142,19 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   const o = parsed.data.order;
   const c = o.customer;
 
-  // 12-digit UTR required + unique.
+  // Two-phase lifecycle. A 'pending' phase (Proceed tapped, not yet paid) creates the lead with
+  // NO UTR and status 'Pending Payment'; a 'confirm' phase (default — screenshot + UTR, or any
+  // old client) enforces the 12-digit UTR + uniqueness and flips/creates as 'Order Placed'.
   const utr = (o.paymentReference || '').replace(/\D+/g, '');
-  if (!/^\d{12}$/.test(utr)) return fail(res, 'A valid 12-digit payment reference is required', 422);
-  const dup = await prisma.order.findUnique({ where: { payment_reference: utr } }).catch(() => null);
-  if (dup) return fail(res, 'This payment reference has already been used', 409);
+  const isPending = o.phase === 'pending';
+  if (!isPending) {
+    // 12-digit UTR required + unique (confirm/paid path — unchanged from the original flow).
+    if (!/^\d{12}$/.test(utr)) return fail(res, 'A valid 12-digit payment reference is required', 422);
+    const dup = await prisma.order.findUnique({ where: { payment_reference: utr } }).catch(() => null);
+    // Allow the SAME order_id to be re-confirmed (idempotent flip of its own pending row); only a
+    // DIFFERENT order already holding this UTR is a genuine duplicate.
+    if (dup && dup.order_id !== o.orderId) return fail(res, 'This payment reference has already been used', 409);
+  }
 
   // Ownership is the logged-in account (user_id = JWT sub), NOT the delivery phone.
   // customer.mobile is the receiver's phone from the address form and may legitimately
@@ -176,6 +197,16 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     captured_at: new Date().toISOString(),
   };
 
+  // Pending → the lead row carries no UTR; confirm → status flips to the paid state with the UTR.
+  const newStatus = isPending ? 'Pending Payment' : 'Order Placed';
+  const paymentReference = isPending ? null : utr;
+
+  // Was this order_id already a paid/placed row BEFORE this write? Used to fire the staff push only
+  // on the genuine pending→placed (or first placed) transition — never on a pending create and
+  // never on an idempotent re-save of an already-placed order.
+  const prior = o.orderId ? await prisma.order.findUnique({ where: { order_id: orderId } }).catch(() => null) : null;
+  const wasAlreadyPlaced = prior?.order_status === 'Order Placed';
+
   const created = await prisma.order.upsert({
     where: { order_id: orderId },
     create: {
@@ -188,8 +219,8 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       delivery_charge: o.deliveryCharge,
       total_amount: o.totalAmount,
       payment_method: o.paymentMethod,
-      payment_reference: utr,
-      order_status: 'Order Placed',
+      payment_reference: paymentReference,
+      order_status: newStatus,
       order_date: new Date(),
       delivery_address: deliveryAddress,
     },
@@ -197,14 +228,18 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       customer: c,
       items: o.items,
       total_amount: o.totalAmount,
-      payment_reference: utr,
+      // Flip the existing pending row to its confirmed state on a 'confirm' upsert of the SAME
+      // order_id. On a 'pending' re-save (rare), stay 'Pending Payment' and keep payment_reference null.
+      order_status: newStatus,
+      payment_reference: paymentReference,
       delivery_address: deliveryAddress,
     },
   });
 
   // Notify admin/staff about the new order (topic 'admins' + direct staff tokens).
-  // Only on first placement, not on idempotent re-saves of the same orderId.
-  if (created.order_status === 'Order Placed' && created.reminder_count === 0) {
+  // Only on the pending→placed / first-placed transition, never on a pending create and never on
+  // an idempotent re-save of an already-placed order (keep the reminder_count === 0 guard too).
+  if (created.order_status === 'Order Placed' && !wasAlreadyPlaced && created.reminder_count === 0) {
     notifyStaffNewOrder({
       order_id: created.order_id,
       customer: created.customer,

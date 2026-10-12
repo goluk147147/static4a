@@ -113,6 +113,8 @@
     .admin-table td { padding: 10px; border-bottom: 1px solid var(--border); }
     .admin-table tr:hover { background: #fffaf5; }
     .status-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    /* Two-phase order: distinct amber chip for the early 'Pending Payment' lead (not yet paid). */
+    .status-pending { background: #fff4e5; color: #b96500; }
     .logout-btn { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
     .order-detail-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
     .order-detail-modal .modal-body { background: white; border-radius: 16px; padding: 24px; max-width: 500px; width: min(100%, 500px); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing:border-box; }

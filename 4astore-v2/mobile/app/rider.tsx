@@ -34,6 +34,9 @@ export default function Rider() {
 
   const riderId = String(user?.id ?? '');
   const list = orders ?? [];
+  // Available pool = PAID orders only. 'Pending Payment' (the early two-phase lead, not yet paid) is
+  // intentionally EXCLUDED so riders never see / try to deliver an unpaid order; it only enters the
+  // pool once it flips to 'Order Placed' on confirm.
   const available = list.filter((o) => !o.rider_id && ['Order Placed', 'Confirmed', 'Packed'].includes(o.order_status));
   const mine = list.filter((o) => String(o.rider_id ?? '') === riderId && o.order_status !== 'Delivered' && o.order_status !== 'Cancelled');
 

@@ -14,7 +14,8 @@ import { colors } from '../../../src/theme';
 import { formatDate } from '../../../src/checkout';
 import type { Order } from '../../../src/types';
 
-const STATUS = ['Order Placed', 'Confirmed', 'Packed', 'Rider Assigned', 'Out for Delivery', 'Delivered', 'Cancelled'];
+// 'Pending Payment' = the early two-phase lead; tapping 'Order Placed' here manually confirms it.
+const STATUS = ['Pending Payment', 'Order Placed', 'Confirmed', 'Packed', 'Rider Assigned', 'Out for Delivery', 'Delivered', 'Cancelled'];
 
 /** Payment screenshot needs the auth header, so fetch as a data URI. */
 function useScreenshot(orderId: string) {
