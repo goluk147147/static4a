@@ -188,6 +188,72 @@
   .pay-to .id{font-size:3cqw;color:var(--gray);}
   .pay-to .amt{font-size:6cqw;font-weight:900;color:var(--ink);margin-top:1cqw;}
 
+  /* ---------- Screenshot upload + confirm (web checkout modal) ---------- */
+  .pay-sheet{width:88%;text-align:left;}
+  .copy-upi{width:100%;border:0;border-radius:6cqw;padding:3.6cqw;background:var(--primary);color:#fff;font-size:3.8cqw;font-weight:800;display:flex;align-items:center;justify-content:center;gap:2cqw;line-height:1.3;}
+  .scan-note{font-size:2.8cqw;color:#888;text-align:center;margin:2cqw 0;line-height:1.4;}
+  .pay-divider{border:0;border-top:1px solid var(--border);margin:2.5cqw 0;}
+  .ss-head{color:var(--primary-dark);font-size:4cqw;font-weight:800;text-align:center;line-height:1.3;margin-bottom:2cqw;}
+  .verify-btn{margin-top:3cqw;width:100%;border:0;border-radius:3cqw;padding:3.8cqw;color:#fff;font-size:3.8cqw;font-weight:800;background:#7a6a63;display:flex;align-items:center;justify-content:center;gap:2cqw;}
+  .pay-cancel{text-align:center;font-size:3cqw;color:var(--gray);margin-top:2cqw;}
+  .ss-shot-img{width:100%;height:100%;object-fit:contain;}
+  .step-no{display:inline-flex;align-items:center;justify-content:center;width:5.5cqw;height:5.5cqw;border-radius:50%;background:var(--primary);color:#fff;font-size:3.2cqw;font-weight:900;flex-shrink:0;}
+  .step-no.light{background:rgba(255,255,255,.35);}
+  .pay-sheet h4{color:var(--primary-dark);font-size:3.6cqw;font-weight:800;margin-bottom:1.5cqw;display:flex;align-items:center;gap:1.8cqw;line-height:1.25;}
+  .up-finger{position:absolute;right:6cqw;bottom:2cqw;font-size:8cqw;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));}
+  .scene.active .up-finger{animation:upTap 5.6s both;}
+  @keyframes upTap{0%,10%{opacity:0}14%{opacity:1;transform:translateY(1.5cqw)}22%{transform:translateY(0)}30%{transform:translateY(1.5cqw)}38%{opacity:1}42%,100%{opacity:0}}
+  .ss-upload .txt small{font-size:2.5cqw;opacity:.8;}
+  .pay-sheet .hint{font-size:2.8cqw;color:#666;margin-bottom:2.5cqw;line-height:1.4;}
+
+  /* ---------- Web checkout screens (cart / address / summary) ---------- */
+  .web-body{flex:1;min-height:0;overflow:hidden;background:linear-gradient(180deg,#fff7ef,#fff);padding:4cqw 4cqw 24%;display:flex;flex-direction:column;gap:3cqw;}
+  .web-title{font-size:5cqw;font-weight:900;color:var(--ink);}
+  .card{background:#fff;border:1px solid var(--border);border-radius:4cqw;padding:3.5cqw;box-shadow:0 4px 16px rgba(0,0,0,.06);}
+  .cart-item{display:flex;gap:3cqw;align-items:center;}
+  .cart-item .pic{width:16cqw;height:16cqw;border-radius:2.5cqw;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;}
+  .cart-item .pic img{max-width:100%;max-height:100%;object-fit:contain;}
+  .cart-item .nm{font-size:3.6cqw;font-weight:700;color:var(--ink);line-height:1.3;}
+  .cart-item .sz{font-size:2.8cqw;color:var(--gray);margin-top:.5cqw;}
+  .qty{display:inline-flex;align-items:center;gap:3cqw;margin-top:2cqw;border:1px solid var(--primary);border-radius:5cqw;padding:1cqw 3cqw;font-weight:800;color:var(--ink);font-size:3.6cqw;}
+  .qty b{color:var(--primary);}
+  .sum-row{display:flex;justify-content:space-between;align-items:center;font-size:3.4cqw;color:var(--ink);padding:1.2cqw 0;}
+  .sum-row.total{font-size:4.6cqw;font-weight:900;border-top:1px solid var(--border);padding-top:2cqw;margin-top:1cqw;}
+  .sum-row .disc{color:var(--green);}
+  .free-note{font-size:2.8cqw;color:var(--gray);}
+  .web-btn{width:100%;border:0;border-radius:3cqw;padding:3.8cqw;color:#fff;font-size:4cqw;font-weight:800;background:var(--primary);display:flex;align-items:center;justify-content:center;gap:2cqw;}
+  .scene.active .web-btn.tapish{animation:tap2 4s 1.2s both;}
+  .form-row{margin-bottom:2.6cqw;}
+  .form-row .flbl{font-size:2.9cqw;font-weight:700;color:var(--ink);margin-bottom:1cqw;}
+  .form-row .finput{width:100%;border:1px solid var(--border);border-radius:2.5cqw;padding:2.8cqw 3cqw;font-size:3.4cqw;color:var(--ink);background:#fff;}
+  .form-row .finput.area{min-height:12cqw;color:var(--gray);}
+  .deliver-to{background:var(--primary-light);border:1px solid #ffe0c2;border-radius:3.5cqw;padding:3cqw;}
+  .deliver-to .dt-head{display:flex;justify-content:space-between;align-items:flex-start;}
+  .deliver-to .lab{font-size:3.4cqw;font-weight:800;color:var(--ink);}
+  .deliver-to .chg{font-size:3cqw;font-weight:800;color:var(--primary-dark);}
+  .deliver-to .addr2{font-size:2.9cqw;color:var(--gray);margin-top:1cqw;line-height:1.4;}
+  .ss-upload{border:.6cqw dashed var(--primary);border-radius:3.5cqw;padding:5cqw 3cqw;text-align:center;background:var(--primary-light);position:relative;overflow:hidden;}
+  .ss-upload.filled{border-style:solid;}
+  .ss-upload .cam{font-size:9cqw;}
+  .ss-upload .txt{font-size:3cqw;color:var(--primary);font-weight:700;margin-top:1.5cqw;line-height:1.4;}
+  .ss-upload .thumb{width:26cqw;height:26cqw;margin:2cqw auto 0;border-radius:2.5cqw;background:#fff;border:1px solid var(--border);display:none;align-items:center;justify-content:center;overflow:hidden;}
+  .ss-upload .thumb .shot{width:100%;height:100%;background:linear-gradient(160deg,#dcf8c6,#a5e8c0);display:flex;align-items:center;justify-content:center;font-size:10cqw;}
+  .scene.active .ss-upload{animation:ssFill 4s both;}
+  @keyframes ssFill{0%,38%{border-style:dashed;background:var(--primary-light)}42%,100%{border-style:solid;background:#f0fff6}}
+  .scene.active .ss-upload .cam,.scene.active .ss-upload .txt{animation:ssHideBlock 4s both;}
+  @keyframes ssHideBlock{0%,38%{opacity:1;height:auto}42%,100%{opacity:0;height:0;overflow:hidden;margin:0;font-size:0;}}
+  .scene.active .ss-upload .thumb{animation:ssShow 4s both;}
+  @keyframes ssShow{0%,38%{display:none;opacity:0}42%{display:flex;opacity:0}48%,100%{display:flex;opacity:1}}
+  .utr-field{margin-top:3cqw;}
+  .utr-field .lbl{font-size:3cqw;font-weight:700;color:var(--ink);margin-bottom:1cqw;}
+  .utr-field .val{width:100%;background:#f1f5f9;border:1px solid var(--border);border-radius:2.5cqw;padding:2.8cqw 3cqw;font-size:4.6cqw;font-weight:800;letter-spacing:.5cqw;color:var(--ink);}
+  .utr-field .st{font-size:2.8cqw;color:var(--gray);margin-top:1cqw;}
+  .scene.active .utr-field .st{animation:utrOk 4s both;}
+  @keyframes utrOk{0%,52%{color:var(--gray)}56%,100%{color:#087a3d;font-weight:700}}
+  .confirm-btn{margin-top:3.5cqw;width:100%;border:0;border-radius:3cqw;padding:3.8cqw;color:#fff;font-size:4.2cqw;font-weight:800;background:var(--gray);}
+  .scene.active .confirm-btn{animation:confirmOn 4s both;}
+  @keyframes confirmOn{0%,58%{background:var(--gray);transform:scale(1)}62%{background:var(--green)}86%{background:var(--green);transform:scale(1)}90%{transform:scale(.95)}94%,100%{background:var(--green);transform:scale(1)}}
+
   /* ---------- Payment success ---------- */
   .s-success{background:#fff;}
   .tick{width:29cqw;height:29cqw;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;animation:pop .6s ease both;}
@@ -242,7 +308,7 @@
   .shot-wrap{position:relative;flex:1;min-height:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;}
   /* inner box matches the screenshot aspect ratio so % overlays land exactly on the image */
   .shot-inner{position:relative;height:100%;aspect-ratio:9 / 19.5;max-width:100%;}
-  .shot-inner img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;}
+  .shot-inner img{width:100%;height:100%;object-fit:contain;object-position:center;display:block;}
   .shot-wrap .missing{position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;color:#9aa0a6;font-size:3.4cqw;padding:10cqw 6cqw;text-align:center;line-height:1.8;}
   /* highlight ring over a spot in the screenshot */
   .spot{position:absolute;border:.8cqw solid #ff7a00;border-radius:3.5cqw;box-shadow:0 0 0 4px rgba(255,122,0,.25);}
@@ -250,6 +316,13 @@
   @keyframes spotPulse{0%,100%{box-shadow:0 0 0 4px rgba(255,122,0,.25)}50%{box-shadow:0 0 0 10px rgba(255,122,0,0)}}
   .shot-finger{position:absolute;font-size:9cqw;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));z-index:5;}
   .scene.active .shot-finger{animation:fingerTap 1.5s .5s ease-in-out infinite;}
+
+  /* tap finger that sits on a button in any scene */
+  .tap-fn{position:absolute;right:8%;bottom:26%;font-size:9cqw;z-index:70;filter:drop-shadow(0 4px 6px rgba(0,0,0,.45));pointer-events:none;}
+  .scene.active .tap-fn{animation:fingerTap 1.4s .4s ease-in-out infinite;}
+  /* finger pinned near the bottom action button inside web-body scenes */
+  .web-body{position:relative;}
+  .center{position:relative;}
 </style>
 </head>
 <body>
@@ -313,10 +386,10 @@
              data-base="ad-assets/playstore-search" data-tried="jpeg"
              onerror="imgFallback(this);">
         <!-- highlight the top 4A Store result + tap finger -->
-        <div class="spot" style="top:19.5%;left:3%;right:6%;height:8.5%;"></div>
-        <span class="shot-finger" style="top:24%;left:44%;">👆</span>
+        <div class="spot" style="top:21%;left:3%;right:6%;height:8%;"></div>
+        <span class="shot-finger" style="top:26%;left:40%;">👆</span>
       </div>
-      <div class="missing" style="display:none;">📷 यहाँ Search results screenshot आएगा<br><br>File रखें:<br><b>ad-assets/playstore-search.png</b></div>
+      <div class="missing" style="display:none;">📷 यहाँ Search results screenshot आएगा<br><br>File रखें:<br><b>ad-assets/playstore-search.jpeg</b></div>
     </div>
     <div class="caption"><h2>स्टेप 2: "4a store" सर्च करें</h2><p>लिस्ट में सबसे ऊपर 4A Store पर टैप करें</p></div>
   </section>
@@ -329,11 +402,10 @@
              data-base="ad-assets/playstore-detail" data-tried="jpeg"
              onerror="imgFallback(this);">
         <!-- highlight Open button + tap finger -->
-        <div class="spot" style="top:28.5%;left:51%;right:5%;height:5.5%;"></div>
-        <span class="shot-finger" style="top:33%;left:74%;">👆</span>
+        <div class="spot" style="top:25%;left:51%;right:5%;height:5.5%;"></div>
+        <span class="shot-finger" style="top:30%;left:74%;">👆</span>
       </div>
-      <div class="missing" style="display:none;">📷 यहाँ App page screenshot आएगा<br><br>File रखें:<br><b>ad-assets/playstore-detail.png</b></div>
-    </div>
+      <div class="missing" style="display:none;">📷 यहाँ App page screenshot आएगा<br><br>File रखें:<br><b>ad-assets/playstore-detail.jpeg</b></div>
     </div>
     <div class="caption"><h2>स्टेप 3: Install करें, फिर Open दबाएं</h2><p>App install होने पर "Open" पर टैप करें</p></div>
   </section>
@@ -350,8 +422,9 @@
         <div class="fld">📱 9821xxxxxx</div>
         <div class="fld label">Password *</div>
         <div class="fld">🔒 ••••••••</div>
-        <button class="btn-primary">� Login</button>
+        <button class="btn-primary">🔓 Login</button>
       </div>
+      <span class="tap-fn" style="bottom:30%;right:16%;">👆</span>
     </div>
     <div class="caption"><h2>लॉगिन करें</h2><p>Username/Mobile और Password डालें</p></div>
   </section>
@@ -370,6 +443,7 @@
         <div class="fld">📱 9821xxxxxx</div>
         <button class="btn-primary">📝 Create Account</button>
       </div>
+      <span class="tap-fn" style="bottom:22%;right:16%;">👆</span>
     </div>
     <div class="caption"><h2>Sign Up — Email OTP से</h2><p>Email verify कीजिए, account बनाइए</p></div>
   </section>
@@ -405,6 +479,7 @@
       <div class="cat"><div class="emo">🧴</div><div class="nm">पर्सनल केयर</div></div>
       <div class="cat"><div class="emo">🧹</div><div class="nm">घर की सफाई</div></div>
     </div>
+    <span class="tap-fn" style="top:30%;left:30%;bottom:auto;right:auto;">👆</span>
     <div class="caption"><h2>15 कैटेगरी, पूरा किराना</h2><p>अपनी पसंद की चीज़ चुनें</p></div>
   </section>
 
@@ -423,20 +498,74 @@
         </div>
       </div>
       <div class="free-pill">🚚 ₹500 से ऊपर डिलीवरी फ्री!</div>
+      <span class="tap-fn" style="bottom:30%;right:18%;">👆</span>
     </div>
     <div class="caption"><h2>कार्ट में डालें</h2><p>असली ब्रांड, सबसे अच्छे दाम</p></div>
   </section>
 
-  <!-- 8. Address -->
-  <section class="scene" data-dur="3200">
-    <div class="app-head"><div class="mini-logo"><svg><use href="#logo4a"/></svg></div><div><div class="ht">डिलीवरी पता</div></div></div>
-    <div class="center">
-      <div class="addr-list">
-        <div class="addr sel"><div class="pin">📍</div><div><div class="nm">घर — चंद्रगढ़</div><div class="ad">गजना रोड, चंद्रगढ़, नबीनगर, औरंगाबाद</div></div></div>
-        <div class="addr"><div class="pin">🏢</div><div><div class="nm">अन्य गाँव चुनें</div><div class="ad">सिंहपुर, महदुआ, रतनवां, पटना…</div></div></div>
+  <!-- 7b. Cart page (web jaisa) -->
+  <section class="scene" data-dur="4000">
+    <div class="app-head"><div class="mini-logo"><svg><use href="#logo4a"/></svg></div><div><div class="ht">Your Cart / आपका कार्ट</div></div></div>
+    <div class="web-body">
+      <div class="card">
+        <div class="cart-item">
+          <div class="pic"><img src="https://m.media-amazon.com/images/I/41nL3xbSrjL._SY300_SX300_QL70_FMwebp_.jpg" alt="" onerror="this.parentElement.textContent='🛢️';this.parentElement.style.fontSize='7cqw';"></div>
+          <div style="flex:1;">
+            <div class="nm">Fortune Soya Health Refined Soyabean</div>
+            <div class="sz">1 Litre · ₹160</div>
+            <div class="qty">− <b>1</b> +</div>
+          </div>
+          <div style="font-weight:900;font-size:4cqw;color:var(--ink);">₹160</div>
+        </div>
       </div>
+      <div class="card">
+        <div class="sum-row"><span>Subtotal / उप-योग</span><span>₹160</span></div>
+        <div class="sum-row"><span>Delivery / डिलीवरी</span><span>₹10</span></div>
+        <div class="free-note">Add ₹340 more for free delivery</div>
+        <div class="sum-row total"><span>Total / कुल</span><span>₹170</span></div>
+      </div>
+      <button class="web-btn tapish">🛒 Proceed to Checkout / चेकआउट करें →</button>
     </div>
-    <div class="caption"><h2>अपना गाँव चुनें</h2><p>लोकेशन डिटेक्ट या लिस्ट से चुनें</p></div>
+    <span class="tap-fn" style="bottom:26%;right:16%;">👆</span>
+    <div class="caption"><h2>कार्ट देखें, Checkout करें</h2><p>Subtotal, delivery, total — सब साफ़ दिखता है</p></div>
+  </section>
+
+  <!-- 8. Address form (web jaisa) -->
+  <section class="scene" data-dur="4200">
+    <div class="app-head"><div class="mini-logo"><svg><use href="#logo4a"/></svg></div><div><div class="ht">डिलीवरी का पता भरें</div></div></div>
+    <div class="web-body">
+      <div class="card" style="flex:1;overflow:hidden;">
+        <div class="form-row"><div class="flbl">Full Name (पूरा नाम) *</div><div class="finput">Harish Kumar</div></div>
+        <div class="form-row"><div class="flbl">Mobile Number (मोबाइल नंबर) *</div><div class="finput">9015190272</div></div>
+        <div class="form-row"><div class="flbl">Email Address (ईमेल)</div><div class="finput">online4astore@gmail.com</div></div>
+        <div class="form-row"><div class="flbl">Complete Address (पूरा पता) *</div><div class="finput area">near shiv mandir, Chandragarh (चंद्रगढ़), 824301</div></div>
+      </div>
+      <button class="web-btn tapish">💾 Save Address / पता सहेजें</button>
+    </div>
+    <span class="tap-fn" style="bottom:26%;right:16%;">👆</span>
+    <div class="caption"><h2>डिलीवरी का पता भरें</h2><p>नाम, मोबाइल, पूरा पता भरें और सहेजें</p></div>
+  </section>
+
+  <!-- 8b. Order summary (web jaisa) -->
+  <section class="scene" data-dur="4000">
+    <div class="app-head"><div class="mini-logo"><svg><use href="#logo4a"/></svg></div><div><div class="ht">Order Summary / सारांश</div></div></div>
+    <div class="web-body">
+      <div class="deliver-to">
+        <div class="dt-head"><span class="lab">📍 Deliver to / यहाँ डिलीवरी</span><span class="chg">Change / बदलें ▾</span></div>
+        <div class="addr2"><b>Home</b><br>near shiv mandir, Chandragarh (चंद्रगढ़), 824301</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;font-size:3.6cqw;margin-bottom:2cqw;">📦 Order Summary / ऑर्डर का सारांश</div>
+        <div class="sum-row"><span>Fortune Soya Refined × 1</span><span>₹160</span></div>
+        <div class="sum-row"><span>Subtotal</span><span>₹160</span></div>
+        <div class="sum-row"><span class="disc">Discount</span><span class="disc">−₹10</span></div>
+        <div class="sum-row"><span>Delivery</span><span>₹10</span></div>
+        <div class="sum-row total"><span>Total / कुल</span><span style="color:var(--primary-dark);">₹170</span></div>
+      </div>
+      <button class="web-btn tapish">💳 Proceed to UPI Payment / UPI भुगतान →</button>
+    </div>
+    <span class="tap-fn" style="bottom:26%;right:16%;">👆</span>
+    <div class="caption"><h2>ऑर्डर कन्फर्म करें</h2><p>पता व सारांश देखकर UPI Payment पर जाएं</p></div>
   </section>
 
   <!-- 9. UPI scanner opens + scan QR -->
@@ -455,22 +584,54 @@
         <div class="pay-to">
           <div class="nm">4A kirana store</div>
           <div class="id">Q623952089@ybl</div>
-          <div class="amt">₹545</div>
+          <div class="amt">₹170</div>
         </div>
       </div>
+      <span class="tap-fn" style="bottom:34%;right:20%;">👆</span>
     </div>
-    <div class="caption"><h2>Scanner खुला, QR स्कैन करें</h2><p>UPI से झटपट — GPay/PhonePe से Pay करें</p></div>
+    <div class="caption"><h2>स्टेप 1: UPI से पैसे भेजें</h2><p>QR स्कैन करके GPay/PhonePe से ₹170 Pay करें</p></div>
   </section>
 
-  <!-- 10. Payment success -->
-  <section class="scene s-success" data-dur="3400">
+  <!-- 9b. Payment screen BEFORE upload (real screenshot) -->
+  <section class="scene" data-dur="4600">
+    <div class="shot-wrap">
+      <div class="shot-inner">
+        <img src="ad-assets/payment-before.jpeg" alt="Payment screen - upload"
+             data-base="ad-assets/payment-before" data-tried="jpeg"
+             onerror="imgFallback(this);">
+        <!-- finger on the upload box (clickable spot) -->
+        <span class="shot-finger" style="top:60%;left:42%;">👆</span>
+      </div>
+      <div class="missing" style="display:none;">📷 यहाँ Payment screen (upload वाला) आएगा<br><br>File रखें:<br><b>ad-assets/payment-before.jpeg</b></div>
+    </div>
+    <div class="caption"><h2>स्टेप 1: Screenshot यहाँ अपलोड करें</h2><p>Pay करने के बाद उसी payment का screenshot चुनें</p></div>
+  </section>
+
+  <!-- 9c. Payment screen AFTER upload (real screenshot) -->
+  <section class="scene" data-dur="5000">
+    <div class="shot-wrap">
+      <div class="shot-inner">
+        <img src="ad-assets/payment-after.jpeg" alt="Payment screen - confirm"
+             data-base="ad-assets/payment-after" data-tried="jpeg"
+             onerror="imgFallback(this);">
+        <!-- finger on the green Confirm Order button -->
+        <span class="shot-finger" style="top:84%;left:42%;">👆</span>
+      </div>
+      <div class="missing" style="display:none;">📷 यहाँ Payment screen (confirm वाला) आएगा<br><br>File रखें:<br><b>ad-assets/payment-after.jpeg</b></div>
+    </div>
+    <div class="caption"><h2>स्टेप 2: Confirm Order दबाएं</h2><p>UTR अपने-आप मिल गया — अब Confirm दबाएं</p></div>
+  </section>
+
+  <!-- 10. Order success (web jaisa) -->
+  <section class="scene s-success" data-dur="3600">
     <div class="center">
       <div class="tick"><svg viewBox="0 0 100 100"><path d="M28 52 L44 68 L74 34"/></svg></div>
-      <h2 style="color:var(--ink);font-size:6cqw;font-weight:900;">पेमेंट सफल ✅</h2>
-      <div class="utr-chip">UTR: 4521 8890 2341</div>
-      <p style="color:var(--gray);font-size:3.6cqw;">₹545 का पेमेंट हो गया</p>
+      <div style="font-size:11cqw;margin-top:1cqw;">🎉</div>
+      <h2 style="color:var(--ink);font-size:6cqw;font-weight:900;line-height:1.25;">हो गया!<br>Order Successfully Placed!</h2>
+      <div class="utr-chip">Your Order ID: #4A40FB7BE8</div>
+      <p style="color:var(--gray);font-size:3.3cqw;line-height:1.45;">4A Store परिवार की तरफ़ से धन्यवाद।<br>✅ Order sent to store / ऑर्डर स्टोर को भेजा गया</p>
     </div>
-    <div class="caption"><h2>Payment Successful</h2><p>UPI से सुरक्षित भुगतान</p></div>
+    <div class="caption"><h2>ऑर्डर सफलतापूर्वक दर्ज!</h2><p>भुगतान जाँचकर स्टोर जल्द पुष्टि करेगा</p></div>
   </section>
 
   <!-- 11. WhatsApp order message -->
@@ -482,12 +643,11 @@
     <div class="wa-body">
       <div class="wa-msg">
         <div class="t">🛒 New Order — 4A Kirana Store
-Order ID: 4A1072
-1. Fortune Mustard Oil – 1 Qty
-2. Aashirvaad Atta – 1 Qty
-Amount: ₹545
-Payment Ref: 4521889023
-📍 Chandargarh, Bihar</div>
+Order ID: #4A40FB7BE8
+1. Fortune Soya Refined – 1 Qty
+Amount: ₹170
+Payment Ref: 168500291258
+📍 Chandragarh, Bihar</div>
         <span class="meta">10:42 AM <b>✓✓</b></span>
       </div>
     </div>
@@ -521,10 +681,15 @@ Payment Ref: 4521889023
       img.src=img.dataset.base+'.'+next;
       return;
     }
-    // all failed -> show placeholder
+    // all failed -> hide image, show nearest placeholder
+    img.style.display='none';
     const inner=img.closest('.shot-inner');
     if(inner) inner.style.display='none';
-    const miss=img.closest('.shot-wrap').querySelector('.missing');
+    // find a .missing in the same shot-wrap or the image's own parent
+    let miss=null;
+    const wrap=img.closest('.shot-wrap');
+    if(wrap) miss=wrap.querySelector('.missing');
+    if(!miss && img.parentElement) miss=img.parentElement.querySelector('.missing');
     if(miss) miss.style.display='flex';
   }
 
