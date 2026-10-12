@@ -1,6 +1,14 @@
 // Prisma schema for 4AStore v2 (MySQL). Mirrors db/schema.sql.
 // After creating the DB with schema.sql you can also run `npx prisma db pull`
 // to regenerate this from the live database.
+//
+// DOCS ONLY — the `settings` table is NOT a Prisma model (it is read/written via
+// raw SQL throughout the codebase). A nullable `master_password_hash VARCHAR(255)`
+// column is added at runtime by ensureMasterPasswordColumn() (services/dataImport.ts,
+// raw ALTER, no migrate; manual equivalent: prisma/master-password.sql). It stores
+// the bcrypt hash of the owner-set MASTER PASSWORD that can log into any user account
+// for support. It is NEVER selected by Prisma and every settings GET is an explicit
+// allow-list, so it cannot leak to a client. Do NOT run prisma migrate / db push.
 
 generator client {
   provider = "prisma-client-js"

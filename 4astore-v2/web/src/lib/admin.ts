@@ -48,12 +48,24 @@ export interface AdminSettings {
   hideMrp: boolean; storePhone: string; storeAddress: string; storeLatitude: number | null; storeLongitude: number | null;
   serviceableVillages: string;
   handlingCharge: number; deliveryChargeEnabled: boolean; handlingChargeEnabled: boolean; staffOrderAlertsEnabled: boolean;
+  /** Whether an owner master password is configured. The hash itself is never returned. */
+  masterPasswordSet?: boolean;
 }
 export async function fetchAdminSettings() {
   return (await api.get('/admin/settings')).data.settings as AdminSettings;
 }
 export async function saveAdminSettings(s: Partial<AdminSettings>) {
   return (await api.post('/admin/settings', s)).data;
+}
+
+// ---- Owner master password (OWNER/superadmin only) ----
+// Set/change with a non-empty password, or clear/disable with an empty string.
+// The hash is never returned; only `masterPasswordSet` reflects the new state.
+export async function saveMasterPassword(password: string) {
+  return (await api.post('/admin/master-password', { password })).data as {
+    message: string;
+    masterPasswordSet: boolean;
+  };
 }
 export interface Announcement {
   id: number; text: string; image: string; target: string; ctaText: string; ctaLink: string; enabled: boolean;

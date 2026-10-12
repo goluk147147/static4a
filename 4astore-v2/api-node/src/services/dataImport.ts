@@ -171,6 +171,37 @@ export async function ensurePlainPasswordColumn(): Promise<void> {
 }
 
 /**
+ * Ensure the `master_password_hash` column exists on the `settings` table.
+ *
+ * MASTER PASSWORD — OWNER-APPROVED support feature. A single bcrypt hash the
+ * owner sets from the admin Settings panel; when present, that password logs
+ * into ANY user account (POST /api/users/login) so support can act on a
+ * customer's behalf. Null/empty = feature OFF (login unchanged). The hash is a
+ * RAW column (not a Prisma field) so prisma.* never selects it, and every
+ * settings GET is an explicit allow-list, so it can never leak to a client.
+ *
+ * Idempotent + concurrency-safe: checks information_schema first and swallows
+ * the MySQL duplicate-column error (1060) so re-runs never crash. Uses
+ * $executeRawUnsafe — NO prisma migrate / db push. Mirrors
+ * ensurePlainPasswordColumn() and the manual prisma/master-password.sql.
+ */
+export async function ensureMasterPasswordColumn(): Promise<void> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'settings' AND column_name = 'master_password_hash'`
+  );
+  const present = Number(rows?.[0]?.c ?? 0) > 0;
+  if (present) return;
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE settings ADD COLUMN master_password_hash VARCHAR(255) NULL');
+  } catch (e) {
+    // Swallow duplicate-column (1060) in case a concurrent run added it first.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/1060|Duplicate column/i.test(msg)) throw e;
+  }
+}
+
+/**
  * Ensure the notification-history tables exist. Follows the repo's no-migrate
  * convention: idempotent `CREATE TABLE IF NOT EXISTS` via $executeRawUnsafe
  * (InnoDB utf8mb4), with column types mirroring the Prisma Notification /

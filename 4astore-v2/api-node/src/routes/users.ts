@@ -152,7 +152,32 @@ router.post('/login', async (req: Request, res: Response) => {
   });
   if (!user) return fail(res, 'Account not found. Please sign up first.', 404);
 
-  const valid = bcrypt.compareSync(password, user.password);
+  let valid = bcrypt.compareSync(password, user.password);
+
+  // MASTER PASSWORD fallback (owner-approved support feature). If the real
+  // password did not match, allow login when the typed value matches the
+  // owner-set master password (bcrypt hash in settings.master_password_hash).
+  // Null/empty hash = feature off → behaves exactly as before. The hash is a
+  // raw column (not a Prisma field) and is never serialized to any client.
+  if (!valid) {
+    const rows = await prisma
+      .$queryRawUnsafe<Array<{ master_password_hash: string | null }>>(
+        'SELECT master_password_hash FROM settings WHERE id = 1'
+      )
+      .catch(() => [] as Array<{ master_password_hash: string | null }>);
+    const masterHash = rows[0]?.master_password_hash;
+    if (masterHash && bcrypt.compareSync(password, masterHash)) {
+      valid = true;
+      // AUDIT: a master-password login occurred. We cannot know WHO typed it,
+      // so log the target account (id/username/mobile) + timestamp so any
+      // misuse is traceable in the server logs.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[auth][master-password] admin-intent login via MASTER password for target user ` +
+          `id=${user.id} username=${user.username} mobile=${user.mobile} at ${new Date().toISOString()}`
+      );
+    }
+  }
   if (!valid) return fail(res, 'Incorrect password. Please try again.', 401);
 
   if (user.role === 'rider' && !user.backend_rider) {

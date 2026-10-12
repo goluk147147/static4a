@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  fetchAdminSettings, saveAdminSettings, fetchAnnouncement, saveAnnouncement, saveFestival, bumpCache, downloadText,
+  fetchAdminSettings, saveAdminSettings, saveMasterPassword, fetchAnnouncement, saveAnnouncement, saveFestival, bumpCache, downloadText,
   saveFeatures, saveSeo, saveProduct, importDummyData, factoryReset, AdminSettings as SettingsT,
   fetchAppVersion, saveAppVersion,
 } from '../../lib/admin';
@@ -21,6 +21,7 @@ import { useAdminOrders, useAdminUsers, ADMIN_ORDERS_KEY } from './adminData';
 
 const SUBS = [
   { key: 'store', label: '🏪 Store & Payment' },
+  { key: 'masterpw', label: '🔑 Master Password', ownerOnly: true },
   { key: 'announce', label: '📢 Announcement' },
   { key: 'footer', label: '🦶 Footer' },
   { key: 'festival', label: '🎉 Festival' },
@@ -45,7 +46,9 @@ let lastSub: SubKey = 'store';
 function StoreSettings() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ['admin-settings'], queryFn: fetchAdminSettings });
-  const [s, setS] = useState<Record<keyof SettingsT, string | boolean> | null>(null);
+  // StoreSettings edits every field EXCEPT masterPasswordSet (read-only status
+  // owned by the Master Password tab), so omit it from the editable state map.
+  const [s, setS] = useState<Record<Exclude<keyof SettingsT, 'masterPasswordSet'>, string | boolean> | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -63,8 +66,9 @@ function StoreSettings() {
   }, [data]);
 
   if (isLoading || !s) return <p style={{ color: 'var(--gray)' }}>Loading settings...</p>;
-  const set = (k: keyof SettingsT, v: string | boolean) => setS((c) => (c ? { ...c, [k]: v } : c));
-  const str = (k: keyof SettingsT) => String(s[k] ?? '');
+  type StoreKey = Exclude<keyof SettingsT, 'masterPasswordSet'>;
+  const set = (k: StoreKey, v: string | boolean) => setS((c) => (c ? { ...c, [k]: v } : c));
+  const str = (k: StoreKey) => String(s[k] ?? '');
 
   async function save() {
     const email = str('storeEmail').trim();
@@ -98,7 +102,7 @@ function StoreSettings() {
     }
   }
 
-  const field = (k: keyof SettingsT, label: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}, note?: React.ReactNode, flex = 1, minWidth = 180) => (
+  const field = (k: StoreKey, label: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}, note?: React.ReactNode, flex = 1, minWidth = 180) => (
     <div style={{ flex, minWidth }}>
       <label style={lbl} htmlFor={`set_${k}`}>{label}</label>
       <input id={`set_${k}`} value={str(k)} onChange={(e) => set(k, e.target.value)} style={inp} {...extra} />
@@ -163,6 +167,90 @@ function StoreSettings() {
         <button type="button" onClick={save} disabled={busy} style={{ justifySelf: 'start', padding: '11px 26px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
           💾 {busy ? 'Saving…' : 'Save Store Settings'}
         </button>
+      </div>
+    </>
+  );
+}
+
+// Owner "master password" — a single password that logs into ANY user account
+// for phone support (see POST /api/users/login). Stored as a bcrypt hash on the
+// server (settings.master_password_hash); the hash is NEVER sent to the client,
+// only `masterPasswordSet` (set / not set). Setting an empty value clears it.
+// Gated to owner/superadmin by the server; the tab is also hidden for others.
+function MasterPasswordSettings() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({ queryKey: ['admin-settings'], queryFn: fetchAdminSettings });
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  if (isLoading) return <p style={{ color: 'var(--gray)' }}>Loading…</p>;
+  const isSet = !!data?.masterPasswordSet;
+
+  async function save() {
+    const next = pw.trim();
+    if (next.length > 0 && next.length < 6) return showToast('Master password kam se kam 6 characters ka ho', 'error');
+    if (next.length > 0 && next !== pw2.trim()) return showToast('Dono passwords match nahi kar rahe', 'error');
+    setBusy(true);
+    try {
+      const res = await saveMasterPassword(next);
+      setPw('');
+      setPw2('');
+      showToast(res.masterPasswordSet ? '🔑 Master password set ho gaya' : '🔓 Master password hata diya gaya', 'success');
+      qc.invalidateQueries({ queryKey: ['admin-settings'] });
+    } catch (e) {
+      showToast(apiError(e) || 'Failed to save master password', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clear() {
+    const ok = await showConfirm('Master password hata dein? Iske baad sirf har user ka apna password hi chalega.', { title: 'Clear master password', confirmText: 'Clear', danger: true });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await saveMasterPassword('');
+      setPw('');
+      setPw2('');
+      showToast('🔓 Master password hata diya gaya', 'info');
+      qc.invalidateQueries({ queryKey: ['admin-settings'] });
+    } catch (e) {
+      showToast(apiError(e) || 'Failed to clear master password', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <h4 style={{ marginBottom: 6 }}>🔑 Master Password (Owner only)</h4>
+      <p style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 12, maxWidth: 620 }}>
+        Ek single master password jisse aap <strong>kisi bhi user ke account me</strong> login kar sakte hain (support ke liye). Har user ka apna password waise hi chalega — ye uske <strong>alawa</strong> kaam karega. Server par sirf bcrypt hash store hota hai, plain password kahin save nahi hota.
+      </p>
+      <div style={{ background: '#fff3e6', border: '1px solid var(--border)', borderRadius: 10, padding: 14, maxWidth: 520, display: 'grid', gap: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary-dark)' }}>
+          Status: {isSet ? '✅ Set (chalu hai)' : '⚪ Not set (feature band hai)'}
+        </div>
+        <div>
+          <label style={lbl} htmlFor="mpw1">Naya master password</label>
+          <input id="mpw1" type="password" value={pw} autoComplete="new-password" onChange={(e) => setPw(e.target.value)} placeholder={isSet ? '•••••••• (naya set karne ke liye)' : 'Kam se kam 6 characters'} style={inp} />
+        </div>
+        <div>
+          <label style={lbl} htmlFor="mpw2">Dobara type karein</label>
+          <input id="mpw2" type="password" value={pw2} autoComplete="new-password" onChange={(e) => setPw2(e.target.value)} placeholder="Confirm" style={inp} />
+        </div>
+        <p style={hint}>⚠️ Agar koi employee ye password jaan jaye, yahin se turant badal dein. Sirf owner/superadmin hi ise set/badal sakte hain.</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" onClick={save} disabled={busy || !pw.trim()} style={{ padding: '11px 24px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: busy || !pw.trim() ? 'not-allowed' : 'pointer', opacity: busy || !pw.trim() ? 0.5 : 1 }}>
+            💾 {busy ? 'Saving…' : isSet ? 'Change Master Password' : 'Set Master Password'}
+          </button>
+          {isSet && (
+            <button type="button" onClick={clear} disabled={busy} style={{ padding: '11px 20px', background: '#e53935', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              🔓 Clear (disable)
+            </button>
+          )}
+        </div>
       </div>
     </>
   );
@@ -1047,7 +1135,11 @@ function SeoSettings() {
 
 // Port of the original renderSettingsTab() with its 5 sub-modules.
 export default function AdminSettings() {
-  const [sub, setSub] = useState<SubKey>(lastSub);
+  const { user } = useAuth();
+  const isOwner = user?.role === 'owner' || user?.role === 'superadmin';
+  // Hide owner-only sub tabs (e.g. Master Password) from non-owner staff.
+  const subs = SUBS.filter((s) => !('ownerOnly' in s && s.ownerOnly) || isOwner);
+  const [sub, setSub] = useState<SubKey>(subs.some((s) => s.key === lastSub) ? lastSub : 'store');
   const open = (k: SubKey) => {
     lastSub = k;
     setSub(k);
@@ -1056,7 +1148,7 @@ export default function AdminSettings() {
   return (
     <>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
-        {SUBS.map((s) => (
+        {subs.map((s) => (
           <button type="button" key={s.key} onClick={() => open(s.key)} aria-pressed={sub === s.key}
             style={{
               padding: '9px 16px', border: `1px solid ${sub === s.key ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 20, cursor: 'pointer', fontSize: 13, fontWeight: 600,
@@ -1068,6 +1160,7 @@ export default function AdminSettings() {
       </div>
       <div>
         {sub === 'store' && <StoreSettings />}
+        {sub === 'masterpw' && isOwner && <MasterPasswordSettings />}
         {sub === 'announce' && <AnnouncementSettings />}
         {sub === 'footer' && <FooterSettings />}
         {sub === 'festival' && <FestivalSettings />}

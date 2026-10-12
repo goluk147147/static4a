@@ -25,7 +25,7 @@ import { requireAuth } from './auth/middleware';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -97,6 +97,8 @@ app.listen(config.port, () => {
   seedDefaultOwner().catch((e) => console.error('[seed] owner failed', e));
   // Notification history tables (idempotent, no-migrate raw SQL).
   ensureNotificationTables().catch((e) => console.error('[seed] notification tables failed', e));
+  // Owner "master password" column on settings (idempotent, no-migrate raw SQL).
+  ensureMasterPasswordColumn().catch((e) => console.error('[seed] master password column failed', e));
   startReminderJob();
   startVideoScheduler();
   startSeoAuditJob(); // 15-min SEO audit sweep + queue recovery (recoverSeoQueue runs inside)

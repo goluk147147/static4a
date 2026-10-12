@@ -865,8 +865,40 @@ router.get('/settings', requireAuth, requireStaff('settings'), async (_req: Requ
       storeLatitude: s.store_latitude ?? null,
       storeLongitude: s.store_longitude ?? null,
       serviceableVillages: s.serviceable_villages ?? '',
+      // Owner "master password": NEVER expose the hash — only whether it is set.
+      masterPasswordSet: !!(s.master_password_hash && String(s.master_password_hash).length > 0),
     },
   });
+});
+
+// ---------------- Master password (OWNER / superadmin only) ----------------
+// A single owner-set password that can log into ANY user account for phone
+// support (see POST /api/users/login). Stored as a bcrypt hash in the raw
+// `settings.master_password_hash` column (added by ensureMasterPasswordColumn()
+// / prisma/master-password.sql). Send a non-empty `password` to set/change it,
+// or an empty string to clear/disable it. The hash is NEVER returned.
+const masterPasswordSchema = z.object({
+  password: z.string().max(200),
+});
+
+router.post('/master-password', requireAuth, async (req: Request, res: Response) => {
+  // Gate to OWNER/superadmin only — not every staff member with `settings`.
+  if (!['owner', 'superadmin'].includes(req.user!.role)) return fail(res, 'Owner access required', 403);
+
+  const parsed = masterPasswordSchema.safeParse(req.body || {});
+  if (!parsed.success) return fail(res, 'Master password must be 200 characters or fewer', 422);
+  const raw = parsed.data.password.trim();
+
+  if (raw.length === 0) {
+    // Clear → disable the feature.
+    await prisma.$executeRawUnsafe('UPDATE settings SET master_password_hash = NULL WHERE id = 1');
+    return ok(res, { message: 'Master password cleared', masterPasswordSet: false });
+  }
+  if (raw.length < 6) return fail(res, 'Master password must be at least 6 characters', 422);
+
+  const hash = bcrypt.hashSync(raw, 10);
+  await prisma.$executeRawUnsafe('UPDATE settings SET master_password_hash = ? WHERE id = 1', hash);
+  return ok(res, { message: 'Master password saved', masterPasswordSet: true });
 });
 
 // Common site footer (every storefront page). Legal links come from the `pages` table.
