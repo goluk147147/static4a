@@ -244,6 +244,198 @@ export async function ensureNotificationTables(): Promise<void> {
   );
 }
 
+/**
+ * Ensure the Marketing Center tables + the additive users.marketing_opt_out
+ * column exist. Follows the repo's no-migrate convention: idempotent
+ * `CREATE TABLE IF NOT EXISTS` via $executeRawUnsafe (InnoDB utf8mb4) with
+ * column types mirroring the Prisma MarketingFestival / MarketingTemplate /
+ * MarketingCampaign models in schema.prisma, plus an information_schema-guarded
+ * ALTER for the opt-out column (mirrors ensureMasterPasswordColumn()). Festivals
+ * and templates are seeded ONLY when their table is empty; festival dates are
+ * seeded NULL with needs_date_check = 1 so no wrong lunar date is ever hardcoded
+ * (all data stays DB-driven). Safe to re-run; NO prisma migrate / db push.
+ * Called at startup beside ensureNotificationTables(). Manual equivalent:
+ * prisma/marketing.sql.
+ */
+export async function ensureMarketingTables(): Promise<void> {
+  // --- Tables ---------------------------------------------------------------
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS marketing_festivals (
+       id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       name             VARCHAR(120) NOT NULL,
+       slug             VARCHAR(120) NOT NULL,
+       festival_date    DATE         NULL,
+       greeting_hi      VARCHAR(255) NULL,
+       emoji            VARCHAR(16)  NULL,
+       is_active        TINYINT(1)   NOT NULL DEFAULT 1,
+       needs_date_check TINYINT(1)   NOT NULL DEFAULT 1,
+       sort_order       INT          NOT NULL DEFAULT 0,
+       created_at       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       updated_at       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       UNIQUE KEY uq_marketing_festivals_slug (slug),
+       INDEX idx_marketing_festivals_date (festival_date)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS marketing_templates (
+       id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       title         VARCHAR(160) NOT NULL,
+       category      VARCHAR(60)  NOT NULL DEFAULT 'general',
+       festival_slug VARCHAR(120) NULL,
+       lang          VARCHAR(12)  NOT NULL DEFAULT 'hinglish',
+       body          TEXT         NOT NULL,
+       is_active     TINYINT(1)   NOT NULL DEFAULT 1,
+       sort_order    INT          NOT NULL DEFAULT 0,
+       created_at    DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       updated_at    DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       INDEX idx_marketing_templates_category (category)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS marketing_campaigns (
+       id                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       name               VARCHAR(160) NOT NULL,
+       category           VARCHAR(60)  NULL,
+       product_ids        JSON         NULL,
+       template_id        BIGINT UNSIGNED NULL,
+       customer_mobiles   JSON         NULL,
+       message            TEXT         NULL,
+       status             VARCHAR(24)  NOT NULL DEFAULT 'draft',
+       notes              VARCHAR(500) NULL,
+       share_opened       INT          NOT NULL DEFAULT 0,
+       copied_count       INT          NOT NULL DEFAULT 0,
+       banners_downloaded INT          NOT NULL DEFAULT 0,
+       batches_prepared   INT          NOT NULL DEFAULT 0,
+       created_by         VARCHAR(64)  NULL,
+       created_at         DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       updated_at         DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       INDEX idx_marketing_campaigns_created (created_at)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+
+  // --- Additive users.marketing_opt_out column (information_schema-guarded) --
+  // Mirrors ensureMasterPasswordColumn(): add only when absent, swallow the
+  // MySQL duplicate-column error (1060) so re-runs never crash.
+  const optOutRows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'marketing_opt_out'`
+  );
+  if (Number(optOutRows?.[0]?.c ?? 0) === 0) {
+    try {
+      await prisma.$executeRawUnsafe(
+        'ALTER TABLE users ADD COLUMN marketing_opt_out TINYINT(1) NOT NULL DEFAULT 0'
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/1060|Duplicate column/i.test(msg)) throw e;
+    }
+  }
+
+  // --- Seed festivals ONLY when the table is empty --------------------------
+  // festival_date is intentionally NULL + needs_date_check = 1 so no wrong
+  // (lunar) date is ever hardcoded — the real date is set later from the DB.
+  const festCount = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+    'SELECT COUNT(*) AS c FROM marketing_festivals'
+  );
+  if (Number(festCount?.[0]?.c ?? 0) === 0) {
+    const festivals: Array<{ name: string; slug: string; greeting: string; emoji: string }> = [
+      { name: 'Makar Sankranti', slug: 'makar-sankranti', greeting: 'मकर संक्रांति की शुभकामनाएं', emoji: '🪁' },
+      { name: 'Republic Day', slug: 'republic-day', greeting: 'गणतंत्र दिवस की शुभकामनाएं', emoji: '🇮🇳' },
+      { name: 'Holi', slug: 'holi', greeting: 'होली की हार्दिक शुभकामनाएं', emoji: '🎨' },
+      { name: 'Ram Navami', slug: 'ram-navami', greeting: 'राम नवमी की शुभकामनाएं', emoji: '🙏' },
+      { name: 'Hanuman Jayanti', slug: 'hanuman-jayanti', greeting: 'हनुमान जयंती की शुभकामनाएं', emoji: '🚩' },
+      { name: 'Eid', slug: 'eid', greeting: 'ईद मुबारक', emoji: '🌙' },
+      { name: 'Raksha Bandhan', slug: 'raksha-bandhan', greeting: 'रक्षाबंधन की शुभकामनाएं', emoji: '🪢' },
+      { name: 'Janmashtami', slug: 'janmashtami', greeting: 'जन्माष्टमी की शुभकामनाएं', emoji: '🦚' },
+      { name: 'Independence Day', slug: 'independence-day', greeting: 'स्वतंत्रता दिवस की शुभकामनाएं', emoji: '🇮🇳' },
+      { name: 'Ganesh Chaturthi', slug: 'ganesh-chaturthi', greeting: 'गणेश चतुर्थी की शुभकामनाएं', emoji: '🐘' },
+      { name: 'Navratri', slug: 'navratri', greeting: 'नवरात्रि की शुभकामनाएं', emoji: '🪔' },
+      { name: 'Dussehra', slug: 'dussehra', greeting: 'दशहरा की शुभकामनाएं', emoji: '🏹' },
+      { name: 'Diwali', slug: 'diwali', greeting: 'दीपावली की हार्दिक शुभकामनाएं', emoji: '🪔' },
+      { name: 'Chhath Puja', slug: 'chhath-puja', greeting: 'छठ पूजा की शुभकामनाएं', emoji: '🌅' },
+      { name: 'Christmas', slug: 'christmas', greeting: 'क्रिसमस की शुभकामनाएं', emoji: '🎄' },
+      { name: 'New Year', slug: 'new-year', greeting: 'नव वर्ष की शुभकामनाएं', emoji: '🎉' },
+    ];
+    for (const [index, f] of festivals.entries()) {
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO marketing_festivals
+           (name, slug, festival_date, greeting_hi, emoji, is_active, needs_date_check, sort_order)
+         VALUES (?, ?, NULL, ?, ?, 1, 1, ?)`,
+        f.name,
+        f.slug,
+        f.greeting,
+        f.emoji,
+        index + 1
+      );
+    }
+  }
+
+  // --- Seed templates ONLY when the table is empty --------------------------
+  const tplCount = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+    'SELECT COUNT(*) AS c FROM marketing_templates'
+  );
+  if (Number(tplCount?.[0]?.c ?? 0) === 0) {
+    const templates: Array<{ title: string; category: string; festival_slug: string | null; lang: string; body: string }> = [
+      {
+        title: 'Festival Greeting + Offer',
+        category: 'festival',
+        festival_slug: null,
+        lang: 'hinglish',
+        body:
+          '{{festival_name}} ki {{store_name}} ki taraf se hardik shubhkamnaayein! {{product_name}} ab sirf ₹{{selling_price}} ({{discount}} OFF). Offer {{offer_expiry}} tak. Order karein: {{product_url}} | Call: {{store_phone}}',
+      },
+      {
+        title: 'New Product Launch',
+        category: 'product',
+        festival_slug: null,
+        lang: 'hinglish',
+        body:
+          'Naya aa gaya hai {{store_name}} par! {{product_name}} ab {{selling_price}} me ({{discount}} chhoot). {{service_area}} me delivery. Dekhein: {{product_url}}',
+      },
+      {
+        title: 'Weekend Deal',
+        category: 'offer',
+        festival_slug: null,
+        lang: 'hinglish',
+        body:
+          'Weekend Special at {{store_name}}! {{product_name}} sirf ₹{{selling_price}} ({{discount}} OFF). {{offer_expiry}} tak hi. Abhi order karein: {{product_url}} 📞 {{store_phone}}',
+      },
+      {
+        title: 'App Download Nudge',
+        category: 'general',
+        festival_slug: null,
+        lang: 'hinglish',
+        body:
+          '{{store_name}} ki app download karein aur ghar baithe {{service_area}} me saman mangwaayein. Download: {{app_url}}',
+      },
+      {
+        title: 'Festival Image Share',
+        category: 'festival',
+        festival_slug: null,
+        lang: 'hinglish',
+        body:
+          '{{festival_name}} 🎉 — {{product_image}} {{product_name}} par special offer sirf {{selling_price}}! {{store_name}} se order karein: {{product_url}}',
+      },
+    ];
+    for (const [index, t] of templates.entries()) {
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO marketing_templates
+           (title, category, festival_slug, lang, body, is_active, sort_order)
+         VALUES (?, ?, ?, ?, ?, 1, ?)`,
+        t.title,
+        t.category,
+        t.festival_slug,
+        t.lang,
+        t.body,
+        index + 1
+      );
+    }
+  }
+}
+
 interface LegacyUser {
   id: number;
   name: string;
