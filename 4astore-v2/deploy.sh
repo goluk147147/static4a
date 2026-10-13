@@ -25,6 +25,7 @@ WEB_DIR="$REPO_ROOT/4astore-v2/web"
 WEB_ROOT="/var/www/html"            # Apache DocumentRoot (HTTP + HTTPS dono)
 PM2_APP="4astore-api"
 BRANCH="main"
+OG_CONF_SRC="$REPO_ROOT/4astore-v2/deploy/4astore-og.conf"  # repo-tracked crawler-OG vhost include
 
 # NODE_ENV=production hone pe tsc/vite/prisma (devDeps) skip ho jaate — unset
 unset NODE_ENV || true
@@ -95,9 +96,41 @@ sudo rsync -a \
 sudo chown -R apache:apache "$WEB_ROOT" 2>/dev/null || true
 ok "web synced ( .htaccess / .env / .well-known / phpmyadmin chhoda )"
 
+# ---- 5b. CRAWLER OG ROUTING: repo-shipped Apache vhost include (UNIVERSAL) --
+# Social-share previews (WhatsApp/Facebook/etc.) ke liye /product/:id, /page/:slug,
+# /category/:slug, /products?category=… par crawler ko Node OG HTML milta hai. Ye rule
+# ab .htaccess me NAHI (jo deploy se excluded + revert ho jaata tha) — ye repo-tracked conf
+# file hai jo har deploy pe Apache conf.d me install hoti hai. Humans SPA pe hi rehte hain.
+say "5b/8  crawler-OG vhost include install (Apache conf.d)"
+if [ -f "$OG_CONF_SRC" ]; then
+  OG_CONF_DST=""
+  if [ -d /etc/httpd/conf.d ]; then
+    OG_CONF_DST="/etc/httpd/conf.d/4astore-og.conf"            # Amazon Linux / RHEL / CentOS
+  elif [ -d /etc/apache2/conf-available ]; then
+    OG_CONF_DST="/etc/apache2/conf-available/4astore-og.conf"  # Debian / Ubuntu
+  fi
+  if [ -n "$OG_CONF_DST" ]; then
+    if ! sudo cmp -s "$OG_CONF_SRC" "$OG_CONF_DST" 2>/dev/null; then
+      sudo cp "$OG_CONF_SRC" "$OG_CONF_DST"
+      # Debian/Ubuntu: enable the conf (idempotent). RHEL conf.d auto-loads, no enable needed.
+      [ -d /etc/apache2/conf-available ] && sudo a2enconf 4astore-og >/dev/null 2>&1 || true
+      # Reload Apache so the new/updated rule is live (graceful — no dropped connections).
+      sudo systemctl reload httpd 2>/dev/null || sudo systemctl reload apache2 2>/dev/null \
+        || sudo apachectl graceful 2>/dev/null || warn "Apache reload nahi hua — manually: sudo systemctl reload httpd"
+      ok "crawler-OG include updated + Apache reloaded ($OG_CONF_DST)"
+    else
+      ok "crawler-OG include already up-to-date ($OG_CONF_DST)"
+    fi
+  else
+    warn "Apache conf dir nahi mila (httpd/apache2) — 4astore-og.conf manually install karo (deploy/4astore-og.conf dekho)"
+  fi
+else
+  warn "$OG_CONF_SRC missing — crawler OG rule skip (repo pull adhoora?)"
+fi
+
 # ---- 6. .htaccess SANITY: SPA loop-safe hai? + phpmyadmin bypass? ----------
 # .htaccess ko overwrite nahi karte, par agar galat/loop-wali ho to WARN karte hain.
-say "6/7  .htaccess sanity check"
+say "6/8  .htaccess sanity check"
 HT="$WEB_ROOT/.htaccess"
 if [ -f "$HT" ]; then
   grep -q 'RewriteRule \^index\\.html\$ - \[L\]' "$HT" && ok ".htaccess loop-guard maujood" \
@@ -109,7 +142,7 @@ else
 fi
 
 # ---- 7. HEALTH CHECK -------------------------------------------------------
-say "7/7  Health check"
+say "7/8  Health check"
 code() { curl -s -o /dev/null -w "%{http_code}" "$@"; }
 HOME=$(code https://4astore.com/ || true)
 LOGIN=$(code -X POST https://4astore.com/api/users/login -H "Content-Type: application/json" -d '{"u":"x"}' || true)
@@ -119,5 +152,18 @@ ROB=$(code https://4astore.com/robots.txt || true)
 FAV=$(code https://4astore.com/favicon.ico || true)
 printf "   home=%s  login=%s  seo=%s  sitemap=%s  robots=%s  favicon=%s\n" "$HOME" "$LOGIN" "$SEO" "$MAP" "$ROB" "$FAV"
 echo "   (login 4xx = backend zinda; seo 401 = route live; home/sitemap/robots/favicon = 200)"
+
+# ---- 8. CRAWLER-OG CHECK: crawler ko OG image milti hai, human ko SPA? -----
+# Universal fix ki asli verification: crawler UA pe og:image dikhe, bina UA ke SPA (no og:image).
+say "8/8  crawler OG verify (/product/1)"
+PID="${OG_TEST_PRODUCT_ID:-1}"
+CRAWLER_OG=$(curl -s -A 'WhatsApp/2.0' "https://4astore.com/product/$PID" | grep -o 'og:image[^>]*' | head -1 || true)
+HUMAN_OG=$(curl -s -A 'Mozilla/5.0' "https://4astore.com/product/$PID" | grep -o 'og:image[^>]*' | head -1 || true)
+if [ -n "$CRAWLER_OG" ]; then
+  ok "crawler ko og:image mili  → $CRAWLER_OG"
+else
+  warn "crawler ko og:image NAHI mili — Apache conf.d me 4astore-og.conf load hua? (sudo apachectl -t -D DUMP_MODULES | grep proxy)  +  Cloudflare purge/Vary check karo"
+fi
+echo "   (human og:image: ${HUMAN_OG:-'<none — SPA default, expected>'} )"
 
 say "DONE ✅  — browser me Ctrl+Shift+R (ya Cloudflare purge agar zaroorat ho)"

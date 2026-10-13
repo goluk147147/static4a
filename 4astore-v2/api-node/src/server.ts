@@ -23,6 +23,7 @@ import seoRouter from './routes/seo';
 import seoAdminRouter from './routes/seo-admin';
 import marketingRouter from './routes/marketing';
 import { requireAuth } from './auth/middleware';
+import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
@@ -45,6 +46,15 @@ app.use(timing); // no-op unless DEBUG_TIMING=1
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ success: true, service: '4astore-api-node', env: config.env }));
+
+// Social-crawler OG routing (universal, deploy-safe replacement for the fragile .htaccess
+// crawler rewrite). The Apache vhost include (deploy/4astore-og.conf) proxies ONLY crawler
+// user-agents on /product/:id , /page/:slug , /category/:slug , /products?category=… to this
+// endpoint, which rebuilds the OG HTML from the ONE source of truth (services/ogShare.ts).
+app.get('/api/og-crawl', ogCrawlHandler);
+// Transparent in-process guard for a bare public path that somehow reaches Node with a
+// crawler UA — a no-op for /api traffic and all human requests.
+app.use(ogCrawlerMiddleware);
 
 // Routes
 app.use('/api/users', usersRouter);

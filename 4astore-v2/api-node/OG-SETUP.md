@@ -1,8 +1,70 @@
-# OG / Social Share Setup (EC2 + nginx)
+# OG / Social Share Setup
 
 This describes how shared `4astore.com` links get a rich preview (image + title +
 description) in WhatsApp, Facebook, Twitter/X, Slack, LinkedIn, Discord, Telegram,
 etc., while normal visitors still load the SPA.
+
+---
+
+## CURRENT (universal, deploy-safe) — Apache + Cloudflare
+
+The live stack is **Cloudflare → Apache (SPA at `/var/www/html`)**, with `/api/*`
+reverse-proxied to the Node app (`pm2` `4astore-api`, port 4000). The crawler OG
+routing lives in **code + a repo-tracked Apache include**, NOT in `.htaccess`.
+
+**Why not `.htaccess`:** `deploy.sh` rsync excludes `.htaccess`, so it never ships;
+it was also manually reverted on the box, and Apache+Cloudflare make per-request
+`.htaccess` rewrites fragile. The approach below survives every deploy.
+
+### The ONE source of truth for OG HTML
+
+`api-node/src/services/ogShare.ts` builds the product / page / category share HTML.
+Both consume it so the logic can never fork:
+
+- `routes/og.ts` → `GET /api/og/product/:id`, `/api/og/page/:slug`, `/api/og/category/:slug`
+- `middleware/ogCrawler.ts` → `GET /api/og-crawl?path=<public-uri>` (the Apache crawler-proxy target)
+
+### The deploy-shipped Apache include
+
+`4astore-v2/deploy/4astore-og.conf` (repo-tracked). It proxies ONLY known crawler
+user-agents on the public paths `/product/:id`, `/page/:slug`, `/category/:slug`,
+and `/products?category=…` to the Node endpoint `/api/og-crawl`. Humans never match
+the crawler UA, so Apache leaves them on the SPA untouched.
+
+`deploy.sh` installs/updates it automatically on every deploy (step `5b/8`):
+copies it into `/etc/httpd/conf.d/` (Amazon Linux/RHEL) or
+`/etc/apache2/conf-available/` + `a2enconf` (Debian/Ubuntu) with `sudo`, then does a
+graceful Apache reload. **One-time only:** the first time, ensure `mod_proxy`,
+`mod_proxy_http`, `mod_rewrite`, `mod_headers` are enabled (they are on this box).
+
+### Cloudflare note
+
+The Node endpoint and the Apache include both set `Vary: User-Agent`, so a cached SPA
+copy is never served to a crawler (and vice-versa). If a stale SPA preview persists,
+**purge the `/product/*` (and `/page/*`, `/category/*`) URLs in Cloudflare** once after
+the first deploy, or add a Cloudflare cache rule that bypasses cache for requests whose
+`User-Agent` matches the crawler list. After that, `Vary` keeps the two copies separate.
+
+### Verify (after deploy)
+
+```bash
+# Crawler → product-specific og:image (served from Node via the Apache include):
+curl -s -A 'WhatsApp/2.0' https://4astore.com/product/3 | grep -i og:image
+
+# Human → the SPA shell (generic/no product og:image):
+curl -s -A 'Mozilla/5.0' https://4astore.com/product/3 | grep -i og:image
+
+# A human browser still loads the SPA product page normally.
+```
+
+`deploy.sh` runs an equivalent check automatically as step `8/8`.
+
+---
+
+## LEGACY (nginx) — kept for reference only
+
+> The box no longer runs nginx. The section below is the earlier nginx recipe and is
+> retained only as historical reference; use the Apache + Cloudflare section above.
 
 ## How it works
 
