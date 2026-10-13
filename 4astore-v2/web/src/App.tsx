@@ -23,6 +23,7 @@ import AdminBanners from './pages/admin/AdminBanners';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminNotify from './pages/admin/AdminNotify';
 import AdminMarketing from './pages/admin/AdminMarketing';
+import AdminLinks from './pages/admin/AdminLinks';
 import AdminPending from './pages/admin/AdminPending';
 import AdminEarnings from './pages/admin/AdminEarnings';
 import AdminAds from './pages/admin/AdminAds';
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="pages" element={<AdminPages />} />
         <Route path="notify" element={<AdminNotify />} />
         <Route path="marketing" element={<AdminMarketing />} />
+        <Route path="links" element={<AdminLinks />} />
         <Route path="notify-log" element={<Navigate to="/admin/notify" replace />} />
         <Route path="*" element={<AdminPending title="Page" note="Ye admin page maujood nahi hai." />} />
       </Route>

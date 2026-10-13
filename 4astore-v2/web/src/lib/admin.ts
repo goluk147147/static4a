@@ -247,6 +247,34 @@ export async function setOptOut(mobile: string, optOut: boolean): Promise<void> 
   await api.post('/admin/marketing/opt-out', { mobile, optOut });
 }
 
+// ---- Short Links (universal /link/<code> short-link subsystem) ----
+// Backend: GET/POST /api/admin/links (requireAuth + requireStaff('ads')) and the
+// public resolver GET /api/products/:id/short-link. Prisma BigInt ids serialize
+// to numbers; DateTime columns serialize to ISO strings.
+
+/** Mirrors ShortLink (api-node/prisma/schema.prisma → short_links). */
+export interface ShortLink {
+  code: string;
+  target_url: string;
+  /** 'product' for auto-created product links, 'custom' for admin-created links. */
+  type: string;
+  clicks: number;
+  created_at: string;
+}
+
+/** GET /api/admin/links — newest-first short links. */
+export async function fetchShortLinks(): Promise<ShortLink[]> {
+  return (await api.get('/admin/links')).data.links as ShortLink[];
+}
+/** POST /api/admin/links — create a short link for ANY url; 409 on duplicate custom code. */
+export async function createShortLink(input: { targetUrl: string; type?: string; code?: string }) {
+  return (await api.post('/admin/links', input)).data;
+}
+/** GET /api/products/:id/short-link — resolve (minting on demand) a product's short code. */
+export async function fetchProductShortLink(id: number): Promise<string | null> {
+  return (await api.get(`/products/${id}/short-link`)).data.code as string | null;
+}
+
 // ---- Team Access ----
 export async function fetchTeam() {
   return (await api.get('/admin/team')).data.admins as AdminUser[];
