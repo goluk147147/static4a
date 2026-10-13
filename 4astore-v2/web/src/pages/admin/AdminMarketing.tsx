@@ -13,6 +13,9 @@ import { useProducts, useCategories, useSettings } from '../../lib/queries';
 import { waLink, openWhatsApp } from '../../lib/whatsapp';
 import { showToast } from '../../store/toast';
 import EmojiPicker from '../../components/EmojiPicker';
+import BannerStudio from './marketing/BannerStudio';
+import VideoPromotions from './marketing/VideoPromotions';
+import AutoSendComingSoon from './marketing/AutoSendComingSoon';
 import type { Product, Settings } from '../../types';
 
 // Public site origin — WhatsApp's crawler hits these SPA URLs and nginx rewrites
@@ -146,6 +149,7 @@ function composeProductPromo(p: Product, hideMrp: boolean): string {
 const SUB_TABS: [string, string][] = [
   ['dashboard', '📊 Dashboard'],
   ['promotions', '🛍️ Product Promotions'],
+  ['banners', '🎨 Banner Studio'],
   ['festivals', '🎊 Festival Calendar'],
   ['templates', '📝 Templates'],
   ['reach', '👥 Customer Reach'],
@@ -153,8 +157,10 @@ const SUB_TABS: [string, string][] = [
   ['broadcast', '📤 Broadcast Helper'],
   ['links', '🔗 Share Links'],
   ['campaigns', '📈 History & Reports'],
+  ['video', '🎬 Video (soon)'],
+  ['autosend', '🤖 Auto-send / AI (soon)'],
 ];
-type SubTab = 'dashboard' | 'promotions' | 'festivals' | 'templates' | 'reach' | 'composer' | 'broadcast' | 'links' | 'campaigns';
+type SubTab = 'dashboard' | 'promotions' | 'banners' | 'festivals' | 'templates' | 'reach' | 'composer' | 'broadcast' | 'links' | 'campaigns' | 'video' | 'autosend';
 
 export default function AdminMarketing() {
   const [sub, setSub] = useState<SubTab>('dashboard');
@@ -198,6 +204,7 @@ export default function AdminMarketing() {
 
       {sub === 'dashboard' && <Dashboard selectedCount={selected.size} onGoto={setSub} />}
       {sub === 'promotions' && <ProductPromotions setMessage={setMessage} onComposed={() => setSub('reach')} />}
+      {sub === 'banners' && <BannerStudio />}
       {sub === 'festivals' && <FestivalCalendar setMessage={setMessage} />}
       {sub === 'templates' && <TemplatesLibrary setMessage={setMessage} />}
       {sub === 'reach' && <ReachList message={message} selected={selected} setSelected={setSelected} />}
@@ -205,6 +212,8 @@ export default function AdminMarketing() {
       {sub === 'broadcast' && <BroadcastHelper message={message} />}
       {sub === 'links' && <ShareLinks />}
       {sub === 'campaigns' && <CampaignHistory />}
+      {sub === 'video' && <VideoPromotions />}
+      {sub === 'autosend' && <AutoSendComingSoon />}
     </div>
   );
 }
