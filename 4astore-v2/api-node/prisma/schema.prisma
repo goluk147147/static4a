@@ -306,6 +306,24 @@ model MarketingCampaign {
   @@map("marketing_campaigns")
 }
 
+// Universal short-links. Created at runtime via ensureShortLinkTables()
+// (services/dataImport.ts, raw CREATE TABLE IF NOT EXISTS; manual equivalent:
+// prisma/short-links.sql). This model mirrors those columns so Prisma can query
+// them. Do NOT run prisma migrate / db push.
+model ShortLink {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  code       String   @unique @db.VarChar(16)
+  target_url String   @db.VarChar(1000)
+  type       String   @db.VarChar(16)
+  product_id BigInt?  @db.UnsignedBigInt
+  created_by String?  @db.VarChar(64)
+  clicks     Int      @default(0)
+  created_at DateTime @default(now()) @db.DateTime(3)
+
+  @@index([product_id], map: "idx_short_links_product")
+  @@map("short_links")
+}
+
 // Automatic SEO engine tables. Created at runtime via prisma/seo-auto.sql
 // (CREATE TABLE IF NOT EXISTS); these models mirror those columns so Prisma can
 // query them. Do NOT run prisma migrate / db push.

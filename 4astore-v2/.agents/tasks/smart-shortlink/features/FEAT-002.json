@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Frontend (web): the admin Links management UI and the product-details Share button, both consuming the FEAT-001 APIs. Adds client functions in web/src/lib/admin.ts (list/create short links, resolve a product's short code), a new admin Links page routed under /admin, and a bilingual Share button on web/src/pages/ProductDetails.tsx that shares the product's SHORT link (falling back to the canonical /product/:id). Depends on FEAT-001 — the APIs it calls (/api/admin/links, /api/products/:id/short-link) must exist first.",
+  "status": "pending",
+  "steps": [
+    "ENV: ensure `npm install` has been run in c:\\xampp\\htdocs\\static4a\\.worktrees\\smart-shortlink\\4astore-v2\\web.",
+    "Client: in web/src/lib/admin.ts add `fetchShortLinks()` -> `(await api.get('/admin/links')).data.links`, `createShortLink(input:{targetUrl:string;type?:string;code?:string})` -> `(await api.post('/admin/links', input)).data`, and `fetchProductShortLink(id:number)` -> `(await api.get(`/products/${id}/short-link`)).data.code as string|null`. Follow the existing `(await api.get/post(...)).data` pattern in the file. Add a `ShortLink` TS type (code, target_url, type, clicks, created_at) in web/src/types.ts (or inline in admin.ts matching how marketing types are declared there).",
+    "Admin page: create web/src/pages/admin/AdminLinks.tsx — a table of short links (columns: code, target, type, clicks, created_at) each row with a Copy button (navigator.clipboard.writeText of `https://4astore.com/link/<code>`) and an Open button (anchor to the same), plus a 'Create link' form (target URL input + optional custom code input) that calls createShortLink and surfaces the 409 duplicate-code error via showToast. Reuse the react-query + showToast patterns from web/src/pages/admin/AdminMarketing.tsx and AdminProducts.tsx.",
+    "Routing: in web/src/App.tsx add `<Route path=\"links\" element={<AdminLinks />} />` inside the existing `<Route path=\"/admin\" element={<AdminApp />}>` block (beside the marketing route) and import AdminLinks. Add a nav/menu entry wherever the admin sidebar/menu lists 'marketing' (follow that same wiring).",
+    "Share button: in web/src/pages/ProductDetails.tsx, near the price/CTA block, add a clean bilingual 'Share / शेयर' button. On click: resolve shareUrl = `https://4astore.com/link/<code>` from fetchProductShortLink(product.id); if it returns null fall back to `https://4astore.com/product/<id>`. If `navigator.share` exists call `navigator.share({ title: product.name, text: '<short caption>', url: shareUrl })`; else render 'Share on WhatsApp' (open `https://wa.me/?text=` + encodeURIComponent(caption + ' ' + shareUrl); reuse web/src/lib/whatsapp.ts waLink/openWhatsApp if suitable) and 'Copy link' (navigator.clipboard.writeText + showToast). Keep styling consistent with the page's existing inline-styled buttons."
+  ],
+  "acceptance_criteria": [
+    "`npm run build` passes in web with the new client functions, AdminLinks page, route, and Share button.",
+    "web/src/lib/admin.ts exports fetchShortLinks, createShortLink, fetchProductShortLink using the existing api wrapper pattern.",
+    "An admin Links page exists and is routed under /admin/links with a nav entry; it lists links (code/target/type/clicks/created_at) with Copy+Open and a Create-link form that handles the 409 duplicate-code case.",
+    "ProductDetails.tsx renders a bilingual 'Share / शेयर' button that shares the product SHORT link (navigator.share when available, else WhatsApp + Copy link), falling back to the canonical /product/:id when no short code is returned."
+  ],
+  "verification": [
+    "cd c:\\xampp\\htdocs\\static4a\\.worktrees\\smart-shortlink\\4astore-v2\\web && npm install (if not already) && npm run build  (must compile with zero errors)",
+    "Read web/src/App.tsx and confirm the /admin/links route is registered inside the /admin shell and AdminLinks is imported.",
+    "Record (post-deploy, cannot run in worktree): the product page Share button appears and shares the short link; the shared link yields a correct OG preview via the crawler routing (shares FEAT-001's /link path)."
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

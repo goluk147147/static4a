@@ -1,0 +1,7 @@
+{
+  "task_id": "smart-shortlink",
+  "task_description": "Build a universal Smart Short-Link system (https://4astore.com/link/<code>) + a product-page Share button for 4A Store v2 (api-node + web only; no mobile rebuild; ignore legacy PHP). Short links are auto-created on product create (single + bulk), creatable by admin for ANY url, render correct OG preview to crawlers by reusing the a0380ad2 ogShare.ts source of truth, and smart-redirect humans (Android app via existing App Links/deep link, else Play Store, else website on desktop). Reuse the deploy-safe Apache include mechanism (deploy/4astore-og.conf) so /link works for crawlers and humans without fragile .htaccess.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

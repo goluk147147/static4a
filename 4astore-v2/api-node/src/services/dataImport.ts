@@ -21,6 +21,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../db';
 import { loadFeatures } from '../seo/persist';
 import { enqueueSeoJob, hasPendingCatalogueJob } from './seoQueue';
+import { createShortLinkForProduct } from './shortLink';
 
 /** Default data dir resolves to the repo-root `data/` folder (c:\xampp\htdocs\static4a\data). */
 export const DEFAULT_DATA_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'data');
@@ -65,6 +66,9 @@ export async function importProducts(dataDir = DEFAULT_DATA_DIR) {
       features: Array.isArray(p.features) ? p.features : [], in_stock: p.inStock !== false,
     };
     await prisma.product.upsert({ where: { id: BigInt(p.id) }, create: { id: BigInt(p.id), ...data }, update: data });
+    // Best-effort: idempotently mint each product's universal short link so bulk
+    // import gets links too. Never let a link failure abort the import.
+    await createShortLinkForProduct(Number(p.id)).catch(() => undefined);
   }
   return items.length;
 }
@@ -434,6 +438,33 @@ export async function ensureMarketingTables(): Promise<void> {
       );
     }
   }
+}
+
+/**
+ * Ensure the `short_links` table exists. Follows the repo's no-migrate
+ * convention: idempotent `CREATE TABLE IF NOT EXISTS` via $executeRawUnsafe
+ * (InnoDB utf8mb4) with column types mirroring the Prisma ShortLink model in
+ * schema.prisma. Backs the universal short-link subsystem (services/shortLink.ts,
+ * routes/link.ts, routes/admin-links.ts). Safe to re-run; NO prisma migrate /
+ * db push. Called at startup beside ensureMarketingTables(). Manual equivalent:
+ * prisma/short-links.sql.
+ */
+export async function ensureShortLinkTables(): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS short_links (
+       id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       code       VARCHAR(16)   NOT NULL,
+       target_url VARCHAR(1000) NOT NULL,
+       type       VARCHAR(16)   NOT NULL,
+       product_id BIGINT UNSIGNED NULL,
+       created_by VARCHAR(64)   NULL,
+       clicks     INT           NOT NULL DEFAULT 0,
+       created_at DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       UNIQUE KEY uq_short_links_code (code),
+       INDEX idx_short_links_product (product_id)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
 }
 
 interface LegacyUser {
