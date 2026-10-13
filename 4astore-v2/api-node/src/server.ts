@@ -21,11 +21,12 @@ import videosRouter from './routes/videos';
 import ogRouter from './routes/og';
 import seoRouter from './routes/seo';
 import seoAdminRouter from './routes/seo-admin';
+import marketingRouter from './routes/marketing';
 import { requireAuth } from './auth/middleware';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -56,6 +57,7 @@ app.use('/api/admin', adminNotificationsRouter); // GET /api/admin/notifications
 app.use('/api/admin/videos', videosRouter); // before /api/admin (own auth: staff + "ads")
 app.use('/api/admin', adminDataRouter); // owner-only /data/* (import, reset, status) — specific paths first
 app.use('/api/admin/seo-auto', requireAuth, seoAdminRouter); // staff-gated SEO engine — specific path before generic /api/admin
+app.use('/api/admin/marketing', marketingRouter); // Marketing Center (staff + "ads") — specific path before generic /api/admin
 app.use('/api/admin', adminRouter);
 app.use('/api/addresses', addressesRouter);
 app.use('/api/img-proxy', imgProxyRouter);
@@ -97,6 +99,8 @@ app.listen(config.port, () => {
   seedDefaultOwner().catch((e) => console.error('[seed] owner failed', e));
   // Notification history tables (idempotent, no-migrate raw SQL).
   ensureNotificationTables().catch((e) => console.error('[seed] notification tables failed', e));
+  // Marketing Center tables + users.marketing_opt_out column (idempotent, no-migrate raw SQL).
+  ensureMarketingTables().catch((e) => console.error('[seed] marketing tables failed', e));
   // Owner "master password" column on settings (idempotent, no-migrate raw SQL).
   ensureMasterPasswordColumn().catch((e) => console.error('[seed] master password column failed', e));
   startReminderJob();

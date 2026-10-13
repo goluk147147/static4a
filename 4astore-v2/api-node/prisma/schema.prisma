@@ -39,6 +39,9 @@ model User {
   permissions            Json?
   backend_rider          Boolean  @default(false)
   custom_delivery        Int?
+  // Added at runtime by ensureMarketingTables() (raw ALTER, no migrate). When true
+  // the customer is excluded from marketing broadcasts. Do NOT run prisma migrate/db push.
+  marketing_opt_out      Boolean  @default(false)
   registered_at          DateTime?
   last_login             DateTime?
   created_at             DateTime @default(now())
@@ -242,6 +245,65 @@ model NotificationRecipient {
   @@index([notification_id], map: "idx_notif_recipient_notif")
   @@index([user_id], map: "idx_notif_recipient_user")
   @@map("notification_recipients")
+}
+
+// Marketing Center tables. Created at runtime via the no-migrate raw SQL in
+// ensureMarketingTables() (services/dataImport.ts; manual equivalent:
+// prisma/marketing.sql); these models mirror those columns so Prisma can query
+// them. Do NOT run prisma migrate / db push.
+model MarketingFestival {
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name             String    @db.VarChar(120)
+  slug             String    @unique(map: "uq_marketing_festivals_slug") @db.VarChar(120)
+  festival_date    DateTime? @db.Date
+  greeting_hi      String?   @db.VarChar(255)
+  emoji            String?   @db.VarChar(16)
+  is_active        Boolean   @default(true)
+  needs_date_check Boolean   @default(true)
+  sort_order       Int       @default(0)
+  created_at       DateTime  @default(now()) @db.DateTime(3)
+  updated_at       DateTime  @default(now()) @db.DateTime(3)
+
+  @@index([festival_date], map: "idx_marketing_festivals_date")
+  @@map("marketing_festivals")
+}
+
+model MarketingTemplate {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  title         String   @db.VarChar(160)
+  category      String   @default("general") @db.VarChar(60)
+  festival_slug String?  @db.VarChar(120)
+  lang          String   @default("hinglish") @db.VarChar(12)
+  body          String   @db.Text
+  is_active     Boolean  @default(true)
+  sort_order    Int      @default(0)
+  created_at    DateTime @default(now()) @db.DateTime(3)
+  updated_at    DateTime @default(now()) @db.DateTime(3)
+
+  @@index([category], map: "idx_marketing_templates_category")
+  @@map("marketing_templates")
+}
+
+model MarketingCampaign {
+  id                 BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  name               String   @db.VarChar(160)
+  category           String?  @db.VarChar(60)
+  product_ids        Json?
+  template_id        BigInt?  @db.UnsignedBigInt
+  customer_mobiles   Json?
+  message            String?  @db.Text
+  status             String   @default("draft") @db.VarChar(24)
+  notes              String?  @db.VarChar(500)
+  share_opened       Int      @default(0)
+  copied_count       Int      @default(0)
+  banners_downloaded Int      @default(0)
+  batches_prepared   Int      @default(0)
+  created_by         String?  @db.VarChar(64)
+  created_at         DateTime @default(now()) @db.DateTime(3)
+  updated_at         DateTime @default(now()) @db.DateTime(3)
+
+  @@index([created_at], map: "idx_marketing_campaigns_created")
+  @@map("marketing_campaigns")
 }
 
 // Automatic SEO engine tables. Created at runtime via prisma/seo-auto.sql

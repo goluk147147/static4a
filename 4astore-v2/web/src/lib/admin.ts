@@ -51,6 +51,202 @@ export async function fetchReach(params: { days?: number; q?: string } = {}): Pr
   return (await api.get('/admin/marketing/reach', { params: query })).data.reach as ReachCustomer[];
 }
 
+// ---- Marketing Center: Festivals / Templates / Campaigns / Dashboard / Reports ----
+// All endpoints live under /api/admin/marketing/* (requireAuth + requireStaff('ads')).
+// Prisma BigInt ids serialize to numbers; DateTime columns serialize to ISO strings.
+
+/** Mirrors MarketingFestival (api-node/prisma/schema.prisma → marketing_festivals). */
+export interface MarketingFestival {
+  id: number;
+  name: string;
+  slug: string;
+  /** ISO date string (YYYY-MM-DD…) or null when the date still needs checking. */
+  festival_date: string | null;
+  greeting_hi: string | null;
+  emoji: string | null;
+  is_active: boolean;
+  needs_date_check: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+export type FestivalInput = {
+  name: string;
+  slug: string;
+  festival_date?: string | null;
+  greeting_hi?: string | null;
+  emoji?: string | null;
+  is_active?: boolean;
+  needs_date_check?: boolean;
+  sort_order?: number;
+};
+
+/** Mirrors MarketingTemplate (marketing_templates). */
+export interface MarketingTemplate {
+  id: number;
+  title: string;
+  category: string;
+  festival_slug: string | null;
+  lang: string;
+  body: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+export type TemplateInput = {
+  title: string;
+  category?: string;
+  festival_slug?: string | null;
+  lang?: string;
+  body: string;
+  is_active?: boolean;
+  sort_order?: number;
+};
+
+/** Mirrors MarketingCampaign (marketing_campaigns). */
+export interface MarketingCampaign {
+  id: number;
+  name: string;
+  category: string | null;
+  product_ids: number[] | null;
+  template_id: number | null;
+  customer_mobiles: string[] | null;
+  message: string | null;
+  status: string;
+  notes: string | null;
+  share_opened: number;
+  copied_count: number;
+  banners_downloaded: number;
+  batches_prepared: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export type CampaignInput = {
+  name: string;
+  category?: string | null;
+  product_ids?: number[];
+  template_id?: number | null;
+  customer_mobiles?: string[];
+  message?: string | null;
+  notes?: string | null;
+  status?: string;
+};
+/** Atomic action-counter increments applied server-side via Prisma `{ increment }`. */
+export type CampaignIncrements = {
+  share_opened?: number;
+  copied_count?: number;
+  banners_downloaded?: number;
+  batches_prepared?: number;
+};
+
+export interface MarketingDashboard {
+  recommended: {
+    festivalsSoon: MarketingFestival[];
+    discountedProducts: import('../types').Product[];
+    lowStock: import('../types').Product[];
+  };
+  upcomingFestivals: MarketingFestival[];
+  selectedCount: number;
+  recentCampaigns: MarketingCampaign[];
+  expiringOffers: unknown[];
+}
+
+export interface MarketingReports {
+  campaignsCreated: number;
+  bannersDownloaded: number;
+  /** Number of messages copied from the admin UI. */
+  messagesCopied: number;
+  /** WhatsApp links OPENED from the admin UI — NOT messages sent or delivered. */
+  waLinksOpened: number;
+  productsPromoted: number;
+  batchesPrepared: number;
+}
+
+// -- Dashboard --
+export async function fetchMarketingDashboard(): Promise<MarketingDashboard> {
+  const d = (await api.get('/admin/marketing/dashboard')).data;
+  return {
+    recommended: {
+      festivalsSoon: (d.recommended?.festivalsSoon as MarketingFestival[]) || [],
+      discountedProducts: (d.recommended?.discountedProducts as MarketingDashboard['recommended']['discountedProducts']) || [],
+      lowStock: (d.recommended?.lowStock as MarketingDashboard['recommended']['lowStock']) || [],
+    },
+    upcomingFestivals: (d.upcomingFestivals as MarketingFestival[]) || [],
+    selectedCount: Number(d.selectedCount) || 0,
+    recentCampaigns: (d.recentCampaigns as MarketingCampaign[]) || [],
+    expiringOffers: (d.expiringOffers as unknown[]) || [],
+  };
+}
+
+// -- Reports --
+export async function fetchMarketingReports(): Promise<MarketingReports> {
+  const r = (await api.get('/admin/marketing/reports')).data.reports || {};
+  return {
+    campaignsCreated: Number(r.campaignsCreated) || 0,
+    bannersDownloaded: Number(r.bannersDownloaded) || 0,
+    messagesCopied: Number(r.messagesCopied) || 0,
+    waLinksOpened: Number(r.waLinksOpened) || 0,
+    productsPromoted: Number(r.productsPromoted) || 0,
+    batchesPrepared: Number(r.batchesPrepared) || 0,
+  };
+}
+
+// -- Festivals CRUD --
+export async function fetchFestivals(): Promise<MarketingFestival[]> {
+  return (await api.get('/admin/marketing/festivals')).data.festivals as MarketingFestival[];
+}
+export async function createFestival(input: FestivalInput): Promise<MarketingFestival> {
+  return (await api.post('/admin/marketing/festivals', input)).data.festival as MarketingFestival;
+}
+export async function updateFestival(id: number, input: Partial<FestivalInput>): Promise<MarketingFestival> {
+  return (await api.put(`/admin/marketing/festivals/${id}`, input)).data.festival as MarketingFestival;
+}
+export async function deleteFestival(id: number): Promise<void> {
+  await api.delete(`/admin/marketing/festivals/${id}`);
+}
+
+// -- Templates CRUD --
+export async function fetchTemplates(params: { category?: string; festival_slug?: string } = {}): Promise<MarketingTemplate[]> {
+  const query: Record<string, string> = {};
+  if (params.category) query.category = params.category;
+  if (params.festival_slug) query.festival_slug = params.festival_slug;
+  return (await api.get('/admin/marketing/templates', { params: query })).data.templates as MarketingTemplate[];
+}
+export async function createTemplate(input: TemplateInput): Promise<MarketingTemplate> {
+  return (await api.post('/admin/marketing/templates', input)).data.template as MarketingTemplate;
+}
+export async function updateTemplate(id: number, input: Partial<TemplateInput>): Promise<MarketingTemplate> {
+  return (await api.put(`/admin/marketing/templates/${id}`, input)).data.template as MarketingTemplate;
+}
+export async function deleteTemplate(id: number): Promise<void> {
+  await api.delete(`/admin/marketing/templates/${id}`);
+}
+
+// -- Campaigns --
+export async function fetchCampaigns(params: { limit?: number } = {}): Promise<MarketingCampaign[]> {
+  const query: Record<string, string> = {};
+  if (params.limit) query.limit = String(params.limit);
+  return (await api.get('/admin/marketing/campaigns', { params: query })).data.campaigns as MarketingCampaign[];
+}
+export async function createCampaign(input: CampaignInput): Promise<MarketingCampaign> {
+  return (await api.post('/admin/marketing/campaigns', input)).data.campaign as MarketingCampaign;
+}
+/** Update status/notes and/or atomically increment action counters. */
+export async function updateCampaign(
+  id: number,
+  input: { status?: string; notes?: string | null; increments?: CampaignIncrements },
+): Promise<MarketingCampaign> {
+  return (await api.put(`/admin/marketing/campaigns/${id}`, input)).data.campaign as MarketingCampaign;
+}
+
+// -- Consent opt-out --
+/** Set users.marketing_opt_out for a WhatsApp-reachable account mobile. */
+export async function setOptOut(mobile: string, optOut: boolean): Promise<void> {
+  await api.post('/admin/marketing/opt-out', { mobile, optOut });
+}
+
 // ---- Team Access ----
 export async function fetchTeam() {
   return (await api.get('/admin/team')).data.admins as AdminUser[];
