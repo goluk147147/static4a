@@ -132,12 +132,15 @@ function templateData(opts: {
 /** Compose a promo message for one product using REAL name/price/discount. */
 function composeProductPromo(p: Product, hideMrp: boolean): string {
   const url = `${SITE_ORIGIN}/product/${p.id}`;
-  const lines: string[] = [`✨ ${p.name}`];
+  // No leading emoji: on some devices/WhatsApp inputs a stray emoji renders as a
+  // broken "" glyph. Keep the auto-composed promo clean ASCII + Hindi; the admin
+  // can still add emoji manually from the composer if they want.
+  const lines: string[] = [p.name];
   const showMrp = !hideMrp && p.mrp > p.price;
   if (p.discount > 0 && showMrp) {
-    lines.push(`₹${p.price} (MRP ₹${p.mrp}, ${p.discount}% off) 🔥`);
+    lines.push(`₹${p.price} (MRP ₹${p.mrp}, ${p.discount}% off)`);
   } else if (showMrp) {
-    lines.push(`₹${p.price} (MRP ₹${p.mrp}) 🔥`);
+    lines.push(`₹${p.price} (MRP ₹${p.mrp})`);
   } else {
     lines.push(`₹${p.price}`);
   }
