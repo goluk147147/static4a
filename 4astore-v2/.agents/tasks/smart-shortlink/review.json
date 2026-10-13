@@ -1,0 +1,26 @@
+{
+  "verdict": "APPROVED",
+  "summary": "Universal /link/<code> short-link system is complete and matches the task: no-migrate table (ensure + model + sql), base62 service, auto-create on single+bulk create, admin API, public resolver, crawler-OG-reusing + human smart-redirect route, all-UA Apache rule, and bilingual product Share button. api-node tsc build, prisma validate, and web build all pass.",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "4astore-v2/api-node/src/services/shortLink.ts",
+      "detail": "createCustomShortLink stores any http(s) target with no origin allowlist, so an admin-created /link/<code> can redirect to an arbitrary external site (open-redirect off the 4astore.com/link/* namespace). It is gated behind requireStaff('ads') so the blast radius is trusted staff only, and satisfies the explicit 'any url' requirement. Confirm this is intended; otherwise constrain targets to SITE_ORIGIN or a configured allowlist."
+    },
+    {
+      "severity": "minor",
+      "file": "4astore-v2/api-node/src/routes/link.ts",
+      "detail": "When a code has no product/page/category OG card (e.g. a custom-type link), a crawler UA falls through to the human smart-redirect HTML instead of an OG card, so custom links produce no rich unfurl. Product links (the primary case) always get the OG card. Acceptable as designed; noted because the admin UI invites arbitrary URLs."
+    },
+    {
+      "severity": "minor",
+      "file": "4astore-v2/api-node/src/routes/link.ts",
+      "detail": "The Android app-open fallback (1200ms setTimeout -> Play Store, cancelled on pagehide/visibilitychange) is inherently browser-dependent and can occasionally send an app-having user to the Play Store or the reverse on slow devices. This is intrinsic to the intent:// technique, not a code defect. Verify on real Android devices/browsers post-deploy, as the FEAT findings already mark the curl/device checks."
+    },
+    {
+      "severity": "minor",
+      "file": "4astore-v2/api-node/prisma/schema.prisma",
+      "detail": "The ShortLink Prisma delegate exists only in this worktree's regenerated client (node_modules not committed). The merge/deploy target must run `prisma generate` or `tsc` will fail there (no prisma.shortLink). deploy.sh runs prisma generate on deploy, but a local main checkout will fail to build until it regenerates. No code change needed; informational for whoever merges."
+    }
+  ]
+}
