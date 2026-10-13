@@ -34,6 +34,23 @@ export async function adminCreateOrder(customer: { name: string; mobile: string 
   return (await api.post('/admin/orders/create', { customer, items })).data;
 }
 
+// ---- Marketing (customer reach, read-only) ----
+export interface ReachCustomer {
+  name: string;
+  mobile: string;
+  orders: number;
+  spent: number;
+  lastOrderAt: string | null;
+  source: 'account' | 'guest' | 'both';
+}
+/** GET /api/admin/marketing/reach — deduped, WhatsApp-reachable customers. */
+export async function fetchReach(params: { days?: number; q?: string } = {}): Promise<ReachCustomer[]> {
+  const query: Record<string, string> = {};
+  if (params.days) query.days = String(params.days);
+  if (params.q) query.q = params.q;
+  return (await api.get('/admin/marketing/reach', { params: query })).data.reach as ReachCustomer[];
+}
+
 // ---- Team Access ----
 export async function fetchTeam() {
   return (await api.get('/admin/team')).data.admins as AdminUser[];

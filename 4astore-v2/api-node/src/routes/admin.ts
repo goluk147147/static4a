@@ -371,6 +371,108 @@ router.get('/users', requireAuth, requireStaff('users'), async (_req: Request, r
   return ok(res, { users: list });
 });
 
+// ---------------- Marketing: customer reach list (read-only) ----------------
+// GET /api/admin/marketing/reach — one row per real mobile, merged from the
+// `users` table (accounts) and every order's `customer` JSON (covers guests who
+// ordered without an account). Google placeholder mobiles (`g…`) and anything
+// not matching the app-wide real-mobile regex /^[6-9]\d{9}$/ are excluded, so
+// every row has a WhatsApp-reachable number. FREE/manual outreach only — this
+// endpoint just reads; nothing is sent server-side.
+//
+// Optional query params:
+//   ?days=N  → only mobiles that ordered in the last N days (by lastOrderAt)
+//   ?q=text  → case-insensitive search on name or mobile
+const REAL_MOBILE = /^[6-9]\d{9}$/;
+
+router.get('/marketing/reach', requireAuth, requireStaff('ads'), async (req: Request, res: Response) => {
+  interface ReachRow {
+    name: string;
+    mobile: string;
+    orders: number;
+    spent: number;
+    lastOrderAt: string | null;
+    source: 'account' | 'guest' | 'both';
+  }
+
+  const byMobile = new Map<string, ReachRow>();
+
+  // 1) Accounts (customers only — staff/riders are excluded from outreach).
+  const users = await prisma.user.findMany({
+    where: { role: 'customer' },
+    select: { name: true, mobile: true },
+  });
+  for (const u of users) {
+    const mobile = String(u.mobile || '');
+    if (!REAL_MOBILE.test(mobile)) continue;
+    byMobile.set(mobile, {
+      name: String(u.name || '').trim() || 'Customer',
+      mobile,
+      orders: 0,
+      spent: 0,
+      lastOrderAt: null,
+      source: 'account',
+    });
+  }
+
+  // 2) Orders — aggregate count / spent / last-order date per customer mobile.
+  const orders = await prisma.order.findMany({
+    select: { customer: true, total_amount: true, order_date: true },
+    orderBy: { order_date: 'desc' },
+  });
+  for (const o of orders) {
+    const c = (o.customer || {}) as { name?: unknown; mobile?: unknown };
+    const mobile = String(c.mobile || '').replace(/\D/g, '');
+    if (!REAL_MOBILE.test(mobile)) continue;
+    const name = String(c.name || '').trim();
+    const amount = Number(o.total_amount) || 0;
+    const when = o.order_date ? new Date(o.order_date).toISOString() : null;
+
+    const existing = byMobile.get(mobile);
+    if (existing) {
+      existing.orders += 1;
+      existing.spent += amount;
+      if (when && (!existing.lastOrderAt || when > existing.lastOrderAt)) existing.lastOrderAt = when;
+      if (existing.source === 'account') existing.source = 'both';
+      // Prefer a non-empty account name; otherwise keep latest order name.
+      if ((!existing.name || existing.name === 'Customer') && name) existing.name = name;
+    } else {
+      byMobile.set(mobile, {
+        name: name || 'Customer',
+        mobile,
+        orders: 1,
+        spent: amount,
+        lastOrderAt: when,
+        source: 'guest',
+      });
+    }
+  }
+
+  let reach = Array.from(byMobile.values());
+
+  // Optional filter: ordered within the last N days.
+  const days = Number(req.query.days);
+  if (Number.isFinite(days) && days > 0) {
+    const cutoff = Date.now() - days * 86400000;
+    reach = reach.filter((r) => r.lastOrderAt != null && new Date(r.lastOrderAt).getTime() >= cutoff);
+  }
+
+  // Optional filter: search by name or mobile.
+  const q = String(req.query.q || '').trim().toLowerCase();
+  if (q) {
+    reach = reach.filter((r) => r.name.toLowerCase().includes(q) || r.mobile.includes(q));
+  }
+
+  // Most recent / most engaged first: last order date, then order count.
+  reach.sort((a, b) => {
+    const at = a.lastOrderAt ? new Date(a.lastOrderAt).getTime() : 0;
+    const bt = b.lastOrderAt ? new Date(b.lastOrderAt).getTime() : 0;
+    if (bt !== at) return bt - at;
+    return b.orders - a.orders;
+  });
+
+  return ok(res, { reach });
+});
+
 const assignSchema = z.object({
   mobile: z.string().regex(/^[6-9]\d{9}$/),
   role: z.enum(['admin', 'rider', 'customer']),
