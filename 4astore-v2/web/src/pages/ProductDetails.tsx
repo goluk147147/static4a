@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConfig, useProducts, useSettings } from '../lib/queries';
 import { useCart } from '../store/cart';
@@ -5,6 +6,16 @@ import { productImageSrc, onProductImageError } from '../lib/productImage';
 import { SkeletonDetail } from '../components/Skeleton';
 import Seo from '../components/Seo';
 import { buildCanonical, deriveProductSeo, productJsonLd, breadcrumbJsonLd, localBusinessJsonLd } from '../lib/seo';
+import { fetchProductShortLink } from '../lib/admin';
+import { waLink } from '../lib/whatsapp';
+import { showToast } from '../store/toast';
+
+// Public site origin for shareable links. On production the SPA shares the store
+// host; fall back to the canonical when on localhost. Mirrors AdminMarketing.SITE_ORIGIN.
+const SITE_ORIGIN =
+  (typeof window !== 'undefined' && window.location.origin && !/localhost|127\.0\.0\.1/.test(window.location.origin))
+    ? window.location.origin
+    : 'https://4astore.com';
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -29,6 +40,56 @@ export default function ProductDetails() {
   }
   const inCart = items.find((i) => i.id === product.id);
   const hideMrp = settings?.hideMrp;
+
+  // Share the product's SHORT link (/link/<code>) so crawlers get the OG preview
+  // via FEAT-001's redirect route. Fall back to the canonical /product/:id when
+  // no short code can be minted. navigator.share when available, else WhatsApp + Copy.
+  const [sharing, setSharing] = useState(false);
+  const [waShareUrl, setWaShareUrl] = useState<string | null>(null);
+  const supportsShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  async function resolveShareUrl(): Promise<string> {
+    try {
+      const code = await fetchProductShortLink(product!.id);
+      if (code) return `${SITE_ORIGIN}/link/${code}`;
+    } catch {
+      /* fall through to canonical */
+    }
+    return `${SITE_ORIGIN}/product/${product!.id}`;
+  }
+
+  function shareCaption(): string {
+    return `${product!.name} — 4A Store`;
+  }
+
+  async function handleShare() {
+    setSharing(true);
+    try {
+      const url = await resolveShareUrl();
+      if (supportsShare) {
+        try {
+          await navigator.share({ title: product!.name, text: shareCaption(), url });
+        } catch {
+          /* user cancelled the share sheet — ignore */
+        }
+      } else {
+        // No Web Share API — reveal WhatsApp + Copy fallbacks.
+        setWaShareUrl(url);
+      }
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function copyShareLink() {
+    const url = waShareUrl || (await resolveShareUrl());
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('✅ Link copied', 'success');
+    } catch {
+      showToast('Copy failed — please copy manually', 'error');
+    }
+  }
 
   const seoCfg = config?.seo;
   const deliveryArea = seoCfg?.business.areaServed?.[0] || 'Chandargarh';
@@ -105,6 +166,39 @@ export default function ProductDetails() {
           ) : (
             <button className="btn btn-block" onClick={() => add(product)}>Add to Cart</button>
           )}
+
+          {/* Bilingual Share — shares the product SHORT link (OG preview via /link/<code>). */}
+          <div style={{ marginTop: 16 }}>
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={sharing}
+              style={{ padding: '10px 18px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            >
+              {sharing ? '⏳ …' : '🔗 Share / शेयर'}
+            </button>
+
+            {/* Web Share API unavailable → WhatsApp + Copy link fallbacks. */}
+            {!supportsShare && waShareUrl && (
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+                <a
+                  href={waLink(null, `${shareCaption()} ${waShareUrl}`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ padding: '9px 16px', background: '#25D366', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+                >
+                  💬 Share on WhatsApp
+                </a>
+                <button
+                  type="button"
+                  onClick={copyShareLink}
+                  style={{ padding: '9px 16px', background: '#f1f5f9', color: 'var(--primary-dark)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  📋 Copy link
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

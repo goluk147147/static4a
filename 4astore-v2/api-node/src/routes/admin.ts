@@ -13,6 +13,7 @@ import { FEATURE_KEYS, mergeFeatures } from '../utils/features';
 import { mergeSeoConfig, type SettingsRow } from '../seo/localSeo';
 import { slugify } from '../utils/slug';
 import { runProductSeo, runCategorySeo } from '../seo/persist';
+import { createShortLinkForProduct } from '../services/shortLink';
 
 const router = Router();
 
@@ -109,6 +110,8 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
       bumpCatalogVersion();
       // Fire-and-forget: never block or fail the product save on an SEO error.
       void runProductSeo(Number(product.id), { actor }).catch(() => undefined);
+      // Fire-and-forget: idempotently mint the product's universal short link.
+      void createShortLinkForProduct(Number(product.id)).catch(() => undefined);
       return ok(res, { message: 'Product added', product });
     }
     const id = Number(req.body.product?.id || req.body.id || 0);

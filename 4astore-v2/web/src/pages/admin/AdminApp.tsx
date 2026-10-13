@@ -30,6 +30,7 @@ export const ADMIN_TABS = [
   { path: 'team', key: 'team', icon: '🔐', label: 'Team Access', title: '🔐 Team Access' },
   { path: 'notify', key: 'ads', icon: '🔔', label: 'Push Notifications', title: '🔔 Push Notifications' },
   { path: 'marketing', key: 'ads', icon: '📣', label: 'Marketing', title: '📣 Marketing (WhatsApp)' },
+  { path: 'links', key: 'ads', icon: '🔗', label: 'Short Links', title: '🔗 Short Links' },
 ];
 
 function useBodyClass(className: string, on: boolean) {

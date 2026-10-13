@@ -22,12 +22,14 @@ import ogRouter from './routes/og';
 import seoRouter from './routes/seo';
 import seoAdminRouter from './routes/seo-admin';
 import marketingRouter from './routes/marketing';
+import linkRouter from './routes/link';
+import adminLinksRouter from './routes/admin-links';
 import { requireAuth } from './auth/middleware';
 import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -68,11 +70,13 @@ app.use('/api/admin/videos', videosRouter); // before /api/admin (own auth: staf
 app.use('/api/admin', adminDataRouter); // owner-only /data/* (import, reset, status) — specific paths first
 app.use('/api/admin/seo-auto', requireAuth, seoAdminRouter); // staff-gated SEO engine — specific path before generic /api/admin
 app.use('/api/admin/marketing', marketingRouter); // Marketing Center (staff + "ads") — specific path before generic /api/admin
+app.use('/api/admin/links', adminLinksRouter); // short-link admin (staff + "ads") — specific path before generic /api/admin
 app.use('/api/admin', adminRouter);
 app.use('/api/addresses', addressesRouter);
 app.use('/api/img-proxy', imgProxyRouter);
 app.use('/api/pages', pagesRouter);
 app.use('/api/og', ogRouter); // social share HTML + compressed OG images (crawler-rewritten in nginx)
+app.use('/api/link', linkRouter); // universal short-link redirect (crawler OG + human smart-redirect); Apache /link proxies here
 app.use('/api', seoRouter); // /api/sitemap.xml + /api/robots.txt (crawler infra — never flag-gated)
 // Public banner images only (payment screenshots stay private in uploads/screenshots).
 app.use(
@@ -111,6 +115,8 @@ app.listen(config.port, () => {
   ensureNotificationTables().catch((e) => console.error('[seed] notification tables failed', e));
   // Marketing Center tables + users.marketing_opt_out column (idempotent, no-migrate raw SQL).
   ensureMarketingTables().catch((e) => console.error('[seed] marketing tables failed', e));
+  // Universal short_links table (idempotent, no-migrate raw SQL).
+  ensureShortLinkTables().catch((e) => console.error('[seed] short link tables failed', e));
   // Owner "master password" column on settings (idempotent, no-migrate raw SQL).
   ensureMasterPasswordColumn().catch((e) => console.error('[seed] master password column failed', e));
   startReminderJob();

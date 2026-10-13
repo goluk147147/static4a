@@ -3,6 +3,7 @@ import { prisma } from '../db';
 import { ok } from '../utils/http';
 import { mergeFeatures } from '../utils/features';
 import { mergeSeoConfig, type SettingsRow } from '../seo/localSeo';
+import { createShortLinkForProduct } from '../services/shortLink';
 
 const router = Router();
 
@@ -77,6 +78,16 @@ router.get('/products/:id', async (req: Request, res: Response) => {
   const product = await prisma.product.findUnique({ where: { id: BigInt(req.params.id) } }).catch(() => null);
   if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
   return ok(res, { product });
+});
+
+// GET /api/products/:id/short-link — public resolver for the web Share button.
+// Returns the product's universal short code, minting it on demand when absent.
+// `{ code: null }` only on a genuine failure (never blocks the Share UI).
+router.get('/products/:id/short-link', async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) return res.status(404).json({ success: false, message: 'Product not found' });
+  const code = await createShortLinkForProduct(id);
+  return ok(res, { code });
 });
 
 // GET /api/categories — public
