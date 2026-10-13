@@ -21,6 +21,7 @@ import videosRouter from './routes/videos';
 import ogRouter from './routes/og';
 import seoRouter from './routes/seo';
 import seoAdminRouter from './routes/seo-admin';
+import marketingRouter from './routes/marketing';
 import { requireAuth } from './auth/middleware';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
@@ -56,6 +57,7 @@ app.use('/api/admin', adminNotificationsRouter); // GET /api/admin/notifications
 app.use('/api/admin/videos', videosRouter); // before /api/admin (own auth: staff + "ads")
 app.use('/api/admin', adminDataRouter); // owner-only /data/* (import, reset, status) — specific paths first
 app.use('/api/admin/seo-auto', requireAuth, seoAdminRouter); // staff-gated SEO engine — specific path before generic /api/admin
+app.use('/api/admin/marketing', marketingRouter); // Marketing Center (staff + "ads") — specific path before generic /api/admin
 app.use('/api/admin', adminRouter);
 app.use('/api/addresses', addressesRouter);
 app.use('/api/img-proxy', imgProxyRouter);
