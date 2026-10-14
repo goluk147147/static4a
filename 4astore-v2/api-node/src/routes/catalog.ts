@@ -1,11 +1,16 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db';
 import { ok } from '../utils/http';
+import { PUBLIC_PRODUCT_SELECT } from './catalogSelect';
 import { mergeFeatures } from '../utils/features';
 import { mergeSeoConfig, type SettingsRow } from '../seo/localSeo';
 import { createShortLinkForProduct } from '../services/shortLink';
 
 const router = Router();
+
+// PUBLIC_PRODUCT_SELECT is the ONE public product projection (see
+// routes/catalogSelect.ts). Applied to BOTH /api/products (list) and
+// /api/products/:id (single) so owner-only inventory/cost columns never leak.
 
 // Tiny in-memory TTL cache for the two hottest public reads (/config, /settings).
 // They change rarely (admin edits) yet every app launch / React-Query refetch hits
@@ -69,13 +74,15 @@ function serveCatalogConditional(req: Request, res: Response, version: number): 
 router.get('/products', async (req: Request, res: Response) => {
   const version = await catalogVersion();
   if (serveCatalogConditional(req, res, version)) return;
-  const products = await prisma.product.findMany({ orderBy: { id: 'asc' } });
+  const products = await prisma.product.findMany({ orderBy: { id: 'asc' }, select: PUBLIC_PRODUCT_SELECT });
   return ok(res, { products });
 });
 
 // GET /api/products/:id
 router.get('/products/:id', async (req: Request, res: Response) => {
-  const product = await prisma.product.findUnique({ where: { id: BigInt(req.params.id) } }).catch(() => null);
+  const product = await prisma.product
+    .findUnique({ where: { id: BigInt(req.params.id) }, select: PUBLIC_PRODUCT_SELECT })
+    .catch(() => null);
   if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
   return ok(res, { product });
 });

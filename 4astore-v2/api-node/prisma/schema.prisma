@@ -135,12 +135,155 @@ model Product {
   seo_source_hash  String?   @db.Char(40)
   in_stock    Boolean  @default(true)
   featured    Boolean  @default(false) // daily "Aaj ka Special" video picks these first
+  // POS/inventory columns added at runtime by ensureProductInventoryColumns()
+  // (raw ALTER, no migrate). One stock figure serves BOTH the online store and
+  // the in-store counter. All nullable/defaulted so existing rows + the online
+  // flow are untouched. purchase_price/low_stock_threshold/allow_negative_stock/
+  // track_inventory are owner-only and NEVER returned by the public catalog
+  // (see PUBLIC_PRODUCT_SELECT in routes/catalog.ts). SKU/barcode uniqueness is
+  // enforced in the POS service layer, not a DB unique index. Do NOT run prisma
+  // migrate/db push.
+  sku                  String?  @db.VarChar(64)
+  barcode              String?  @db.VarChar(64)
+  purchase_price       Decimal? @db.Decimal(10, 2)
+  stock                Decimal  @default(0) @db.Decimal(10, 3)
+  unit                 String   @default("pcs") @db.VarChar(12)
+  tax_rate             Decimal  @default(0) @db.Decimal(5, 2)
+  low_stock_threshold  Decimal? @db.Decimal(10, 3)
+  track_inventory      Boolean  @default(true)
+  allow_negative_stock Boolean?
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
   @@index([category], map: "idx_products_category")
   @@index([in_stock], map: "idx_products_instock")
+  @@index([sku], map: "idx_products_sku")
+  @@index([barcode], map: "idx_products_barcode")
   @@map("products")
+}
+
+// ---------------------------------------------------------------------------
+// POS / inventory models — ALL created at runtime by ensurePosTables()
+// (src/services/dataImport.ts) via raw CREATE TABLE IF NOT EXISTS. These are a
+// READ-ONLY MIRROR of those raw-SQL tables. Do NOT run prisma migrate/db push.
+// Manual equivalents: prisma/pos-tables.sql. Until `prisma generate` runs on
+// deploy, prisma.<posModel> delegates are missing and the resulting tsc errors
+// are EXPECTED, not a regression.
+// ---------------------------------------------------------------------------
+
+model PosBill {
+  id              BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  bill_no         String?   @unique @db.VarChar(20)
+  idempotency_key String?   @unique @db.Char(36)
+  status          String    @db.VarChar(16)
+  customer_name   String?   @db.VarChar(120)
+  customer_mobile String?   @db.VarChar(15)
+  subtotal        Decimal   @default(0) @db.Decimal(12, 2)
+  discount        Decimal   @default(0) @db.Decimal(12, 2)
+  tax_total       Decimal   @default(0) @db.Decimal(12, 2)
+  grand_total     Decimal   @default(0) @db.Decimal(12, 2)
+  amount_paid     Decimal   @default(0) @db.Decimal(12, 2)
+  balance_due     Decimal   @default(0) @db.Decimal(12, 2)
+  payment_method  String?   @db.VarChar(20)
+  payment_status  String?   @db.VarChar(12)
+  payments_json   Json?
+  note            String?   @db.VarChar(500)
+  created_by      String?   @db.VarChar(64)
+  cancelled_by    String?   @db.VarChar(64)
+  cancel_reason   String?   @db.VarChar(255)
+  created_at      DateTime  @default(now()) @db.DateTime(3)
+  updated_at      DateTime  @updatedAt @db.DateTime(3)
+
+  items PosBillItem[]
+
+  @@index([created_at], map: "idx_pos_bills_created")
+  @@index([status], map: "idx_pos_bills_status")
+  @@index([customer_mobile], map: "idx_pos_bills_mobile")
+  @@map("pos_bills")
+}
+
+model PosBillItem {
+  id         BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  bill_id    BigInt  @db.UnsignedBigInt
+  product_id BigInt? @db.UnsignedBigInt
+  name       String  @db.VarChar(200)
+  sku        String? @db.VarChar(64)
+  unit       String  @default("pcs") @db.VarChar(12)
+  quantity   Decimal @default(0) @db.Decimal(10, 3)
+  rate       Decimal @default(0) @db.Decimal(10, 2)
+  tax_rate   Decimal @default(0) @db.Decimal(5, 2)
+  line_total Decimal @default(0) @db.Decimal(12, 2)
+  is_manual  Boolean @default(false)
+
+  bill PosBill @relation(fields: [bill_id], references: [id], onDelete: Cascade)
+
+  @@index([bill_id], map: "idx_pos_bill_items_bill")
+  @@index([product_id], map: "idx_pos_bill_items_product")
+  @@map("pos_bill_items")
+}
+
+model StockMovement {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  product_id    BigInt   @db.UnsignedBigInt
+  change_qty    Decimal  @db.Decimal(10, 3)
+  balance_after Decimal  @db.Decimal(10, 3)
+  reason        String   @db.VarChar(24)
+  bill_no       String?  @db.VarChar(20)
+  batch_id      BigInt?  @db.UnsignedBigInt
+  note          String?  @db.VarChar(255)
+  created_by    String?  @db.VarChar(64)
+  created_at    DateTime @default(now()) @db.DateTime(3)
+
+  @@index([product_id], map: "idx_stock_mov_product")
+  @@index([bill_no], map: "idx_stock_mov_bill")
+  @@index([created_at], map: "idx_stock_mov_created")
+  @@map("stock_movements")
+}
+
+model AdminPhone {
+  id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  mobile      String   @unique @db.VarChar(15)
+  role        String   @db.VarChar(16)
+  permissions Json?
+  name        String?  @db.VarChar(120)
+  active      Boolean  @default(true)
+  added_by    String?  @db.VarChar(64)
+  created_at  DateTime @default(now()) @db.DateTime(3)
+
+  @@map("admin_phones")
+}
+
+model PosImportBatch {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  filename   String   @db.VarChar(255)
+  status     String   @db.VarChar(16)
+  total_rows Int      @default(0)
+  inserted   Int      @default(0)
+  updated    Int      @default(0)
+  skipped    Int      @default(0)
+  errors     Int      @default(0)
+  error_json Json?
+  created_by String?  @db.VarChar(64)
+  created_at DateTime @default(now()) @db.DateTime(3)
+
+  @@index([created_at], map: "idx_pos_import_batches_created")
+  @@map("pos_import_batches")
+}
+
+model ProductChangeLog {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  product_id BigInt?  @db.UnsignedBigInt
+  field      String   @db.VarChar(32)
+  old_val    String?  @db.VarChar(255)
+  new_val    String?  @db.VarChar(255)
+  source     String   @db.VarChar(24)
+  batch_id   BigInt?  @db.UnsignedBigInt
+  actor      String   @db.VarChar(64)
+  created_at DateTime @default(now()) @db.DateTime(3)
+
+  @@index([product_id], map: "idx_pcl_product")
+  @@index([created_at], map: "idx_pcl_created")
+  @@map("product_change_log")
 }
 
 model Address {

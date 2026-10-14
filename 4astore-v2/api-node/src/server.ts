@@ -24,12 +24,14 @@ import seoAdminRouter from './routes/seo-admin';
 import marketingRouter from './routes/marketing';
 import linkRouter from './routes/link';
 import adminLinksRouter from './routes/admin-links';
+import posAuthRouter from './routes/pos-auth';
+import adminPosRouter from './routes/admin-pos';
 import { requireAuth } from './auth/middleware';
 import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureProductInventoryColumns, ensurePosSettingsColumns, ensurePosTables } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -61,6 +63,7 @@ app.use(ogCrawlerMiddleware);
 // Routes
 app.use('/api/users', usersRouter);
 app.use('/api/otp', otpRouter);
+app.use('/api/pos/auth', posAuthRouter); // POS phone-OTP login (PUBLIC)
 app.use('/api', catalogRouter); // /api/products, /api/categories, /api/settings, /api/config, /api/announcement, /api/version
 app.use('/api/orders', ordersRouter);
 app.use('/api/tracking', trackingRouter);
@@ -71,6 +74,7 @@ app.use('/api/admin', adminDataRouter); // owner-only /data/* (import, reset, st
 app.use('/api/admin/seo-auto', requireAuth, seoAdminRouter); // staff-gated SEO engine — specific path before generic /api/admin
 app.use('/api/admin/marketing', marketingRouter); // Marketing Center (staff + "ads") — specific path before generic /api/admin
 app.use('/api/admin/links', adminLinksRouter); // short-link admin (staff + "ads") — specific path before generic /api/admin
+app.use('/api/admin/pos', adminPosRouter); // POS phone allowlist (owner-only) — specific path before generic /api/admin
 app.use('/api/admin', adminRouter);
 app.use('/api/addresses', addressesRouter);
 app.use('/api/img-proxy', imgProxyRouter);
@@ -117,6 +121,11 @@ app.listen(config.port, () => {
   ensureMarketingTables().catch((e) => console.error('[seed] marketing tables failed', e));
   // Universal short_links table (idempotent, no-migrate raw SQL).
   ensureShortLinkTables().catch((e) => console.error('[seed] short link tables failed', e));
+  // POS/inventory foundation (idempotent, no-migrate raw SQL) — additive products
+  // inventory columns, POS settings toggles, and the six POS tables.
+  ensureProductInventoryColumns().catch((e) => console.error('[seed] product inventory columns failed', e));
+  ensurePosSettingsColumns().catch((e) => console.error('[seed] pos settings columns failed', e));
+  ensurePosTables().catch((e) => console.error('[seed] pos tables failed', e));
   // Owner "master password" column on settings (idempotent, no-migrate raw SQL).
   ensureMasterPasswordColumn().catch((e) => console.error('[seed] master password column failed', e));
   startReminderJob();

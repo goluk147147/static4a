@@ -6,19 +6,20 @@ import { OAuth2Client, type TokenPayload } from 'google-auth-library';
 import { prisma } from '../db';
 import { ok, fail } from '../utils/http';
 import { config } from '../config';
-import {
-  signAccessToken,
-  generateRefreshToken,
-  hashRefreshToken,
-  AccessClaims,
-} from '../auth/jwt';
+import { signAccessToken, hashRefreshToken } from '../auth/jwt';
 import { requireAuth } from '../auth/middleware';
+import {
+  issueTokens,
+  safeUser,
+  toClaims,
+  isMobileClient,
+  cookieOpts,
+  REFRESH_COOKIE,
+  ACCESS_COOKIE,
+} from '../auth/session';
 import { sendMail } from '../utils/mailer';
 
 const router = Router();
-
-const REFRESH_COOKIE = 'refresh_token';
-const ACCESS_COOKIE = 'access_token';
 
 // ---- Google Sign-In ----
 // Client IDs are NOT secrets: read from env first, with documented defaults.
@@ -29,63 +30,6 @@ const GOOGLE_WEB_CLIENT_ID =
 const GOOGLE_ANDROID_CLIENT_ID =
   process.env.GOOGLE_ANDROID_CLIENT_ID || '707085023016-pc4gc5271kquti6recqo9juor3p44dn9.apps.googleusercontent.com';
 const googleClient = new OAuth2Client();
-
-function cookieOpts(maxAgeMs: number) {
-  return {
-    httpOnly: true,
-    secure: config.env === 'production',
-    sameSite: 'lax' as const,
-    maxAge: maxAgeMs,
-    path: '/',
-  };
-}
-
-function toClaims(user: {
-  id: bigint;
-  role: string;
-  mobile: string;
-  username: string;
-  name: string;
-  permissions: unknown;
-  backend_rider: boolean;
-}): AccessClaims {
-  const perms = Array.isArray(user.permissions) ? (user.permissions as string[]) : [];
-  return {
-    sub: Number(user.id),
-    role: user.role,
-    mobile: user.mobile,
-    username: user.username,
-    name: user.name,
-    permissions: perms,
-    mode: user.role === 'rider' && user.backend_rider ? 'rider' : 'customer',
-  };
-}
-
-/** Native app (no cookies) sends `X-Client: mobile` and keeps the refresh token in secure storage. */
-function isMobileClient(req: Request): boolean {
-  return String(req.headers['x-client'] || '').toLowerCase() === 'mobile';
-}
-
-function safeUser(user: Record<string, unknown>) {
-  const { password, ...rest } = user;
-  void password;
-  return rest;
-}
-
-/** Issue access + refresh tokens and set them as HttpOnly cookies (life-long login). */
-async function issueTokens(res: Response, user: Parameters<typeof toClaims>[0], deviceLabel?: string) {
-  const claims = toClaims(user);
-  const accessToken = signAccessToken(claims);
-  const { token: refreshToken, hash, expiresAt } = generateRefreshToken();
-
-  await prisma.refreshToken.create({
-    data: { user_id: BigInt(claims.sub), token_hash: hash, device_label: deviceLabel, expires_at: expiresAt },
-  });
-
-  res.cookie(ACCESS_COOKIE, accessToken, cookieOpts(15 * 60 * 1000));
-  res.cookie(REFRESH_COOKIE, refreshToken, cookieOpts(config.refreshTokenTtlDays * 24 * 60 * 60 * 1000));
-  return { accessToken, refreshToken, claims };
-}
 
 // ---------- POST /api/users/register ----------
 const registerSchema = z.object({
