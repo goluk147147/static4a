@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProducts, useCategories } from '../../lib/queries';
 import { saveProduct, deleteProduct } from '../../lib/admin';
+import { compressToMaxBytes, dataUriBytes } from '../../lib/checkout';
 import { apiError } from '../../lib/api';
 import { showToast } from '../../store/toast';
 import { showConfirm } from '../../store/confirm';
@@ -35,6 +36,32 @@ export default function AdminProducts() {
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<{ mode: 'add' | 'edit' | 'copy'; form: FormState } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [compressing, setCompressing] = useState(false);
+
+  // Pick a local image file, HARD-compress it to <= 50 KB (51200 bytes) and store the resulting
+  // JPEG data-URI into the form `image` field (same save path as a pasted URL — no API shape change).
+  const MAX_IMAGE_BYTES = 51200; // 50 KB
+  async function onPickImage(file: File) {
+    setCompressing(true);
+    try {
+      const dataUri = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ''));
+        r.onerror = () => reject(new Error('read failed'));
+        r.readAsDataURL(file);
+      });
+      const out = await compressToMaxBytes(dataUri, MAX_IMAGE_BYTES);
+      if (!out) {
+        showToast('Could not read/compress this image', 'error');
+        return;
+      }
+      set('image', out);
+    } catch {
+      showToast('Could not read/compress this image', 'error');
+    } finally {
+      setCompressing(false);
+    }
+  }
 
   if (isLoading) return <p style={{ textAlign: 'center', padding: 30, color: 'var(--gray)' }}>Loading products...</p>;
 
@@ -200,12 +227,24 @@ export default function AdminProducts() {
               </select>
             </div>
             <div className="full"><label htmlFor="pf_image">Image URL</label><input id="pf_image" value={modal.form.image} onChange={(e) => set('image', e.target.value)} placeholder="https://..." /></div>
+            <div className="full">
+              <label htmlFor="pf_image_file">…or upload from device (auto-compressed to ≤ 50 KB)</label>
+              <input id="pf_image_file" type="file" accept="image/*" disabled={compressing}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) onPickImage(f); e.currentTarget.value = ''; }} />
+              {compressing && <div style={{ fontSize: 12, color: 'var(--gray)', marginTop: 6 }}>Compressing…</div>}
+              {!compressing && modal.form.image && modal.form.image.startsWith('data:image') && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <img src={modal.form.image} alt="Preview" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                  <span style={{ fontSize: 12, color: 'var(--gray)' }}>Stored size: {(dataUriBytes(modal.form.image) / 1024).toFixed(1)} KB / 50 KB</span>
+                </div>
+              )}
+            </div>
             <div className="full"><label htmlFor="pf_description">Description</label><textarea id="pf_description" value={modal.form.description} onChange={(e) => set('description', e.target.value)} placeholder="Short product description" /></div>
             <div className="full"><label htmlFor="pf_features">Features (one per line, or comma separated)</label><textarea id="pf_features" value={modal.form.features} onChange={(e) => set('features', e.target.value)} placeholder={'100% whole wheat\nSoft rotis every time\nNo added maida'} /></div>
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-            <button type="button" onClick={save} disabled={saving} style={{ flex: 1, padding: 11, background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
-              💾 {saving ? 'Saving…' : `${modal.mode === 'edit' ? 'Update' : 'Add'} Product`}
+            <button type="button" onClick={save} disabled={saving || compressing} style={{ flex: 1, padding: 11, background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, cursor: saving || compressing ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
+              💾 {saving ? 'Saving…' : compressing ? 'Compressing…' : `${modal.mode === 'edit' ? 'Update' : 'Add'} Product`}
             </button>
             <button type="button" onClick={() => setModal(null)} style={{ padding: '11px 20px', background: 'var(--gray)', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
           </div>

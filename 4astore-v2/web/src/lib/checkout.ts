@@ -223,6 +223,75 @@ export function compressImage(dataUri: string, maxSize = 1000, quality = 0.7): P
   });
 }
 
+/** Decoded byte size of a `data:...;base64,<payload>` URI — i.e. the TRUE stored size, not the
+ *  ~1.33x-inflated string length. Returns 0 for a non-base64 / non-data URI. */
+export function dataUriBytes(dataUri: string): number {
+  const i = dataUri.indexOf(',');
+  if (i < 0 || !/;base64/i.test(dataUri.slice(0, i))) return 0;
+  const b64 = dataUri.slice(i + 1);
+  // decoded length = 3/4 of base64 chars, minus padding '='
+  const pad = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+  return Math.max(0, Math.floor((b64.length * 3) / 4) - pad);
+}
+
+/**
+ * Iteratively compress a data-URI image to a HARD ceiling of `maxBytes` DECODED bytes (default
+ * 51200 = 50 KB) for the final stored JPEG data-URI. Lowers JPEG quality first (keeps dimensions as
+ * long as possible), then shrinks the max dimension, repeating until the decoded size is `<= maxBytes`.
+ * At the aggressive floor (256px, q=0.3) the result is well under 50 KB for any real photo, so the
+ * returned URI never exceeds the ceiling. Returns null if the image can't be loaded/encoded.
+ * NOTE: separate from `compressImage` on purpose — PaymentModal.tsx depends on that unchanged.
+ */
+export function compressToMaxBytes(dataUri: string, maxBytes = 51200): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(null);
+
+      const encode = (maxDim: number, quality: number): string => {
+        let w = img.width;
+        let h = img.height;
+        if (w > h && w > maxDim) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        } else if (h > maxDim) {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+        canvas.width = w || 1;
+        canvas.height = h || 1;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', quality);
+      };
+
+      // Progressively tighter dimension steps; at each step scan quality from high to low.
+      const dims = [1000, 800, 640, 512, 400, 320, 256];
+      const qualities = [0.82, 0.72, 0.62, 0.52, 0.42, 0.3];
+      let smallest: string | null = null;
+      let smallestBytes = Infinity;
+
+      for (const d of dims) {
+        for (const q of qualities) {
+          const out = encode(d, q);
+          const bytes = dataUriBytes(out);
+          if (bytes < smallestBytes) {
+            smallest = out;
+            smallestBytes = bytes;
+          }
+          if (bytes <= maxBytes) return resolve(out);
+        }
+      }
+      // Floor still over budget (won't happen for real photos) — return the smallest we produced.
+      resolve(smallest);
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUri;
+  });
+}
+
 /** Pull the 12-digit UTR out of OCR text (labelled first, then any 12-digit run). */
 export function extractUtr(text: string): string | null {
   const labeled = text.match(/(?:UPI\s*Ref|UTR|Ref|Txn\s*ID)[^\d]*(\d{12})/i);

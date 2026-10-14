@@ -78,6 +78,14 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
     const parsed = productSchema.safeParse(req.body.product);
     if (!parsed.success) return fail(res, 'Product name and a valid selling price are required', 422);
     const p = parsed.data;
+    // Oversize guard: a product image data-URI must be client-compressed to <= 50 KB. Reject a
+    // decoded payload over ~60 KB (small headroom) so a bypassed/raw upload can't bloat the DB.
+    // A non-`data:` image (http/https URL) is left untouched.
+    if (p.image.startsWith('data:')) {
+      const m = /^data:[^;,]*;base64,([A-Za-z0-9+/=]+)$/.exec(p.image);
+      const decoded = m ? Buffer.from(m[1], 'base64').length : p.image.length;
+      if (decoded > 61440) return fail(res, 'Product image is too large — it must be compressed to under 50 KB before saving', 400);
+    }
     const data = {
       name: p.name,
       brand: p.brand,
