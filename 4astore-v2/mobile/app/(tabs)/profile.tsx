@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import StoreHeader from '../../src/components/StoreHeader';
 import { Button, Card, EmptyState, Field, GradientButton, Screen, styles as ui } from '../../src/components/ui';
-import { useAuth, isOrderStaff, isOwner, isRider, STAFF_ROLES } from '../../src/store/auth';
+import { useAuth, canAdmin, isOrderStaff, isOwner, isRider, STAFF_ROLES } from '../../src/store/auth';
 import { useCart, useCartCount } from '../../src/store/cart';
 import { useMyOrders, usePages } from '../../src/queries';
 import { api, apiError, setAccessToken, clearRefreshToken } from '../../src/api';
@@ -141,6 +141,15 @@ export default function Profile() {
         <Card style={{ marginTop: 14, gap: 8 }}>
           <Text style={ui.h3}>🔐 Admin / Staff</Text>
           {isOrderStaff(user) && <Action label="🛒 Orders & new-order alerts" right="→" bg={colors.admin} fg="#fff" onPress={() => router.push('/admin/orders')} />}
+          {/* POS / in-store counter. Each entry is shown only to staff with the matching
+              permission (frontend hide); the screens themselves and their APIs are also
+              guarded server-side, so this is defence-in-depth, not the access boundary. */}
+          {canAdmin(user, 'pos') && <Action label="🧾 New Bill (POS)" right="→" bg={colors.primary} fg="#fff" onPress={() => router.push('/admin/pos')} />}
+          {canAdmin(user, 'pos') && <Action label="📚 Billing History" right="→" onPress={() => router.push('/admin/pos-history')} />}
+          {canAdmin(user, 'inventory') && <Action label="📦 Inventory" right="→" onPress={() => router.push('/admin/inventory')} />}
+          {canAdmin(user, 'inventory') && <Action label="📥 Excel Import (web)" right="→" onPress={() => router.push('/admin/pos-import')} />}
+          {canAdmin(user, 'pos_reports') && <Action label="📈 Sales Reports" right="→" onPress={() => router.push('/admin/pos-reports')} />}
+          {isOwner(user) && <Action label="🔑 POS Access" right="→" bg="#2C6FAD" fg="#fff" onPress={() => router.push('/admin/pos-access')} />}
           {isOwner(user) && <Action label="👥 Role by mobile number" right="→" bg="#6d28d9" fg="#fff" onPress={() => router.push('/admin/roles')} />}
           <Text style={ui.muted}>
             Push notifications: {pushStatus === 'granted' ? '✅ ON' : '❌ OFF'} — naya order aate hi alert aayega.

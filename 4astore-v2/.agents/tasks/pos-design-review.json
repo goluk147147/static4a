@@ -1,0 +1,54 @@
+{
+  "verdict": "APPROVED",
+  "reviewDoc": "c:\\xampp\\htdocs\\static4a\\.worktrees\\pos-billing\\4astore-v2\\.agents\\tasks\\pos-design.md",
+  "iteration": 2,
+  "summary": "Iteration-2 POS design reviewed fresh against source. All 7 prior findings (1 HIGH, 4 MEDIUM, 2 NIT) are genuinely addressed and each correction was re-verified against the actual worktree code. Schema extends products additively with nullable/defaulted columns + new tables; checkout is idempotency-key + unique-index + FOR UPDATE transactional (deducts exactly once); auth reuses requireStaff/requireOwner/hasPermission + email_otps + issueTokens; the runtime-ensure*/mirrored-Prisma/manual-.sql convention is honored (no prisma migrate/db push); online storefront reads are protected by a new PUBLIC_PRODUCT_SELECT allow-list; push reuses sendToTokens/tokensForStaff/recordNotification; invoice uses the Unicode HTML path (expo-print on mobile, browser-print on web, zero new web deps); money is DECIMAL(10,2)/(12,2) and quantity DECIMAL(10,3) with integer-paise math. No native build is required. Zero HIGH and zero MEDIUM findings remain; only NITs.",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "where": "\u00a74.2 Unique bill numbers",
+      "problem": "The sequence is incremented BEFORE it is read back (UPDATE pos_next_bill_seq = pos_next_bill_seq + 1, then SELECT). With the default seed of 1, the first completed bill is numbered INV-000002, not INV-000001 \u2014 an off-by-one in the human-facing invoice number. Cosmetic only; uniqueness/collision-safety is unaffected.",
+      "fix": "Either seed pos_next_bill_seq = 0, or read-then-increment (SELECT the current value for the bill number, then UPDATE +1) inside the same transaction. Pick one and state it so INV-000001 is the first invoice."
+    },
+    {
+      "id": 2,
+      "severity": "NIT",
+      "where": "\u00a73.2 Phone-OTP delivery",
+      "problem": "In production (devOtp suppressed, no SMS gateway) a brand-new authorised phone that has not yet installed the app has no OTP delivery channel, because delivery relies on an already-registered FCM device. The realistic flow still works (the seeded owner 7543888698 already has devices via the existing app, and new staff install the app \u2192 register a device \u2192 then OTP push works), so acceptance (a) is not violated \u2014 but the production onboarding sequence is implicit.",
+      "fix": "State the production contract explicitly in \u00a73.2: 'phone-OTP requires the authorised number to have at least one registered device; a brand-new number installs the app (registers a device) first, or the owner bootstraps via the master-password/user-login path. SMS is a documented drop-in TODO.' No code change needed, just make the sequence explicit."
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "where": "\u00a71 stack row / \u00a79.2",
+      "problem": "The design asserts 'react-native-view-shot' and '@react-native-firebase/messaging' are already in mobile/package.json. Verified @notifee/react-native, expo-print, expo-sharing, expo-clipboard and @react-native-firebase/app are present; messaging and view-shot were not confirmed in the dependency spot-check. These are not load-bearing for the design's core (push reuses the existing server-side FCM infra; the invoice path uses expo-print, not view-shot), so this is accuracy hygiene only.",
+      "fix": "Drop the react-native-view-shot / messaging claim or confirm it against mobile/package.json; the invoice/push plan does not depend on either, so remove them from the 'already present' list if unverified to avoid an unverified assumption carried into implementation."
+    },
+    {
+      "id": 4,
+      "severity": "NIT",
+      "where": "\u00a73.1 / \u00a72.2 admin_phones.role",
+      "problem": "admin_phones.role is 'owner' | 'staff', but requireStaff/STAFF_ROLES only recognises user roles 'owner' | 'superadmin' | 'admin' (verified in auth/middleware.ts). \u00a73.1 maps the OTP upsert to role = owner|admin, i.e. 'staff' \u2192 user role 'admin'. The mapping is correct but the staff\u2192admin translation is stated only implicitly.",
+      "fix": "Add one sentence in \u00a73.1: 'admin_phones.role=\"staff\" upserts the user row with role=\"admin\" (plus the stored permissions); role=\"owner\" upserts role=\"owner\". There is no distinct \"staff\" user role \u2014 requireStaff gates on admin+permission.'"
+    }
+  ],
+  "verifiedAssumptions": [
+    "issueTokens / safeUser / toClaims / isMobileClient are module-private in routes/users.ts (file only `export default router`), so the \u00a73.1 extraction into auth/session.ts is genuinely required \u2014 confirmed by reading users.ts.",
+    "GET /api/products uses prisma.product.findMany({orderBy:{id:'asc'}}) and GET /api/products/:id uses prisma.product.findUnique with NO select \u2014 both return every column, so adding inventory fields to the Prisma Product model would leak purchase_price. The \u00a72.1a PUBLIC_PRODUCT_SELECT fix on BOTH endpoints is correct \u2014 confirmed by reading catalog.ts.",
+    "web/src/lib/invoice.ts draws with jsPDF core helvetica, hard-codes `const rupee = 'Rs. '` ('jsPDF core fonts can't render \u20b9') and strips Hindi village names \u2014 so it cannot render Devanagari/\u20b9/emoji. The iteration-1 'already renders most' claim was indeed wrong; finding 1's correction is accurate \u2014 confirmed by reading invoice.ts.",
+    "mobile/src/invoice.ts renders an expo-print HTML string with font-family 'Noto Sans' and prints \u20b9 directly, so the shared-HTML Unicode path is valid \u2014 confirmed by reading mobile/src/invoice.ts.",
+    "auth/middleware.ts defines requireAuth, requireOwner, requireStaff(permission) and hasPermission with owner/superadmin short-circuit and admin permission/'*' check \u2014 the RBAC reuse plan (\u00a73) is accurate \u2014 confirmed.",
+    "services/push.ts exports sendToTokens (chunked multicast + dead-token prune), tokensForStaff(permission) (owner/superadmin + admin-with-permission), recordNotification, PushMessage and a data-only + largeIcon payload \u2014 the \u00a77 push reuse is accurate \u2014 confirmed.",
+    "The runtime-ensure* convention exists exactly as described: ensurePlainPasswordColumn / ensureMasterPasswordColumn use information_schema COUNT guards and swallow MySQL 1060; ensureNotificationTables / ensureMarketingTables / ensureShortLinkTables use CREATE TABLE IF NOT EXISTS via $executeRawUnsafe, mirror Prisma models and have manual prisma/*.sql equivalents \u2014 confirmed in services/dataImport.ts. (Note: grep tooling does not index the .worktrees path; verified via direct file reads.)",
+    "server.ts wires these ensure* calls fire-and-forget with .catch(console.error) after seedDefaultOwner; appending the three POS ensures after ensureMarketingTables is feasible and consistent \u2014 confirmed.",
+    "settings.store_address live seed is the romanized 'Gajna Road, Chandargarh, Nabinagar, Aurangabad, Bihar - 824301' (not the Devanagari string) \u2014 finding 7's correction is accurate \u2014 confirmed in four_a_store_live.sql.",
+    "Dependencies: web/package.json has jspdf but NOT html2canvas (so \u00a78.0's zero-new-web-dep browser-print decision is correct and the task's 'reuses jspdf+html2canvas' phrase was aspirational); api-node has multer, NOT exceljs (correctly flagged as the one new pinned backend dep); mobile has @notifee/react-native, expo-print, expo-sharing, expo-clipboard and NOT expo-document-picker (matching the \u00a79.2 web-only-Excel platform split) \u2014 all confirmed.",
+    "The worktree HEAD (pos-billing) is at the same commit as main (880ea091), so reviewed source matches the implementation baseline."
+  ],
+  "unverifiedOrWrongAssumptions": [
+    "mobile/package.json containing 'react-native-view-shot' and '@react-native-firebase/messaging' was asserted by the design but not confirmed in the spot-check (see NIT 3). Not load-bearing for the design.",
+    "The integration-level guarantees (idempotent checkout deducts stock exactly once; FOR UPDATE prevents oversell; cancel/refund restores exactly once) are design claims that read as correct and transactionally sound, but they require a live DB to prove and were NOT executed \u2014 this is a design review, not a runtime test. The \u00a710 integration tests are the right place to confirm them.",
+    "Prisma delegate availability for the new models (prisma.posBill etc.) depends on `prisma generate` succeeding on deploy; the design flags the CDN-403 limitation and expects tsc delegate-missing errors pre-generate \u2014 not independently reproduced here."
+  ]
+}

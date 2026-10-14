@@ -394,7 +394,7 @@ const assignSchema = z.object({
   permissions: z.array(z.string()).optional().default([]),
 });
 
-const ALLOWED_PERMS = ['dashboard', 'orders', 'riderTracking', 'products', 'categories', 'banners', 'ads', 'users', 'earnings', 'settings', 'team'];
+const ALLOWED_PERMS = ['dashboard', 'orders', 'riderTracking', 'products', 'categories', 'banners', 'ads', 'users', 'earnings', 'settings', 'team', 'pos', 'inventory', 'pos_reports'];
 
 // POST /api/admin/assignRole — owner/superadmin gives a role to a user by mobile number.
 router.post('/assignRole', requireAuth, async (req: Request, res: Response) => {

@@ -467,6 +467,246 @@ export async function ensureShortLinkTables(): Promise<void> {
   );
 }
 
+/**
+ * Ensure the additive POS inventory columns exist on the `products` table.
+ *
+ * Phase-1 POS/inventory foundation. One stock figure serves BOTH the online
+ * store and the in-store counter. Every column is nullable or defaulted so
+ * existing rows and the online-order flow are untouched. Mirrors
+ * ensureMasterPasswordColumn() exactly: each ALTER is information_schema-guarded
+ * (add only when absent) and swallows the MySQL duplicate-column error (1060) so
+ * concurrent/repeat runs never crash. Uses $executeRawUnsafe — NO prisma
+ * migrate / db push. Mirrored on the Prisma `Product` model (runtime-created
+ * comment) and the manual prisma/pos-inventory.sql.
+ *
+ * SKU/barcode uniqueness is enforced in the POS service layer (SELECT-before-
+ * insert), NOT by a DB unique index — a unique index added at runtime over a
+ * large legacy table risks a slow ALTER and a hard failure on dirty duplicates.
+ * We add plain non-unique lookup indexes idx_products_sku / idx_products_barcode.
+ */
+export async function ensureProductInventoryColumns(): Promise<void> {
+  const columns: Array<{ name: string; ddl: string }> = [
+    { name: 'sku', ddl: 'ADD COLUMN sku VARCHAR(64) NULL' },
+    { name: 'barcode', ddl: 'ADD COLUMN barcode VARCHAR(64) NULL' },
+    { name: 'purchase_price', ddl: 'ADD COLUMN purchase_price DECIMAL(10,2) NULL' },
+    { name: 'stock', ddl: 'ADD COLUMN stock DECIMAL(10,3) NOT NULL DEFAULT 0.000' },
+    { name: 'unit', ddl: "ADD COLUMN unit VARCHAR(12) NOT NULL DEFAULT 'pcs'" },
+    { name: 'tax_rate', ddl: 'ADD COLUMN tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0.00' },
+    { name: 'low_stock_threshold', ddl: 'ADD COLUMN low_stock_threshold DECIMAL(10,3) NULL' },
+    { name: 'track_inventory', ddl: 'ADD COLUMN track_inventory TINYINT(1) NOT NULL DEFAULT 1' },
+    { name: 'allow_negative_stock', ddl: 'ADD COLUMN allow_negative_stock TINYINT(1) NULL' },
+  ];
+  for (const col of columns) {
+    const rows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+      `SELECT COUNT(*) AS c FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'products' AND column_name = ?`,
+      col.name
+    );
+    if (Number(rows?.[0]?.c ?? 0) > 0) continue;
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE products ${col.ddl}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/1060|Duplicate column/i.test(msg)) throw e;
+    }
+  }
+  // Non-unique lookup indexes (guarded against duplicate-index 1061).
+  const indexes: Array<{ name: string; column: string }> = [
+    { name: 'idx_products_sku', column: 'sku' },
+    { name: 'idx_products_barcode', column: 'barcode' },
+  ];
+  for (const idx of indexes) {
+    const rows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+      `SELECT COUNT(*) AS c FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = 'products' AND index_name = ?`,
+      idx.name
+    );
+    if (Number(rows?.[0]?.c ?? 0) > 0) continue;
+    try {
+      await prisma.$executeRawUnsafe(`CREATE INDEX ${idx.name} ON products (${idx.column})`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/1061|Duplicate key name/i.test(msg)) throw e;
+    }
+  }
+}
+
+/**
+ * Ensure the POS-wide toggle columns exist on the `settings` table and seed a
+ * default store_address when blank. `settings` is a raw-SQL table (not a Prisma
+ * model) — consistent with the repo. Mirrors ensureMasterPasswordColumn(): each
+ * ALTER is information_schema-guarded and swallows MySQL 1060. NO prisma migrate
+ * / db push. Manual equivalent: prisma/pos-settings.sql.
+ */
+export async function ensurePosSettingsColumns(): Promise<void> {
+  const columns: Array<{ name: string; ddl: string }> = [
+    { name: 'pos_allow_negative_stock', ddl: 'ADD COLUMN pos_allow_negative_stock TINYINT(1) NOT NULL DEFAULT 0' },
+    { name: 'pos_sale_notifications', ddl: 'ADD COLUMN pos_sale_notifications TINYINT(1) NOT NULL DEFAULT 1' },
+    { name: 'pos_bill_prefix', ddl: "ADD COLUMN pos_bill_prefix VARCHAR(8) NOT NULL DEFAULT 'INV-'" },
+    { name: 'pos_next_bill_seq', ddl: 'ADD COLUMN pos_next_bill_seq BIGINT UNSIGNED NOT NULL DEFAULT 1' },
+    { name: 'pos_allow_manual_items', ddl: 'ADD COLUMN pos_allow_manual_items TINYINT(1) NOT NULL DEFAULT 1' },
+  ];
+  for (const col of columns) {
+    const rows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+      `SELECT COUNT(*) AS c FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'settings' AND column_name = ?`,
+      col.name
+    );
+    if (Number(rows?.[0]?.c ?? 0) > 0) continue;
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE settings ${col.ddl}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/1060|Duplicate column/i.test(msg)) throw e;
+    }
+  }
+  // Seed the invoice store_address default ONLY when the row exists and the
+  // value is blank/null (never overwrite an owner-edited address). The romanized
+  // live value is the primary default; the owner may edit it to any string.
+  try {
+    await prisma.$executeRawUnsafe(
+      `UPDATE settings
+          SET store_address = ?
+        WHERE id = 1 AND (store_address IS NULL OR store_address = '')`,
+      'Gajna Road, Chandargarh, Nabinagar, Aurangabad, Bihar - 824301'
+    );
+  } catch {
+    // Best-effort seed — never block startup on it.
+  }
+}
+
+/**
+ * Ensure the six new POS tables exist. Follows the repo's no-migrate convention:
+ * idempotent `CREATE TABLE IF NOT EXISTS` via $executeRawUnsafe (InnoDB utf8mb4)
+ * with column types mirroring the Prisma PosBill / PosBillItem / StockMovement /
+ * AdminPhone / PosImportBatch / ProductChangeLog models in schema.prisma. Safe
+ * to re-run; NO prisma migrate / db push. Called at startup beside
+ * ensureMarketingTables(). Manual equivalent: prisma/pos-tables.sql.
+ *
+ * Money aggregates are DECIMAL(12,2) (a cart of many ₹100000 items cannot
+ * overflow); line/product money is DECIMAL(10,2); quantity is DECIMAL(10,3).
+ * bill_no and idempotency_key are UNIQUE NULL (MySQL permits multiple NULLs) so
+ * held bills (no number yet) and non-idempotent rows coexist.
+ */
+export async function ensurePosTables(): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS pos_bills (
+       id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       bill_no         VARCHAR(20)  NULL,
+       idempotency_key CHAR(36)     NULL,
+       status          VARCHAR(16)  NOT NULL,
+       customer_name   VARCHAR(120) NULL,
+       customer_mobile VARCHAR(15)  NULL,
+       subtotal        DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+       discount        DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+       tax_total       DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+       grand_total     DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+       amount_paid     DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+       balance_due     DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+       payment_method  VARCHAR(20)  NULL,
+       payment_status  VARCHAR(12)  NULL,
+       payments_json   JSON         NULL,
+       note            VARCHAR(500) NULL,
+       created_by      VARCHAR(64)  NULL,
+       cancelled_by    VARCHAR(64)  NULL,
+       cancel_reason   VARCHAR(255) NULL,
+       created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       updated_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       UNIQUE KEY uq_pos_bills_bill_no (bill_no),
+       UNIQUE KEY uq_pos_bills_idem (idempotency_key),
+       INDEX idx_pos_bills_created (created_at),
+       INDEX idx_pos_bills_status (status),
+       INDEX idx_pos_bills_mobile (customer_mobile)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS pos_bill_items (
+       id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       bill_id    BIGINT UNSIGNED NOT NULL,
+       product_id BIGINT UNSIGNED NULL,
+       name       VARCHAR(200) NOT NULL,
+       sku        VARCHAR(64)  NULL,
+       unit       VARCHAR(12)  NOT NULL DEFAULT 'pcs',
+       quantity   DECIMAL(10,3) NOT NULL DEFAULT 0.000,
+       rate       DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+       tax_rate   DECIMAL(5,2)  NOT NULL DEFAULT 0.00,
+       line_total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+       is_manual  TINYINT(1)    NOT NULL DEFAULT 0,
+       PRIMARY KEY (id),
+       INDEX idx_pos_bill_items_bill (bill_id),
+       INDEX idx_pos_bill_items_product (product_id),
+       CONSTRAINT fk_pos_bill_items_bill FOREIGN KEY (bill_id)
+         REFERENCES pos_bills (id) ON DELETE CASCADE
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS stock_movements (
+       id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       product_id    BIGINT UNSIGNED NOT NULL,
+       change_qty    DECIMAL(10,3) NOT NULL,
+       balance_after DECIMAL(10,3) NOT NULL,
+       reason        VARCHAR(24)  NOT NULL,
+       bill_no       VARCHAR(20)  NULL,
+       batch_id      BIGINT UNSIGNED NULL,
+       note          VARCHAR(255) NULL,
+       created_by    VARCHAR(64)  NULL,
+       created_at    DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       INDEX idx_stock_mov_product (product_id),
+       INDEX idx_stock_mov_bill (bill_no),
+       INDEX idx_stock_mov_created (created_at)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS admin_phones (
+       id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       mobile      VARCHAR(15)  NOT NULL,
+       role        VARCHAR(16)  NOT NULL,
+       permissions JSON         NULL,
+       name        VARCHAR(120) NULL,
+       active      TINYINT(1)   NOT NULL DEFAULT 1,
+       added_by    VARCHAR(64)  NULL,
+       created_at  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       UNIQUE KEY uq_admin_phones_mobile (mobile)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS pos_import_batches (
+       id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       filename   VARCHAR(255) NOT NULL,
+       status     VARCHAR(16)  NOT NULL,
+       total_rows INT          NOT NULL DEFAULT 0,
+       inserted   INT          NOT NULL DEFAULT 0,
+       updated    INT          NOT NULL DEFAULT 0,
+       skipped    INT          NOT NULL DEFAULT 0,
+       errors     INT          NOT NULL DEFAULT 0,
+       error_json JSON         NULL,
+       created_by VARCHAR(64)  NULL,
+       created_at DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       INDEX idx_pos_import_batches_created (created_at)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS product_change_log (
+       id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       product_id BIGINT UNSIGNED NULL,
+       field      VARCHAR(32)  NOT NULL,
+       old_val    VARCHAR(255) NULL,
+       new_val    VARCHAR(255) NULL,
+       source     VARCHAR(24)  NOT NULL,
+       batch_id   BIGINT UNSIGNED NULL,
+       actor      VARCHAR(64)  NOT NULL,
+       created_at DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       INDEX idx_pcl_product (product_id),
+       INDEX idx_pcl_created (created_at)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+}
+
 interface LegacyUser {
   id: number;
   name: string;

@@ -31,6 +31,18 @@ export const ADMIN_TABS = [
   { path: 'notify', key: 'ads', icon: '🔔', label: 'Push Notifications', title: '🔔 Push Notifications' },
   { path: 'marketing', key: 'ads', icon: '📣', label: 'Marketing', title: '📣 Marketing (WhatsApp)' },
   { path: 'links', key: 'ads', icon: '🔗', label: 'Short Links', title: '🔗 Short Links' },
+  // POS / in-store counter (design §3–§8). The canAdmin(role,perms,key) filter
+  // hides these from staff who lack the matching permission; the APIs behind
+  // them are independently guarded server-side (requireStaff/requireOwner), so
+  // this is defence-in-depth, not the access boundary. 'posAccess' is not an
+  // assignable admin permission, so only owner/superadmin (who short-circuit
+  // canAdmin) ever see the owner-only POS Access tab.
+  { path: 'pos', key: 'pos', icon: '🧾', label: 'New Bill', title: '🧾 New Bill (POS)' },
+  { path: 'pos-history', key: 'pos', icon: '📚', label: 'Billing History', title: '📚 Billing History' },
+  { path: 'inventory', key: 'inventory', icon: '📦', label: 'Inventory', title: '📦 Inventory' },
+  { path: 'pos-import', key: 'inventory', icon: '📥', label: 'Excel Import', title: '📥 Excel Import / Export' },
+  { path: 'pos-reports', key: 'pos_reports', icon: '📈', label: 'Sales Reports', title: '📈 Sales Reports' },
+  { path: 'pos-access', key: 'posAccess', icon: '🔑', label: 'POS Access', title: '🔑 POS Access (Owner)' },
 ];
 
 function useBodyClass(className: string, on: boolean) {

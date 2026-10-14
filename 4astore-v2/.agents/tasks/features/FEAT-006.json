@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-006",
+  "type": "feat",
+  "description": "Phase 6 — Owner push notifications + dashboard + reports (final integration). posNotify service reusing the existing FCM infra wired into checkout/reversal/adjustments; admin dashboard POS summary strip; sales reports with role gating and Excel export on web and mobile. Depends on FEAT-002 (checkout/reversal hooks), FEAT-003 (exceljs writer), FEAT-004 (dashboard/reports screens). Grounded in design §7 and §9.3 and services/push.ts (sendToTokens/tokensForStaff/recordNotification).",
+  "status": "completed",
+  "steps": [
+    "api-node/src/services/posNotify.ts: typed helpers sale, lowStock, outOfStock, cancelRefund, stockAdjust — resolve recipients via tokensForStaff('pos'), each wrapped in .catch(()=>null) + recordNotification(...) with new types pos_sale/pos_low_stock/pos_out_of_stock/pos_cancel/pos_stock_adjust. lowStock fires ONLY on the transition into low/out state (compare previous stock vs balance_after inside the tx read).",
+    "api-node/src/routes/pos.ts: wire posNotify.sale (gated by pos_sale_notifications) + low/out-of-stock pushes fire-and-forget AFTER checkout commit; wire posNotify.cancelRefund after reversal commit.",
+    "api-node/src/routes/pos-import.ts: wire posNotify.stockAdjust on significant manual/bulk adjustments.",
+    "api-node: add GET /api/admin/pos/dashboard (requireStaff('dashboard'), raw-SQL aggregate like /api/admin/stats: today's sales, #bills, low/out-of-stock counts, recent bills) and GET /api/admin/pos/reports?period=day|week|month&from=&to= (requireStaff('pos_reports'): total sales, #bills, discounts, refunds, payment-method summary, best-sellers via pos_bill_items join, low/out-of-stock lists) plus GET /api/admin/pos/reports/export.xlsx reusing the FEAT-003 exceljs writer. Sensitive (purchase price/profit) data requires pos_reports (403 otherwise). Mount in server.ts (reuse admin-pos or pos router).",
+    "web/src/pages/admin/AdminDashboard.tsx: add the POS summary strip (today's POS sales, #bills, low/out counts, recent bills, quick links) fed by GET /api/admin/pos/dashboard.",
+    "web/src/pages/admin/AdminPosReports.tsx and mobile/app/admin/pos-reports.tsx: populate the reports views + Excel export (web)."
+  ],
+  "acceptance_criteria": [
+    "Completed sale fires an owner push when pos_sale_notifications is on; low-stock fires only on the transition into the low/out state and reaches all of an owner's registered devices via tokensForStaff (acceptance e).",
+    "Cancel/refund and significant stock adjustments fire the corresponding push and recordNotification entry.",
+    "Dashboard shows today's POS sales/#bills/low-out counts/recent bills; reports show totals/discounts/refunds/payment summary/best-sellers/low-out lists and export to Excel; sensitive reports require pos_reports (403 otherwise) (acceptance g).",
+    "`npm --prefix ...\\api-node run build` shows only expected prisma.<posModel> delegate errors; `npm --prefix ...\\web run build` exits 0; `npm --prefix ...\\mobile run typecheck` clean."
+  ],
+  "verification": [
+    "Run `npm --prefix c:\\xampp\\htdocs\\static4a\\.worktrees\\pos-billing\\4astore-v2\\api-node run build`; only expected prisma delegate errors.",
+    "Run `npm --prefix ...\\web run build` (exit 0) and `npm --prefix ...\\mobile run typecheck` (clean)."
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

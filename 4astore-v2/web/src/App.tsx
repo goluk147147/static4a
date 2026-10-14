@@ -30,6 +30,12 @@ import AdminAds from './pages/admin/AdminAds';
 import AdminTeam from './pages/admin/AdminTeam';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminSeo from './pages/admin/AdminSeo';
+import AdminPos from './pages/admin/AdminPos';
+import AdminPosHistory from './pages/admin/AdminPosHistory';
+import AdminInventory from './pages/admin/AdminInventory';
+import AdminPosImport from './pages/admin/AdminPosImport';
+import AdminPosReports from './pages/admin/AdminPosReports';
+import AdminPosAccess from './pages/admin/AdminPosAccess';
 import { useAuth } from './store/auth';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -79,6 +85,12 @@ export default function App() {
         <Route path="notify" element={<AdminNotify />} />
         <Route path="marketing" element={<AdminMarketing />} />
         <Route path="links" element={<AdminLinks />} />
+        <Route path="pos" element={<AdminPos />} />
+        <Route path="pos-history" element={<AdminPosHistory />} />
+        <Route path="inventory" element={<AdminInventory />} />
+        <Route path="pos-import" element={<AdminPosImport />} />
+        <Route path="pos-reports" element={<AdminPosReports />} />
+        <Route path="pos-access" element={<AdminPosAccess />} />
         <Route path="notify-log" element={<Navigate to="/admin/notify" replace />} />
         <Route path="*" element={<AdminPending title="Page" note="Ye admin page maujood nahi hai." />} />
       </Route>

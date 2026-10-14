@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc -p tsconfig.json",
+    "test": "node --import ./src/__tests__/register.mjs --test \"src/__tests__/**/*.test.ts\"",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:pull": "prisma db pull",
@@ -19,6 +20,7 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "exceljs": "4.4.0",
     "express": "^4.19.2",
     "express-async-errors": "3.1.1",
     "ffmpeg-static": "5.2.0",
