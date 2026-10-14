@@ -41,7 +41,7 @@ export async function clearRefreshToken() {
 
 type Query = Record<string, string | number | boolean | undefined | null>;
 interface RequestOpts {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'DELETE';
   body?: unknown;
   params?: Query;
   /** Background poll / best-effort call: suppress the global "Server slow" toast (the thrown
