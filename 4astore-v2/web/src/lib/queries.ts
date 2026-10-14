@@ -17,6 +17,7 @@ export function useProducts() {
     queryKey: ['products'],
     staleTime: 0,
     refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     queryFn: async () => ((await api.get('/products')).data.products as Product[]).map(normalizeProduct),
   });
 }
@@ -26,6 +27,7 @@ export function useCategories() {
     queryKey: ['categories'],
     staleTime: 0,
     refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     queryFn: async () => (await api.get('/categories')).data.categories as Category[],
   });
 }

@@ -36,7 +36,7 @@ export function normalizeOrder(o: Order): Order {
 export const useProducts = () =>
   useQuery({
     queryKey: ['products'],
-    staleTime: 30_000,
+    staleTime: 5_000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     queryFn: async () => ((await api.get('/products')).products as Product[]).map(normalizeProduct),
@@ -45,7 +45,7 @@ export const useProducts = () =>
 export const useCategories = () =>
   useQuery({
     queryKey: ['categories'],
-    staleTime: 30_000,
+    staleTime: 5_000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     queryFn: async () => ((await api.get('/categories')).categories as Category[]).map((c) => ({ ...c, id: Number(c.id) })),

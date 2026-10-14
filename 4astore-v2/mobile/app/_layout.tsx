@@ -89,6 +89,10 @@ export default function RootLayout() {
         // was backgrounded (common cause of pushes silently stopping after a while).
         void registerForPush();
         void queryClient.invalidateQueries({ queryKey: ['all-orders'] });
+        // refetchOnWindowFocus is inert on RN (focusManager not wired to AppState), so a reopened
+        // app would otherwise keep showing a stale price/stock/image — invalidate the catalog here.
+        void queryClient.invalidateQueries({ queryKey: ['products'] });
+        void queryClient.invalidateQueries({ queryKey: ['categories'] });
       }
     });
     return () => sub.remove();
