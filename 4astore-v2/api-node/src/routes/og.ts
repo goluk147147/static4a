@@ -42,6 +42,7 @@ router.get('/image/product/:id', async (req: Request, res: Response) => {
     subtitle: product.weight || '',
     imageUrl: absoluteImageUrl(product.image),
     price: price > 0 ? `₹${price}` : undefined,
+    variant: 'product-hero', // clean single-photo hero (Option A) for products only
   });
 
   res.setHeader('Content-Type', img.contentType);

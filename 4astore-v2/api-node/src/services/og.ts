@@ -29,6 +29,9 @@ export interface RenderOgOptions {
   subtitle?: string;
   imageUrl?: string | null; // absolute/same-origin product image, or null for the logo card
   price?: string; // pre-formatted price text, e.g. "₹49"
+  // 'product-hero' = clean single large product photo + bottom text strip (PRODUCTS only).
+  // Anything else (undefined) = the branded split-card layout used by page/category cards.
+  variant?: 'product-hero';
 }
 
 // Small in-memory cache keyed by caller (e.g. `product-12-1699999999999`). Bounded.
@@ -270,6 +273,136 @@ async function drawRightPanel(ctx: SKRSContext2D, productImg: Image | null) {
   ctx.stroke();
 }
 
+// ------------------------- Option A: clean product hero -------------------------
+// A single, uncluttered share image for PRODUCT previews: solid light background,
+// one large contain-fit product photo in the upper area, and a slim bottom strip
+// with the product name, a price pill, and a subtle 4A Store wordmark.
+
+const HERO_STRIP_H = 140; // bottom text strip height
+const HERO_PAD = 40; // outer padding around the photo area
+
+function drawHeroBackground(ctx: SKRSContext2D) {
+  // Very subtle vertical light gradient, essentially white.
+  const bg = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+  bg.addColorStop(0, '#ffffff');
+  bg.addColorStop(1, '#f3f5f7');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+}
+
+// Draw the small 4A branding at the right edge of the bottom strip: logo if available,
+// otherwise a "4A Store" wordmark. Returns the x where the logo/wordmark starts so the
+// product name can be width-limited to avoid overlap.
+function drawHeroBranding(ctx: SKRSContext2D, logo: Image | null, stripTop: number): number {
+  const cy = stripTop + HERO_STRIP_H / 2;
+  const rightEdge = WIDTH - HERO_PAD;
+  if (logo) {
+    const h = 52;
+    const w = (logo.width / logo.height) * h;
+    const x = rightEdge - w;
+    ctx.drawImage(logo, x, cy - h / 2, w, h);
+    return x - 24;
+  }
+  // Wordmark fallback: "4A Store".
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '800 30px sans-serif';
+  const label = '4A Store';
+  const w = ctx.measureText(label).width;
+  // "4A" in accent, "Store" in brand blue, drawn right-aligned.
+  ctx.fillStyle = '#2C6FAD';
+  ctx.fillText('Store', rightEdge, cy + 10);
+  const storeW = ctx.measureText('Store').width;
+  ctx.fillStyle = '#F5A623';
+  ctx.fillText('4A ', rightEdge - storeW, cy + 10);
+  ctx.textAlign = 'left';
+  return rightEdge - w - 24;
+}
+
+function drawHeroStrip(ctx: SKRSContext2D, title: string, price: string | undefined, logo: Image | null) {
+  const stripTop = HEIGHT - HERO_STRIP_H;
+
+  // Thin accent separator line above the strip.
+  ctx.beginPath();
+  ctx.moveTo(HERO_PAD, stripTop);
+  ctx.lineTo(WIDTH - HERO_PAD, stripTop);
+  ctx.strokeStyle = '#e6e8eb';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Branding first so we know how much horizontal room the name has.
+  const brandingLeft = drawHeroBranding(ctx, logo, stripTop);
+
+  // Price pill (bottom-left), measured so the name can clear it vertically.
+  let priceBottom = stripTop + 20;
+  if (price) {
+    ctx.font = '800 30px sans-serif';
+    const pillW = Math.max(96, ctx.measureText(price).width + 48);
+    const pillH = 52;
+    const pillX = HERO_PAD;
+    const pillY = HEIGHT - HERO_PAD - pillH;
+    roundRect(ctx, pillX, pillY, pillW, pillH, pillH / 2, '#148f77');
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(price, pillX + 24, pillY + pillH / 2 + 1);
+    ctx.textBaseline = 'alphabetic';
+    priceBottom = pillY;
+  }
+
+  // Product name: up to 2 lines, left-aligned, above the price pill, clear of branding.
+  ctx.textAlign = 'left';
+  ctx.font = '700 32px sans-serif';
+  ctx.fillStyle = '#1b1f23';
+  const nameMaxW = brandingLeft - HERO_PAD;
+  const lines = wrapLines(ctx, title, nameMaxW, 2);
+  const lineH = 38;
+  let ty = stripTop + 42;
+  for (const ln of lines) {
+    ctx.fillText(ln, HERO_PAD, ty);
+    ty += lineH;
+  }
+}
+
+// Draw the product photo (or logo fallback) large and centered, fully visible, within
+// the area above the bottom strip. Pure contain-fit → ZERO cropping.
+function drawHeroPhoto(ctx: SKRSContext2D, img: Image, fallback: boolean) {
+  const areaX = HERO_PAD;
+  const areaY = HERO_PAD;
+  const areaW = WIDTH - HERO_PAD * 2;
+  const areaH = HEIGHT - HERO_STRIP_H - HERO_PAD * 2; // upper region, above the strip
+  // Logo fallback is a wordmark/mark — don't blow it up to full area, cap its size.
+  const maxW = fallback ? Math.min(areaW, 420) : areaW;
+  const maxH = fallback ? Math.min(areaH, 300) : areaH;
+  const scale = Math.min(maxW / img.width, maxH / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  const dx = areaX + (areaW - dw) / 2;
+  const dy = areaY + (areaH - dh) / 2;
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
+
+/** Render the clean product-hero OG image (Option A) and compress it to <= 100 KB. */
+export async function renderProductHeroImage(opts: RenderOgOptions): Promise<OgImage> {
+  const productImg = await tryLoadImage(opts.imageUrl);
+  const logo = await getLogo();
+
+  return compress(async (scale) => {
+    const canvas = createCanvas(Math.round(WIDTH * scale), Math.round(HEIGHT * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    drawHeroBackground(ctx);
+    if (productImg) {
+      drawHeroPhoto(ctx, productImg, false);
+    } else if (logo) {
+      // Graceful fallback: centered logo on the clean background (never a broken image).
+      drawHeroPhoto(ctx, logo, true);
+    }
+    drawHeroStrip(ctx, opts.title, opts.price, logo);
+    return canvas;
+  });
+}
+
 /** Encode+compress a 1200x630 (or downscaled) canvas to <= 100 KB. */
 async function compress(draw: (scale: number) => Promise<Canvas>): Promise<OgImage> {
   const scales = [1, 0.85, 0.7];
@@ -296,6 +429,9 @@ async function compress(draw: (scale: number) => Promise<Canvas>): Promise<OgIma
 
 /** Render a branded OG image and compress it to <= 100 KB. */
 export async function renderOgImage(opts: RenderOgOptions): Promise<OgImage> {
+  // Products use the clean single-photo hero; page/category keep the branded card.
+  if (opts.variant === 'product-hero') return renderProductHeroImage(opts);
+
   const productImg = await tryLoadImage(opts.imageUrl);
   const logo = productImg ? null : await getLogo();
 
