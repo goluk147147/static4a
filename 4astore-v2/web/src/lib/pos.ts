@@ -131,6 +131,40 @@ export interface AdminPhone {
 }
 
 // --------------------------------------------------------------------------
+// Dashboard summary strip + sales reports (FEAT-006).
+// --------------------------------------------------------------------------
+export interface PosDashboard {
+  today: { sales: number; bills: number };
+  lowStock: number;
+  outOfStock: number;
+  recentBills: Array<{
+    bill_no: string | null;
+    customer_name: string | null;
+    grand_total: number;
+    payment_method: string | null;
+    status: string | null;
+    created_at: string | null;
+  }>;
+}
+
+export type ReportPeriod = 'day' | 'week' | 'month';
+
+export interface PosReport {
+  range: { from: string; to: string; label: string };
+  totals: { sales: number; bills: number; discounts: number; refunds: number; refundBills: number };
+  paymentSummary: Array<{ method: string; bills: number; amount: number }>;
+  bestSellers: Array<{ product_id: number | null; name: string; quantity: number; amount: number }>;
+  lowStock: Array<{ id: number; name: string; stock: number; unit: string; low_stock_threshold: number | null }>;
+  outOfStock: Array<{ id: number; name: string; stock: number; unit: string }>;
+}
+
+export interface ReportFilters {
+  period?: ReportPeriod;
+  from?: string;
+  to?: string;
+}
+
+// --------------------------------------------------------------------------
 // Product search (debounced caller supplies `q`).
 // --------------------------------------------------------------------------
 export function usePosProductSearch(q: string) {
@@ -329,4 +363,49 @@ export function useRemovePhone() {
     mutationFn: async (mobile: string) => (await api.delete(`/admin/pos/phones/${encodeURIComponent(mobile)}`)).data as { message: string },
     onSuccess: () => qc.invalidateQueries({ queryKey: POS_PHONES_KEY }),
   });
+}
+
+// --------------------------------------------------------------------------
+// Dashboard + reports hooks (FEAT-006). All guarded server-side
+// (requireStaff('dashboard') / requireStaff('pos_reports')).
+// --------------------------------------------------------------------------
+export function usePosDashboard(enabled = true) {
+  return useQuery({
+    queryKey: ['pos-dashboard'],
+    enabled,
+    staleTime: 30_000,
+    retry: false,
+    queryFn: async () => {
+      const { data } = await api.get('/admin/pos/dashboard');
+      const { success, ...rest } = data as { success: boolean } & PosDashboard;
+      void success;
+      return rest as PosDashboard;
+    },
+  });
+}
+
+export function usePosReport(filters: ReportFilters = {}) {
+  return useQuery({
+    queryKey: ['pos-report', filters],
+    staleTime: 15_000,
+    queryFn: async () => {
+      const { data } = await api.get('/admin/pos/reports', { params: filters });
+      const { success, ...rest } = data as { success: boolean } & PosReport;
+      void success;
+      return rest as PosReport;
+    },
+  });
+}
+
+/** Download the sales report workbook (streamed .xlsx). */
+export async function exportReportXlsx(filters: ReportFilters = {}): Promise<void> {
+  const res = await api.get('/admin/pos/reports/export.xlsx', { params: filters, responseType: 'blob' });
+  const url = URL.createObjectURL(res.data as Blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `4astore-sales-report-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }

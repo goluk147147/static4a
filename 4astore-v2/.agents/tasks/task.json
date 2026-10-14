@@ -1,0 +1,7 @@
+{
+  "task_id": "task-pos-billing-inventory",
+  "task_description": "Implement the full 4A Store Smart Billing & Inventory POS feature per the APPROVED design .agents/tasks/pos-design.md across api-node, web and mobile: additive inventory schema + runtime ensure*; phone-allowlist + OTP + RBAC; idempotent transactional checkout with stock movements and cancel/refund reversal; Excel import/export; POS UI on web and mobile with parity; Unicode invoice (PDF/WhatsApp/print/share/copy); owner push notifications + dashboard + reports. No prisma migrate/db push, no native build, DECIMAL money/quantity, protect all admin/POS APIs, do not break the online flow.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005", "FEAT-006"],
+  "blocked_reason": null
+}

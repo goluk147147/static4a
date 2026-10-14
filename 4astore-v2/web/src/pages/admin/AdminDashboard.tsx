@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../store/auth';
 import { useProducts, useCategories } from '../../lib/queries';
 import { fetchAdminStats } from '../../lib/admin';
+import { usePosDashboard } from '../../lib/pos';
 import { useAdminOrders, useAdminUsers, statusColor, canAdmin } from './adminData';
 
 // Port of the original renderDashboardTab().
@@ -26,6 +27,18 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+function QuickLink({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ padding: '9px 14px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const user = useAuth((s) => s.user);
@@ -37,6 +50,11 @@ export default function AdminDashboard() {
   // client-side computation from useAdminOrders() below, so the dashboard never
   // breaks if the stats endpoint is unavailable.
   const { data: stats } = useQuery({ queryKey: ['admin-stats'], queryFn: fetchAdminStats, staleTime: 30_000, retry: false });
+  // POS summary strip (FEAT-006). Gated by the `dashboard` permission (the same
+  // the server requires) and retry:false so the counter subsystem never breaks
+  // the main dashboard if the endpoint is unavailable.
+  const canPos = canAdmin(user?.role, user?.permissions, 'pos');
+  const { data: pos } = usePosDashboard(canAdmin(user?.role, user?.permissions, 'dashboard'));
 
   if (isLoading) return <p style={{ textAlign: 'center', padding: 30, color: 'var(--gray)' }}>Loading dashboard...</p>;
 
@@ -81,6 +99,48 @@ export default function AdminDashboard() {
 
   return (
     <>
+      {pos && (
+        <div style={{ marginBottom: 22 }}>
+          <div className="stats-grid" style={{ marginBottom: 12 }}>
+            <StatCard icon="🧾" value={`₹${pos.today.sales}`} label="Today's POS Sales" accent="#087a3d" />
+            <StatCard icon="📄" value={pos.today.bills} label="POS Bills Today" accent="#3b82f6" />
+            <StatCard icon="⚠️" value={pos.lowStock} label="Low Stock" accent="#f59e0b" />
+            <StatCard icon="⛔" value={pos.outOfStock} label="Out of Stock" accent="#c62828" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 16 }}>
+            <Panel title="🕒 Recent POS Bills">
+              <div style={{ overflowX: 'auto' }}>
+                <table className="admin-table">
+                  <thead><tr><th>Bill</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {pos.recentBills.length ? (
+                      pos.recentBills.map((b, i) => (
+                        <tr key={b.bill_no || `pos-${i}`}>
+                          <td><strong>{b.bill_no || '-'}</strong></td>
+                          <td>{b.customer_name || '-'}</td>
+                          <td>₹{b.grand_total}</td>
+                          <td style={{ textTransform: 'capitalize' }}>{b.status || '-'}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan={4} style={{ textAlign: 'center', padding: 16, color: 'var(--gray)' }}>No POS bills yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+            <Panel title="⚡ Quick Actions">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {canPos && <QuickLink label="🧾 New Bill" onClick={() => navigate('/admin/pos')} />}
+                {canPos && <QuickLink label="📒 Billing History" onClick={() => navigate('/admin/pos-history')} />}
+                {canAdmin(user?.role, user?.permissions, 'inventory') && <QuickLink label="📦 Inventory" onClick={() => navigate('/admin/inventory')} />}
+                {canAdmin(user?.role, user?.permissions, 'inventory') && <QuickLink label="⬆️ Excel Import" onClick={() => navigate('/admin/pos-import')} />}
+                {canAdmin(user?.role, user?.permissions, 'pos_reports') && <QuickLink label="📈 Sales Reports" onClick={() => navigate('/admin/pos-reports')} />}
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
       <div className="stats-grid" style={{ marginBottom: 20 }}>
         <StatCard icon="💵" value={`₹${revToday}`} label="Today's Revenue" accent="#059669" />
         <StatCard icon="📅" value={`₹${revMonth}`} label="This Month" accent="#3b82f6" />

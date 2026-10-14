@@ -47,6 +47,14 @@ import {
   type PreviewRow,
   type CleanRowData,
 } from '../services/excelImport';
+import * as posNotify from '../services/posNotify';
+
+/**
+ * A manual/bulk stock adjustment fires an owner push only when the absolute
+ * change is "significant" (design §7). Default: |Δ| >= 10 units. Kept here as a
+ * single tunable so the threshold is easy to find and change.
+ */
+const SIGNIFICANT_STOCK_DELTA = 10;
 
 const router = Router();
 router.use(requireAuth, requireStaff('inventory'));
@@ -697,6 +705,10 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
     }
   }
 
+  // Significant stock adjustments collected inside the tx, fired fire-and-forget
+  // AFTER commit (design §7). Never blocks the response — posNotify swallows all.
+  const adjustments: Array<{ id: number; name: string; from: number; to: number }> = [];
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       let changed = 0;
@@ -705,11 +717,12 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
         const where = u.id != null ? 'id = ?' : 'sku = ?';
         const key = u.id != null ? Number(u.id) : u.sku;
         const curRows = (await tx.$queryRawUnsafe(
-          `SELECT id, ${column} AS val, stock, track_inventory, allow_negative_stock
+          `SELECT id, name, ${column} AS val, stock, track_inventory, allow_negative_stock
              FROM products WHERE ${where} LIMIT 1 FOR UPDATE`,
           key
         )) as Array<{
           id: bigint | number;
+          name: string;
           val: unknown;
           stock: unknown;
           track_inventory: number;
@@ -747,6 +760,10 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
             after,
             createdBy
           );
+          // Flag significant stock swings for an after-commit owner push.
+          if (Math.abs(after - before) >= SIGNIFICANT_STOCK_DELTA) {
+            adjustments.push({ id: productId, name: cur.name, from: before, to: after });
+          }
         } else {
           await tx.$executeRawUnsafe(`UPDATE products SET ${column} = ? WHERE id = ?`, after, productId);
         }
@@ -755,6 +772,9 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
       }
       return { changed, missing };
     });
+
+    // After-commit, fire-and-forget significant-adjustment alerts (design §7).
+    for (const a of adjustments) void posNotify.stockAdjust(a);
 
     return ok(res, { message: `Updated ${result.changed} product(s).`, ...result });
   } catch (e) {

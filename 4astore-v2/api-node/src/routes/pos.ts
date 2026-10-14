@@ -36,6 +36,7 @@ import {
   BillValidationError,
   BillLineInput,
 } from '../services/posBilling';
+import * as posNotify from '../services/posNotify';
 
 const router = Router();
 router.use(requireAuth);
@@ -89,6 +90,7 @@ interface ProductRow {
   in_stock: number | boolean;
   track_inventory: number | boolean;
   allow_negative_stock: number | boolean | null;
+  low_stock_threshold?: unknown;
 }
 
 interface BillRow {
@@ -259,24 +261,28 @@ interface PosSettings {
   pos_allow_negative_stock: boolean;
   pos_allow_manual_items: boolean;
   pos_bill_prefix: string;
+  pos_sale_notifications: boolean;
 }
 async function readPosSettings(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   conn: { $queryRawUnsafe: (q: string, ...p: unknown[]) => Promise<any> } = prisma
 ): Promise<PosSettings> {
   const rows = (await conn.$queryRawUnsafe(
-    `SELECT pos_allow_negative_stock, pos_allow_manual_items, pos_bill_prefix
+    `SELECT pos_allow_negative_stock, pos_allow_manual_items, pos_bill_prefix,
+            pos_sale_notifications
        FROM settings WHERE id = 1 LIMIT 1`
   )) as Array<{
     pos_allow_negative_stock: number | null;
     pos_allow_manual_items: number | null;
     pos_bill_prefix: string | null;
+    pos_sale_notifications: number | null;
   }>;
   const r = rows[0];
   return {
     pos_allow_negative_stock: !!(r?.pos_allow_negative_stock ?? 0),
     pos_allow_manual_items: !!(r?.pos_allow_manual_items ?? 1),
     pos_bill_prefix: r?.pos_bill_prefix || 'INV-',
+    pos_sale_notifications: !!(r?.pos_sale_notifications ?? 1),
   };
 }
 
@@ -318,6 +324,18 @@ router.post('/bills', requireStaff('pos'), async (req: Request, res: Response) =
 
   const createdBy = actor(req);
 
+  // Collected inside the tx, consumed AFTER commit for fire-and-forget pushes
+  // (design §4.4 step-3 / §7): the completed-sale alert + any product that
+  // crossed its low/out-of-stock threshold on this sale.
+  interface StockTransition {
+    id: number;
+    name: string;
+    unit: string;
+    previousStock: number;
+    balanceAfter: number;
+    lowStockThreshold: number | null;
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       // Collect the distinct catalogue product ids to lock.
@@ -335,7 +353,7 @@ router.post('/bills', requireStaff('pos'), async (req: Request, res: Response) =
         const placeholders = catalogueIds.map(() => '?').join(',');
         const locked = (await tx.$queryRawUnsafe(
           `SELECT id, name, sku, barcode, unit, price, tax_rate, stock, in_stock,
-                  track_inventory, allow_negative_stock
+                  track_inventory, allow_negative_stock, low_stock_threshold
              FROM products WHERE id IN (${placeholders}) FOR UPDATE`,
           ...catalogueIds
         )) as ProductRow[];
@@ -467,7 +485,10 @@ router.post('/bills', requireStaff('pos'), async (req: Request, res: Response) =
       }
 
       // Deduct stock once per product (aggregated demand), recompute in_stock,
-      // and append the sale movement with the post-deduction balance.
+      // and append the sale movement with the post-deduction balance. Capture
+      // the pre/post stock + threshold so after-commit push can fire ONLY on
+      // the transition into the low/out state (design §7 dedupe).
+      const transitions: StockTransition[] = [];
       for (const [pid, qty] of demand) {
         const p = productById.get(pid)!;
         if (!p.track_inventory) continue;
@@ -475,7 +496,8 @@ router.post('/bills', requireStaff('pos'), async (req: Request, res: Response) =
           p.allow_negative_stock == null
             ? settings.pos_allow_negative_stock
             : !!p.allow_negative_stock;
-        const balanceAfter = round2(num(p.stock) - qty);
+        const previousStock = num(p.stock);
+        const balanceAfter = round2(previousStock - qty);
         const inStock = balanceAfter > 0 || allowNeg ? 1 : 0;
         await tx.$executeRawUnsafe(
           `UPDATE products SET stock = ?, in_stock = ? WHERE id = ?`,
@@ -493,12 +515,40 @@ router.post('/bills', requireStaff('pos'), async (req: Request, res: Response) =
           billNo,
           createdBy
         );
+        transitions.push({
+          id: pid,
+          name: p.name,
+          unit: p.unit,
+          previousStock,
+          balanceAfter,
+          lowStockThreshold: p.low_stock_threshold == null ? null : num(p.low_stock_threshold),
+        });
       }
 
-      return loadBillById(tx as never, billId);
+      const bill = await loadBillById(tx as never, billId);
+      return { bill, transitions };
     });
 
-    return ok(res, { bill: result, idempotent: false });
+    const bill = result.bill;
+
+    // (3) After-commit, fire-and-forget pushes (design §4.4 step-3 / §7). These
+    // NEVER block the response or affect the saved bill — posNotify swallows all
+    // errors internally. Completed-sale alert is gated on pos_sale_notifications.
+    if (bill) {
+      if (settings.pos_sale_notifications) {
+        void posNotify.sale({
+          bill_no: bill.bill_no,
+          grand_total: bill.grand_total,
+          item_count: bill.items.length,
+          payment_method: bill.payment_method,
+        });
+      }
+      for (const t of result.transitions) {
+        void posNotify.stockStateAfterSale(t);
+      }
+    }
+
+    return ok(res, { bill, idempotent: false });
   } catch (e) {
     if (e instanceof CheckoutError) {
       return failWith(res, e.message, e.status, e.productId);
@@ -699,9 +749,11 @@ async function reverseBill(
       if (!bill) throw new CheckoutError(404, 'Bill not found.');
 
       // Idempotent: only a currently-completed bill reverses. Already
-      // cancelled/refunded → no-op, return the bill unchanged (no double restock).
+      // cancelled/refunded → no-op, return the bill unchanged (no double restock,
+      // no duplicate push).
       if (bill.status !== 'completed') {
-        return loadBillById(tx as never, bill.id);
+        const unchanged = await loadBillById(tx as never, bill.id);
+        return { bill: unchanged, reversed: false };
       }
 
       const items = (await tx.$queryRawUnsafe(
@@ -752,10 +804,24 @@ async function reverseBill(
         bill.id
       );
 
-      return loadBillById(tx as never, bill.id);
+      const updated = await loadBillById(tx as never, bill.id);
+      // reversed=true only when THIS call did the completed→cancelled/refunded
+      // transition (not an idempotent no-op on an already-reversed bill), so the
+      // push fires exactly once.
+      return { bill: updated, reversed: true };
     });
 
-    return ok(res, { bill: result });
+    // After-commit, fire-and-forget cancel/refund alert (design §7). Only when
+    // this call performed the reversal; posNotify swallows all errors.
+    if (result.reversed && result.bill) {
+      void posNotify.cancelRefund({
+        bill_no: result.bill.bill_no,
+        grand_total: result.bill.grand_total,
+        kind,
+      });
+    }
+
+    return ok(res, { bill: result.bill });
   } catch (e) {
     if (e instanceof CheckoutError) return failWith(res, e.message, e.status, e.productId);
     // eslint-disable-next-line no-console

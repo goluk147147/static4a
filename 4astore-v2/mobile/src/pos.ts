@@ -259,6 +259,49 @@ export function useRemovePhone() {
 }
 
 // --------------------------------------------------------------------------
+// Dashboard + sales reports (FEAT-006). Guarded server-side
+// (requireStaff('dashboard') / requireStaff('pos_reports')).
+// --------------------------------------------------------------------------
+export interface PosDashboard {
+  today: { sales: number; bills: number };
+  lowStock: number;
+  outOfStock: number;
+  recentBills: Array<{
+    bill_no: string | null;
+    customer_name: string | null;
+    grand_total: number;
+    payment_method: string | null;
+    status: string | null;
+    created_at: string | null;
+  }>;
+}
+
+export type ReportPeriod = 'day' | 'week' | 'month';
+
+export interface PosReport {
+  range: { from: string; to: string; label: string };
+  totals: { sales: number; bills: number; discounts: number; refunds: number; refundBills: number };
+  paymentSummary: Array<{ method: string; bills: number; amount: number }>;
+  bestSellers: Array<{ product_id: number | null; name: string; quantity: number; amount: number }>;
+  lowStock: Array<{ id: number; name: string; stock: number; unit: string; low_stock_threshold: number | null }>;
+  outOfStock: Array<{ id: number; name: string; stock: number; unit: string }>;
+}
+
+export interface ReportFilters {
+  period?: ReportPeriod;
+  from?: string;
+  to?: string;
+}
+
+export function usePosReport(filters: ReportFilters = {}) {
+  return useQuery({
+    queryKey: ['pos-report', filters],
+    staleTime: 15_000,
+    queryFn: async () => (await api.get('/admin/pos/reports', { ...filters })) as PosReport,
+  });
+}
+
+// --------------------------------------------------------------------------
 // Shared money helpers (client-side bill preview). The server recomputes
 // authoritative totals from product price/tax_rate on checkout.
 // --------------------------------------------------------------------------
