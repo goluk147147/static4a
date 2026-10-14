@@ -26,6 +26,7 @@ import linkRouter from './routes/link';
 import adminLinksRouter from './routes/admin-links';
 import posAuthRouter from './routes/pos-auth';
 import adminPosRouter from './routes/admin-pos';
+import posRouter from './routes/pos';
 import { requireAuth } from './auth/middleware';
 import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
 import { startVideoScheduler } from './services/videoScheduler';
@@ -64,6 +65,7 @@ app.use(ogCrawlerMiddleware);
 app.use('/api/users', usersRouter);
 app.use('/api/otp', otpRouter);
 app.use('/api/pos/auth', posAuthRouter); // POS phone-OTP login (PUBLIC)
+app.use('/api/pos', posRouter); // POS billing + stock engine (requireAuth + requireStaff('pos'))
 app.use('/api', catalogRouter); // /api/products, /api/categories, /api/settings, /api/config, /api/announcement, /api/version
 app.use('/api/orders', ordersRouter);
 app.use('/api/tracking', trackingRouter);
