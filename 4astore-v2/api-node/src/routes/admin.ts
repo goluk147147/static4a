@@ -365,6 +365,8 @@ router.post('/announcement', requireAuth, async (req: Request, res: Response) =>
 
 // ---------------- Users: list + assignRole by mobile ----------------
 router.get('/users', requireAuth, requireStaff('users'), async (_req: Request, res: Response) => {
+  // Admin JSON must never be cached by the browser or Cloudflare so edits show immediately.
+  res.setHeader('Cache-Control', 'no-store');
   const users = await prisma.user.findMany({ orderBy: { id: 'desc' } });
   const list = users.map((u) => {
     const { password, ...rest } = u;

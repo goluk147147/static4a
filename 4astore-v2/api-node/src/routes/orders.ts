@@ -32,6 +32,8 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   if (mobile && !staff && viewer.mobile !== mobile) return fail(res, 'Access denied', 403);
 
   if (staff && !mobile) {
+    // Admin JSON must never be cached by the browser or Cloudflare so edits show immediately.
+    res.setHeader('Cache-Control', 'no-store');
     // Opt-in keyset pagination: when EITHER limit or cursor is present, page by
     // descending id and return { orders, nextCursor }. When BOTH are absent the
     // behaviour and response shape are exactly the original unpaginated list.

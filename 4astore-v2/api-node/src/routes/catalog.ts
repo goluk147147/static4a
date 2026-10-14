@@ -34,21 +34,21 @@ const STATIC_CACHE = 'public, max-age=30';
 // which point the next request gets fresh data immediately — regardless of any shared/edge cache.
 const CATALOG_CACHE = 'no-cache, must-revalidate';
 
-// The version read is tiny and cached behind the existing 10s ttlCache so it never adds a query per
-// catalog request. Falls back to 1 when the `catalog_version` column/row is absent (before
-// prisma/catalog-version.sql has run on the live DB).
+// The version read is a tiny indexed single-row SELECT and is intentionally NOT cached: it must
+// reflect an admin write (bumpCatalogVersion) on the very next catalog request so the ETag changes
+// immediately and admin/storefront refetches get fresh data (no up-to-10s stale window). It only
+// runs on /products + /categories and is far cheaper than the queries it gates. Falls back to 1
+// when the `catalog_version` column/row is absent (before prisma/catalog-version.sql has run).
 async function catalogVersion(): Promise<number> {
-  return cached('catalog_version', async () => {
-    try {
-      const rows = await prisma.$queryRawUnsafe<Array<{ catalog_version?: unknown }>>(
-        'SELECT catalog_version FROM app_version WHERE id = 1'
-      );
-      const v = Number(rows[0]?.catalog_version);
-      return Number.isFinite(v) && v > 0 ? v : 1;
-    } catch {
-      return 1;
-    }
-  });
+  try {
+    const rows = await prisma.$queryRawUnsafe<Array<{ catalog_version?: unknown }>>(
+      'SELECT catalog_version FROM app_version WHERE id = 1'
+    );
+    const v = Number(rows[0]?.catalog_version);
+    return Number.isFinite(v) && v > 0 ? v : 1;
+  } catch {
+    return 1;
+  }
 }
 
 // Set the catalog ETag + must-revalidate headers and, when the client's If-None-Match matches the

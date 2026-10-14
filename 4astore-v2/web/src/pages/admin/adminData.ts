@@ -47,6 +47,10 @@ export function useAdminUsers(enabled = true) {
   return useQuery({
     queryKey: ['admin-users'],
     enabled,
+    // Admin list must stay fresh: refetch on mount/focus so edits (role, delivery, new rider)
+    // appear within seconds without a manual reload, without adding a poll.
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => (await api.get('/admin/users')).data.users as AdminUserRow[],
   });
 }

@@ -157,7 +157,8 @@ export default function AdminUsers() {
   const [modal, setModal] = useState<Modal>(null);
 
   // Staff accounts live in the Team Access tab (original kept admins in a separate store).
-  const users = useMemo(() => allUsers.filter((u) => !STAFF.includes(u.role)).sort((a, b) => Number(a.id) - Number(b.id)), [allUsers]);
+  // Preserve the API's newest-first order (admin GET /users is `orderBy: id desc`); do not re-sort.
+  const users = useMemo(() => allUsers.filter((u) => !STAFF.includes(u.role)), [allUsers]);
   const refreshUsers = () => qc.invalidateQueries({ queryKey: ['admin-users'] });
 
   const stats = useMemo(() => {
