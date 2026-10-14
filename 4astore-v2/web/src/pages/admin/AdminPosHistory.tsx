@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiError } from '../../lib/api';
 import { showToast } from '../../store/toast';
+import { openWhatsApp } from '../../lib/whatsapp';
+import { useSettings } from '../../lib/queries';
+import { copyText, nativeShareText, posBillText, printPosBill } from '../../lib/posInvoice';
 import { formatDate } from './adminData';
 import { PosBill, useCancelBill, usePosBill, usePosBills, useRefundBill } from '../../lib/pos';
 
@@ -123,8 +126,47 @@ function BillDetail({ billNo, onBack }: { billNo: string; onBack: () => void }) 
       {isLoading || !bill ? (
         <p style={styles.hint}>Loading bill…</p>
       ) : (
-        <BillCard bill={bill} onReverse={doReverse} reversing={cancel.isPending || refund.isPending} />
+        <BillCard
+          bill={bill}
+          onReverse={doReverse}
+          reversing={cancel.isPending || refund.isPending}
+          actions={<BillActions bill={bill} />}
+        />
       )}
+    </div>
+  );
+}
+
+/**
+ * The five share actions (design §8, acceptance f): Share on WhatsApp, Download
+ * PDF, Print, Native Share and Copy. The invoice text / PDF are built by
+ * lib/posInvoice from the SERVER bill (totals verbatim); PDF + Print both go
+ * through the browser print pipeline (hidden iframe → Print / Save-as-PDF) with
+ * no new web dependency.
+ */
+function BillActions({ bill }: { bill: PosBill }) {
+  const { data: settings } = useSettings();
+  const store = { storeAddress: settings?.storeAddress, storePhone: settings?.storePhone };
+
+  const shareOnWhatsApp = () => openWhatsApp(bill.customer_mobile || null, posBillText(bill, store));
+  const print = () => printPosBill(bill, store);
+  const nativeShare = async () => {
+    const r = await nativeShareText(posBillText(bill, store));
+    if (r === 'copied') showToast('Share not available — bill copied to clipboard', 'info');
+    else if (r === 'unavailable') showToast('Sharing not supported on this device', 'error');
+  };
+  const copy = async () => {
+    const ok = await copyText(posBillText(bill, store));
+    showToast(ok ? 'Bill copied' : 'Could not copy', ok ? 'success' : 'error');
+  };
+
+  return (
+    <div style={styles.actions}>
+      <button type="button" style={{ ...styles.actionBtn, ...styles.waBtn }} onClick={shareOnWhatsApp}>💬 WhatsApp</button>
+      <button type="button" style={styles.actionBtn} onClick={print}>📄 Download PDF</button>
+      <button type="button" style={styles.actionBtn} onClick={print}>🖨️ Print</button>
+      <button type="button" style={styles.actionBtn} onClick={nativeShare}>📤 Share</button>
+      <button type="button" style={styles.actionBtn} onClick={copy}>📋 Copy</button>
     </div>
   );
 }
@@ -221,4 +263,7 @@ const styles: Record<string, React.CSSProperties> = {
   totalRow: { display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: 14 },
   cancelBtn: { padding: '9px 14px', border: '1px solid #c62828', borderRadius: 8, background: 'white', color: '#c62828', fontWeight: 700, cursor: 'pointer' },
   refundBtn: { padding: '9px 14px', border: '1px solid #6d28d9', borderRadius: 8, background: 'white', color: '#6d28d9', fontWeight: 700, cursor: 'pointer' },
+  actions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  actionBtn: { padding: '9px 13px', border: '1px solid var(--border)', borderRadius: 8, background: 'white', color: 'var(--primary-dark)', fontWeight: 700, cursor: 'pointer', fontSize: 13 },
+  waBtn: { borderColor: '#25D366', color: '#128C45' },
 };

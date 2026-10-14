@@ -2,7 +2,12 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import type { Order } from './types';
+import type { PosBill } from './pos';
 import { STORE_ADDRESS_DEFAULT, STORE_WHATSAPP_DEFAULT } from './config';
+import { billToInvoice, posInvoiceHtml, posWhatsAppText } from './posInvoice';
+
+// Re-export the pure POS invoice core so callers (and tests) have one entry point.
+export { billToInvoice, posInvoiceHtml, posWhatsAppText } from './posInvoice';
 
 const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -73,4 +78,34 @@ export async function downloadInvoice(order: Order, storePhone?: string, storeAd
   } else {
     await Print.printAsync({ uri });
   }
+}
+
+// --------------------------------------------------------------------------
+// POS bill invoice (FEAT-005). Reuses the shared Unicode HTML template +
+// expo-print path. Totals come from the server bill verbatim (no recompute).
+// --------------------------------------------------------------------------
+
+/** Render the POS bill to the shared Unicode HTML invoice string. */
+export function posBillHtml(bill: PosBill, storePhone?: string, storeAddress?: string): string {
+  return posInvoiceHtml(billToInvoice(bill, { storePhone, storeAddress }));
+}
+
+/** Build the WhatsApp / copy text summary for a POS bill. */
+export function posBillText(bill: PosBill, storePhone?: string, storeAddress?: string): string {
+  return posWhatsAppText(billToInvoice(bill, { storePhone, storeAddress }));
+}
+
+/** Generate the POS invoice PDF and open the native share / save sheet. */
+export async function downloadPosInvoice(bill: PosBill, storePhone?: string, storeAddress?: string) {
+  const { uri } = await Print.printToFileAsync({ html: posBillHtml(bill, storePhone, storeAddress), width: 595, height: 842 });
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `${bill.bill_no || 'Bill'}.pdf`, UTI: 'com.adobe.pdf' });
+  } else {
+    await Print.printAsync({ uri });
+  }
+}
+
+/** Open the native print dialog for a POS bill. */
+export async function printPosInvoice(bill: PosBill, storePhone?: string, storeAddress?: string) {
+  await Print.printAsync({ html: posBillHtml(bill, storePhone, storeAddress) });
 }

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Share, Text, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import StoreHeader from '../../../src/components/StoreHeader';
 import { Button, Card, Loading, Screen, SummaryRow, styles as ui } from '../../../src/components/ui';
@@ -8,7 +9,10 @@ import { apiError } from '../../../src/api';
 import { showToast } from '../../../src/store/ui';
 import { formatDate } from '../../../src/checkout';
 import { colors } from '../../../src/theme';
-import { useCancelBill, usePosBill, useRefundBill } from '../../../src/pos';
+import { openWhatsApp } from '../../../src/native';
+import { useSettings } from '../../../src/queries';
+import { downloadPosInvoice, posBillText, printPosInvoice } from '../../../src/invoice';
+import { PosBill, useCancelBill, usePosBill, useRefundBill } from '../../../src/pos';
 
 const money = (n: number) => `₹${Number(n).toFixed(2)}`;
 const STATUS_COLOR: Record<string, string> = { completed: '#087a3d', held: '#b96500', cancelled: '#c62828', refunded: '#6d28d9' };
@@ -25,6 +29,7 @@ export default function PosBillDetail() {
   const allowed = canAdmin(user, 'pos');
 
   const { data: bill, isLoading } = usePosBill(billNo);
+  const { data: settings } = useSettings();
   const cancel = useCancelBill();
   const refund = useRefundBill();
 
@@ -99,6 +104,8 @@ export default function PosBillDetail() {
         </View>
       </Card>
 
+      <BillShareActions bill={bill} storePhone={settings?.storePhone} storeAddress={settings?.storeAddress} />
+
       {bill.status === 'completed' && (
         <Card style={{ marginTop: 12 }}>
           <Text style={[ui.muted, { marginBottom: 8 }]}>Reverse this bill (restores stock):</Text>
@@ -109,5 +116,57 @@ export default function PosBillDetail() {
         </Card>
       )}
     </Screen>
+  );
+}
+
+/**
+ * The five share actions (design §8, acceptance f): Share on WhatsApp, Download
+ * PDF, Print, Share (native sheet) and Copy. The invoice PDF / text are built by
+ * src/invoice.ts from the SERVER bill (totals verbatim) via the existing
+ * expo-print path.
+ */
+function BillShareActions({ bill, storePhone, storeAddress }: { bill: PosBill; storePhone?: string; storeAddress?: string }) {
+  const text = () => posBillText(bill, storePhone, storeAddress);
+
+  const whatsApp = () => openWhatsApp(bill.customer_mobile || '', text());
+  const downloadPdf = async () => {
+    try {
+      await downloadPosInvoice(bill, storePhone, storeAddress);
+    } catch {
+      showToast('Could not create PDF', 'error');
+    }
+  };
+  const print = async () => {
+    try {
+      await printPosInvoice(bill, storePhone, storeAddress);
+    } catch {
+      showToast('Could not open print', 'error');
+    }
+  };
+  const share = async () => {
+    try {
+      await Share.share({ message: text() });
+    } catch {
+      /* user dismissed the sheet — ignore */
+    }
+  };
+  const copy = async () => {
+    await Clipboard.setStringAsync(text());
+    showToast('Bill copied', 'success');
+  };
+
+  return (
+    <Card style={{ marginTop: 12 }}>
+      <Text style={[ui.muted, { marginBottom: 8 }]}>Share this bill:</Text>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+        <Button title="💬 WhatsApp" onPress={whatsApp} style={{ flex: 1 }} />
+        <Button title="📄 PDF" outline onPress={downloadPdf} style={{ flex: 1 }} />
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Button title="🖨️ Print" outline onPress={print} style={{ flex: 1 }} />
+        <Button title="📤 Share" outline onPress={share} style={{ flex: 1 }} />
+        <Button title="📋 Copy" outline onPress={copy} style={{ flex: 1 }} />
+      </View>
+    </Card>
   );
 }
