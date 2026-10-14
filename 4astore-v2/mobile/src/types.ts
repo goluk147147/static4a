@@ -11,6 +11,8 @@ export interface Product {
   description?: string;
   features?: string[];
   in_stock: boolean;
+  // ISO timestamp of the last product write (products.updated_at); optional image cache-bust key (FEAT-001).
+  updated_at?: string;
 }
 
 export interface Category {
