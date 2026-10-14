@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, Share, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import StoreHeader from '../../src/components/StoreHeader';
 import ProductImage from '../../src/components/ProductImage';
@@ -7,7 +7,7 @@ import { Button, Card, EmptyState, GradientButton, Screen, Shimmer, Stepper, sty
 import { useProducts, useSettings } from '../../src/queries';
 import { useFeature } from '../../src/features';
 import { useCart } from '../../src/store/cart';
-import { SITE_URL } from '../../src/config';
+import { shareProduct } from '../../src/share';
 import { colors, radius, space } from '../../src/theme';
 
 /**
@@ -141,8 +141,18 @@ export default function ProductDetails() {
     );
   }
 
-  // Smart link: opens this product in the app (App Links) or on the website.
-  const share = () => Share.share({ message: `${product.name} – ₹${product.price} | 4A Store\n${SITE_URL}/product/${product.id}` });
+  // Share the UNIVERSAL SMART SHORT-LINK (/link/<code>) — opens app-first → Play Store →
+  // website, matching the web storefront. Falls back to /product/:id if no code is minted.
+  const [sharing, setSharing] = useState(false);
+  const share = async () => {
+    if (sharing) return; // guard against double-taps
+    setSharing(true);
+    try {
+      await shareProduct(product);
+    } finally {
+      setSharing(false);
+    }
+  };
 
   return (
     <Screen header={<StoreHeader back hideSearch />}>
@@ -219,7 +229,7 @@ export default function ProductDetails() {
             <GradientButton title="Add to Cart / कार्ट में डालें" onPress={() => add(product)} />
           )}
         </View>
-        <Button title="🔗 Share / शेयर करें" outline onPress={share} style={{ marginTop: space.md }} />
+        <Button title="🔗 Share / शेयर करें" outline onPress={share} disabled={sharing} style={{ marginTop: space.md }} />
       </View>
     </Screen>
   );
