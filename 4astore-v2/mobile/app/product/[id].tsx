@@ -164,7 +164,7 @@ export default function ProductDetails() {
           accessibilityLabel={`${product.name}${canZoom ? ' — tap to zoom / ज़ूम के लिए दबाएँ' : ''}`}
         >
           <View style={{ transform: [{ rotate: `${rotation}deg` }] }}>
-            <ProductImage name={product.name} weight={product.weight} category={product.category} image={product.image} height={280} />
+            <ProductImage name={product.name} weight={product.weight} category={product.category} image={product.image} updatedAt={product.updated_at} height={280} />
           </View>
           {canZoom && (
             <View style={{ position: 'absolute', right: 8, bottom: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 }}>
@@ -181,7 +181,7 @@ export default function ProductDetails() {
       </Card>
       {canZoom && (
         <ZoomViewer visible={zoom} onClose={() => setZoom(false)} rotation={rotation} onRotate={rotate} canRotate={canRotate}>
-          <ProductImage name={product.name} weight={product.weight} category={product.category} image={product.image} height={360} style={{ width: 340 }} />
+          <ProductImage name={product.name} weight={product.weight} category={product.category} image={product.image} updatedAt={product.updated_at} height={360} style={{ width: 340 }} />
         </ZoomViewer>
       )}
       <View style={{ paddingVertical: 14 }}>

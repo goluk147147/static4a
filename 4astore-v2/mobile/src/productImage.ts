@@ -40,10 +40,21 @@ export function placeholderStyle(name: string, category?: string) {
   return { emoji, ...style };
 }
 
-/** https → direct; http (blocked by Android cleartext policy) → API image proxy; relative → site URL. */
-export function productImageUri(image?: string | null): string {
+/**
+ * https → direct; http (blocked by Android cleartext policy) → API image proxy; relative → site URL.
+ * When `version` is supplied and the resolved uri is non-empty, append a `v=` cache-bust param
+ * (numeric when `version` is a date string, else the value as-is) so a changed image re-fetches.
+ */
+export function productImageUri(image?: string | null, version?: string | number): string {
   const url = String(image || '').trim();
   if (!url) return '';
-  if (/^http:/i.test(url)) return `${API_BASE}/img-proxy?url=${encodeURIComponent(url)}`;
-  return absoluteUrl(url);
+  const uri = /^http:/i.test(url) ? `${API_BASE}/img-proxy?url=${encodeURIComponent(url)}` : absoluteUrl(url);
+  if (!uri || version === undefined || version === null || version === '') return uri;
+  const sep = uri.includes('?') ? '&' : '?';
+  let v: string | number = version;
+  if (typeof version === 'string') {
+    const t = Date.parse(version);
+    v = Number.isNaN(t) ? version : t;
+  }
+  return `${uri}${sep}v=${encodeURIComponent(String(v))}`;
 }

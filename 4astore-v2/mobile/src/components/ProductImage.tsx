@@ -12,11 +12,13 @@ interface Props {
   height?: number;
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
+  /** Optional image cache-bust key (products.updated_at); no-op when absent. */
+  updatedAt?: string | number;
 }
 
 /** Product photo with the web's generated emoji placeholder as fallback. */
-export default function ProductImage({ name, weight, category, image, height = 120, style, compact }: Props) {
-  const uri = productImageUri(image);
+export default function ProductImage({ name, weight, category, image, height = 120, style, compact, updatedAt }: Props) {
+  const uri = productImageUri(image, updatedAt);
   const [failed, setFailed] = useState(false);
 
   if (uri && !failed) {

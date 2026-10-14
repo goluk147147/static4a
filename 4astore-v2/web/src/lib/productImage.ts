@@ -6,6 +6,8 @@ interface ImgProduct {
   category?: string;
   weight?: string;
   image?: string;
+  /** ISO timestamp of the last product write; optional image cache-bust key (FEAT-001). */
+  updated_at?: string;
 }
 
 const PRODUCT_EMOJIS: [string, string][] = [
@@ -62,12 +64,28 @@ export function productPlaceholder(p: ImgProduct): string {
   return 'data:image/svg+xml,' + encodeURIComponent(svg);
 }
 
+/** Derive a stable numeric cache-bust token from updated_at (fall back to the raw string if NaN). */
+function cacheBustValue(updatedAt: string): string {
+  const t = Date.parse(updatedAt);
+  return Number.isNaN(t) ? updatedAt : String(t);
+}
+
+/** Append `v=<token>` to a server URL/path, choosing '?' or '&' based on the existing query string. */
+function withCacheBust(src: string, updatedAt?: string): string {
+  if (!updatedAt) return src;
+  const sep = src.includes('?') ? '&' : '?';
+  return src + sep + 'v=' + encodeURIComponent(cacheBustValue(updatedAt));
+}
+
 /** Remote images go through the API image proxy; empty/unknown → generated placeholder. */
 export function productImageSrc(p: ImgProduct): string {
   const url = String(p.image || '').trim();
   if (!url) return productPlaceholder(p);
-  if (/^https?:/i.test(url)) return '/api/img-proxy?url=' + encodeURIComponent(url);
-  if (/^(data:|blob:)/i.test(url) || url.startsWith('/')) return url;
+  // Server URL (via img-proxy) and '/'-rooted upload paths get an optional updated_at cache-bust.
+  if (/^https?:/i.test(url)) return withCacheBust('/api/img-proxy?url=' + encodeURIComponent(url), p.updated_at);
+  if (url.startsWith('/')) return withCacheBust(url, p.updated_at);
+  // data:/blob: are self-contained — never cache-bust them.
+  if (/^(data:|blob:)/i.test(url)) return url;
   if (url.startsWith('./') || url.startsWith('../')) return url;
   return productPlaceholder(p);
 }

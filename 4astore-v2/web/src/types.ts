@@ -12,6 +12,8 @@ export interface Product {
   features?: string[];
   in_stock: boolean;
   featured?: boolean; // daily "Aaj ka Special" video picks these first
+  // ISO timestamp of the last product write (products.updated_at); optional image cache-bust key (FEAT-001).
+  updated_at?: string;
   // Per-product SEO (ADD-only; API returns null when unset — see FEAT-001).
   seo_title?: string | null;
   seo_description?: string | null;
