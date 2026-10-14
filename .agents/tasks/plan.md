@@ -1,120 +1,139 @@
-# Implementation Plan — Admin Panel: Out-of-Stock Freshness, Newest-First Lists, No Stale Data
+# Implementation Plan — Local product-image upload with hard 50 KB (51200-byte) compression
 
-Three small, surgical admin-panel bug fixes in the 4A Store v2 worktree. Keep diffs minimal.
-Another branch (pos-billing) is adding POS/inventory columns, so do NOT touch POS files, SEO/OG,
-short-link, or marketing code. Do NOT alter the public catalog ETag cache behaviour for the
-storefront. No new dependencies. No schema changes.
+Scope: add a local-file product image upload to the 4A Store v2 admin that HARD-compresses the
+FINAL stored image to a MAX of 51200 bytes (50 KB), on the WEB admin, plus a small api-node
+server-side guard. MOBILE is OUT OF SCOPE for upload (see item 5 — there is no mobile admin product
+editor). Keep the diff surgical; this branch is unrelated to pos-billing / admin-fixes.
 
-## Worktree (all paths absolute, inside the worktree — never the main checkout)
+Worktree root: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb`
+Projects root: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb\4astore-v2`
 
-- Root: `c:\xampp\htdocs\static4a\.worktrees\admin-fixes\4astore-v2`
-- api-node: `…\4astore-v2\api-node` — Express + Prisma + MySQL, TS. Build: `npm run build` (= `tsc -p tsconfig.json`). No test script, no test suite.
-- web: `…\4astore-v2\web` — React + Vite + TS admin. Build: `npm run build` (= generate-sitemap + `tsc -b` + `vite build`). No test/lint script.
-- mobile: `…\4astore-v2\mobile` — Expo RN + TS. Typecheck: `npx tsc --noEmit`. Tests: `npm test` (node test runner). Do NOT run expo prebuild / build any native binary/AAB.
+## Design decisions (grounded in the code I read)
 
-Verification across this task is **the project build / typecheck** (there is no unit-test suite for
-these modules) plus a **manual admin-UI walkthrough on a running dev server**, because every bug is
-about live request/response + render behaviour, not pure logic.
+- **Store a compressed JPEG data-URI into `product.image`, no API shape change.** `products.image`
+  is a TEXT column already holding base64 data-URIs end-to-end (confirmed in
+  `api-node/src/services/dataImport.ts`), and the save path `web/src/lib/admin.ts ->
+  saveProduct(action, product)` POSTs `{ action, product }` to `/admin/products`, where
+  `productSchema.image` is a free `z.string()`. So a data-URI drops straight in with zero backend
+  shape change. Chosen over uploading a file to a new `/products/upload` endpoint (like
+  `/banners/upload`) because the brief says "store the compressed data-URI into product.image via
+  the existing save path (no API shape change)" and the column already supports it.
+- **JPEG output, iterative resize+quality loop.** Extend the existing canvas approach in
+  `web/src/lib/checkout.ts` (`compressImage` already draws to a canvas and emits
+  `canvas.toDataURL('image/jpeg', q)`). Add a NEW `compressToMaxBytes` that loops: drop quality
+  first, then shrink dimensions, until the decoded byte length `<= 51200`, with an aggressive floor
+  so it is mathematically impossible to exceed 50 KB (if even the floor is over budget, return the
+  smallest result — but with the chosen floor that never happens for real photos). JPEG chosen over
+  WebP for maximum browser/`canvas.toDataURL` support; quality-then-size order chosen to preserve
+  dimensions as long as possible. **Do NOT modify `compressImage`** — `PaymentModal.tsx` depends on
+  its current signature/behaviour; add a sibling function.
+- **Measure true bytes, not string length.** data-URI payload byte size = decoded base64 length.
+  Compute it from the base64 part (`atob(b64).length`, or `(b64.length * 3/4) - padding`) so the
+  ceiling is the real stored size, not the ~1.33x-inflated string length.
+- **Server guard at ~60 KB, not exactly 50 KB.** The client targets `<= 51200`; the server rejects
+  only clearly-oversized images (decoded data-URI > ~61440 bytes) so a legitimate client-compressed
+  image never trips it, while a bypassed/raw upload is blocked. Implemented inside the existing
+  `/admin/products` handler (no new route, no change to the global `express.json` limit).
+- **Mobile: parity not possible — no editor exists.** `mobile/app/admin/` contains only
+  `orders.tsx`, `roles.tsx`, `order/[id].tsx`. There is NO product add/edit screen on mobile, so
+  there is nothing to add an image picker to. `expo-image-picker` + `expo-image-manipulator` ARE
+  installed, so if a mobile product editor is added later the same ceiling can be implemented
+  without a native rebuild — but that is out of scope here.
 
----
+## Verification commands (discovered during exploration)
 
-## Ground truth established during exploration (read this before editing)
-
-### Data model (api-node/prisma/schema.prisma — DO NOT CHANGE)
-- `model Product` — stock is a single boolean `in_stock Boolean @default(true)`; autoincrement `id`. There is an index `idx_products_instock`. There is NO `available` / `stock` / `out_of_stock` / `status` column.
-- `model Order` — `order_date DateTime`, `created_at DateTime @default(now())`, autoincrement `id`. Because `id` is monotonic autoincrement, `orderBy: { id: 'desc' }` == newest-created first.
-- `model User` — `registered_at DateTime?`, `created_at DateTime @default(now())`, autoincrement `id`. `orderBy: { id: 'desc' }` == newest first.
-
-### BUG 1 — write/store/read/render trace (CONFIRMED)
-- WRITE: `api-node/src/routes/admin.ts` → `POST /products` (action add/update). The Zod field `inStock` (default true) is persisted to column `in_stock`. After the write it calls `bumpCatalogVersion()` (increments `app_version.catalog_version`). **Write is correct.**
-- READ (admin list): the web admin products page reads the **PUBLIC** `GET /api/products` in `api-node/src/routes/catalog.ts` (via web `useProducts()` → `api.get('/products')`). There is no separate admin products-read endpoint.
-- RENDER: `web/src/pages/admin/AdminProducts.tsx` renders the stock badge from `p.in_stock` (`<span className={... p.in_stock ? 'stock-in' : 'stock-out'}>{p.in_stock ? 'In Stock' : 'Out'}</span>`) and the edit modal maps `inStock: p?.in_stock !== false`. **Render field is correct.** (So "UI reads wrong field" is NOT the cause — do not change the render field.)
-- ROOT CAUSE = STALENESS via the catalog-version cache: `GET /products` builds an ETag `"cat-v<version>"` and returns **304 Not Modified** when the client's `If-None-Match` matches. The version is read by `catalogVersion()` which is wrapped in the in-memory **10-second `ttlCache`** (`TTL_MS = 10_000`, key `'catalog_version'`). So right after an admin toggles stock, `bumpCatalogVersion()` has incremented the DB column, but `catalogVersion()` keeps returning the OLD cached number for up to ~10s → ETag unchanged → the admin's refetch gets a 304 → the list still shows the old `in_stock` for up to ~10s. This is the actual "still shows in stock" window, and it is the same mechanism as BUG 3.
-- Note: web `useProducts()` already has `staleTime: 0` + `refetchOnWindowFocus: true` and `AdminProducts.save()`/`remove()` call `qc.invalidateQueries(['products'])`, so the client DOES refetch immediately — it is the server-side 304 (from the stale cached version) that returns stale data.
-
-### BUG 2 — ordering (CONFIRMED, one real defect)
-- Orders API: `api-node/src/routes/orders.ts` `GET /` staff path uses `orderBy: { id: 'desc' }` on BOTH the unpaginated branch and the keyset/cursor branch. ✓
-- Web Orders UI: `web/src/pages/admin/AdminOrders.tsx` uses `useAdminOrders()` (`web/src/pages/admin/adminData.ts`, key `['admin-orders']`, `api.get('/orders')`) and does NOT re-sort — it slices for pagination in received order. ✓ (needs a quick runtime confirm it shows newest on top.)
-- Mobile Orders UI: `mobile/app/admin/orders.tsx` uses `useAllOrders` (`mobile/src/queries.ts`, `limit:50` → keyset `id desc`), no client re-sort. ✓
-- Users API: `api-node/src/routes/admin.ts` `GET /users` uses `orderBy: { id: 'desc' }`. ✓
-- **Web Users UI DEFECT:** `web/src/pages/admin/AdminUsers.tsx` re-sorts the API result ASCENDING, overriding the API order:
-  `const users = useMemo(() => allUsers.filter((u) => !STAFF.includes(u.role)).sort((a, b) => Number(a.id) - Number(b.id)), [allUsers]);`
-  The `.sort((a,b) => Number(a.id) - Number(b.id))` forces oldest-first. This is the Users "not newest-first" root cause.
-- Mobile Users: `mobile/app/admin/roles.tsx` is an assign-by-mobile FORM with no user list — nothing to sort. (`mobile/app/admin/` has only `orders.tsx`, `roles.tsx`, `order/[id].tsx` — NO admin product-stock screen, so BUG 1 is web-only for the admin UI.)
-
-### BUG 3 — freshness (CONFIRMED gaps)
-- Admin GET endpoints set NO `Cache-Control` header today:
-  - `GET /api/orders` (staff list) in `orders.ts` — no cache header.
-  - `GET /api/admin/users` in `admin.ts` — no cache header.
-  Express then adds a weak ETag off the JSON body; a browser/Cloudflare may serve stale admin JSON. Admin JSON must be `no-store`.
-- React Query freshness:
-  - Web global default (`web/src/main.tsx`): `staleTime: 60_000`, `refetchOnWindowFocus: false`.
-  - `useAdminOrders` already polls every 7s (`refetchInterval: 7000`, `refetchIntervalInBackground: true`). Good enough for orders freshness; leave the interval as-is (do not hammer harder).
-  - `useAdminUsers` (`['admin-users']`) has NO freshness override → inherits `staleTime 60_000` + no focus refetch. Edits (role/delivery/new rider) only show via explicit `invalidateQueries(['admin-users'])`; a stale window remains on navigation/focus. Needs `staleTime: 0` + `refetchOnWindowFocus: true` (and mount refetch, which `staleTime:0` gives).
-  - `useProducts` / `useCategories` (web `lib/queries.ts`) already have `staleTime: 0` + `refetchOnWindowFocus: true`. Do NOT change these (shared with storefront).
-- `web/src/lib/persistCache.ts` only snapshots PUBLIC single-segment keys (`products`, `categories`, `config`, `settings`, `pages`) — it does NOT persist `admin-orders`/`admin-users`, so no admin list is served from localStorage. No change needed there.
-- Mobile admin (`useAllOrders`) already polls 7s + `retry:false`; mobile has no admin users/products list. No mobile freshness change required (verify only).
-- The public catalog ETag path (`serveCatalogConditional`, `CATALOG_CACHE`, `/products`, `/categories`, `/config`, `/settings`, `/version`, `/announcement` in `catalog.ts`) and the `STATIC_CACHE` public headers MUST stay intact.
+- WEB build: `npm run build` in `4astore-v2/web` (runs `generate-sitemap` + `tsc -b` + `vite build`).
+- API build: `npm run build` in `4astore-v2/api-node` (`tsc -p tsconfig.json`).
+- MOBILE typecheck: `npx tsc --noEmit` in `4astore-v2/mobile` (no mobile code changes, so this must
+  stay green as a regression check only).
+- Ceiling-proof: a small node script that base64-decodes the stored data-URI and asserts
+  `<= 51200` (item 4).
 
 ---
 
-## Design decisions (chosen approach + rationale)
+- [ ] 1. Add an iterative byte-budget image compressor to the web lib.
+      Add a NEW exported async function `compressToMaxBytes(dataUri: string, maxBytes = 51200): Promise<string | null>`
+      beside the existing `compressImage` in `web/src/lib/checkout.ts`. It must: load the image,
+      then loop — start at a sane max dimension (e.g. 1000px) and quality (e.g. 0.82), re-encode via
+      a canvas to `image/jpeg`, measure the DECODED byte size of the result (decode the base64 part,
+      e.g. `atob(dataUri.split(',')[1]).length`), and if still over budget progressively lower
+      quality (down to ~0.3) then shrink the max dimension (e.g. steps 1000→800→640→512→400→320→256px),
+      repeating until size `<= maxBytes`. Guarantee termination and a hard ceiling: at the smallest
+      dimension + lowest quality the result is well under 50 KB for any real photo; return that
+      final data-URI (never one over `maxBytes` unless the floor itself exceeds it, which it will not).
+      Export a small helper `dataUriBytes(dataUri: string): number` too (reused by item 2's size readout).
+      Do NOT change `compressImage` — `PaymentModal.tsx` still imports it unchanged.
+      Files: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb\4astore-v2\web\src\lib\checkout.ts`
+      Verify: `npm run build` in `4astore-v2/web` succeeds (tsc + vite) — the new exports typecheck
+      and bundle with no errors.
 
-1. **BUG 1 fix lives on the server at the catalog-version source, not in the UI.** The render field and client refetch are already correct; the stale window is the 10s-cached `catalog_version`. Rationale: a one-line change that makes the version read reflect writes immediately fixes admin out-of-stock display AND keeps the public ETag/304 scheme working (storefront still revalidates cheaply; it just picks up the new version on the next request instead of up to 10s later). Chosen fix: **stop caching the `catalog_version` read behind the 10s `ttlCache`** — read it directly (it is a single tiny indexed `SELECT … WHERE id=1`, far cheaper than the product/category queries it gates, and only runs on `/products` + `/categories`). This is strictly less code than alternatives (e.g. clearing the cache key inside `bumpCatalogVersion`, which is cross-file and racier). The `/config` and `/settings` 10s caches are untouched.
+- [ ] 2. Add the local file picker + preview + size readout to the web admin product form.
+      In `AdminProducts.tsx`, add — directly under the existing "Image URL" field inside the modal
+      `prod-form-grid` — a `<input type="file" accept="image/*">`. On change: read the chosen file as
+      a data-URI (`FileReader.readAsDataURL`), run `compressToMaxBytes(dataUri, 51200)`, and on success
+      set the form `image` field to the returned compressed data-URI (reuse the existing
+      `set('image', ...)`). Show a small preview `<img src={form.image}>` and a size readout computed
+      with `dataUriBytes` (e.g. "Stored size: 42.1 KB / 50 KB"). While compressing, disable Save and
+      show a "Compressing…" hint; on compressor failure show `showToast('Could not read/compress this image', 'error')`.
+      Keep the existing URL `<input>` working (a pasted http(s) URL still saves as-is — do not force
+      compression on URLs, only on local file picks). No change to `save()` / `saveProduct` payload —
+      `image` already carries whatever string is in the field.
+      Files: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb\4astore-v2\web\src\pages\admin\AdminProducts.tsx`
+      (import `compressToMaxBytes`, `dataUriBytes` from `../../lib/checkout`)
+      Verify: `npm run build` in `4astore-v2/web` succeeds. Manual: open Admin → Products → Add,
+      pick a large photo, confirm the readout shows `<= 50 KB` and Save succeeds.
 
-2. **BUG 2 (Users) fix = remove the client ascending re-sort**, keep the server `id desc` as the single source of truth. Rationale: the task says make ordering explicit/correct at API and UI and not rely on insertion order — the API is already explicit (`id desc`); the only thing fighting it is the UI `.sort`. Removing the sort makes the UI render in the API's newest-first order. (Keep the `STAFF` filter and `useMemo`.) Orders need no code change (already correct) — only runtime verification.
+- [ ] 3. Add the server-side oversize guard to the product create/update route.
+      In the `/products` handler in `api-node/src/routes/admin.ts`, inside the `action === 'add' || 'update'`
+      branch AFTER `productSchema` parse succeeds, if `p.image` is a `data:` URI, decode its base64
+      payload and if the decoded length exceeds ~61440 bytes (60 KB) return
+      `fail(res, 'Product image is too large — it must be compressed to under 50 KB before saving', 400)`.
+      A non-`data:` image (http(s) URL) is left untouched. Do NOT change the global `express.json`
+      limit in `server.ts` (ads/screenshots rely on 6mb/15mb). Add a tiny local helper to measure the
+      decoded size (mirror the existing `Buffer.from(b64, 'base64').length` style already used in
+      `/banners/upload`).
+      Files: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb\4astore-v2\api-node\src\routes\admin.ts`
+      Verify: `npm run build` in `4astore-v2/api-node` succeeds (tsc clean).
 
-3. **BUG 3 fix = `no-store` on admin GETs + `staleTime:0`/focus-refetch on the admin-users query.** Rationale: smallest change that guarantees neither the browser nor Cloudflare caches admin JSON and that the admin-users list refetches on mount/focus like admin-orders already effectively does via polling. Add the header inline per admin GET handler (two handlers) rather than a new middleware, to keep the diff minimal and avoid touching shared mount order in `server.ts`.
+- [ ] 4. Add and run a ceiling-proof script.
+      Write a throwaway node script at `4astore-v2/web/scripts/verify-image-ceiling.mjs` that imports
+      nothing from the browser build but instead reproduces the byte check: given a sample base64
+      data-URI string it asserts `Buffer.from(b64,'base64').length <= 51200` and exits non-zero
+      otherwise. (The real guarantee is produced in-browser by item 1; this script documents and
+      checks the arithmetic the guard in item 3 relies on, using the SAME 51200 constant.) Run it and
+      confirm it passes, then DELETE the script (it is a verification artifact, not shipped code).
+      Files: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb\4astore-v2\web\scripts\verify-image-ceiling.mjs` (temporary)
+      Verify: `node 4astore-v2/web/scripts/verify-image-ceiling.mjs` exits 0 and prints the measured
+      byte size; then remove the file.
 
-**Decision on workflow restructuring:** NOT decomposing into FEAT artifacts / not restructuring the
-workflow tail. These are three tiny, interdependent edits (BUG 1 and BUG 3 share the catalog-version
-cache; all touch the same two or three files) with no separable feature boundaries and no test suites
-to parallelize. The existing implement-and-review loop running this single plan is the right vehicle.
+- [ ] 5. Confirm mobile has no product editor and record the scoping decision; keep mobile green.
+      No mobile code change. Confirm `mobile/app/admin/` contains only `orders.tsx`, `roles.tsx`,
+      `order/[id].tsx` (no product add/edit screen), so the <=50 KB mobile upload has nothing to attach
+      to and is correctly out of scope. `expo-image-picker` (~17.0.11) and `expo-image-manipulator`
+      (~14.0.8) remain available for a future mobile editor without a native rebuild. Run the mobile
+      typecheck purely as a regression check that nothing broke.
+      Files: none (documentation/scoping item)
+      Verify: `npx tsc --noEmit` in `4astore-v2/mobile` succeeds (unchanged, still green).
 
----
+- [ ] 6. Verify runtime data comes from the DB (not data/*.json) and flag any live JSON read.
+      Confirm (already investigated) that `api-node/src/routes/catalog.ts` reads products/categories/
+      settings/config/announcement/version via Prisma, and that the ONLY `fs.readFileSync(... .json)`
+      callers are `services/dataImport.ts` (one-time legacy import) reached solely through the
+      owner-only `/api/admin/data/*` route (`routes/admin-data.ts`) — NOT at normal request time. The
+      other `fs.readFile` hits (`services/push.ts` FCM service-account, `video/render.ts`,
+      `services/og.ts`) read uploaded/asset binaries, not catalog JSON, so they are fine. Record the
+      finding in the review notes. If a live request-time JSON catalog read is found, flag it clearly;
+      fix only if it is a one-line obvious in-scope bug (none found during planning).
+      Files: none (verification/flag item) — if a one-line fix is needed it would be in the offending
+      `api-node/src/routes/*.ts`.
+      Verify: `npm run build` in `4astore-v2/api-node` still succeeds; state in the review that no
+      request-time JSON catalog read exists.
 
-## Items (ordered by dependency; each leaves the tree buildable)
+## Out-of-scope note (do not implement here)
 
-- [ ] 1. BUG 1 — make the catalog version reflect writes immediately (fixes admin out-of-stock staleness without breaking the public ETag scheme).
-      In `catalog.ts`, change `catalogVersion()` so it does NOT go through the 10s `ttlCache`: read `app_version.catalog_version` directly each call (keep the same try/catch fallback to `1` when the column/row is absent). Leave `serveCatalogConditional`, `CATALOG_CACHE`, `STATIC_CACHE`, the `/config` and `/settings` `cached(...)` calls, and the ETag/304 logic exactly as-is.
-      Files: `c:\xampp\htdocs\static4a\.worktrees\admin-fixes\4astore-v2\api-node\src\routes\catalog.ts`
-      Verify: in `…\api-node` run `npm run build` → exits 0 (tsc clean). Runtime walkthrough on a running api + web dev server: in the web admin Products page, edit a product and set **Out of Stock**, Save; the row's Stock badge must flip to **Out** within ~1–2s (not after ~10s), and a hard refetch (focus/switch tab back) of the admin list must still show **Out**. Then flip back to In Stock and confirm it shows **In Stock** promptly. Confirm the public storefront `/products` still returns 304 on an unchanged `If-None-Match` and fresh data after an edit (ETag changes from `cat-v<n>` to `cat-v<n+1>`).
-
-- [ ] 2. BUG 1 (verification only) — confirm admin products READ path and render field are the correct ones.
-      No code change expected. Confirm `AdminProducts.tsx` reads via `useProducts()` and renders `p.in_stock`, and that `saveProduct` → `invalidateQueries(['products'])` runs. If (and only if) runtime shows the badge still wrong AFTER item 1 and a confirmed fresh (`200`, new ETag) response that contains the correct `in_stock` value, THEN investigate a render/normalize mismatch — but do not pre-emptively change the render field; the field is confirmed correct by reading. Mark this item done once the item-1 walkthrough shows correct out-of-stock display.
-      Files: (none expected) `c:\xampp\htdocs\static4a\.worktrees\admin-fixes\4astore-v2\web\src\pages\admin\AdminProducts.tsx` (read-only confirm)
-      Verify: covered by item 1's walkthrough — out-of-stock shows immediately in the admin list and detail/edit modal.
-
-- [ ] 3. BUG 2 — Users list newest-first in the web admin (remove the client ascending re-sort).
-      In `AdminUsers.tsx`, change the `users` memo to stop re-sorting ascending. Keep the staff filter and `useMemo`; drop the `.sort((a, b) => Number(a.id) - Number(b.id))` so the API's `id desc` (newest-first) order is preserved. i.e. `const users = useMemo(() => allUsers.filter((u) => !STAFF.includes(u.role)), [allUsers]);` (If a stable tiebreak is ever wanted, sort DESCENDING `Number(b.id) - Number(a.id)` — but prefer simply trusting the API order to keep the diff one line.)
-      Files: `c:\xampp\htdocs\static4a\.worktrees\admin-fixes\4astore-v2\web\src\pages\admin\AdminUsers.tsx`
-      Verify: in `…\web` run `npm run build` → exits 0. Runtime: open the web admin Users tab; the most recently registered user appears at the TOP of page 1. Create a new rider via "New Delivery Boy" and confirm it appears at the top after the list refreshes (see item 5 freshness).
-
-- [ ] 4. BUG 2 (verification only) — confirm Orders are newest-first end-to-end (web + mobile); fix only if a re-sort is found.
-      No code change expected. Web `AdminOrders` (`useAdminOrders` → `/orders`) and mobile `useAllOrders` (`/orders?limit=50`) both consume the API's `id desc` order with no client re-sort. Confirm at runtime. If a client re-sort to ascending is discovered in either, remove it the same way as item 3 (trust API `id desc`). The API handlers in `orders.ts` already use `orderBy: { id: 'desc' }` — do not change them.
-      Files: (none expected) `…\web\src\pages\admin\AdminOrders.tsx`, `…\mobile\app\admin\orders.tsx` (read-only confirm)
-      Verify: web admin Orders page page-1 shows the most recent order on top; place/admin-create a new order and confirm it lands at the top on next refetch. Mobile `npx tsc --noEmit` stays clean (no change) and, if runnable, the staff Orders screen shows newest first.
-
-- [ ] 5. BUG 3 — stop browser/edge caching of admin JSON and make the admin-users list refetch fresh.
-      (a) API no-store headers on the two admin GETs:
-         - In `orders.ts`, in the staff list branch of `GET /` (both the paginated `{ orders, nextCursor }` return and the unpaginated `{ orders }` return), set `res.setHeader('Cache-Control', 'no-store')` before responding. Scope strictly to the staff branch; leave the customer `?mobile=` branch and all other routes untouched.
-         - In `admin.ts`, in `GET /users`, set `res.setHeader('Cache-Control', 'no-store')` before `ok(res, …)`.
-      (b) Web react-query freshness for the admin-users list: in `web/src/pages/admin/adminData.ts`, add `staleTime: 0` and `refetchOnWindowFocus: true` to `useAdminUsers` (mirrors `useAdminOrders` freshness without adding a poll). Do NOT change `useAdminOrders` (already polls 7s) and do NOT change the public `useProducts`/`useCategories` in `lib/queries.ts`.
-      Files: `c:\xampp\htdocs\static4a\.worktrees\admin-fixes\4astore-v2\api-node\src\routes\orders.ts`, `c:\xampp\htdocs\static4a\.worktrees\admin-fixes\4astore-v2\api-node\src\routes\admin.ts`, `c:\xampp\htdocs\static4a\.worktrees\admin-fixes\4astore-v2\web\src\pages\admin\adminData.ts`
-      Verify: `npm run build` in `…\api-node` and in `…\web` → both exit 0. Runtime: in browser devtools Network, the responses for `GET /api/orders` (staff) and `GET /api/admin/users` carry `Cache-Control: no-store`. Edit a user (role/delivery) or create a rider; switch tabs away and back — the admin Users list refetches and shows the change within a couple seconds without a manual reload. Confirm public `GET /api/products|/categories|/settings|/config` headers are unchanged (`no-cache, must-revalidate` / `public, max-age=30`).
-
-- [ ] 6. Full build gate + regression confirmation across all three projects.
-      Run every project's build/typecheck and do a final admin walkthrough covering all three bugs together. Fix any TypeScript error introduced by items 1,3,5. Confirm nothing in POS/SEO/OG/short-link/marketing or the public catalog cache path was touched.
-      Files: (whole worktree — no new edits unless a build error surfaces)
-      Verify:
-        - `…\api-node`: `npm run build` → exit 0.
-        - `…\web`: `npm run build` → exit 0.
-        - `…\mobile`: `npx tsc --noEmit` → exit 0 (no mobile source changed; this guards against accidental edits). Do NOT run expo prebuild / assembleRelease / bundleRelease.
-        - Combined runtime: out-of-stock shows immediately in admin Products; admin Users and Orders both show newest-first on top; admin JSON responses are `no-store` and the lists update within seconds of an edit.
-
-## Notes / assumptions
-
-- No api-node/web unit-test suite exists for these modules (no `test` script, no test dir), so verification is a clean build/typecheck plus the runtime admin walkthrough — the review loop exercises the UI. This matches how the repo validates web/api changes.
-- "Data update frequently, not cached" is satisfied by `no-store` on admin GETs + `staleTime:0`/focus-refetch (admin-users) and the already-present 7s poll (admin-orders). We intentionally do NOT lower polling intervals further, to avoid hammering the server (per the constraint).
-- The public storefront's instant-catalog ETag cache is preserved; item 1 only removes the 10s *version-number* cache so the ETag reflects an edit on the very next request (the 304 revalidation scheme itself is unchanged).
-- All three bugs are confirmed by reading except the pure runtime behaviours flagged "verification only" (items 2 & 4) and the live header/refetch checks — the coder must verify those on a running dev server and fix only if confirmed broken, never dismiss from reading alone.
+The original user also asked for "order list descending (newest first)" and "fresh, non-cached data".
+Those belong to the separate admin-fixes work, NOT this image-upload branch. The one relevant
+observation for THIS branch: product/category writes already call `bumpCatalogVersion()` and
+`/products` serves `no-cache, must-revalidate` with a version ETag, so an in-stock/out-of-stock edit
+is reflected without stale caching. Leave ordering/caching changes to the other branch to keep this
+diff surgical.
