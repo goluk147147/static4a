@@ -26,6 +26,7 @@ import linkRouter from './routes/link';
 import adminLinksRouter from './routes/admin-links';
 import posAuthRouter from './routes/pos-auth';
 import adminPosRouter from './routes/admin-pos';
+import posImportRouter from './routes/pos-import';
 import posRouter from './routes/pos';
 import { requireAuth } from './auth/middleware';
 import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
@@ -77,6 +78,7 @@ app.use('/api/admin/seo-auto', requireAuth, seoAdminRouter); // staff-gated SEO 
 app.use('/api/admin/marketing', marketingRouter); // Marketing Center (staff + "ads") — specific path before generic /api/admin
 app.use('/api/admin/links', adminLinksRouter); // short-link admin (staff + "ads") — specific path before generic /api/admin
 app.use('/api/admin/pos', adminPosRouter); // POS phone allowlist (owner-only) — specific path before generic /api/admin
+app.use('/api/admin/pos', posImportRouter); // POS Excel import/export + bulk-update (staff + "inventory") — specific path before generic /api/admin
 app.use('/api/admin', adminRouter);
 app.use('/api/addresses', addressesRouter);
 app.use('/api/img-proxy', imgProxyRouter);
