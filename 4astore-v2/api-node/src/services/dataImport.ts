@@ -594,6 +594,39 @@ export async function ensureProductInventoryColumns(): Promise<void> {
 }
 
 /**
+ * Ensure the additive `max_qty_per_order` column exists on the `products` table.
+ *
+ * Per-order purchase cap (Zepto/Blinkit style). DECIMAL(10,3) so weight products
+ * (1kg / 0.5kg) and piece caps (3 pcs) both work; NULL = no limit (unlimited —
+ * today's behavior, so existing rows are untouched). UNLIKE the owner-only POS
+ * cost/inventory columns, this ONE inventory field IS public (returned by
+ * PUBLIC_PRODUCT_SELECT) so the storefront can show "Max N" and disable +.
+ *
+ * Kept standalone (not folded into ensureProductInventoryColumns) so this
+ * feature's files stay self-contained and it can be reviewed/reverted
+ * independently of the POS inventory work. Mirrors ensureWhatsappApiColumn()
+ * exactly: information_schema-guarded (add only when absent) and swallows the
+ * MySQL duplicate-column error (1060) so concurrent/repeat runs never crash.
+ * Uses $executeRawUnsafe — NO prisma migrate / db push. Mirrored on the Prisma
+ * `Product` model and the manual prisma/product-max-qty.sql.
+ */
+export async function ensureProductMaxQtyColumn(): Promise<void> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'products' AND column_name = 'max_qty_per_order'`
+  );
+  const present = Number(rows?.[0]?.c ?? 0) > 0;
+  if (present) return;
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE products ADD COLUMN max_qty_per_order DECIMAL(10,3) NULL');
+  } catch (e) {
+    // Swallow duplicate-column (1060) in case a concurrent run added it first.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/1060|Duplicate column/i.test(msg)) throw e;
+  }
+}
+
+/**
  * Ensure the POS-wide toggle columns exist on the `settings` table and seed a
  * default store_address when blank. `settings` is a raw-SQL table (not a Prisma
  * model) — consistent with the repo. Mirrors ensureMasterPasswordColumn(): each

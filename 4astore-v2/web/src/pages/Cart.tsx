@@ -6,6 +6,7 @@ import { useAuth } from '../store/auth';
 import { cartTotals } from '../lib/checkout';
 import { productImageSrc, onProductImageError } from '../lib/productImage';
 import { SkeletonCartItems } from '../components/Skeleton';
+import { qtyLimitCaption } from '../lib/qtyLimit';
 
 export default function Cart() {
   const { items, setQty, remove } = useCart();
@@ -50,27 +51,39 @@ export default function Cart() {
       <h3 style={{ marginBottom: 12 }}>Your Cart</h3>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {items.map((i) => (
+        {items.map((i) => {
+          // Resolve the per-order cap from the live catalogue first, falling back to the
+          // value persisted on the cart item (null = unlimited).
+          const liveProduct = products.find((x) => x.id === i.id);
+          const maxRaw = liveProduct?.max_qty_per_order ?? i.maxQty ?? null;
+          const max = typeof maxRaw === 'number' && maxRaw > 0 ? maxRaw : null;
+          const unit = liveProduct?.unit ?? i.unit;
+          const atMax = max != null && i.quantity >= max;
+          return (
           <div key={i.id} style={{ background: '#fff', borderRadius: 12, padding: 12, display: 'flex', gap: 12, alignItems: 'center', boxShadow: 'var(--shadow)' }}>
             <div style={{ width: 56, height: 56, background: '#fafafa', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {(() => {
-                const p = { id: i.id, name: i.name, weight: i.weight, category: i.category ?? products.find((x) => x.id === i.id)?.category, image: i.image };
+                const p = { id: i.id, name: i.name, weight: i.weight, category: i.category ?? liveProduct?.category, image: i.image };
                 return <img src={productImageSrc(p)} alt={i.name} onError={onProductImageError(p)} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />;
               })()}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: 14 }}>{i.name}</div>
               <div className="muted" style={{ fontSize: 12 }}>{i.weight} · ₹{i.price}</div>
+              {atMax && (
+                <div style={{ fontSize: 11, color: '#c62828', marginTop: 2 }}>{qtyLimitCaption(max!, unit)}</div>
+              )}
             </div>
             <div className="stepper">
               <button onClick={() => setQty(i.id, i.quantity - 1)}>−</button>
               <span>{i.quantity}</span>
-              <button onClick={() => setQty(i.id, i.quantity + 1)}>+</button>
+              <button onClick={() => setQty(i.id, i.quantity + 1)} disabled={atMax} style={atMax ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}>+</button>
             </div>
             <div style={{ fontWeight: 700, minWidth: 60, textAlign: 'right' }}>₹{i.price * i.quantity}</div>
             <button onClick={() => remove(i.id)} style={{ background: 'none', border: 0, fontSize: 18, color: '#c62828' }}>×</button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginTop: 16, boxShadow: 'var(--shadow)' }}>

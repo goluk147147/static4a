@@ -15,6 +15,7 @@ interface FormState {
   id?: number;
   name: string; brand: string; weight: string; category: string;
   mrp: string; price: string; discount: string; inStock: boolean; featured: boolean;
+  maxQtyPerOrder: string;
   image: string; description: string; features: string;
 }
 
@@ -23,6 +24,7 @@ const toForm = (p?: Partial<Product>, keepId = true): FormState => ({
   name: p?.name || '', brand: p?.brand || '', weight: p?.weight || '', category: p?.category || '',
   mrp: p?.mrp != null ? String(p.mrp) : '', price: p?.price != null ? String(p.price) : '',
   discount: p?.discount != null ? String(p.discount) : '', inStock: p?.in_stock !== false, featured: !!p?.featured,
+  maxQtyPerOrder: p?.max_qty_per_order != null ? String(p.max_qty_per_order) : '',
   image: p?.image || '', description: p?.description || '',
   features: Array.isArray(p?.features) ? p!.features!.join('\n') : '',
 });
@@ -96,6 +98,8 @@ export default function AdminProducts() {
       features: f.features.split(/[\r\n,]+/).map((x) => x.trim()).filter(Boolean),
       inStock: f.inStock,
       featured: f.featured,
+      // Blank = unlimited (null); a positive number sets the per-order cap.
+      maxQtyPerOrder: f.maxQtyPerOrder.trim() === '' ? null : parseFloat(f.maxQtyPerOrder),
     };
     setSaving(true);
     try {
@@ -225,6 +229,13 @@ export default function AdminProducts() {
                 <option value="0">No</option>
                 <option value="1">⭐ Yes — daily video me dikhao</option>
               </select>
+            </div>
+            <div className="full">
+              <label htmlFor="pf_maxqty">Max quantity per order / एक ऑर्डर में अधिकतम मात्रा</label>
+              <input id="pf_maxqty" type="number" min={0} step="0.001" value={modal.form.maxQtyPerOrder} onChange={(e) => set('maxQtyPerOrder', e.target.value)} placeholder="Blank = unlimited" />
+              <div style={{ fontSize: 12, color: 'var(--gray)', marginTop: 4 }}>
+                Unit product ke apne unit se aata hai — pcs ke liye 3 = 3 pieces, kg ke liye 1 = 1 kg. Blank = no limit.
+              </div>
             </div>
             <div className="full"><label htmlFor="pf_image">Image URL</label><input id="pf_image" value={modal.form.image} onChange={(e) => set('image', e.target.value)} placeholder="https://..." /></div>
             <div className="full">

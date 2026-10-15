@@ -9,6 +9,8 @@ import { buildCanonical, deriveProductSeo, productJsonLd, breadcrumbJsonLd, loca
 import { fetchProductShortLink } from '../lib/admin';
 import { waLink } from '../lib/whatsapp';
 import { showToast } from '../store/toast';
+import { qtyLimitCaption } from '../lib/qtyLimit';
+import { validateCart } from '../lib/cart';
 
 // Public site origin for shareable links. On production the SPA shares the store
 // host; fall back to the canonical when on localhost. Mirrors AdminMarketing.SITE_ORIGIN.
@@ -40,6 +42,22 @@ export default function ProductDetails() {
   }
   const inCart = items.find((i) => i.id === product.id);
   const hideMrp = settings?.hideMrp;
+  // Per-order purchase cap (null = unlimited). Disable + and show "Max N" at the cap.
+  const max = typeof product.max_qty_per_order === 'number' && product.max_qty_per_order > 0 ? product.max_qty_per_order : null;
+  const atMax = max != null && !!inCart && inCart.quantity >= max;
+
+  // Add to cart with the instant client clamp (store), then confirm against the
+  // AUTHORITATIVE server cap and surface its bilingual message if over the limit.
+  function addToCart() {
+    const nextQty = (inCart?.quantity ?? 0) + 1;
+    add(product!);
+    void validateCart([{ id: product!.id, quantity: nextQty }])
+      .then((lines) => {
+        const line = lines.find((l) => l.id === product!.id);
+        if (line && !line.ok && line.message) showToast(line.message, 'error');
+      })
+      .catch(() => undefined);
+  }
 
   // Share the product's SHORT link (/link/<code>) so crawlers get the OG preview
   // via FEAT-001's redirect route. Fall back to the canonical /product/:id when
@@ -155,16 +173,21 @@ export default function ProductDetails() {
           {!product.in_stock ? (
             <p className="out">Out of stock</p>
           ) : inCart ? (
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div className="stepper">
-                <button onClick={() => setQty(product.id, inCart.quantity - 1)}>−</button>
-                <span>{inCart.quantity}</span>
-                <button onClick={() => setQty(product.id, inCart.quantity + 1)}>+</button>
+            <div>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div className="stepper">
+                  <button onClick={() => setQty(product.id, inCart.quantity - 1)}>−</button>
+                  <span>{inCart.quantity}</span>
+                  <button onClick={() => setQty(product.id, inCart.quantity + 1)} disabled={atMax} style={atMax ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}>+</button>
+                </div>
+                <button className="btn" onClick={() => navigate('/cart')}>Go to Cart →</button>
               </div>
-              <button className="btn" onClick={() => navigate('/cart')}>Go to Cart →</button>
+              {atMax && (
+                <div style={{ fontSize: 13, color: '#c62828', marginTop: 8, fontWeight: 600 }}>{qtyLimitCaption(max!, product.unit)}</div>
+              )}
             </div>
           ) : (
-            <button className="btn btn-block" onClick={() => add(product)}>Add to Cart</button>
+            <button className="btn btn-block" onClick={addToCart}>Add to Cart</button>
           )}
 
           {/* Bilingual Share — shares the product SHORT link (OG preview via /link/<code>). */}

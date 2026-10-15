@@ -9,6 +9,12 @@
  * Those must NEVER reach a public client. `stock`, `unit` and `in_stock` stay
  * public so the storefront can show "only N left". Never add cost/inventory-
  * control fields to PUBLIC_PRODUCT_SELECT.
+ *
+ * `max_qty_per_order` is the one exception among the inventory columns: it is a
+ * public purchase HINT (like stock/unit), NOT an owner-only field — the
+ * storefront needs it to show "Max N" and disable the + button at the cap. It
+ * is intentionally included below and MUST NOT be added to
+ * FORBIDDEN_PUBLIC_PRODUCT_FIELDS.
  */
 // Typed as Record<string, true> rather than Prisma.ProductSelect so this module
 // does not depend on the generated Prisma client (which is NOT generated in the
@@ -44,6 +50,7 @@ export const PUBLIC_PRODUCT_SELECT = {
   stock: true,
   unit: true,
   tax_rate: true,
+  max_qty_per_order: true,
   created_at: true,
   updated_at: true,
 } satisfies Record<string, true>;

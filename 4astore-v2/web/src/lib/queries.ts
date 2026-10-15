@@ -5,7 +5,15 @@ import type { Product, Category, StoreConfig, Settings } from '../types';
 // MySQL DECIMAL columns arrive as strings ("200.00"); convert once so price math
 // and comparisons (mrp > price) are numeric everywhere in the UI.
 function normalizeProduct(p: Product): Product {
-  return { ...p, id: Number(p.id), price: Number(p.price) || 0, mrp: Number(p.mrp) || 0, discount: Number(p.discount) || 0 };
+  return {
+    ...p,
+    id: Number(p.id),
+    price: Number(p.price) || 0,
+    mrp: Number(p.mrp) || 0,
+    discount: Number(p.discount) || 0,
+    // DECIMAL "3.000" → 3; blank/0/NaN/null → null (no limit / unlimited).
+    max_qty_per_order: p.max_qty_per_order == null ? null : (Number(p.max_qty_per_order) || null),
+  };
 }
 
 // Catalog freshness: staleTime 0 + refetch on focus so admin product/category edits appear within

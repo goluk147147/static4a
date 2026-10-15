@@ -152,6 +152,14 @@ model Product {
   low_stock_threshold  Decimal? @db.Decimal(10, 3)
   track_inventory      Boolean  @default(true)
   allow_negative_stock Boolean?
+  // Per-order purchase cap (Zepto/Blinkit style). Added at runtime by
+  // ensureProductMaxQtyColumn() (raw ALTER, no migrate — manual equivalent
+  // prisma/product-max-qty.sql). Decimal so weight products (1kg/0.5kg) AND
+  // piece caps (3 pcs) both work; NULL = no limit (unlimited, today's default).
+  // UNLIKE the owner-only cost/inventory columns above, this ONE inventory
+  // field IS public (the storefront needs it to show "Max N" and disable +),
+  // so it is added to PUBLIC_PRODUCT_SELECT. Do NOT run prisma migrate/db push.
+  max_qty_per_order    Decimal? @db.Decimal(10, 3)
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 

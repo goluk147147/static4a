@@ -3,6 +3,7 @@ import type { Product } from '../types';
 import { useCart } from '../store/cart';
 import { useSettings } from '../lib/queries';
 import { productImageSrc, onProductImageError } from '../lib/productImage';
+import { qtyLimitCaption } from '../lib/qtyLimit';
 
 export default function ProductCard({ product }: { product: Product }) {
   const { add, items, setQty } = useCart();
@@ -11,6 +12,9 @@ export default function ProductCard({ product }: { product: Product }) {
   const inCart = items.find((i) => i.id === product.id);
   const hideMrp = settings?.hideMrp;
   const showDiscount = product.discount > 0 && !hideMrp;
+  // Per-order purchase cap (null = unlimited). Disable + and show "Max N" at the cap.
+  const max = typeof product.max_qty_per_order === 'number' && product.max_qty_per_order > 0 ? product.max_qty_per_order : null;
+  const atMax = max != null && !!inCart && inCart.quantity >= max;
 
   return (
     <div className="product-card" data-product-id={product.id}>
@@ -33,11 +37,16 @@ export default function ProductCard({ product }: { product: Product }) {
       {hideMrp ? null : product.in_stock ? (
         <div className="card-actions">
           {inCart ? (
-            <div className="qty-controls">
-              <button onClick={() => setQty(product.id, inCart.quantity - 1)}>−</button>
-              <span>{inCart.quantity}</span>
-              <button onClick={() => setQty(product.id, inCart.quantity + 1)}>+</button>
-            </div>
+            <>
+              <div className="qty-controls">
+                <button onClick={() => setQty(product.id, inCart.quantity - 1)}>−</button>
+                <span>{inCart.quantity}</span>
+                <button onClick={() => setQty(product.id, inCart.quantity + 1)} disabled={atMax} style={atMax ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}>+</button>
+              </div>
+              {atMax && (
+                <div style={{ fontSize: 11, color: '#c62828', marginTop: 4, textAlign: 'center' }}>{qtyLimitCaption(max!, product.unit)}</div>
+              )}
+            </>
           ) : (
             <button className="btn-add-cart" onClick={() => add(product)}>Add to Cart</button>
           )}

@@ -7,6 +7,7 @@ import { prisma } from '../db';
 import { ok, fail } from '../utils/http';
 import bcrypt from 'bcryptjs';
 import { requireAuth, requireStaff, hasPermission } from '../auth/middleware';
+import { qtyLimitMessage } from '../utils/qtyLimit';
 import { notifyCustomerStatus } from '../services/push';
 import { toPage, PageRow } from './pages';
 import { FEATURE_KEYS, mergeFeatures } from '../utils/features';
@@ -21,6 +22,23 @@ function computeDiscount(mrp: number, price: number, provided?: number): number 
   if (provided !== undefined && !Number.isNaN(provided)) return Math.trunc(provided);
   if (mrp > 0 && price >= 0 && price <= mrp) return Math.round(((mrp - price) / mrp) * 100);
   return 0;
+}
+
+/**
+ * Parse the admin-entered per-order purchase cap (max_qty_per_order).
+ * Returns:
+ *   - `null`  for an unset/blank/zero value (NULL = no limit, today's default),
+ *   - a positive number rounded to 3 decimals for a valid cap,
+ *   - `false` for an invalid value (<= 0 or non-finite) so the caller can 422.
+ * Accepts number | string | null | undefined (the admin form sends a number or null).
+ */
+function parseMaxQty(v: unknown): number | null | false {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return false;
+  if (n === 0) return null; // treat 0/blank as "no limit"
+  if (n < 0) return false;
+  return Math.round(n * 1000) / 1000;
 }
 
 /**
@@ -64,6 +82,10 @@ const productSchema = z.object({
   features: z.array(z.string()).optional().default([]),
   inStock: z.boolean().optional().default(true),
   featured: z.boolean().optional().default(false), // daily "Aaj ka Special" video
+  // Optional per-order purchase cap (Zepto/Blinkit style). number | string | null:
+  // blank/null/0 clears it (NULL = unlimited); a positive value sets the cap.
+  // Validated + normalized by parseMaxQty() before the write.
+  maxQtyPerOrder: z.union([z.number(), z.string(), z.null()]).optional(),
   // Optional per-product SEO overrides (ADD-only — unset falls back to derived defaults).
   seoTitle: z.string().max(255).optional(),
   seoDescription: z.string().max(5000).optional(),
@@ -86,6 +108,10 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
       const decoded = m ? Buffer.from(m[1], 'base64').length : p.image.length;
       if (decoded > 61440) return fail(res, 'Product image is too large — it must be compressed to under 50 KB before saving', 400);
     }
+    // Per-order purchase cap: blank/null/0 => NULL (unlimited); a positive number sets it.
+    // parseMaxQty returns false for an invalid (negative/non-finite) value.
+    const maxQty = parseMaxQty(p.maxQtyPerOrder);
+    if (maxQty === false) return fail(res, 'Max quantity per order must be a positive number', 422);
     const data = {
       name: p.name,
       brand: p.brand,
@@ -99,6 +125,7 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
       features: p.features,
       in_stock: p.inStock,
       featured: p.featured,
+      max_qty_per_order: maxQty,
       seo_title: p.seoTitle || null,
       seo_description: p.seoDescription || null,
       seo_keywords: p.seoKeywords || null,
@@ -493,6 +520,26 @@ router.post('/orders/delete', requireAuth, requireStaff('orders'), async (req: R
 // ---------------- Orders: admin creates an order for a customer ----------------
 // Original api/orders.php action=adminCreate: Cash order, no delivery fee, "Order Placed".
 // Prices are taken from the products table, never from the request body.
+/**
+ * Structured 422 for an over-the-cap order line. Keeps the standard
+ * `{ success:false, message }` envelope (so existing error handling / apiError
+ * in web/src/lib/api.ts still shows the message) and ADDS structured fields
+ * (code, productId, name, maxQty, unit) for richer client rendering. The
+ * bilingual message comes from the shared qtyLimitMessage() so storefront and
+ * server copy stay identical.
+ */
+function failQtyLimit(res: Response, p: { id: unknown; name: string; unit?: string | null }, maxQty: number) {
+  return res.status(422).json({
+    success: false,
+    code: 'QTY_LIMIT',
+    productId: Number(p.id),
+    name: p.name,
+    maxQty: Number(maxQty),
+    unit: p.unit || 'pcs',
+    message: qtyLimitMessage(Number(maxQty), p.unit),
+  });
+}
+
 const adminOrderSchema = z.object({
   customer: z.object({ name: z.string().trim().min(1).max(120), mobile: z.string().regex(/^[6-9]\d{9}$/) }),
   items: z.array(z.object({ id: z.number().int().positive(), quantity: z.number().int().min(1).max(999) })).min(1).max(50),
@@ -510,6 +557,10 @@ router.post('/orders/create', requireAuth, requireStaff('orders'), async (req: R
     const p = byId.get(it.id);
     if (!p) return fail(res, `Product #${it.id} not found`, 422);
     if (!p.in_stock) return fail(res, `${p.name} is out of stock`, 422);
+    // Authoritative per-order purchase cap. NULL = no limit (unchanged behavior).
+    if (p.max_qty_per_order != null && Number(it.quantity) > Number(p.max_qty_per_order)) {
+      return failQtyLimit(res, p, Number(p.max_qty_per_order));
+    }
     clean.push({ id: it.id, name: p.name, weight: p.weight || '', price: Number(p.price) || 0, quantity: it.quantity });
   }
   const total = clean.reduce((s, i) => s + i.price * i.quantity, 0);

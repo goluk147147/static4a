@@ -28,12 +28,13 @@ import posAuthRouter from './routes/pos-auth';
 import adminPosRouter from './routes/admin-pos';
 import posImportRouter from './routes/pos-import';
 import posRouter from './routes/pos';
+import cartRouter from './routes/cart';
 import { requireAuth } from './auth/middleware';
 import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureProductInventoryColumns, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -68,6 +69,7 @@ app.use('/api/otp', otpRouter);
 app.use('/api/pos/auth', posAuthRouter); // POS phone-OTP login (PUBLIC)
 app.use('/api/pos', posRouter); // POS billing + stock engine (requireAuth + requireStaff('pos'))
 app.use('/api', catalogRouter); // /api/products, /api/categories, /api/settings, /api/config, /api/announcement, /api/version
+app.use('/api/cart', cartRouter); // PUBLIC read-only per-order qty-limit validation (POST /api/cart/validate)
 app.use('/api/orders', ordersRouter);
 app.use('/api/tracking', trackingRouter);
 app.use('/api/push', pushRouter);
@@ -128,6 +130,8 @@ app.listen(config.port, () => {
   // POS/inventory foundation (idempotent, no-migrate raw SQL) — additive products
   // inventory columns, POS settings toggles, and the six POS tables.
   ensureProductInventoryColumns().catch((e) => console.error('[seed] product inventory columns failed', e));
+  // Per-product max-quantity-per-order cap column (public hint; idempotent, no-migrate raw SQL).
+  ensureProductMaxQtyColumn().catch((e) => console.error('[seed] max_qty_per_order column failed', e));
   ensurePosSettingsColumns().catch((e) => console.error('[seed] pos settings columns failed', e));
   ensurePosTables().catch((e) => console.error('[seed] pos tables failed', e));
   // Owner "master password" column on settings (idempotent, no-migrate raw SQL).

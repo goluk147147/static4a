@@ -56,6 +56,7 @@ const FULL_PRODUCT_ROW: Record<string, unknown> = {
   low_stock_threshold: '2.000', // OWNER-ONLY — must never leak
   track_inventory: true, // OWNER-ONLY — must never leak
   allow_negative_stock: false, // OWNER-ONLY — must never leak
+  max_qty_per_order: '3.000', // public purchase HINT — stays
   created_at: new Date('2026-01-01T00:00:00Z'),
   updated_at: new Date('2026-01-01T00:00:00Z'),
 };
@@ -93,9 +94,9 @@ test('GET /api/products/:id (single) payload omits every owner-only product fiel
   }
 });
 
-test('public inventory hints (stock, unit, in_stock) ARE still exposed', () => {
+test('public inventory hints (stock, unit, in_stock, max_qty_per_order) ARE still exposed', () => {
   const projected = applySelect(FULL_PRODUCT_ROW, PUBLIC_PRODUCT_SELECT as Record<string, unknown>);
-  for (const field of ['stock', 'unit', 'in_stock']) {
+  for (const field of ['stock', 'unit', 'in_stock', 'max_qty_per_order']) {
     assert.ok(
       Object.prototype.hasOwnProperty.call(projected, field),
       `public product payload is missing expected field "${field}"`
