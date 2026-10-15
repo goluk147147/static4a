@@ -16,6 +16,7 @@ import EmojiPicker from '../../components/EmojiPicker';
 import BannerStudio from './marketing/BannerStudio';
 import VideoPromotions from './marketing/VideoPromotions';
 import AutoSendComingSoon from './marketing/AutoSendComingSoon';
+import MarketingSuggestionNudge from './marketing/SuggestionNudge';
 import type { Product, Settings } from '../../types';
 
 // Public site origin — WhatsApp's crawler hits these SPA URLs and nginx rewrites
@@ -236,10 +237,34 @@ function Dashboard({ selectedCount, onGoto }: { selectedCount: number; onGoto: (
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
+      <MarketingSuggestionNudge recommended={d.recommended} onGoto={onGoto} />
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => onGoto('promotions')} style={btnPrimary}>📣 Aaj ka offer bhejein</button>
+        <button type="button" onClick={() => onGoto('festivals')} style={btnGhost}>🎊 Festival greeting</button>
+        <button type="button" onClick={() => onGoto('broadcast')} style={btnGhost}>📤 Naya broadcast</button>
+      </div>
+
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-        <StatCard label="Upcoming festivals / आने वाले त्योहार" value={d.upcomingFestivals.length} />
-        <StatCard label="Discounted products / छूट वाले" value={d.recommended.discountedProducts.length} />
-        <StatCard label="Out of stock / स्टॉक खत्म" value={d.recommended.lowStock.length} warn={d.recommended.lowStock.length > 0} />
+        <StatCard
+          label="Upcoming festivals / आने वाले त्योहार"
+          value={d.upcomingFestivals.length}
+          onClick={() => onGoto('festivals')}
+          ariaLabel="Upcoming festivals — open Festivals tab / आने वाले त्योहार"
+        />
+        <StatCard
+          label="Discounted products / छूट वाले"
+          value={d.recommended.discountedProducts.length}
+          onClick={() => onGoto('promotions')}
+          ariaLabel="Discounted products — open Promotions tab / छूट वाले"
+        />
+        <StatCard
+          label="Out of stock / स्टॉक खत्म"
+          value={d.recommended.lowStock.length}
+          warn={d.recommended.lowStock.length > 0}
+          onClick={() => onGoto('promotions')}
+          ariaLabel="Out of stock — open Promotions tab / स्टॉक खत्म"
+        />
         <StatCard label="Selected customers / चुने गए" value={selectedCount} />
       </div>
 
@@ -329,11 +354,44 @@ function Dashboard({ selectedCount, onGoto }: { selectedCount: number; onGoto: (
   );
 }
 
-function StatCard({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
-  return (
-    <div style={{ ...card, padding: 14 }}>
+function StatCard({ label, value, warn, onClick, ariaLabel }: { label: string; value: number; warn?: boolean; onClick?: () => void; ariaLabel?: string }) {
+  const [hover, setHover] = useState(false);
+
+  const inner = (
+    <>
       <div style={{ fontSize: 26, fontWeight: 800, color: warn ? '#b45309' : 'var(--primary-dark)' }}>{value}</div>
       <div style={{ fontSize: 12, color: 'var(--gray)' }}>{label}</div>
+    </>
+  );
+
+  if (!onClick) {
+    return <div style={{ ...card, padding: 14 }}>{inner}</div>;
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={ariaLabel ?? label}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          if (e.key === ' ') e.preventDefault();
+          onClick();
+        }
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        ...card,
+        padding: 14,
+        cursor: 'pointer',
+        boxShadow: hover ? '0 4px 14px rgba(0,0,0,0.12)' : card.boxShadow,
+        transform: hover ? 'translateY(-1px)' : 'none',
+        transition: 'box-shadow 0.15s, transform 0.15s',
+      }}
+    >
+      {inner}
     </div>
   );
 }
