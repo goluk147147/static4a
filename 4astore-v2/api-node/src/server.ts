@@ -33,7 +33,7 @@ import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureProductInventoryColumns, ensurePosSettingsColumns, ensurePosTables } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureProductInventoryColumns, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -132,6 +132,11 @@ app.listen(config.port, () => {
   ensurePosTables().catch((e) => console.error('[seed] pos tables failed', e));
   // Owner "master password" column on settings (idempotent, no-migrate raw SQL).
   ensureMasterPasswordColumn().catch((e) => console.error('[seed] master password column failed', e));
+
+  // app_version.catalog_version column — drives storefront/admin catalog freshness
+  // (ETag on /products + /categories). Without it the ETag never changes and all
+  // clients are served stale cached data forever. (idempotent, no-migrate raw SQL).
+  ensureCatalogVersionColumn().catch((e) => console.error('[seed] catalog_version column failed', e));
   startReminderJob();
   startVideoScheduler();
   startSeoAuditJob(); // 15-min SEO audit sweep + queue recovery (recoverSeoQueue runs inside)

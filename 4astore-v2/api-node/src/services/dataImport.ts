@@ -206,6 +206,36 @@ export async function ensureMasterPasswordColumn(): Promise<void> {
 }
 
 /**
+ * Ensure the `app_version.catalog_version` column exists. This single counter
+ * drives storefront/admin catalog freshness: catalog.ts emits it as the ETag on
+ * GET /products + /categories, and admin.ts bumpCatalogVersion() increments it
+ * after every product/category write so all clients revalidate (304) cheaply and
+ * get fresh data the instant an edit happens.
+ *
+ * CRITICAL: without this column catalogVersion() silently falls back to a constant
+ * `1`, so the ETag NEVER changes and every client is served stale cached data
+ * forever (price/stock/image edits never appear). Previously this column only
+ * came from the manual prisma/catalog-version.sql, which is easy to miss on a
+ * deploy — hence this startup ensure. Idempotent + concurrency-safe: checks
+ * information_schema first and swallows MySQL 1060. NO prisma migrate / db push.
+ */
+export async function ensureCatalogVersionColumn(): Promise<void> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'app_version' AND column_name = 'catalog_version'`
+  );
+  const present = Number(rows?.[0]?.c ?? 0) > 0;
+  if (present) return;
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE app_version ADD COLUMN catalog_version INT NOT NULL DEFAULT 1');
+  } catch (e) {
+    // Swallow duplicate-column (1060) in case a concurrent run added it first.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/1060|Duplicate column/i.test(msg)) throw e;
+  }
+}
+
+/**
  * Ensure the notification-history tables exist. Follows the repo's no-migrate
  * convention: idempotent `CREATE TABLE IF NOT EXISTS` via $executeRawUnsafe
  * (InnoDB utf8mb4), with column types mirroring the Prisma Notification /
