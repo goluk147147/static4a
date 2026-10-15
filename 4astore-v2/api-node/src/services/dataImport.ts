@@ -206,6 +206,38 @@ export async function ensureMasterPasswordColumn(): Promise<void> {
 }
 
 /**
+ * Ensure the `whatsapp_api` column exists on the `settings` table.
+ *
+ * WHATSAPP API CONFIG — PREP ONLY (not live). Stores the admin-configured
+ * provider-agnostic WhatsApp API settings as a JSON string (provider, baseUrl,
+ * access token, phone number id, enabled flag). It is a RAW column (not a Prisma
+ * field) so prisma.* never selects it, and it is read/written ONLY through the
+ * authenticated admin settings endpoint — it is NEVER exposed on the public
+ * GET /api/settings. The free wa.me flow remains the only active send path; no
+ * message is sent from this config until the dormant waSender.ts TODO is wired.
+ *
+ * Idempotent + concurrency-safe: checks information_schema first and swallows
+ * the MySQL duplicate-column error (1060) so re-runs never crash. Uses
+ * $executeRawUnsafe — NO prisma migrate / db push. Mirrors
+ * ensureMasterPasswordColumn().
+ */
+export async function ensureWhatsappApiColumn(): Promise<void> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'settings' AND column_name = 'whatsapp_api'`
+  );
+  const present = Number(rows?.[0]?.c ?? 0) > 0;
+  if (present) return;
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE settings ADD COLUMN whatsapp_api TEXT NULL');
+  } catch (e) {
+    // Swallow duplicate-column (1060) in case a concurrent run added it first.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/1060|Duplicate column/i.test(msg)) throw e;
+  }
+}
+
+/**
  * Ensure the `app_version.catalog_version` column exists. This single counter
  * drives storefront/admin catalog freshness: catalog.ts emits it as the ETag on
  * GET /products + /categories, and admin.ts bumpCatalogVersion() increments it

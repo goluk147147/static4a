@@ -33,7 +33,7 @@ import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureProductInventoryColumns, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureProductInventoryColumns, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -132,6 +132,9 @@ app.listen(config.port, () => {
   ensurePosTables().catch((e) => console.error('[seed] pos tables failed', e));
   // Owner "master password" column on settings (idempotent, no-migrate raw SQL).
   ensureMasterPasswordColumn().catch((e) => console.error('[seed] master password column failed', e));
+  // WhatsApp API config column on settings — PREP ONLY, read/written via admin
+  // settings endpoint; never exposed publicly (idempotent, no-migrate raw SQL).
+  ensureWhatsappApiColumn().catch((e) => console.error('[seed] whatsapp_api column failed', e));
 
   // app_version.catalog_version column — drives storefront/admin catalog freshness
   // (ETag on /products + /categories). Without it the ETag never changes and all

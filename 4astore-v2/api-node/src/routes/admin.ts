@@ -241,6 +241,18 @@ const settingsSchema = z.object({
   storeLatitude: z.coerce.number().min(-90).max(90).optional(),
   storeLongitude: z.coerce.number().min(-180).max(180).optional(),
   serviceableVillages: z.string().trim().max(5000).optional(),
+  // WhatsApp API config — PREP ONLY. Persisted as a JSON string in the raw
+  // settings.whatsapp_api column; never exposed on the public GET /api/settings.
+  whatsappApi: z
+    .object({
+      provider: z.enum(['none', 'cloud_api', 'custom']),
+      baseUrl: z.string().trim().max(300),
+      token: z.string().max(500),
+      phoneNumberId: z.string().trim().max(120),
+      enabled: z.boolean(),
+    })
+    .partial()
+    .optional(),
 });
 
 const bool01 = (v: boolean | undefined) => (v === undefined ? null : v ? 1 : 0);
@@ -260,7 +272,8 @@ router.post('/settings', requireAuth, requireStaff('settings'), async (req: Requ
        upi_id=COALESCE(?,upi_id),
        upi_name=COALESCE(?,upi_name), hide_mrp=COALESCE(?,hide_mrp), store_phone=COALESCE(?,store_phone),
        store_address=COALESCE(?,store_address), store_latitude=COALESCE(?,store_latitude),
-       store_longitude=COALESCE(?,store_longitude), serviceable_villages=COALESCE(?,serviceable_villages)
+       store_longitude=COALESCE(?,store_longitude), serviceable_villages=COALESCE(?,serviceable_villages),
+       whatsapp_api=COALESCE(?,whatsapp_api)
      WHERE id=1`,
     s.storeEmail ?? null,
     s.deliveryCharge ?? null,
@@ -276,7 +289,8 @@ router.post('/settings', requireAuth, requireStaff('settings'), async (req: Requ
     s.storeAddress ?? null,
     s.storeLatitude ?? null,
     s.storeLongitude ?? null,
-    s.serviceableVillages ?? null
+    s.serviceableVillages ?? null,
+    s.whatsappApi ? JSON.stringify(s.whatsappApi) : null
   );
   return ok(res, { message: 'Settings saved' });
 });
@@ -863,6 +877,24 @@ router.post('/pages', requireAuth, requireStaff('settings'), async (req: Request
 // ---------------- Settings tab extras ----------------
 router.get('/settings', requireAuth, requireStaff('settings'), async (_req: Request, res: Response) => {
   const s = (await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>('SELECT * FROM settings WHERE id = 1'))[0] || {};
+  // WhatsApp API config (PREP ONLY): stored as a JSON string in the raw
+  // settings.whatsapp_api column. Tolerate null/garbage and fall back to the
+  // OFF defaults (provider 'none', enabled false, empty token).
+  let whatsappApi = { provider: 'none', baseUrl: '', token: '', phoneNumberId: '', enabled: false };
+  if (typeof s.whatsapp_api === 'string' && s.whatsapp_api.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(s.whatsapp_api) as Record<string, unknown>;
+      whatsappApi = {
+        provider: ['none', 'cloud_api', 'custom'].includes(String(parsed.provider)) ? String(parsed.provider) : 'none',
+        baseUrl: typeof parsed.baseUrl === 'string' ? parsed.baseUrl : '',
+        token: typeof parsed.token === 'string' ? parsed.token : '',
+        phoneNumberId: typeof parsed.phoneNumberId === 'string' ? parsed.phoneNumberId : '',
+        enabled: !!parsed.enabled,
+      };
+    } catch {
+      // Keep OFF defaults on malformed JSON.
+    }
+  }
   return ok(res, {
     settings: {
       storeEmail: s.store_email ?? '',
@@ -884,6 +916,8 @@ router.get('/settings', requireAuth, requireStaff('settings'), async (_req: Requ
       serviceableVillages: s.serviceable_villages ?? '',
       // Owner "master password": NEVER expose the hash — only whether it is set.
       masterPasswordSet: !!(s.master_password_hash && String(s.master_password_hash).length > 0),
+      // WhatsApp API config (PREP ONLY) — admin-only; never on public /api/settings.
+      whatsappApi,
     },
   });
 });

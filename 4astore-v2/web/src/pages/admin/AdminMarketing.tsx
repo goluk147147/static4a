@@ -162,7 +162,7 @@ const SUB_TABS: [string, string][] = [
   ['links', '🔗 Share Links'],
   ['campaigns', '📈 History & Reports'],
   ['video', '🎬 Video (soon)'],
-  ['autosend', '🤖 Auto-send / AI (soon)'],
+  ['autosend', '🤖 Auto-send / WhatsApp API'],
 ];
 type SubTab = 'dashboard' | 'promotions' | 'banners' | 'festivals' | 'templates' | 'reach' | 'composer' | 'broadcast' | 'links' | 'campaigns' | 'video' | 'autosend';
 

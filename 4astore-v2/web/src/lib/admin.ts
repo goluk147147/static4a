@@ -284,6 +284,19 @@ export async function teamAction(action: 'create' | 'update' | 'delete', body: R
 }
 
 // ---- Settings ----
+/**
+ * Provider-agnostic WhatsApp API config — PREP ONLY (not live).
+ * Carried through the authenticated admin settings endpoint only; it is never
+ * part of the public settings payload. The free wa.me flow (lib/whatsapp.ts)
+ * stays the only active send path until lib/waSender.ts is wired.
+ */
+export interface WhatsappApiConfig {
+  provider: 'none' | 'cloud_api' | 'custom';
+  baseUrl: string;
+  token: string;
+  phoneNumberId: string;
+  enabled: boolean;
+}
 export interface AdminSettings {
   storeEmail: string; deliveryCharge: number; freeDeliveryAbove: number; upiId: string; upiName: string;
   hideMrp: boolean; storePhone: string; storeAddress: string; storeLatitude: number | null; storeLongitude: number | null;
@@ -291,6 +304,8 @@ export interface AdminSettings {
   handlingCharge: number; deliveryChargeEnabled: boolean; handlingChargeEnabled: boolean; staffOrderAlertsEnabled: boolean;
   /** Whether an owner master password is configured. The hash itself is never returned. */
   masterPasswordSet?: boolean;
+  /** WhatsApp API config (PREP ONLY) — admin-only, never on the public settings. */
+  whatsappApi?: WhatsappApiConfig;
 }
 export async function fetchAdminSettings() {
   return (await api.get('/admin/settings')).data.settings as AdminSettings;
