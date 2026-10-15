@@ -34,6 +34,11 @@
   RewriteRule ^ - [L]
 
   # Everything else is a SPA route → serve index.html so React Router renders it.
+  # NOTE: RewriteCond only binds to the NEXT RewriteRule, so the /api and /phpmyadmin
+  # guards above do NOT protect this fallback — they must be repeated here, otherwise
+  # /phpmyadmin (a separate PHP app) and /api get captured by the SPA and 404.
+  RewriteCond %{REQUEST_URI} !^/api
+  RewriteCond %{REQUEST_URI} !^/phpmyadmin
   RewriteRule . /index.html [L]
 </IfModule>
 
