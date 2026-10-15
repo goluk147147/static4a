@@ -28,6 +28,7 @@ import { config } from '../config';
 import { rateLimit } from '../utils/rateLimit';
 import { tokensForStaff, sendToTokens } from '../services/push';
 import { issueTokens, safeUser, isMobileClient } from '../auth/session';
+import { decidePosLogin } from '../auth/pos-login-decision';
 
 const router = Router();
 
@@ -145,9 +146,22 @@ router.post('/otp/verify', async (req: Request, res: Response) => {
   const existing = await prisma.user.findUnique({ where: { mobile } }).catch(() => null);
   let user;
   if (existing) {
+    // NO-DOWNGRADE RULE: a POS login may raise or keep privileges, never reduce
+    // them. The allowlist entry must not demote an account that already outranks
+    // it — this once demoted the owner in production (owner → role=admin,
+    // permissions=["orders","dashboard"]). decidePosLogin keeps the higher role
+    // and unions perms on an equal-admin login. See auth/pos-login-decision.ts.
+    const decided = decidePosLogin({
+      existingRole: String(existing.role),
+      existingPermissions: Array.isArray(existing.permissions)
+        ? (existing.permissions as string[]).map(String)
+        : normalizePerms(existing.permissions),
+      allowlistRole: role,
+      allowlistPermissions: permissions,
+    });
     user = await prisma.user.update({
       where: { mobile },
-      data: { role, permissions, last_login: new Date() },
+      data: { role: decided.role, permissions: decided.permissions, last_login: new Date() },
     });
   } else {
     // Derive a unique, non-colliding username from the mobile.

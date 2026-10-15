@@ -97,6 +97,12 @@ router.post('/phones', requireAuth, requireOwner, async (req: Request, res: Resp
   const parsed = upsertSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 'Enter a valid 10-digit mobile and role (owner|staff).', 422);
   const { mobile, role } = parsed.data;
+  // The owner's own number must never be saved as a non-owner `staff` entry —
+  // a limited staff row for the owner number is exactly what demoted the owner
+  // on their next POS login in production. Mirrors the DELETE owner-number guard.
+  if (mobile === OWNER_MOBILE && role !== 'owner') {
+    return fail(res, 'The owner’s own number must stay role=owner.', 409);
+  }
   const name = parsed.data.name ?? null;
   const permissions = role === 'owner' ? ['*'] : cleanPerms(parsed.data.permissions);
   if (role === 'staff' && permissions.length === 0) {

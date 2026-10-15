@@ -1,139 +1,68 @@
-# Implementation Plan — Local product-image upload with hard 50 KB (51200-byte) compression
+# Implementation Plan — POS login must never downgrade an existing account
 
-Scope: add a local-file product image upload to the 4A Store v2 admin that HARD-compresses the
-FINAL stored image to a MAX of 51200 bytes (50 KB), on the WEB admin, plus a small api-node
-server-side guard. MOBILE is OUT OF SCOPE for upload (see item 5 — there is no mobile admin product
-editor). Keep the diff surgical; this branch is unrelated to pos-billing / admin-fixes.
+## Context (what I read, and the decisions I made)
 
-Worktree root: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb`
-Projects root: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb\4astore-v2`
+- **Bug location** — `4astore-v2/api-node/src/routes/pos-auth.ts`, handler `POST /otp/verify` (mounted at `/api/pos/auth`). After OTP verification it derives `role`/`permissions` from the `admin_phones` allowlist row and, for an **existing** user, does `prisma.user.update({ ... data: { role, permissions, last_login } })`. That blindly overwrites role + permissions, so an owner whose number sits in `admin_phones` as a `staff`/limited entry is demoted on POS login. This happened in production (owner became `role=admin`, `permissions=["orders","dashboard"]`).
 
-## Design decisions (grounded in the code I read)
+- **Role model** — `src/auth/middleware.ts`: `STAFF_ROLES = ['owner','superadmin','admin']`. `hasPermission` grants ALL permissions to `owner`/`superadmin`; `admin` is gated by its `permissions[]` (with `'*'` meaning all). So the privilege order that matters here is **owner/superadmin (full) > admin (perms-gated) > everything else**.
 
-- **Store a compressed JPEG data-URI into `product.image`, no API shape change.** `products.image`
-  is a TEXT column already holding base64 data-URIs end-to-end (confirmed in
-  `api-node/src/services/dataImport.ts`), and the save path `web/src/lib/admin.ts ->
-  saveProduct(action, product)` POSTs `{ action, product }` to `/admin/products`, where
-  `productSchema.image` is a free `z.string()`. So a data-URI drops straight in with zero backend
-  shape change. Chosen over uploading a file to a new `/products/upload` endpoint (like
-  `/banners/upload`) because the brief says "store the compressed data-URI into product.image via
-  the existing save path (no API shape change)" and the column already supports it.
-- **JPEG output, iterative resize+quality loop.** Extend the existing canvas approach in
-  `web/src/lib/checkout.ts` (`compressImage` already draws to a canvas and emits
-  `canvas.toDataURL('image/jpeg', q)`). Add a NEW `compressToMaxBytes` that loops: drop quality
-  first, then shrink dimensions, until the decoded byte length `<= 51200`, with an aggressive floor
-  so it is mathematically impossible to exceed 50 KB (if even the floor is over budget, return the
-  smallest result — but with the chosen floor that never happens for real photos). JPEG chosen over
-  WebP for maximum browser/`canvas.toDataURL` support; quality-then-size order chosen to preserve
-  dimensions as long as possible. **Do NOT modify `compressImage`** — `PaymentModal.tsx` depends on
-  its current signature/behaviour; add a sibling function.
-- **Measure true bytes, not string length.** data-URI payload byte size = decoded base64 length.
-  Compute it from the base64 part (`atob(b64).length`, or `(b64.length * 3/4) - padding`) so the
-  ceiling is the real stored size, not the ~1.33x-inflated string length.
-- **Server guard at ~60 KB, not exactly 50 KB.** The client targets `<= 51200`; the server rejects
-  only clearly-oversized images (decoded data-URI > ~61440 bytes) so a legitimate client-compressed
-  image never trips it, while a bypassed/raw upload is blocked. Implemented inside the existing
-  `/admin/products` handler (no new route, no change to the global `express.json` limit).
-- **Mobile: parity not possible — no editor exists.** `mobile/app/admin/` contains only
-  `orders.tsx`, `roles.tsx`, `order/[id].tsx`. There is NO product add/edit screen on mobile, so
-  there is nothing to add an image picker to. `expo-image-picker` + `expo-image-manipulator` ARE
-  installed, so if a mobile product editor is added later the same ceiling can be implemented
-  without a native rebuild — but that is out of scope here.
+- **Allowlist can only ever express `owner` or `admin`** — `pos-auth.ts` computes `role = isOwner ? 'owner' : 'admin'` (there is no `superadmin` path from the allowlist). So the allowlist-derived role is always one of `owner` | `admin`. The existing user's role, however, can be anything already in the DB (`owner`, `superadmin`, `admin`, `rider`, `customer`).
 
-## Verification commands (discovered during exploration)
+- **Response shape is role/perms-independent of my change** — `src/auth/session.ts`: the route returns `safeUser(user)` + tokens, and `issueTokens`/`toClaims` read whatever is on the final `user` object. As long as I set `user` to the persisted row, the returned shape and the OTP-consume + `issueTokens` flow stay byte-for-byte identical. No change needed there.
 
-- WEB build: `npm run build` in `4astore-v2/web` (runs `generate-sitemap` + `tsc -b` + `vite build`).
-- API build: `npm run build` in `4astore-v2/api-node` (`tsc -p tsconfig.json`).
-- MOBILE typecheck: `npx tsc --noEmit` in `4astore-v2/mobile` (no mobile code changes, so this must
-  stay green as a regression check only).
-- Ceiling-proof: a small node script that base64-decodes the stored data-URI and asserts
-  `<= 51200` (item 4).
+- **Test harness** — `src/__tests__/` runs with `node --import ./src/__tests__/register.mjs --test "src/__tests__/**/*.test.ts"` (script `npm test`). Tests use `node:test` + `node:assert/strict` and import **pure functions** from `src/` (see `posBilling.test.ts` importing from `../services/posBilling`, and `catalog-leak.test.ts`). There is **no reachable DB** in the worktree, so the decision logic must be a pure function to be unit-testable — which matches the task's testability requirement.
+
+- **`node_modules` is MISSING in this worktree** (confirmed). `npm test` needs no third-party packages (pure `node:test` + the local TS loader), but it will still fail to resolve the many `import` statements in sibling route files — however the **unit test only imports the new pure-function module plus `node:*`**, so it runs without a DB and without most deps. The `tsc` **build** needs devDependencies (`typescript`) and `@prisma/client`. Therefore step 0 installs dependencies.
+
+### Design decisions (rationale, one line each)
+
+1. **Rank mapping** — `owner = superadmin = 3`, `admin = 2`, anything else (`rider`/`customer`/unknown) `= 1`. owner and superadmin are equal-top because `hasPermission` treats them identically (both get all permissions). Chosen over a finer scale because only the "is the existing account already staff-or-higher than the allowlist role" question matters here.
+
+2. **Decision rule — "POS login may raise or keep privileges, never reduce them":**
+   - If `rank(existingRole) > rank(allowlistRole)` → **keep** existing role AND existing permissions unchanged (only `last_login` updates). This is the fix: an existing `owner`/`superadmin` logging in through a `staff` allowlist entry stays owner/superadmin.
+   - If `rank(allowlistRole) > rank(existingRole)` → **upgrade**: persist the allowlist role + permissions (today's behaviour; a plain `customer`/new-staff gets staff access).
+   - If ranks are **equal** (both resolve to `admin`) → keep role `admin` and persist the **union** of existing perms and allowlist perms (never shrink). `'*'` on either side collapses to `['*']`.
+
+3. **Owner/superadmin permissions when kept** — do not fabricate a perms array; keep exactly what the existing row has (owner/superadmin ignore `permissions[]` at authorization time anyway via `hasPermission`). For the upgrade-to-owner case keep today's `['*']`.
+
+4. **Pure function placement** — new file `src/auth/pos-login-decision.ts` (co-located with the other auth helpers like `session.ts`/`middleware.ts`). Keeps the route thin and the logic importable by the test with no DB.
+
+5. **Permission-union semantics** — union is order-insensitive and de-duplicated; if either side contains `'*'` the result is `['*']` (superset). This guarantees the admin-equal case can only ever keep or grow the permission set.
 
 ---
 
-- [ ] 1. Add an iterative byte-budget image compressor to the web lib.
-      Add a NEW exported async function `compressToMaxBytes(dataUri: string, maxBytes = 51200): Promise<string | null>`
-      beside the existing `compressImage` in `web/src/lib/checkout.ts`. It must: load the image,
-      then loop — start at a sane max dimension (e.g. 1000px) and quality (e.g. 0.82), re-encode via
-      a canvas to `image/jpeg`, measure the DECODED byte size of the result (decode the base64 part,
-      e.g. `atob(dataUri.split(',')[1]).length`), and if still over budget progressively lower
-      quality (down to ~0.3) then shrink the max dimension (e.g. steps 1000→800→640→512→400→320→256px),
-      repeating until size `<= maxBytes`. Guarantee termination and a hard ceiling: at the smallest
-      dimension + lowest quality the result is well under 50 KB for any real photo; return that
-      final data-URI (never one over `maxBytes` unless the floor itself exceeds it, which it will not).
-      Export a small helper `dataUriBytes(dataUri: string): number` too (reused by item 2's size readout).
-      Do NOT change `compressImage` — `PaymentModal.tsx` still imports it unchanged.
-      Files: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb\4astore-v2\web\src\lib\checkout.ts`
-      Verify: `npm run build` in `4astore-v2/web` succeeds (tsc + vite) — the new exports typecheck
-      and bundle with no errors.
+## Plan
 
-- [ ] 2. Add the local file picker + preview + size readout to the web admin product form.
-      In `AdminProducts.tsx`, add — directly under the existing "Image URL" field inside the modal
-      `prod-form-grid` — a `<input type="file" accept="image/*">`. On change: read the chosen file as
-      a data-URI (`FileReader.readAsDataURL`), run `compressToMaxBytes(dataUri, 51200)`, and on success
-      set the form `image` field to the returned compressed data-URI (reuse the existing
-      `set('image', ...)`). Show a small preview `<img src={form.image}>` and a size readout computed
-      with `dataUriBytes` (e.g. "Stored size: 42.1 KB / 50 KB"). While compressing, disable Save and
-      show a "Compressing…" hint; on compressor failure show `showToast('Could not read/compress this image', 'error')`.
-      Keep the existing URL `<input>` working (a pasted http(s) URL still saves as-is — do not force
-      compression on URLs, only on local file picks). No change to `save()` / `saveProduct` payload —
-      `image` already carries whatever string is in the field.
-      Files: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb\4astore-v2\web\src\pages\admin\AdminProducts.tsx`
-      (import `compressToMaxBytes`, `dataUriBytes` from `../../lib/checkout`)
-      Verify: `npm run build` in `4astore-v2/web` succeeds. Manual: open Admin → Products → Add,
-      pick a large photo, confirm the readout shows `<= 50 KB` and Save succeeds.
+- [ ] 0. Install api-node dependencies so the build and tests can run (worktree has no `node_modules`).
+      Files: none (installs into `4astore-v2/api-node/node_modules`).
+      Verify: `cd 4astore-v2/api-node && npm install` exits 0; `npx tsc -p tsconfig.json --noEmit` runs (it may report PRE-EXISTING errors unrelated to this task — capture the baseline output now so step 3 can confirm no NEW errors were introduced). If `@prisma/client` needs generating, run `npm run prisma:generate`.
 
-- [ ] 3. Add the server-side oversize guard to the product create/update route.
-      In the `/products` handler in `api-node/src/routes/admin.ts`, inside the `action === 'add' || 'update'`
-      branch AFTER `productSchema` parse succeeds, if `p.image` is a `data:` URI, decode its base64
-      payload and if the decoded length exceeds ~61440 bytes (60 KB) return
-      `fail(res, 'Product image is too large — it must be compressed to under 50 KB before saving', 400)`.
-      A non-`data:` image (http(s) URL) is left untouched. Do NOT change the global `express.json`
-      limit in `server.ts` (ads/screenshots rely on 6mb/15mb). Add a tiny local helper to measure the
-      decoded size (mirror the existing `Buffer.from(b64, 'base64').length` style already used in
-      `/banners/upload`).
-      Files: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb\4astore-v2\api-node\src\routes\admin.ts`
-      Verify: `npm run build` in `4astore-v2/api-node` succeeds (tsc clean).
+- [ ] 1. Add the pure decision function in a new file `src/auth/pos-login-decision.ts`.
+      Export `roleRank(role: string): number` (owner/superadmin → 3, admin → 2, else → 1), `unionPerms(a: string[], b: string[]): string[]` (de-duped union; returns `['*']` if either contains `'*'`), and `decidePosLogin({ existingRole, existingPermissions, allowlistRole, allowlistPermissions }): { role: string; permissions: string[] }` implementing decision rule #2 above. Add a header comment stating the no-downgrade rule ("POS login may raise or keep privileges, never reduce them") and referencing the production incident (owner demoted to admin with ["orders","dashboard"]). All inputs/outputs are plain values — no Prisma, no `req`.
+      Files: `4astore-v2/api-node/src/auth/pos-login-decision.ts` (new).
+      Verify: `cd 4astore-v2/api-node && npx tsc -p tsconfig.json --noEmit` shows no NEW errors referencing this file (compare against the step 0 baseline).
 
-- [ ] 4. Add and run a ceiling-proof script.
-      Write a throwaway node script at `4astore-v2/web/scripts/verify-image-ceiling.mjs` that imports
-      nothing from the browser build but instead reproduces the byte check: given a sample base64
-      data-URI string it asserts `Buffer.from(b64,'base64').length <= 51200` and exits non-zero
-      otherwise. (The real guarantee is produced in-browser by item 1; this script documents and
-      checks the arithmetic the guard in item 3 relies on, using the SAME 51200 constant.) Run it and
-      confirm it passes, then DELETE the script (it is a verification artifact, not shipped code).
-      Files: `c:\xampp\htdocs\static4a\.worktrees\image-upload-50kb\4astore-v2\web\scripts\verify-image-ceiling.mjs` (temporary)
-      Verify: `node 4astore-v2/web/scripts/verify-image-ceiling.mjs` exits 0 and prints the measured
-      byte size; then remove the file.
+- [ ] 2. Add unit tests for the decision function.
+      Cover: (a) existing `owner` + allowlist `adm`/limited perms → stays `owner`, perms unchanged (the production-incident regression); (b) existing `superadmin` + allowlist `admin` → stays `superadmin`; (c) existing `customer` + allowlist `admin` with perms → upgraded to `admin` with those perms; (d) existing `admin` perms `["orders"]` + allowlist `admin` perms `["dashboard"]` → `admin` with union `["orders","dashboard"]` (no shrink); (e) `'*'` on either side of the equal-admin case → `['*']`; (f) new/plain user path unaffected (allowlist strictly higher upgrades). Follow the `node:test` + `node:assert/strict` import-a-pure-function pattern from `posBilling.test.ts`.
+      Files: `4astore-v2/api-node/src/__tests__/posLoginDecision.test.ts` (new).
+      Verify: `cd 4astore-v2/api-node && npm test` — the new `posLoginDecision` tests pass (and existing tests still pass).
 
-- [ ] 5. Confirm mobile has no product editor and record the scoping decision; keep mobile green.
-      No mobile code change. Confirm `mobile/app/admin/` contains only `orders.tsx`, `roles.tsx`,
-      `order/[id].tsx` (no product add/edit screen), so the <=50 KB mobile upload has nothing to attach
-      to and is correctly out of scope. `expo-image-picker` (~17.0.11) and `expo-image-manipulator`
-      (~14.0.8) remain available for a future mobile editor without a native rebuild. Run the mobile
-      typecheck purely as a regression check that nothing broke.
-      Files: none (documentation/scoping item)
-      Verify: `npx tsc --noEmit` in `4astore-v2/mobile` succeeds (unchanged, still green).
+- [ ] 3. Wire the decision function into the existing-user branch of `POST /otp/verify`, changing ONLY that branch.
+      In `src/routes/pos-auth.ts`: after loading `existing`, when `existing` is truthy call `decidePosLogin({ existingRole: existing.role, existingPermissions: Array.isArray(existing.permissions) ? existing.permissions as string[] : normalizePerms(existing.permissions), allowlistRole: role, allowlistPermissions: permissions })` and use the returned `{ role, permissions }` in `prisma.user.update(... data: { role, permissions, last_login: new Date() })`. Leave the computation of `isOwner`/`role`/`permissions` from the allowlist, the NEW-user `create` branch, the OTP-consume (`emailOtp.update consumed`), and the `issueTokens`/`safeUser` response untouched. Add a short inline comment at the update site referencing the no-downgrade rule and the incident. Note: `isMobileClient`/token flow and returned shape are unchanged because they read the final `user` object (confirmed in `session.ts`).
+      Files: `4astore-v2/api-node/src/routes/pos-auth.ts`.
+      Verify: `cd 4astore-v2/api-node && npx tsc -p tsconfig.json --noEmit` shows no NEW errors vs. the step 0 baseline, and `npm test` passes.
 
-- [ ] 6. Verify runtime data comes from the DB (not data/*.json) and flag any live JSON read.
-      Confirm (already investigated) that `api-node/src/routes/catalog.ts` reads products/categories/
-      settings/config/announcement/version via Prisma, and that the ONLY `fs.readFileSync(... .json)`
-      callers are `services/dataImport.ts` (one-time legacy import) reached solely through the
-      owner-only `/api/admin/data/*` route (`routes/admin-data.ts`) — NOT at normal request time. The
-      other `fs.readFile` hits (`services/push.ts` FCM service-account, `video/render.ts`,
-      `services/og.ts`) read uploaded/asset binaries, not catalog JSON, so they are fine. Record the
-      finding in the review notes. If a live request-time JSON catalog read is found, flag it clearly;
-      fix only if it is a one-line obvious in-scope bug (none found during planning).
-      Files: none (verification/flag item) — if a one-line fix is needed it would be in the offending
-      `api-node/src/routes/*.ts`.
-      Verify: `npm run build` in `4astore-v2/api-node` still succeeds; state in the review that no
-      request-time JSON catalog read exists.
+- [ ] 4. (Optional, only if trivial) Defensive guard in `src/routes/admin-pos.ts` so the owner's own owner-number cannot be saved as a non-owner `staff` entry.
+      In the `POST /phones` handler, before the INSERT, if `mobile === OWNER_MOBILE` and `role !== 'owner'`, return `fail(res, 'The owner number must stay role=owner.', 422)`. This is a two-line guard reusing the existing `OWNER_MOBILE` constant and `MOBILE_RE`-validated `mobile`. If anything about it turns out non-trivial (e.g. owner number is configurable, not the hard-coded constant), SKIP and record it as a follow-up in the final summary instead.
+      Files: `4astore-v2/api-node/src/routes/admin-pos.ts`.
+      Verify: `cd 4astore-v2/api-node && npx tsc -p tsconfig.json --noEmit` shows no NEW errors; `npm test` still passes.
 
-## Out-of-scope note (do not implement here)
+- [ ] 5. Final build + test gate.
+      Files: none.
+      Verify: `cd 4astore-v2/api-node && npx tsc -p tsconfig.json --noEmit` has no NEW errors relative to the step 0 baseline, and `npm test` passes all tests including the new `posLoginDecision` suite. Confirm `git diff --stat` touches only `src/auth/pos-login-decision.ts`, `src/__tests__/posLoginDecision.test.ts`, `src/routes/pos-auth.ts`, and (if step 4 was done) `src/routes/admin-pos.ts`.
 
-The original user also asked for "order list descending (newest first)" and "fresh, non-cached data".
-Those belong to the separate admin-fixes work, NOT this image-upload branch. The one relevant
-observation for THIS branch: product/category writes already call `bumpCatalogVersion()` and
-`/products` serves `no-cache, must-revalidate` with a version ETag, so an in-stock/out-of-stock edit
-is reflected without stale caching. Leave ordering/caching changes to the other branch to keep this
-diff surgical.
+## Notes / assumptions
+
+- The returned response shape, OTP consume, and `issueTokens` flow are intentionally left exactly as-is; the only behavioural change is that the existing-user branch can no longer lower an account's role/permissions.
+- If `npm install`/`npm test` cannot run in the environment (network or Prisma generate blocked), the implementer should still make the code edits and report the exact failure; the unit test imports only the new pure module + `node:*`, so it is the most likely command to run even in a constrained environment.
+- Step 4 is optional and must be skipped (with a follow-up note) if not obviously trivial.
