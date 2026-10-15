@@ -23,7 +23,11 @@
       '16:9': { w: 1080, h: 608,  label: 'FB 16:9' }
     };
 
-    const AD_CTAS = ['Order Now', 'Shop Now', 'Visit Store', 'Call Now', 'WhatsApp Now', 'Free Home Delivery'];
+    const AD_CTAS = ['Order Now', 'Shop Now', 'Visit Store', 'Call Now', 'WhatsApp Now', 'Free Home Delivery', 'Download App'];
+
+    // Play Store listing for the 4A Store Android app (package id: com.store4a.app).
+    // Used by the poster footer line and the generated/shared caption.
+    const AD_APP_URL = 'https://play.google.com/store/apps/details?id=com.store4a.app';
 
     // Grocery-store templates: background + accent colors + default offer style
     const AD_TEMPLATES = {
@@ -34,7 +38,70 @@
       'home-delivery': { name: 'Home Delivery',   emoji: '🛵', bg: ['#0277BD','#01579B'], accent: '#FFD54F', text: '#ffffff' },
       'flash-sale':    { name: 'Flash Sale',      emoji: '⚡', bg: ['#F57C00','#E65100'], accent: '#FFFFFF', text: '#ffffff' },
       'new-arrival':   { name: 'New Arrival',     emoji: '✨', bg: ['#00838F','#006064'], accent: '#FFD54F', text: '#ffffff' },
-      'weekend':       { name: 'Weekend Offer',   emoji: '🎉', bg: ['#AD1457','#880E4F'], accent: '#FFEB3B', text: '#ffffff' }
+      'weekend':       { name: 'Weekend Offer',   emoji: '🎉', bg: ['#AD1457','#880E4F'], accent: '#FFEB3B', text: '#ffffff' },
+
+      // ---- Navratri day-wise (Navadurga) templates — devotional palettes, one per Devi ----
+      'navratri-day-1': { name: 'Navratri Day 1 — Maa Shailputri / शैलपुत्री',    emoji: '🪔', bg: ['#C2185B','#7B1FA2'], accent: '#FFD54F', text: '#ffffff', greeting: 'जय माता दी 🙏 नवरात्रि के पहले दिन माँ शैलपुत्री की कृपा आप पर बनी रहे।' },
+      'navratri-day-2': { name: 'Navratri Day 2 — Maa Brahmacharini / ब्रह्मचारिणी', emoji: '🙏', bg: ['#D84315','#BF360C'], accent: '#FFE082', text: '#ffffff', greeting: 'जय माता दी 🙏 नवरात्रि के दूसरे दिन माँ ब्रह्मचारिणी आपको सुख-समृद्धि दें।' },
+      'navratri-day-3': { name: 'Navratri Day 3 — Maa Chandraghanta / चंद्रघंटा',  emoji: '🌺', bg: ['#AD1457','#D81B60'], accent: '#FFECB3', text: '#ffffff', greeting: 'जय माता दी 🙏 नवरात्रि के तीसरे दिन माँ चंद्रघंटा की कृपा से शांति मिले।' },
+      'navratri-day-4': { name: 'Navratri Day 4 — Maa Kushmanda / कूष्मांडा',     emoji: '🪔', bg: ['#E65100','#F57F17'], accent: '#FFF59D', text: '#ffffff', greeting: 'जय माता दी 🙏 नवरात्रि के चौथे दिन माँ कूष्मांडा आपके जीवन में उजाला भरें।' },
+      'navratri-day-5': { name: 'Navratri Day 5 — Maa Skandamata / स्कंदमाता',    emoji: '🌸', bg: ['#AD1457','#6A1B9A'], accent: '#FFD54F', text: '#ffffff', greeting: 'जय माता दी 🙏 नवरात्रि के पाँचवें दिन माँ स्कंदमाता का आशीर्वाद मिले।' },
+      'navratri-day-6': { name: 'Navratri Day 6 — Maa Katyayani / कात्यायनी',     emoji: '🙏', bg: ['#C62828','#AD1457'], accent: '#FFE082', text: '#ffffff', greeting: 'जय माता दी 🙏 नवरात्रि के छठे दिन माँ कात्यायनी आपके कष्ट हरें।' },
+      'navratri-day-7': { name: 'Navratri Day 7 — Maa Kalaratri / कालरात्रि',     emoji: '🌺', bg: ['#4A148C','#1A237E'], accent: '#FFD54F', text: '#ffffff', greeting: 'जय माता दी 🙏 नवरात्रि के सातवें दिन माँ कालरात्रि आपकी रक्षा करें।' },
+      'navratri-day-8': { name: 'Navratri Day 8 — Maa Mahagauri / महागौरी',       emoji: '🪔', bg: ['#D81B60','#F06292'], accent: '#FFF8E1', text: '#ffffff', greeting: 'जय माता दी 🙏 नवरात्रि के आठवें दिन माँ महागौरी आपको समृद्धि दें।' },
+      'navratri-day-9': { name: 'Navratri Day 9 — Maa Siddhidatri / सिद्धिदात्री', emoji: '🌸', bg: ['#B71C1C','#FF6F00'], accent: '#FFF59D', text: '#ffffff', greeting: 'जय माता दी 🙏 नवरात्रि के नवें दिन माँ सिद्धिदात्री आपकी हर मनोकामना पूर्ण करें।' },
+
+      // ---- Festival templates ----
+      'durga-puja':        { name: 'Durga Puja',        emoji: '🙏', bg: ['#C2185B','#AD1457'], accent: '#FFD54F', text: '#ffffff', greeting: 'शुभ दुर्गा पूजा 🙏 माँ दुर्गा की कृपा आप पर सदैव बनी रहे।' },
+      'dussehra':          { name: 'Dussehra',          emoji: '🏹', bg: ['#E65100','#BF360C'], accent: '#FFEB3B', text: '#ffffff', greeting: 'शुभ दशहरा 🏹 असत्य पर सत्य की विजय की हार्दिक शुभकामनाएँ।' },
+      'diwali':            { name: 'Diwali',            emoji: '🪔', bg: ['#6A1B9A','#4A148C'], accent: '#FFD54F', text: '#ffffff', greeting: 'दीपावली की हार्दिक शुभकामनाएँ 🪔 आपका जीवन खुशियों से रोशन रहे।' },
+      'dhanteras':         { name: 'Dhanteras',         emoji: '🪙', bg: ['#F57F17','#E65100'], accent: '#FFF59D', text: '#ffffff', greeting: 'शुभ धनतेरस 🪙 माँ लक्ष्मी आपके घर धन-समृद्धि लाएँ।' },
+      'govardhan':         { name: 'Govardhan Puja',    emoji: '🐄', bg: ['#2E7D32','#1B5E20'], accent: '#FFEB3B', text: '#ffffff', greeting: 'शुभ गोवर्धन पूजा 🙏 भगवान कृष्ण का आशीर्वाद आप पर बना रहे।' },
+      'bhai-dooj':         { name: 'Bhai Dooj',         emoji: '🎁', bg: ['#D81B60','#C2185B'], accent: '#FFF8E1', text: '#ffffff', greeting: 'भाई दूज की शुभकामनाएँ 🎁 भाई-बहन का प्यार हमेशा बना रहे।' },
+      'chhath-puja':       { name: 'Chhath Puja',       emoji: '🌅', bg: ['#F9A825','#EF6C00'], accent: '#FFFDE7', text: '#ffffff', greeting: 'छठ पूजा की हार्दिक शुभकामनाएँ 🌅 छठी मैया आपकी मनोकामना पूर्ण करें।' },
+      'holi':              { name: 'Holi',              emoji: '🎨', bg: ['#6A1B9A','#D81B60'], accent: '#FFEB3B', text: '#ffffff', greeting: 'होली की रंग-बिरंगी शुभकामनाएँ 🎨 आपका जीवन खुशियों के रंगों से भरा रहे।' },
+      'holika-dahan':      { name: 'Holika Dahan',      emoji: '🔥', bg: ['#BF360C','#D84315'], accent: '#FFD54F', text: '#ffffff', greeting: 'होलिका दहन की शुभकामनाएँ 🔥 बुराई पर अच्छाई की जीत हो।' },
+      'raksha-bandhan':    { name: 'Raksha Bandhan',    emoji: '🪢', bg: ['#AD1457','#8E24AA'], accent: '#FFECB3', text: '#ffffff', greeting: 'रक्षाबंधन की हार्दिक शुभकामनाएँ 🪢 भाई-बहन का रिश्ता यूँ ही मजबूत रहे।' },
+      'janmashtami':       { name: 'Janmashtami',       emoji: '🦚', bg: ['#1565C0','#0D47A1'], accent: '#FFD54F', text: '#ffffff', greeting: 'जन्माष्टमी की शुभकामनाएँ 🦚 नंदलाल आपके जीवन में खुशियाँ भरें।' },
+      'ganesh-chaturthi':  { name: 'Ganesh Chaturthi',  emoji: '🐘', bg: ['#E65100','#C62828'], accent: '#FFF59D', text: '#ffffff', greeting: 'गणेश चतुर्थी की शुभकामनाएँ 🐘 गणपति बप्पा आपके विघ्न हरें।' },
+      'makar-sankranti':   { name: 'Makar Sankranti',   emoji: '🪁', bg: ['#0277BD','#01579B'], accent: '#FFEB3B', text: '#ffffff', greeting: 'मकर संक्रांति की शुभकामनाएँ 🪁 आपका जीवन उल्लास से भरा रहे।' },
+      'pongal':            { name: 'Pongal',            emoji: '🌾', bg: ['#2E7D32','#33691E'], accent: '#FFF176', text: '#ffffff', greeting: 'पोंगल की हार्दिक शुभकामनाएँ 🌾 आपके घर में सुख-समृद्धि आए।' },
+      'lohri':             { name: 'Lohri',             emoji: '🔥', bg: ['#E65100','#F9A825'], accent: '#FFFDE7', text: '#ffffff', greeting: 'लोहड़ी की शुभकामनाएँ 🔥 आपका जीवन गर्मजोशी और खुशियों से भरा रहे।' },
+      'baisakhi':          { name: 'Baisakhi',          emoji: '🌾', bg: ['#F9A825','#F57F17'], accent: '#FFFDE7', text: '#ffffff', greeting: 'बैसाखी की हार्दिक शुभकामनाएँ 🌾 नई फसल आपके जीवन में खुशहाली लाए।' },
+      'eid-ul-fitr':       { name: 'Eid-ul-Fitr',       emoji: '🌙', bg: ['#00695C','#004D40'], accent: '#FFD54F', text: '#ffffff', greeting: 'ईद मुबारक 🌙 यह ईद आपके जीवन में खुशियाँ और बरकत लाए।' },
+      'bakrid':            { name: 'Bakrid',            emoji: '🕌', bg: ['#2E7D32','#1B5E20'], accent: '#FFECB3', text: '#ffffff', greeting: 'बकरीद मुबारक 🕌 यह पावन पर्व आपके जीवन में सुख-शांति लाए।' },
+      'christmas':         { name: 'Christmas',         emoji: '🎄', bg: ['#C62828','#1B5E20'], accent: '#FFF59D', text: '#ffffff', greeting: 'Merry Christmas 🎄 मेरी क्रिसमस — आपका जीवन खुशियों से भरा रहे।' },
+      'new-year':          { name: 'Happy New Year',    emoji: '🎆', bg: ['#283593','#1A237E'], accent: '#FFD54F', text: '#ffffff', greeting: 'नव वर्ष की हार्दिक शुभकामनाएँ 🎆 नया साल आपके लिए मंगलमय हो।' },
+      'republic-day':      { name: 'Republic Day',      emoji: '🇮🇳', bg: ['#E65100','#1B5E20'], accent: '#FFFFFF', text: '#ffffff', greeting: 'गणतंत्र दिवस की हार्दिक शुभकामनाएँ 🇮🇳 जय हिंद!' },
+      'independence-day':  { name: 'Independence Day',  emoji: '🇮🇳', bg: ['#F9A825','#2E7D32'], accent: '#FFFFFF', text: '#ffffff', greeting: 'स्वतंत्रता दिवस की हार्दिक शुभकामनाएँ 🇮🇳 जय हिंद, जय भारत!' },
+      'ram-navami':        { name: 'Ram Navami',        emoji: '🏹', bg: ['#EF6C00','#E65100'], accent: '#FFF59D', text: '#ffffff', greeting: 'राम नवमी की शुभकामनाएँ 🏹 प्रभु श्रीराम की कृपा आप पर बनी रहे।' },
+      'hanuman-jayanti':   { name: 'Hanuman Jayanti',   emoji: '🚩', bg: ['#D84315','#BF360C'], accent: '#FFD54F', text: '#ffffff', greeting: 'हनुमान जयंती की शुभकामनाएँ 🚩 बजरंगबली आपको बल और बुद्धि दें।' },
+      'mahashivratri':     { name: 'Mahashivratri',     emoji: '🔱', bg: ['#1565C0','#283593'], accent: '#FFECB3', text: '#ffffff', greeting: 'महाशिवरात्रि की शुभकामनाएँ 🔱 भगवान शिव आपकी हर मनोकामना पूर्ण करें।' },
+      'karwa-chauth':      { name: 'Karwa Chauth',      emoji: '🌕', bg: ['#AD1457','#C2185B'], accent: '#FFECB3', text: '#ffffff', greeting: 'करवा चौथ की शुभकामनाएँ 🌕 आपका दांपत्य जीवन सदा सुखमय रहे।' },
+      'teej':              { name: 'Teej',              emoji: '🌿', bg: ['#2E7D32','#1B5E20'], accent: '#FFEB3B', text: '#ffffff', greeting: 'तीज की हार्दिक शुभकामनाएँ 🌿 आपका जीवन हरियाली और खुशियों से भरा रहे।' },
+      'onam':              { name: 'Onam',              emoji: '🌼', bg: ['#F9A825','#2E7D32'], accent: '#FFFDE7', text: '#ffffff', greeting: 'ओणम की हार्दिक शुभकामनाएँ 🌼 यह पर्व आपके जीवन में समृद्धि लाए।' },
+      'gudi-padwa':        { name: 'Gudi Padwa',        emoji: '🎏', bg: ['#EF6C00','#F9A825'], accent: '#FFFDE7', text: '#ffffff', greeting: 'गुड़ी पड़वा की शुभकामनाएँ 🎏 नया साल आपके लिए मंगलमय हो।' },
+      'ugadi':             { name: 'Ugadi',             emoji: '🌱', bg: ['#558B2F','#33691E'], accent: '#FFF176', text: '#ffffff', greeting: 'उगादि की हार्दिक शुभकामनाएँ 🌱 नया साल आपके जीवन में खुशहाली लाए।' },
+      'guru-nanak-jayanti':{ name: 'Guru Nanak Jayanti',emoji: '🙏', bg: ['#F9A825','#EF6C00'], accent: '#FFFDE7', text: '#ffffff', greeting: 'गुरु नानक जयंती की शुभकामनाएँ 🙏 सतगुरु की कृपा आप पर बनी रहे।' },
+      'mahavir-jayanti':   { name: 'Mahavir Jayanti',   emoji: '🙏', bg: ['#EF6C00','#F57F17'], accent: '#FFF8E1', text: '#ffffff', greeting: 'महावीर जयंती की शुभकामनाएँ 🙏 अहिंसा और सत्य का प्रकाश आपके जीवन में फैले।' },
+      'buddha-purnima':    { name: 'Buddha Purnima',    emoji: '☸️', bg: ['#F9A825','#FF8F00'], accent: '#FFFDE7', text: '#ffffff', greeting: 'बुद्ध पूर्णिमा की शुभकामनाएँ ☸️ भगवान बुद्ध का शांति संदेश आपके जीवन में उतरे।' },
+      'mothers-day':       { name: "Mother's Day",      emoji: '💐', bg: ['#D81B60','#F06292'], accent: '#FFF8E1', text: '#ffffff', greeting: 'मातृ दिवस की शुभकामनाएँ 💐 माँ के प्यार और आशीर्वाद को समर्पित।' },
+
+      // ---- Evergreen offer templates (festive copy only; prices come from the product) ----
+      'weekend-sale':       { name: 'Weekend Sale',        emoji: '🎉', bg: ['#8E24AA','#5E35B1'], accent: '#FFEB3B', text: '#ffffff', greeting: 'इस वीकेंड 4A STORE पर खास बचत का मौका — आज ही ऑर्डर करें! 🎉' },
+      'month-end-sale':     { name: 'Month End Sale',      emoji: '📅', bg: ['#00838F','#006064'], accent: '#FFD54F', text: '#ffffff', greeting: 'महीने के अंत की धमाकेदार सेल — बचत का यह मौका न चूकें! 📅' },
+      'monsoon-essentials': { name: 'Monsoon Essentials',  emoji: '🌧️', bg: ['#0277BD','#01579B'], accent: '#B3E5FC', text: '#ffffff', greeting: 'बारिश के मौसम की हर ज़रूरत अब 4A STORE पर — घर बैठे मंगाएँ! 🌧️' },
+      'summer-coolers':     { name: 'Summer Coolers',      emoji: '🧊', bg: ['#039BE5','#0277BD'], accent: '#E1F5FE', text: '#ffffff', greeting: 'गर्मी को कहें अलविदा — ठंडक भरे प्रोडक्ट्स अब खास दाम पर! 🧊' },
+      'winter-specials':    { name: 'Winter Specials',     emoji: '❄️', bg: ['#1565C0','#283593'], accent: '#E3F2FD', text: '#ffffff', greeting: 'सर्दियों की खास ज़रूरतें 4A STORE पर — आज ही ऑर्डर करें! ❄️' },
+      'fresh-fruits':       { name: 'Fresh Fruits',        emoji: '🍎', bg: ['#43A047','#2E7D32'], accent: '#FFF176', text: '#ffffff', greeting: 'ताज़े और रसीले फल सीधे आपके घर तक — गुणवत्ता की गारंटी! 🍎' },
+      'dairy-fresh':        { name: 'Dairy Fresh',         emoji: '🥛', bg: ['#1976D2','#0D47A1'], accent: '#FFFDE7', text: '#ffffff', greeting: 'रोज़ाना ताज़ा दूध और डेयरी उत्पाद — भरोसेमंद 4A STORE से! 🥛' },
+      'pooja-samagri':      { name: 'Pooja Samagri',       emoji: '🪔', bg: ['#E65100','#BF360C'], accent: '#FFD54F', text: '#ffffff', greeting: 'पूजा-पाठ की हर सामग्री अब एक ही जगह — शुद्ध और उचित दाम पर! 🪔' },
+      'clearance-sale':     { name: 'Clearance Sale',      emoji: '🏷️', bg: ['#C62828','#B71C1C'], accent: '#FFEB3B', text: '#ffffff', greeting: 'क्लियरेंस सेल — स्टॉक खत्म होने से पहले बचत का लाभ उठाएँ! 🏷️' },
+      'combo-offer':        { name: 'Combo Offer',         emoji: '🎁', bg: ['#6A1B9A','#4A148C'], accent: '#FFD54F', text: '#ffffff', greeting: 'कॉम्बो ऑफर — ज़्यादा सामान, ज़्यादा बचत, एक ही पैक में! 🎁' },
+      'buy-more-save-more': { name: 'Buy More Save More',  emoji: '🛍️', bg: ['#AD1457','#880E4F'], accent: '#FFECB3', text: '#ffffff', greeting: 'जितना ज़्यादा खरीदें, उतनी ज़्यादा बचत — आज ही 4A STORE से! 🛍️' },
+      'free-delivery-day':  { name: 'Free Delivery Day',   emoji: '🛵', bg: ['#00897B','#00695C'], accent: '#FFD54F', text: '#ffffff', greeting: 'आज फ्री होम डिलीवरी — घर बैठे मंगाएँ अपनी ज़रूरत का सामान! 🛵' },
+      'grand-opening':      { name: 'Grand Opening',       emoji: '🎊', bg: ['#D81B60','#8E24AA'], accent: '#FFF59D', text: '#ffffff', greeting: 'ग्रैंड ओपनिंग 🎊 4A STORE पर आपका हार्दिक स्वागत है — खास ऑफर के साथ!' },
+      'festival-mega-sale': { name: 'Festival Mega Sale',  emoji: '🎇', bg: ['#E65100','#6A1B9A'], accent: '#FFD54F', text: '#ffffff', greeting: 'त्योहारों की मेगा सेल 🎇 4A STORE पर बचत का सबसे बड़ा मौका!' }
     };
 
     // ---- Data loading ----
@@ -510,7 +577,22 @@
       queueAutoSave(); adDrawSoon();
     }
 
-    function adSetTemplate(k) { adEditor.template = k; queueAutoSave(); renderAdEditor(); }
+    function adSetTemplate(k) {
+      adEditor.template = k;
+      const tpl = AD_TEMPLATES[k];
+      if (tpl && tpl.greeting) {
+        // Seed festive copy only when the user has not written their own, so
+        // a freshly-picked template looks complete without clobbering edits.
+        if (!adEditor.caption) {
+          adEditor.caption = tpl.greeting + '\n\n📲 4A Store App डाउनलोड करें: ' + AD_APP_URL;
+        }
+        if (!adEditor.offerTitle || adEditor.offerTitle === 'आज का खास ऑफर') {
+          adEditor.offerTitle = tpl.name;
+        }
+      }
+      queueAutoSave();
+      renderAdEditor();
+    }
     function adSetFormat(f) { adEditor.format = f; queueAutoSave(); renderAdEditor(); }
 
     // ---- template text lines ----
@@ -1028,7 +1110,8 @@
       ctx.font = '500 ' + fAddr + 'px ' + FONT;
       const addr = (s && s.storeAddress) ? s.storeAddress : 'गजना रोड, चंद्रगढ़, नबीनगर, औरंगाबाद';
       const addrLines = wrapLines(ctx, '📍 ' + addr, W*0.9);
-      const footerH = fFoot*1.4 + addrLines.length*fAddr*1.35 + H*0.02;
+      // Reserve one extra line (fFoot*1.3) for the "Download App" footer line below.
+      const footerH = fFoot*1.4 + fFoot*1.3 + addrLines.length*fAddr*1.35 + H*0.02;
       const footerTop = H - footerH - H*0.02;
 
       // CTA block
@@ -1281,6 +1364,10 @@
       const phone = (s && s.storePhone) ? s.storePhone : '7543888698';
       let fy = footerTop + fFoot;
       ctx.fillText('📞 ' + phone + '   •   🌐 4astore.com', W/2, fy);
+      // App-download line — reuses FONT so Devanagari renders; pinned under phone/site.
+      fy += fFoot*1.3;
+      ctx.font = '600 ' + fFoot + 'px ' + FONT;
+      ctx.fillText('📲 Play Store पर 4A Store App डाउनलोड करें', W/2, fy);
       ctx.font = '500 ' + fAddr + 'px ' + FONT;
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
       addrLines.forEach(l => { fy += fAddr*1.35; ctx.fillText(l, W/2, fy); });
@@ -1419,9 +1506,14 @@
       );
     }
 
-    // Full caption text (caption + hashtags)
+    // Full caption text (caption + hashtags), with the Play Store app link appended
+    // exactly once so every shared post carries the download link.
     function adFullCaption() {
-      return (adEditor.caption || '') + (adEditor.hashtags ? '\n\n' + adEditor.hashtags : '');
+      let full = (adEditor.caption || '') + (adEditor.hashtags ? '\n\n' + adEditor.hashtags : '');
+      if (!full.includes('play.google.com')) {
+        full += '\n\n📲 4A Store App डाउनलोड करें: ' + AD_APP_URL;
+      }
+      return full;
     }
 
     // Turn the current canvas into a PNG File (for native sharing)
@@ -1507,7 +1599,12 @@
         `आपके परिवार की रोजमर्रा की जरूरतों के लिए भरोसेमंद खरीदारी का विकल्प। 😊\n${productsText} पर 4A STORE की ओर से ${disc} का विशेष लाभ उपलब्ध है।\nआज ही अपना ऑर्डर बुक कीजिए।\n📞 ${phone}`,
         `बचत और सुविधा के साथ बेहतर खरीदारी का सही समय आज है! ✨\n${productsText} पर ${disc} का शानदार अवसर उपलब्ध है।\n4A STORE से खरीदारी कीजिए और सामान अपने घर पर प्राप्त कीजिए।\n📞 ${phone}`
       ];
-      const caption = captions[variant % captions.length];
+      let caption = captions[variant % captions.length];
+      // Festival-aware: open with the template's devotional/festive greeting.
+      const tpl = AD_TEMPLATES[e.template];
+      if (tpl && tpl.greeting) caption = tpl.greeting + '\n\n' + caption;
+      // Always close with the Play Store app line.
+      caption += '\n\n📲 4A Store App डाउनलोड करें: ' + AD_APP_URL;
       e.captionVariant = variant + 1;
       e.lang = 'hindi';
       const hashtagSets = [
