@@ -159,14 +159,22 @@ export function Screen({
   );
 }
 
-export function Stepper({ qty, onMinus, onPlus, label }: { qty: number; onMinus: () => void; onPlus: () => void; label?: string }) {
+export function Stepper({ qty, onMinus, onPlus, label, plusDisabled }: { qty: number; onMinus: () => void; onPlus: () => void; label?: string; plusDisabled?: boolean }) {
   return (
     <View style={styles.stepper}>
       <Pressable onPress={onMinus} style={styles.stepBtn} accessibilityRole="button" accessibilityLabel={`Decrease ${label || 'quantity'}`} hitSlop={6}>
         <Text style={styles.stepBtnText}>−</Text>
       </Pressable>
       <Text style={styles.stepQty} accessibilityLabel={`Quantity ${qty}`}>{qty}</Text>
-      <Pressable onPress={onPlus} style={styles.stepBtn} accessibilityRole="button" accessibilityLabel={`Increase ${label || 'quantity'}`} hitSlop={6}>
+      <Pressable
+        onPress={onPlus}
+        disabled={plusDisabled}
+        style={[styles.stepBtn, plusDisabled && { opacity: 0.4 }]}
+        accessibilityRole="button"
+        accessibilityLabel={`Increase ${label || 'quantity'}`}
+        accessibilityState={{ disabled: !!plusDisabled }}
+        hitSlop={6}
+      >
         <Text style={styles.stepBtnText}>+</Text>
       </Pressable>
     </View>

@@ -11,6 +11,12 @@ export interface Product {
   description?: string;
   features?: string[];
   in_stock: boolean;
+  // Stock unit from the public catalog ("pcs", "kg", ...). Drives weight-vs-pcs
+  // messaging for the per-order purchase cap.
+  unit?: string;
+  // Per-order purchase cap (Zepto/Blinkit style). Public hint; API returns the
+  // DECIMAL as a string, normalized to a number (or null = unlimited) in queries.ts.
+  max_qty_per_order?: number | null;
   // ISO timestamp of the last product write (products.updated_at); optional image cache-bust key (FEAT-001).
   updated_at?: string;
 }
@@ -108,6 +114,10 @@ export interface CartItem {
   category?: string;
   image?: string;
   quantity: number;
+  // Per-order purchase cap carried into the cart so the store can clamp without
+  // a product lookup (null/undefined = unlimited). `unit` drives the weight-vs-pcs message.
+  maxQty?: number | null;
+  unit?: string;
 }
 
 export interface SavedAddress {

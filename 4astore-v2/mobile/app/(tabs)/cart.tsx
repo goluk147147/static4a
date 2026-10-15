@@ -8,6 +8,7 @@ import { useCart } from '../../src/store/cart';
 import { useAuth } from '../../src/store/auth';
 import { useProducts, useSettings } from '../../src/queries';
 import { cartTotals } from '../../src/checkout';
+import { qtyLimitCaption } from '../../src/qtyLimit';
 import { colors } from '../../src/theme';
 
 export default function Cart() {
@@ -30,14 +31,23 @@ export default function Cart() {
         <EmptyState icon="🛒" title="Your cart is empty" text="Add some fresh groceries to get started." action={<GradientButton title="Shop Now" onPress={() => router.push('/products')} />} />
       ) : (
         <>
-          {items.map((i) => (
+          {items.map((i) => {
+            // Resolve the cap from the live catalog first (so an admin change applies instantly),
+            // falling back to the value stored on the cart item. Mirrors web Cart.tsx.
+            const liveProduct = products.find((x) => x.id === i.id);
+            const maxRaw = liveProduct?.max_qty_per_order ?? i.maxQty ?? null;
+            const max = typeof maxRaw === 'number' && maxRaw > 0 ? maxRaw : null;
+            const unit = liveProduct?.unit ?? i.unit;
+            const atMax = max != null && i.quantity >= max;
+            return (
             <Card key={i.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <ProductImage name={i.name} weight={i.weight} category={i.category ?? products.find((p) => p.id === i.id)?.category} image={i.image} height={56} style={{ width: 56 }} compact />
+              <ProductImage name={i.name} weight={i.weight} category={i.category ?? liveProduct?.category} image={i.image} height={56} style={{ width: 56 }} compact />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontWeight: '700', fontSize: 14, color: colors.dark }} numberOfLines={2}>{i.name}</Text>
                 <Text style={ui.muted}>{i.weight} · ₹{i.price}</Text>
+                {atMax && <Text style={{ color: colors.accent, fontSize: 11, fontWeight: '600', marginTop: 2 }}>{qtyLimitCaption(max!, unit)}</Text>}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                  <Stepper qty={i.quantity} label={i.name} onMinus={() => setQty(i.id, i.quantity - 1)} onPlus={() => setQty(i.id, i.quantity + 1)} />
+                  <Stepper qty={i.quantity} label={i.name} plusDisabled={atMax} onMinus={() => setQty(i.id, i.quantity - 1)} onPlus={() => { if (!atMax) setQty(i.id, i.quantity + 1); }} />
                   <Text style={{ fontWeight: '800', color: colors.primaryDark }}>₹{i.price * i.quantity}</Text>
                 </View>
               </View>
@@ -45,7 +55,8 @@ export default function Cart() {
                 <Text style={{ fontSize: 22, color: '#c62828' }}>×</Text>
               </Pressable>
             </Card>
-          ))}
+            );
+          })}
           <Card style={{ marginTop: 6 }}>
             <SummaryRow label="Subtotal" value={`₹${t.subtotal}`} />
             {settings?.deliveryChargeEnabled !== false && (

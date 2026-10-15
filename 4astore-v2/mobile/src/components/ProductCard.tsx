@@ -5,6 +5,7 @@ import type { Product } from '../types';
 import { useCart } from '../store/cart';
 import { useSettings } from '../queries';
 import { colors, radius, shadow } from '../theme';
+import { qtyLimitCaption } from '../qtyLimit';
 import ProductImage from './ProductImage';
 import { Stepper } from './ui';
 
@@ -16,6 +17,8 @@ export default function ProductCard({ product, width }: { product: Product; widt
   const setQty = useCart((s) => s.setQty);
   const hideMrp = !!useSettings().data?.hideMrp;
   const showDiscount = product.discount > 0 && !hideMrp;
+  const max = typeof product.max_qty_per_order === 'number' && product.max_qty_per_order > 0 ? product.max_qty_per_order : null;
+  const atMax = max != null && !!inCart && inCart.quantity >= max;
   const open = () => router.push(`/product/${product.id}`);
 
   return (
@@ -35,7 +38,16 @@ export default function ProductCard({ product, width }: { product: Product; widt
       </View>
       {hideMrp ? null : product.in_stock ? (
         inCart ? (
-          <Stepper qty={inCart.quantity} label={product.name} onMinus={() => setQty(product.id, inCart.quantity - 1)} onPlus={() => setQty(product.id, inCart.quantity + 1)} />
+          <>
+            <Stepper
+              qty={inCart.quantity}
+              label={product.name}
+              plusDisabled={atMax}
+              onMinus={() => setQty(product.id, inCart.quantity - 1)}
+              onPlus={() => { if (!atMax) setQty(product.id, inCart.quantity + 1); }}
+            />
+            {atMax && <Text style={styles.limitCaption}>{qtyLimitCaption(max!, product.unit)}</Text>}
+          </>
         ) : (
           <Pressable onPress={() => add(product)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={`Add ${product.name} to cart`}>
             <Text style={styles.addText}>Add to Cart</Text>
@@ -63,4 +75,5 @@ const styles = StyleSheet.create({
   addBtn: { backgroundColor: colors.primary, borderRadius: radius.sm, minHeight: 34, alignItems: 'center', justifyContent: 'center' },
   addText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
   out: { color: colors.accent, fontWeight: '700', fontSize: 12, paddingVertical: 6 },
+  limitCaption: { color: colors.accent, fontSize: 11, fontWeight: '600', marginTop: 4 },
 });

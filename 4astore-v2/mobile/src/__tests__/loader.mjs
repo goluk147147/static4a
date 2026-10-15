@@ -9,8 +9,9 @@
 //      exposed on globalThis.__mockApi so tests can control responses and count calls.
 //   2. Make the extensionless `../api` import resolve to the mock (the real file is
 //      api.ts, which Node's strict ESM resolver won't auto-extend).
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { resolve as resolvePath } from 'node:path';
+import { existsSync } from 'node:fs';
 
 const SRC = resolvePath(import.meta.dirname, '..');
 const API_FILE = pathToFileURL(resolvePath(SRC, 'api.ts')).href;
@@ -41,6 +42,21 @@ export async function resolve(specifier, context, nextResolve) {
       }
     } catch {
       /* not a URL-resolvable specifier — fall through */
+    }
+  }
+
+  // App code imports siblings extensionlessly (e.g. `../qtyLimit`), which Metro/tsc
+  // resolve but Node's strict ESM resolver does not auto-extend. If a relative,
+  // extensionless specifier resolves to an on-disk `.ts` file, point Node at it.
+  if ((specifier.startsWith('./') || specifier.startsWith('../')) && !/\.[a-z]+$/i.test(specifier)) {
+    try {
+      const base = new URL(specifier, context.parentURL);
+      const tsUrl = new URL(base.href + '.ts');
+      if (existsSync(fileURLToPath(tsUrl))) {
+        return { url: tsUrl.href, shortCircuit: true };
+      }
+    } catch {
+      /* not resolvable — fall through */
     }
   }
   return nextResolve(specifier, context);

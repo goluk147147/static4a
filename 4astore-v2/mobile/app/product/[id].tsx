@@ -8,6 +8,7 @@ import { useProducts, useSettings } from '../../src/queries';
 import { useFeature } from '../../src/features';
 import { useCart } from '../../src/store/cart';
 import { shareProduct } from '../../src/share';
+import { qtyLimitCaption } from '../../src/qtyLimit';
 import { colors, radius, space } from '../../src/theme';
 
 /**
@@ -221,10 +222,29 @@ export default function ProductDetails() {
           {!product.in_stock ? (
             <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 15 }}>Out of stock</Text>
           ) : hideMrp ? null : inCart ? (
-            <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'stretch' }}>
-              <Stepper qty={inCart.quantity} label={product.name} onMinus={() => setQty(product.id, inCart.quantity - 1)} onPlus={() => setQty(product.id, inCart.quantity + 1)} />
-              <GradientButton title="Cart देखें →" size="sm" onPress={() => router.push('/cart')} style={{ flex: 1 }} />
-            </View>
+            (() => {
+              const max = typeof product.max_qty_per_order === 'number' && product.max_qty_per_order > 0 ? product.max_qty_per_order : null;
+              const atMax = max != null && inCart.quantity >= max;
+              return (
+                <>
+                  <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'stretch' }}>
+                    <Stepper
+                      qty={inCart.quantity}
+                      label={product.name}
+                      plusDisabled={atMax}
+                      onMinus={() => setQty(product.id, inCart.quantity - 1)}
+                      onPlus={() => { if (!atMax) setQty(product.id, inCart.quantity + 1); }}
+                    />
+                    <GradientButton title="Cart देखें →" size="sm" onPress={() => router.push('/cart')} style={{ flex: 1 }} />
+                  </View>
+                  {atMax && (
+                    <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600', marginTop: 8 }}>
+                      {qtyLimitCaption(max!, product.unit)}
+                    </Text>
+                  )}
+                </>
+              );
+            })()
           ) : (
             <GradientButton title="Add to Cart / कार्ट में डालें" onPress={() => add(product)} />
           )}

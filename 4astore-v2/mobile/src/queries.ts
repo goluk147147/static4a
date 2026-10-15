@@ -15,6 +15,7 @@ function normalizeProduct(p: Product): Product {
     mrp: Number(p.mrp) || 0,
     discount: Number(p.discount) || 0,
     in_stock: !!p.in_stock,
+    max_qty_per_order: p.max_qty_per_order == null ? null : (Number(p.max_qty_per_order) || null),
   };
 }
 
