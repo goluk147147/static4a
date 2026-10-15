@@ -1,85 +1,81 @@
-# Two-phase pending→confirmed order lifecycle + instant catalog refresh
+# Festival template pack + app-download CTA for the Ads & Social poster-maker
 
-This change closes the owner's #1 revenue leak (shoppers who pay via UPI but never return to upload the screenshot were never recorded anywhere) and makes admin product/category edits appear on storefronts within seconds. Feature 1 adds a `phase: 'pending' | 'confirm'` flag to `POST /orders`: tapping *Proceed to UPI Payment* now fire-and-forget creates a `'Pending Payment'` lead with no UTR, and the later screenshot+UTR confirm flips that same `order_id` to `'Order Placed'`. Feature 2 adds a `catalog_version` counter bumped on every admin product/category mutation and surfaced as an ETag + `no-cache, must-revalidate` on `GET /products` and `GET /categories`, with mobile/web React Query staleTimes dropped and refetch-on-focus enabled. The change is deliberately additive — old app builds that send no `phase` run the exact prior single-POST path unchanged.
+Expands the legacy poster-maker (`admin-ads.js`) from 8 templates to 65 by adding 9 Navratri day-wise Navadurga templates, 34 festival templates, and 14 evergreen offer templates, plus an app-download CTA. The change is purely additive: new entries follow the existing `{ name, emoji, bg, accent, text }` shape (with an optional `greeting`) so they flow through the unchanged canvas renderer. A `'Download App'` CTA option, a Play Store footer line drawn on every poster, and a Play Store link appended to generated/shared captions complete the feature. The entire feature diff lands in one file; `plan.md` and a verification note are the only other changes.
 
-Watch for: nothing blocking. The pending-create path correctly bypasses the UTR guard, writes `payment_reference=null`, and suppresses the staff push (confirmed). The admin manual-confirm validates a 12-digit UTR even when the target status isn't a confirmed state, slightly broader than the plan's wording but harmless (possible). No Cloudflare purge was added, matching the plan (confirmed).
+Watch for: nothing blocking. The footer coordinate change was traced and fits within the canvas (confirmed). Devanagari in the source file is clean UTF-8, not the mojibake the raw git-diff console output suggests (confirmed).
 
 **Verdict**: APPROVED
 
 ## High-level view
 
-The two-phase order flow hinges on `POST /orders` branching on `phase`. A `'pending'` request skips the 12-digit UTR guard and the duplicate check, writes `payment_reference=null` and `order_status='Pending Payment'`, and never fires `notifyStaffNewOrder`. A `'confirm'` request (the default, so any old client falls into it) enforces `/^\d{12}$/` plus uniqueness — with the one correct exception that the SAME `order_id` may re-use its own UTR — and the upsert's update branch now also flips `order_status` and `payment_reference`, so a confirm of a prior pending row updates in place rather than creating a second order. The staff push fires once, only on the genuine pending→placed (or first-placed) transition.
+The design keeps the renderer untouched and treats templates as data. Every new template is just another entry in `AD_TEMPLATES` with the same keys the renderer already reads, so the picker (`Object.entries`) and canvas (`AD_TEMPLATES[e.template]`) pick them up with no code path changes. The only new per-template field, `greeting`, is read in exactly two places (`adSetTemplate`, `adGenerateContent`) and ignored everywhere else, so old templates that lack it behave as before.
 
-Unpaid leads are kept away from fulfilment and alerts: the rider available-pool still filters to `['Order Placed','Confirmed','Packed']`, so `'Pending Payment'` is excluded, and the staff push guard means no alert on a pending create. Admin surfaces gained the new state everywhere it needs to appear — web `STATUS_OPTIONS`/`STATUS_CLASS` + a `status-pending` chip + a pending-only filter + a per-row Confirm button; mobile `theme.ts` chip colour, the order-detail `STATUS` list, and the orders-list pending filter/badge. Admin manual-confirm reuses `POST /admin/orders/status`, which already syncs the tracking row and pushes the customer, so a manual confirm triggers the same downstream as a normal one. Revenue/earnings still key off `'Delivered'` and are untouched.
+The app-download CTA touches three surfaces: a `'Download App'` string added to `AD_CTAS`, a Devanagari footer line drawn on every poster, and a Play Store URL appended to captions. The footer line required the only non-trivial code change — reserving vertical space so it doesn't collide with the phone/site line above or the address lines below. That math was traced and holds.
 
-Catalog freshness is a single counter: `bumpCatalogVersion()` runs in all six admin product/category branches (fire-and-forget, swallows a missing-column error), and `GET /products`/`/categories` read it (cached behind the existing 10s TTL, falling back to 1) to set `ETag: "cat-v<n>"` + `no-cache, must-revalidate` and 304 on a matching `If-None-Match`. Clients revalidate often but cheaply: web products/categories go to `staleTime:0` + refetch-on-focus, mobile drops from 5/10 min to 30s + refetch-on-focus/reconnect. The `catalog_version` column is added by an idempotent `information_schema`-guarded SQL file, no Prisma migration. No Cloudflare purge was added, consistent with the audit's finding that `/api` is Apache-proxied, not confirmed orange-clouded.
+Caption handling appends the Play Store link in two paths. `adGenerateContent` always prepends the template greeting and appends the app line; `adFullCaption` appends the link only when the caption doesn't already contain `play.google.com`. Because the generated caption's app line contains that substring, the two paths don't double-append.
 
-Build/test evidence is recorded in verification.md: api-node `tsc` + `prisma validate`, web `vite` build, mobile `tsc --noEmit` + `node --test` (64 pass incl. 5 new `orderPhase` tests). The worktree had no `node_modules`; per the plan's fallback the coder junctioned to the main checkout's identical, already-installed deps rather than running a blocked `npm install`. mobile `versionCode` is 33.
+Devotional and festive copy is seeded into the editor only when the user hasn't typed their own caption/title, so picking a template never clobbers in-progress edits.
 
 <details>
 <summary>Issues (2)</summary>
 
-1. **Manual-confirm UTR scope** — `POST /admin/orders/status` validates/writes `payment_reference` for any target status, not only confirmed states as the plan worded it. Harmless (still 12-digit-validated, clear-on-empty, untouched-when-absent); no action required unless the owner wants it gated to confirmed states.
-2. **Abandoned-pending growth** — every Proceed writes a row and most won't be paid; by design there is no TTL cleanup, only the admin pending filter. Monitor table growth; a future TTL job marking stale pendings `'Cancelled'` is the documented follow-up.
+1. **Navratri day-1/festival palette overlap (possible, non-blocking)** — `navratri-day-1` and the original `festival` template both use purple-family gradients; several festival entries also share `#E65100`-based oranges. Palettes are distinct enough to be tasteful but not all unique. No action required; worth an eye if visual variety matters.
+2. **Bundled plan.md edit (confirmed, non-blocking)** — `plan.md` is modified in the same branch. It's a task-tracking doc, not product code, and the verification note states it predates this step. No action needed beyond awareness.
 
 </details>
 
 <details>
 <summary>Details</summary>
 
-### Pending-create bypass and the idempotent confirm flip
+### Templates as data, renderer untouched
 
-The whole feature rests on one handler staying additive. `saveSchema.order` gained `phase: z.enum(['pending','confirm']).optional().default('confirm')` and `paymentReference` became optional-defaulting-to-empty. The handler computes `isPending = o.phase === 'pending'` and only runs the `/^\d{12}$/` guard and the duplicate lookup when NOT pending. The duplicate check is the one place that needed care: it now allows `dup.order_id === o.orderId` through, so a confirm that re-uses the UTR already written to its own pending row isn't a false 409 — only a *different* order holding that UTR is a genuine conflict. `newStatus`/`paymentReference` are `'Pending Payment'`/`null` on pending and `'Order Placed'`/`utr` on confirm, and the upsert's `update` branch now sets both (the base branch omitted `order_status`), which is exactly the pending→placed flip.
+The whole expansion rides on an existing contract. The renderer reads `AD_TEMPLATES[e.template]` for `bg`, `accent`, `text`, and the picker iterates `Object.entries(AD_TEMPLATES)`. Every one of the 57 new entries supplies exactly those keys plus `name`/`emoji`, so they render identically to the original 8 with zero renderer edits. Verified the original 8 (`todays-offer`, `discount`, `fresh-veg`, `festival`, `home-delivery`, `flash-sale`, `new-arrival`, `weekend`) are byte-for-byte intact — the new block is appended after `weekend`, not spliced into existing entries.
 
-The staff push is guarded three ways: `created.order_status === 'Order Placed'` (never on a pending create), `!wasAlreadyPlaced` (never on an idempotent re-save of an already-placed order), and the pre-existing `reminder_count === 0`. `wasAlreadyPlaced` is read from a `prior` lookup taken before the upsert. This is correct for the lost-lead requirement: a pending create is silent, and the one confirm that flips the row pushes once.
+The 9 Navratri entries are present and ordered day-1 through day-9, each named for the correct Navadurga Devi in roman + Devanagari (Shailputri / शैलपुत्री through Siddhidatri / सिद्धिदात्री) with a distinct devotional Hindi greeting. Palettes lean devotional (crimsons, purples, saffron) and are not all identical, matching the brief.
 
-Old clients: no `phase` → `'confirm'`; web previously let the server mint the id and now sends a client id, but a confirm with a brand-new `order_id` still hits the `create` branch as `'Order Placed'` with the UTR, identical to before. Nothing regresses.
+### App-download footer line and the coordinate change
 
-### Keeping unpaid leads out of fulfilment and alerts
+The one piece of real layout logic. The footer block height gained a term:
 
-`rider.tsx` deliberately did NOT change its pool filter — `['Order Placed','Confirmed','Packed']` already excludes `'Pending Payment'`, so an unpaid lead can never be claimed by a rider. The added comment documents this as intentional. Combined with the push guard above, a `'Pending Payment'` row is invisible to riders and generates no staff alert until it flips to paid.
+```
+footerH = fFoot*1.4 + fFoot*1.3 + addrLines.length*fAddr*1.35 + H*0.02
+```
 
-### Admin visibility for the new state
+Since `footerTop = H - footerH - H*0.02`, adding `fFoot*1.3` shifts the whole block up by that amount, reserving room for the new line. The draw cursor confirms the fit: it starts at `footerTop + fFoot` (phone/site line), advances `fFoot*1.3` to draw the Play Store line, then advances `fAddr*1.35` per address line. The last address line lands at `footerTop + fFoot + fFoot*1.3 + n*fAddr*1.35`, which stays inside the reserved block above the `H*0.02` bottom margin. The app line sits exactly `fFoot*1.3` below the phone line and the first address line sits `fAddr*1.35` below the app line — no overlap on either side. The `footer` hit area uses `footerH`, so it grows with the block automatically.
 
-Both admin surfaces distinguish the pending lead from a paid order. Web adds `['Pending Payment','⏳ Pending Payment']` to `STATUS_OPTIONS`, a `status-pending` → amber `.status-pending` chip, a pending-only toggle (with a count badge), and a per-row `✅ Confirm` button rendered only when `order_status === 'Pending Payment'` that calls `updateOrderStatus(orderId,'Order Placed')` then invalidates the admin list. Mobile adds the amber chip in `theme.ts`, `'Pending Payment'` to the order-detail `STATUS` array (so staff can set/clear it and confirm to `'Order Placed'`), and reworks the orders-list banner/`isNew` badge + filter to key off `'Pending Payment'` — the real paid-but-unconfirmed follow-up list. The admin manual-confirm path reuses `POST /admin/orders/status`, which already syncs the tracking row and calls `notifyCustomerStatus`, so a manual confirm triggers the same downstream as a client confirm.
+### Devanagari rendering
 
-One deviation from the plan's wording: the `payment_reference` passthrough validates/writes the UTR for any target status, not only `'Order Placed'`/`'Confirmed'`. It still 12-digit-validates a non-empty value, clears on empty string, and leaves the field untouched when the key is absent, so there is no correctness or data-integrity risk — just a wider surface than described.
+The footer app line is drawn with `ctx.font = '600 ' + fFoot + 'px ' + FONT`, reusing the same `FONT` constant the existing Hindi address line uses. The source file is clean UTF-8 — "📲 Play Store पर 4A Store App डाउनलोड करें" reads correctly in the file, so the Devanagari renders through the proven path with no tofu. The garbled glyphs visible in the raw `git diff` output are a PowerShell console encoding artifact, not file corruption.
 
-### Catalog version counter and conditional GETs
+### Caption handling and the no-double-append guard
 
-`bumpCatalogVersion()` issues `UPDATE app_version SET catalog_version = catalog_version + 1 WHERE id = 1` and swallows errors, and it is called in all six mutation branches: product add/update/delete and category add/update/delete. On the read side, `catalogVersion()` selects the column behind the existing 10s `ttlCache` (so it adds no per-request query) and falls back to `1` when the column/row is missing, so a DB that hasn't run `catalog-version.sql` degrades to the old behaviour rather than 500ing. `serveCatalogConditional()` sets `ETag: "cat-v<n>"` + `Cache-Control: no-cache, must-revalidate` on `/products` and `/categories` and returns a bodyless 304 when `If-None-Match` matches. The `max-age` constants on the other public GETs are left alone.
+Two caption paths append the Play Store link, and they're coordinated so the link appears once. `adGenerateContent` prepends the picked template's `greeting` and appends `📲 4A Store App डाउनलोड करें: <AD_APP_URL>`. `adFullCaption` (used by the WhatsApp/FB/Insta share paths) appends `AD_APP_URL` only when the caption doesn't already contain `play.google.com`. Because `AD_APP_URL` contains that substring, a generated caption that already carries the link won't get a second copy. The link's package id is `com.store4a.app` as specified.
 
-Client staleTimes were cut to make the revalidation actually happen: web `useProducts`/`useCategories` → `staleTime:0` + `refetchOnWindowFocus:true`; mobile → `staleTime:30_000` + `refetchOnWindowFocus`/`refetchOnReconnect`. Because the server answers unchanged catalogs with a cheap 304, these frequent refetches are inexpensive. The `catalog-version.sql` file uses the project's established `information_schema`-guarded ADD-only pattern and is safe to re-run; no Prisma schema change.
+### Non-clobbering seed behavior
 
-### Test coverage
+`adSetTemplate` seeds the editor's `caption` from the template greeting plus the app line, and sets `offerTitle` to the template name — but only when `caption` is empty and `offerTitle` is empty or still the default `'आज का खास ऑफर'`. User-entered text is never overwritten. No price/MRP fields are touched by templates or greetings, so pricing stays product-driven and no fabricated prices leak into posters.
 
-The pure branch logic is covered by `src/orderPhase.ts` + `src/__tests__/orderPhase.test.ts` (5 cases: pending→`'Pending Payment'`/null with UTR ignored, confirm+12-digit→`'Order Placed'`/UTR, non-digit stripping, confirm-without-UTR rejected, confirm-with-wrong-length rejected). The helper mirrors the server branch exactly, so it guards the status/payment_reference mapping without React or network.
+### Palette distinctness
 
-Not tested: there is no integration test exercising the actual `POST /orders` handler (the idempotent same-`order_id` flip, the 409-only-on-different-order rule, the push-fires-once guard) or the ETag 304 path — these were verified by the coder's manual re-read, not an automated test. For a change this correctness-sensitive that's an acceptable gap given the pure-logic test plus the type-check/build gates, but an API-level test of the flip and the push guard would harden it.
+Confidence: possible. The new palettes are generally distinct and on-theme, but a few overlap: `navratri-day-1` (`#C2185B`→`#7B1FA2`) sits close to the original `festival` purple, and multiple festival entries reuse `#E65100`-family oranges. Nothing renders wrong and the brief only asks for "distinct/tasteful," which this meets. Flagging only as a cosmetic follow-up if more variety is wanted.
+
+### Scope and bundled changes
+
+The feature code is confined to `admin-ads.js`; storefront, checkout, and the React wrapper `AdminAds.tsx` are untouched, so no React rewrite of the editor and no new dependencies. The branch also carries a `plan.md` edit (task-tracking doc, not product code) and a regenerated `sitemap.xml` build artifact — both outside the feature surface and both expected per the verification note.
 
 ### Verification evidence
 
-verification.md records all four gates green and the mobile suite at 64 pass / 0 fail including the new tests. The worktree lacked `node_modules`; rather than run a network-blocked install the coder junctioned to the main checkout's identical installed deps (documented, gitignored, reversible) so `prisma validate` and the builds could run — this matches the plan's stated TLS fallback. No build re-run was performed in this review per the task constraints; the evidence is present and specific.
+The coder's note records `node --check` pass (before and after), `npm run build` exit 0 (sitemap gen, `tsc -b`, `vite build` with 730 modules), and a temporary data-assertion script that confirmed count ≥ 48 (got 65), kebab-case + unique ids, required keys present, all 9 Navratri days with non-empty greetings, originals preserved, `'Download App'` in `AD_CTAS`, and the app URL ending in `com.store4a.app`. Per instructions the full build was not re-run; a targeted re-read of the source confirmed the originals, the Devanagari integrity, and the footer coordinate math independently.
 
 </details>
 
 <details>
 <summary>File map</summary>
 
-- `api-node/src/routes/orders.ts` — `phase` flag; pending bypasses UTR guard → `'Pending Payment'`/null; confirm flips same `order_id` → `'Order Placed'`/UTR; push once on transition.
-- `api-node/src/routes/admin.ts` — `bumpCatalogVersion()` in all six product/category branches; `payment_reference` passthrough on `/orders/status`.
-- `api-node/src/routes/catalog.ts` — `catalog_version` ETag + `no-cache, must-revalidate` + 304 on `/products` and `/categories`.
-- `api-node/prisma/catalog-version.sql` — idempotent ADD-only `catalog_version` column.
-- `mobile/app/checkout.tsx` — pending POST on Proceed (fire-and-forget), same `orderId` reused on confirm with `phase:'confirm'`.
-- `web/src/pages/checkout/Checkout.tsx` — client `orderId` + pending POST on Proceed; confirm sends same id + `phase:'confirm'`.
-- `web/src/pages/admin/AdminOrders.tsx` + `admin.css` — pending status option/chip, pending filter, per-row Confirm button.
-- `mobile/app/admin/orders.tsx`, `mobile/app/admin/order/[id].tsx`, `mobile/src/theme.ts` — pending badge/filter, status list entry, amber chip.
-- `mobile/app/rider.tsx` — comment documenting pending exclusion from the available pool (filter unchanged).
-- `mobile/src/queries.ts`, `web/src/lib/queries.ts` — reduced catalog staleTimes + refetch-on-focus.
-- `mobile/app.config.ts` — versionCode 32 → 33.
-- `mobile/src/orderPhase.ts` + `mobile/src/__tests__/orderPhase.test.ts` — pure phase-decision helper + 5 unit tests.
-- `.agents/tasks/plan.md`, `verification.md` — plan and coder's verification note.
+- `4astore-v2/web/public/legacy/js/admin-ads.js` — 57 new templates added to `AD_TEMPLATES`; `'Download App'` CTA + `AD_APP_URL` const; footer app-download line with reserved vertical space; greeting-seeding in `adSetTemplate`; Play Store link appended in `adGenerateContent` and `adFullCaption`.
+- `4astore-v2/.agents/tasks/plan.md` — task-tracking doc update (non-feature).
+- `4astore-v2/web/public/sitemap.xml` — build-regen artifact (no content diff).
 
-Full diff: `git -C c:\xampp\htdocs\static4a\.worktrees\order-pending-cache diff main...order-pending-cache`
+Full diff: `git diff main -- 4astore-v2/web/public/legacy/js/admin-ads.js`
 
 </details>

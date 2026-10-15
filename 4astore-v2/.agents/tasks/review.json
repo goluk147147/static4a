@@ -2,19 +2,17 @@
   "verdict": "APPROVED",
   "findings": [
     {
-      "severity": "info",
-      "label": "Manual-confirm UTR scope",
+      "label": "Navratri day-1/festival palette overlap",
+      "severity": "non-blocking",
       "confidence": "possible",
-      "blocking": false,
-      "detail": "POST /admin/orders/status validates/writes payment_reference for any target status, not only confirmed states as the plan worded it. Harmless (still 12-digit-validated, clears on empty, untouched when absent); no action required unless the owner wants it gated to confirmed states."
+      "detail": "navratri-day-1 (#C2185B->#7B1FA2) sits close to the original festival purple, and several festival entries reuse #E65100-family oranges. Palettes are distinct enough to be tasteful but not all unique. Cosmetic follow-up only."
     },
     {
-      "severity": "info",
-      "label": "Abandoned-pending growth",
+      "label": "Bundled plan.md edit",
+      "severity": "non-blocking",
       "confidence": "confirmed",
-      "blocking": false,
-      "detail": "Every Proceed writes a 'Pending Payment' row and most will never be paid; by design there is no TTL cleanup, only the admin pending filter. Monitor table growth; a future TTL job marking stale pendings 'Cancelled' is the documented follow-up."
+      "detail": "plan.md is modified on the branch. It is a task-tracking doc, not product code, and the verification note states it predates this step. Awareness only."
     }
   ],
-  "reviewDoc": "c:\\xampp\\htdocs\\static4a\\.worktrees\\order-pending-cache\\4astore-v2\\.agents\\tasks\\review.md"
+  "reviewDoc": "c:\\xampp\\htdocs\\static4a\\.worktrees\\festival-ad-templates\\4astore-v2\\.agents\\tasks\\review.md"
 }
