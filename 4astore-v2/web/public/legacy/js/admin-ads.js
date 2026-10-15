@@ -347,8 +347,8 @@
             </div>
 
             <div class="ad-panel">
-              <h5>🎨 Template</h5>
-              <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;">${tplCards}</div>
+              <h5>🎨 Template <span style="font-size:11px;color:var(--gray);font-weight:400;">(scroll karein — ${Object.keys(AD_TEMPLATES).length} templates)</span></h5>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;max-height:280px;overflow-y:auto;padding:4px 2px 6px;">${tplCards}</div>
             </div>
 
             <div class="ad-panel">
