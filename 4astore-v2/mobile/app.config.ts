@@ -14,7 +14,8 @@ const API_BASE = process.env.STORE4A_API_BASE || `https://${SITE_HOST}/api`;
 // 31 = production (media perms removed). 32 = open-testing build (same code, higher versionCode).
 // 33 = two-phase pending→confirmed order lifecycle + instant catalog refresh.
 // 34 = POS/billing + inventory, smart share-link, product-freshness, image fallback.
-const VERSION_CODE = Number(process.env.STORE4A_VERSION_CODE || 34);
+// 35 = per-product max-qty-per-order cap enforced in the app + Firebase Analytics wired.
+const VERSION_CODE = Number(process.env.STORE4A_VERSION_CODE || 35);
 const VERSION_NAME = process.env.STORE4A_VERSION_NAME || '2.0.0';
 
 // FCM needs google-services.json (Firebase console → Project settings → Android app com.store4a.app).

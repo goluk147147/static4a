@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import { useAuth } from '../src/store/auth';
 import { needsRealMobile } from '../src/profileGate';
 import { ensureChannels, listenForeground, listenNotificationTaps, listenTokenRotation, registerForPush } from '../src/push';
 import { legacyToRoute } from '../src/links';
+import { logAppOpen, logScreenView } from '../src/analytics';
 import { showToast } from '../src/store/ui';
 import OfflineGate from '../src/components/OfflineGate';
 import Overlays from '../src/components/Overlays';
@@ -37,11 +38,24 @@ export default function RootLayout() {
   const user = useAuth((s) => s.user);
   const userId = user?.id;
   const role = user?.role;
+  const pathname = usePathname();
 
   useEffect(() => {
     void ensureChannels();
     void bootstrap();
   }, [bootstrap]);
+
+  // Firebase Analytics (fire-and-forget). app_open once per JS launch (RNFirebase also auto-logs
+  // the native app_open on cold start; they dedupe to the same event name, so an explicit call is
+  // safe and covers JS warm starts). screen_view on every expo-router pathname change — the
+  // pathname is the screen name (e.g. /products, /product/[id], /checkout). Additive listeners
+  // only; routing is untouched.
+  useEffect(() => {
+    logAppOpen();
+  }, []);
+  useEffect(() => {
+    if (pathname) logScreenView(pathname);
+  }, [pathname]);
 
   // Restore the last storefront snapshot (instant warm start), then keep persisting it.
   useEffect(() => {

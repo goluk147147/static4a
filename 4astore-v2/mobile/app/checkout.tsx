@@ -15,6 +15,7 @@ import { showToast, showConfirm } from '../src/store/ui';
 import { cartTotals, cartHasAgeRestricted, getServiceableVillages, verifyVillage, resolveDeliveryCoordinates } from '../src/checkout';
 import { DEFAULT_UPI_ID } from '../src/config';
 import { colors, radius } from '../src/theme';
+import { logPurchase } from '../src/analytics';
 import type { SavedAddress } from '../src/types';
 
 type Label = 'Home' | 'Work' | 'Other';
@@ -341,6 +342,10 @@ export default function Checkout() {
   // Shared success path: fire-and-forget the screenshot upload, clear the cart, close the sheet,
   // and navigate to /order-success. Used by both the normal success and the timeout-recovery path.
   function navigateToSuccess(orderId: string, orderItems: unknown, screenshot: string) {
+    // Analytics (fire-and-forget): one `purchase` event on real order success. This is the single
+    // success chokepoint (both the normal confirm and the timeout-recovery path call it). Numeric
+    // total + item id/name/qty/price only — no customer name/mobile/address.
+    logPurchase(orderId, totals.total, orderItems as { id: number; name: string; quantity: number; price: number }[]);
     api.post(`/orders/${encodeURIComponent(orderId)}/screenshot`, { image: screenshot }).catch(() => null);
     clear();
     setPayOpen(false);

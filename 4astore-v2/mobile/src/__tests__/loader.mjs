@@ -19,14 +19,17 @@ const API_NOEXT = pathToFileURL(resolvePath(SRC, 'api')).href;
 
 const ASYNC_STORAGE = '@react-native-async-storage/async-storage';
 const REACT_QUERY = '@tanstack/react-query';
+const ANALYTICS = '@react-native-firebase/analytics';
 
 const MOCK_ASYNC_STORAGE = 'mock:async-storage';
 const MOCK_API = 'mock:api';
 const MOCK_REACT_QUERY = 'mock:react-query';
+const MOCK_ANALYTICS = 'mock:analytics';
 
 export async function resolve(specifier, context, nextResolve) {
   if (specifier === ASYNC_STORAGE) return { url: MOCK_ASYNC_STORAGE, shortCircuit: true };
   if (specifier === REACT_QUERY) return { url: MOCK_REACT_QUERY, shortCircuit: true };
+  if (specifier === ANALYTICS) return { url: MOCK_ANALYTICS, shortCircuit: true };
 
   // The source files import the api via a relative `../api` (extensionless).
   // Catch it both as the raw specifier and as the already-resolved file URL.
@@ -108,6 +111,27 @@ export async function load(url, context, nextLoad) {
           constructor(message, status) { super(message); this.status = status; }
         }
         export default api;
+      `,
+    };
+  }
+  if (url === MOCK_ANALYTICS) {
+    // Native Firebase Analytics module stand-in so src/analytics.ts (and anything that
+    // imports it, e.g. src/store/cart.ts) can load under plain Node. The default export is
+    // the analytics() factory returning no-op async methods, matching the real module shape.
+    return {
+      format: 'module',
+      shortCircuit: true,
+      source: `
+        const noop = async () => {};
+        const instance = {
+          logEvent: noop,
+          logScreenView: noop,
+          logAddToCart: noop,
+          logPurchase: noop,
+          logAppOpen: noop,
+          setAnalyticsCollectionEnabled: noop,
+        };
+        export default function analytics() { return instance; }
       `,
     };
   }

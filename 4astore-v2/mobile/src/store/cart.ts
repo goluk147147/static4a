@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CartItem, Product } from '../types';
 import { cap, qtyLimitMsg } from '../qtyLimit';
 import { showToast } from './ui';
+import { logAddToCart } from '../analytics';
 
 interface CartState {
   items: CartItem[];
@@ -30,6 +31,10 @@ export const useCart = create<CartState>()(
             next = maxQty;
             showToast(qtyLimitMsg(maxQty, unit), 'error');
           }
+          // Analytics (fire-and-forget): only log when the quantity actually increased, so a
+          // no-op add at the cap does not log a false add_to_cart. Does not touch the clamp math.
+          const added = next - (existing ? existing.quantity : 0);
+          if (added > 0) logAddToCart(p, added);
           if (existing) {
             // Refresh maxQty/unit from the live product so a persisted item picks up a changed cap.
             return { items: s.items.map((i) => (i.id === p.id ? { ...i, quantity: next, maxQty, unit } : i)) };
