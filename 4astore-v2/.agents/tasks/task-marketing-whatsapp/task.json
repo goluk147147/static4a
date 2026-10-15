@@ -1,0 +1,7 @@
+{
+  "task_id": "task-marketing-whatsapp",
+  "task_description": "Improve and extend the admin Marketing (WhatsApp) module of 4AStore v2: make Dashboard StatCards clickable, add a once-per-day bilingual suggestion nudge banner driven by live dashboard data, polish the Dashboard as a mobile-friendly home with friendly deep-link CTAs, and add a prep-only (not live) provider-agnostic WhatsApp API integration layer (settings column + admin endpoint, frontend types, dormant waSender.ts, settings UI in AutoSendComingSoon). Keep the FREE/manual wa.me flow the only active send path. Preserve bilingual Hindi/English copy and the inline-style design system. Additive + polish, not a rewrite. Edit the main working tree, not a worktree.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
