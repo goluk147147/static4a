@@ -13,6 +13,7 @@ import { useAuth } from '../src/store/auth';
 import { needsRealMobile } from '../src/profileGate';
 import { ensureChannels, listenForeground, listenNotificationTaps, listenTokenRotation, registerForPush } from '../src/push';
 import { legacyToRoute } from '../src/links';
+import { promoRoute } from '../src/pushPayload';
 import { logAppOpen, logScreenView } from '../src/analytics';
 import { showToast } from '../src/store/ui';
 import OfflineGate from '../src/components/OfflineGate';
@@ -117,16 +118,33 @@ export default function RootLayout() {
   // then is a no-op and the app sits on the splash/loader. So we stash the target and only
   // navigate once `ready` is true, and use replace() so there's no dangling loading route.
   const pendingLink = useRef<string | null>(null);
-  const navigateToLink = (link: string) => {
-    const to = legacyToRoute(link, '/');
-    if (/^[a-z]+:/i.test(to)) return; // external scheme — ignore here
+  // Navigate to an already-resolved in-app route (cold-start safe via pendingLink stashing).
+  const navigateToRoute = (to: string) => {
     if (!useAuth.getState().ready) {
       pendingLink.current = to;
       return;
     }
     setTimeout(() => router.replace(to as never), 150);
   };
-  useEffect(() => listenNotificationTaps((link) => navigateToLink(link)), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const navigateToLink = (link: string) => {
+    const to = legacyToRoute(link, '/');
+    if (/^[a-z]+:/i.test(to)) return; // external scheme — ignore here
+    navigateToRoute(to);
+  };
+  useEffect(
+    () =>
+      listenNotificationTaps((link, data) => {
+        // A tapped promo push that carries an https image opens the full-screen in-app image;
+        // order / status / rider taps (promoRoute === null) keep the existing deep-link routing.
+        const promo = promoRoute(data);
+        if (promo) {
+          navigateToRoute(promo);
+          return;
+        }
+        navigateToLink(link);
+      }),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   // Once bootstrap finishes, flush any push tap that arrived during cold start.
   useEffect(() => {

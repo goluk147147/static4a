@@ -15,7 +15,7 @@
 //
 // Net: data-only server + single Notifee presenter per lifecycle = one notification.
 // ─────────────────────────────────────────────────────────────────────────────
-import notifee, { AndroidImportance, AndroidStyle, AndroidVisibility, EventType } from '@notifee/react-native';
+import notifee, { AndroidCategory, AndroidImportance, AndroidStyle, AndroidVisibility, EventType } from '@notifee/react-native';
 import type { AndroidBigPictureStyle, AndroidBigTextStyle } from '@notifee/react-native';
 import messaging from '@react-native-firebase/messaging';
 import * as Notifications from 'expo-notifications';
@@ -24,7 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Vibration } from 'react-native';
 import { api, getAccessToken } from './api';
 import { HAS_PUSH } from './config';
-import { normalizePush } from './pushPayload';
+import { isPromoImagePush, normalizePush } from './pushPayload';
 import type { PushData } from './pushPayload';
 
 const TOKEN_KEY = '4astore_push_token';
@@ -69,7 +69,11 @@ export async function ensureChannels() {
     importance: AndroidImportance.HIGH,
     sound: 'default',
     vibration: true,
-    vibrationPattern: [500, 250, 500, 250, 500, 250],
+    // Longer/harder alarm vibration. MUST stay an EVEN count of strictly POSITIVE ms values —
+    // a leading 0 or odd count throws and crashes ensureChannels(), silently killing ALL push.
+    vibrationPattern: [800, 400, 800, 400, 800, 400],
+    // A new order is time-critical for staff — let it ring through Do-Not-Disturb when supported.
+    bypassDnd: true,
     lights: true,
     lightColor: BRAND_COLOR,
     visibility: AndroidVisibility.PUBLIC,
@@ -110,6 +114,8 @@ export async function displayPush(input: PushData) {
         largeIcon: LARGE_ICON_RESOURCE, // native drawable — safe in release even if the URL failed
         pressAction: { id: 'default' },
         ...(body.length > 40 ? { style: { type: AndroidStyle.BIGTEXT, text: body } } : {}),
+        // A rich-draw failure still gets the full-screen alarm for new orders.
+        ...(isOrderPush(data) ? ORDER_ANDROID : {}),
       },
     });
   }
@@ -123,6 +129,27 @@ function notifId(data: PushData): string {
   const oid = (data.orderId || '').trim();
   return oid || `4a_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
 }
+
+// A new-order push for staff must be MAXIMALLY aggressive: full-screen incoming-call style card
+// (over the lock screen), high importance, looping alarm sound. These extra android fields apply
+// ONLY to order alerts — customer/promo/default draws are left untouched. All fields verified
+// against @notifee/react-native v9.1.8 type defs.
+function isOrderPush(data: PushData): boolean {
+  return (
+    data.type === 'new_order' ||
+    data.type === 'new_order_local' ||
+    data.type === 'order_reminder' ||
+    data.channelId === 'orders'
+  );
+}
+
+const ORDER_ANDROID = {
+  category: AndroidCategory.CALL,
+  importance: AndroidImportance.HIGH,
+  fullScreenAction: { id: 'default', launchActivity: 'default' },
+  loopSound: true,
+  visibility: AndroidVisibility.PUBLIC,
+} as const;
 
 async function drawRich(data: PushData) {
   const body = data.body || '';
@@ -149,6 +176,7 @@ async function drawRich(data: PushData) {
       largeIcon,
       pressAction: { id: 'default' },
       ...(style ? { style } : {}),
+      ...(isOrderPush(data) ? ORDER_ANDROID : {}),
     },
   });
 }
@@ -200,7 +228,9 @@ export function listenForeground(onData: (data: PushData, title: string, body: s
     if (!data.title && !data.body) return; // nothing displayable
     await ensureChannels();
     await displayPush(data);
-    if (data.type === 'new_order' || data.type === 'order_reminder') Vibration.vibrate([0, 400, 200, 400]);
+    // Longer/harder foreground buzz for a new order. Even-count, all-positive ms to match the
+    // project's Notifee vibration rule (avoids any accidental copy of a leading-0 pattern).
+    if (data.type === 'new_order' || data.type === 'order_reminder') Vibration.vibrate([800, 400, 800, 400, 800, 400]);
     onData(data, data.title || '', data.body || '');
   });
 }
@@ -210,14 +240,15 @@ export function listenNotificationTaps(onLink: (link: string, data: PushData) =>
   const unsub = notifee.onForegroundEvent((event) => {
     if (event.type === EventType.PRESS) {
       const data = (event.detail.notification?.data || {}) as PushData;
-      if (data.link) onLink(data.link, data);
+      // Deliver the tap when there is a deep link OR a promo image to open full-screen.
+      if (data.link || isPromoImagePush(data)) onLink(data.link || '', data);
     }
   });
   // Cold start: the app was launched by tapping a notification.
   notifee.getInitialNotification().then((initial) => {
     if (!initial) return;
     const data = (initial.notification?.data || {}) as PushData;
-    if (data.link) onLink(data.link, data);
+    if (data.link || isPromoImagePush(data)) onLink(data.link || '', data);
   });
   return unsub;
 }
