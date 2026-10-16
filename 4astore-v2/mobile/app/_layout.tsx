@@ -20,6 +20,8 @@ import OfflineGate from '../src/components/OfflineGate';
 import Overlays from '../src/components/Overlays';
 import UpdateCheck from '../src/components/UpdateCheck';
 import StaffOrderWatcher from '../src/components/StaffOrderWatcher';
+import NotifPermissionGate from '../src/components/NotifPermissionGate';
+import FullScreenIntentNudge from '../src/components/FullScreenIntentNudge';
 
 SplashScreen.preventAutoHideAsync().catch(() => null);
 SplashScreen.setOptions?.({ duration: 400, fade: true });
@@ -189,6 +191,8 @@ export default function RootLayout() {
           </OfflineGate>
           <StaffOrderWatcher />
           <UpdateCheck />
+          <NotifPermissionGate />
+          <FullScreenIntentNudge />
           <Overlays />
         </QueryClientProvider>
       </SafeAreaProvider>
