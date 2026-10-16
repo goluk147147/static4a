@@ -89,8 +89,13 @@ export default function RootLayout() {
   // userId-only effect never re-ran and the NEW build's fresh FCM token was never sent to the
   // server — the device kept getting pushes aimed at a stale token (or none). registerForPush is
   // idempotent, so re-running it is safe.
+  // Register for a GUEST too: gate only on `ready` (not userId) so a freshly installed app
+  // that hasn't logged in still registers its FCM token and receives broadcast/promo pushes.
+  // Keeping userId/role in the deps means a later login re-runs this and the server
+  // re-associates the same token to the user_id. registerForPush is idempotent, so re-running
+  // it is safe.
   useEffect(() => {
-    if (ready && userId) void registerForPush();
+    if (ready) void registerForPush();
   }, [ready, userId, role]);
 
   useEffect(() => listenTokenRotation(), []);
@@ -98,11 +103,14 @@ export default function RootLayout() {
   // Coming back to the app: refresh session (picks up a newly assigned role) and data.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active' && useAuth.getState().user) {
+      if (s !== 'active') return;
+      // Re-assert the FCM token on resume for a GUEST too — covers a token rotated/invalidated
+      // while the app was backgrounded (a common cause of pushes silently stopping). This runs
+      // regardless of login so a guest keeps receiving broadcast/promo pushes.
+      void registerForPush();
+      // Session reload + order/catalog invalidation stay gated on a logged-in user.
+      if (useAuth.getState().user) {
         void reloadSession();
-        // Re-assert the FCM token on resume too — covers a token rotated/invalidated while the app
-        // was backgrounded (common cause of pushes silently stopping after a while).
-        void registerForPush();
         void queryClient.invalidateQueries({ queryKey: ['all-orders'] });
         // refetchOnWindowFocus is inert on RN (focusManager not wired to AppState), so a reopened
         // app would otherwise keep showing a stale price/stock/image — invalidate the catalog here.

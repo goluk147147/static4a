@@ -27,79 +27,17 @@ import {
   escapeHtml,
   type OgResult,
 } from '../services/ogShare';
+// Smart-redirect HTML + Android constants live in a dependency-free module so a unit
+// test can import the builder without pulling in prisma/Express. Behaviour unchanged.
+import { smartRedirectHtml } from '../services/smartRedirect';
 
 const router = Router();
-
-// Android app deep-link constants (reference: mobile/app.config.ts — scheme
-// fourastore, package com.store4a.app, verified App Link host 4astore.com,
-// pathPrefix /product). Kept here as the ONE place routes/link.ts needs them.
-const ANDROID_PACKAGE = 'com.store4a.app';
-const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
 
 /** Resolve the stored target into an absolute website URL (`/path` → origin+path). */
 function absoluteTarget(targetUrl: string): string {
   const t = String(targetUrl || '/').trim();
   if (/^https?:\/\//i.test(t)) return t;
   return `${SITE_ORIGIN}${t.startsWith('/') ? t : `/${t}`}`;
-}
-
-/**
- * Smart-redirect HTML for humans. `target` is the absolute website URL;
- * `appPath` (e.g. `/product/5`) is present only for an App-Link-eligible target
- * and drives the Android app-open attempt. All interpolated values are escaped
- * (reusing escapeHtml) and the raw strings are JSON-encoded for the JS context.
- * Includes <noscript> + <meta refresh> so a JS-less client still reaches the site.
- */
-function smartRedirectHtml(target: string, appPath: string | null): string {
-  const safeTarget = escapeHtml(target);
-  const targetJs = JSON.stringify(target);
-  const playJs = JSON.stringify(PLAY_STORE_URL);
-  // intent:// URL opens the verified app and, when the app is absent, lets the
-  // page's setTimeout fall back to the Play Store.
-  const intentJs = appPath
-    ? JSON.stringify(
-        `intent://${SITE_ORIGIN.replace(/^https?:\/\//i, '')}${appPath}#Intent;scheme=https;package=${ANDROID_PACKAGE};end`
-      )
-    : 'null';
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Redirecting… — 4A Store</title>
-<meta name="robots" content="noindex,nofollow">
-<meta http-equiv="refresh" content="0; url=${safeTarget}">
-<script>
-(function () {
-  var target = ${targetJs};
-  var play = ${playJs};
-  var intent = ${intentJs};
-  try {
-    if (/Android/i.test(navigator.userAgent) && intent) {
-      // Try to open the installed app; if it isn't installed, the timeout fires.
-      var fallback = setTimeout(function () { location.replace(play); }, 1200);
-      // If the app opens, the page is backgrounded and the timeout is paused;
-      // on return to the browser we still want the site, so clear on hide.
-      window.addEventListener('pagehide', function () { clearTimeout(fallback); });
-      document.addEventListener('visibilitychange', function () {
-        if (document.hidden) clearTimeout(fallback);
-      });
-      window.location.href = intent;
-    } else {
-      location.replace(target);
-    }
-  } catch (e) {
-    location.replace(target);
-  }
-})();
-</script>
-</head>
-<body>
-<p>Redirecting to <a href="${safeTarget}">4A Store</a>…</p>
-<noscript><p>Click here to continue: <a href="${safeTarget}">4A Store</a></p></noscript>
-</body>
-</html>`;
 }
 
 /** Friendly 404 page for an unknown/expired code (human in a browser). */

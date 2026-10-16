@@ -15,7 +15,9 @@ const API_BASE = process.env.STORE4A_API_BASE || `https://${SITE_HOST}/api`;
 // 33 = two-phase pending→confirmed order lifecycle + instant catalog refresh.
 // 34 = POS/billing + inventory, smart share-link, product-freshness, image fallback.
 // 35 = per-product max-qty-per-order cap enforced in the app + Firebase Analytics wired.
-// 36 = order full-screen alarm alert + promo full-screen in-app image + short-link share fix.
+// 36 = order full-screen alarm alert + promo full-screen in-app image + short-link share fix
+//      + guest push (no-login token register) + smart-link Play Store fallback. The vc-36 .aab
+//      was never uploaded, so 36 stays the single release carrying ALL of the above.
 const VERSION_CODE = Number(process.env.STORE4A_VERSION_CODE || 36);
 const VERSION_NAME = process.env.STORE4A_VERSION_NAME || '2.0.0';
 

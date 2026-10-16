@@ -2,20 +2,11 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { ok, fail } from '../utils/http';
-import { requireAuth, requireStaff } from '../auth/middleware';
+import { requireAuth, requireStaff, optionalAuth } from '../auth/middleware';
 import { sendToTopic, sendToTokens, tokensForStaff, tokensForTopic, syncTokenTopics, clearTokenTopics, recordNotification, PushMessage } from '../services/push';
+import { registerIdentity } from '../services/pushAudience';
 
 const router = Router();
-
-/** Topics a user should be subscribed to, based on role/permissions. */
-function topicsForUser(role: string, permissions: string[]): string[] {
-  const topics = ['all'];
-  if (role === 'rider') topics.push('riders');
-  else topics.push('customers');
-  if (role === 'owner' || role === 'superadmin') topics.push('admins');
-  else if (role === 'admin' && (permissions.includes('*') || permissions.includes('orders'))) topics.push('admins');
-  return topics;
-}
 
 const registerSchema = z.object({
   token: z.string().min(10),
@@ -23,11 +14,16 @@ const registerSchema = z.object({
 });
 
 // POST /api/push/register — save/update this device's FCM token + topics.
-router.post('/register', requireAuth, async (req: Request, res: Response) => {
+// Auth is OPTIONAL: a logged-in caller stores user_id (as before), a GUEST (no/invalid
+// token, thanks to optionalAuth not rejecting) stores user_id = null but is STILL subscribed
+// to the broadcast/promo topics ('all','customers'), so a freshly installed app receives
+// store-wide promo pushes before the user ever logs in. A later login re-registers the same
+// token and re-associates it to the user_id.
+router.post('/register', optionalAuth, async (req: Request, res: Response) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 'token and platform required', 422);
   const { token, platform } = parsed.data;
-  const topics = topicsForUser(req.user!.role, req.user!.permissions || []);
+  const { userId, topics } = registerIdentity(req.user);
 
   // App launch + login can fire two near-simultaneous registrations for the SAME token, which
   // races Prisma's upsert and throws P2002 (unique token). Fall back to a plain update on conflict
@@ -35,14 +31,14 @@ router.post('/register', requireAuth, async (req: Request, res: Response) => {
   try {
     await prisma.deviceToken.upsert({
       where: { token },
-      create: { user_id: BigInt(req.user!.sub), token, platform, topics },
-      update: { user_id: BigInt(req.user!.sub), platform, topics },
+      create: { user_id: userId, token, platform, topics },
+      update: { user_id: userId, platform, topics },
     });
   } catch (e: unknown) {
     if ((e as { code?: string })?.code === 'P2002') {
       await prisma.deviceToken.update({
         where: { token },
-        data: { user_id: BigInt(req.user!.sub), platform, topics },
+        data: { user_id: userId, platform, topics },
       }).catch(() => null);
     } else {
       throw e;
@@ -55,10 +51,14 @@ router.post('/register', requireAuth, async (req: Request, res: Response) => {
 });
 
 // POST /api/push/unregister — remove a token (logout on device).
-router.post('/unregister', requireAuth, async (req: Request, res: Response) => {
+// Optional auth: a guest token (user_id null) must be removable by token alone, so only scope
+// the delete to a user_id when a valid user is present.
+router.post('/unregister', optionalAuth, async (req: Request, res: Response) => {
   const token = String(req.body?.token || '');
   if (token) {
-    await prisma.deviceToken.deleteMany({ where: { token, user_id: BigInt(req.user!.sub) } });
+    await prisma.deviceToken.deleteMany({
+      where: req.user ? { token, user_id: BigInt(req.user.sub) } : { token },
+    });
     await clearTokenTopics(token).catch(() => null);
   }
   return ok(res);

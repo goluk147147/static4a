@@ -22,8 +22,9 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Vibration } from 'react-native';
-import { api, getAccessToken } from './api';
+import { api } from './api';
 import { HAS_PUSH } from './config';
+import { shouldRegisterPush } from './pushGate';
 import { isPromoImagePush, normalizePush } from './pushPayload';
 import type { PushData } from './pushPayload';
 
@@ -186,11 +187,17 @@ export async function getPushPermission(): Promise<Notifications.PermissionStatu
 }
 
 /**
- * Ask permission, get the FCM token and register it with the API. The server subscribes
- * the token to role topics (customers / riders / admins) and uses it for direct staff alerts.
+ * Ask permission, get the FCM token and register it with the API. Works for a GUEST
+ * (no login) as well as a logged-in user — the `/push/register` call is header-less for a
+ * guest (api.ts only adds Authorization when a token exists), and the server stores the
+ * token with user_id null + the broadcast topics. The server subscribes the token to role
+ * topics (customers / riders / admins) and uses it for direct staff alerts. A later login
+ * re-runs this and re-associates the same token to the user_id.
  */
 export async function registerForPush(): Promise<string | null> {
-  if (!HAS_PUSH || !Device.isDevice || !getAccessToken()) return null;
+  // No login required: a guest device registers too (server stores user_id null) so it
+  // still gets broadcast/promo pushes. Only gate on push-enabled build + real device.
+  if (!shouldRegisterPush({ hasPush: HAS_PUSH, isDevice: Device.isDevice })) return null;
   await ensureChannels();
   let { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status;
