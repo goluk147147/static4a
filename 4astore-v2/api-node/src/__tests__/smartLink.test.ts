@@ -1,64 +1,48 @@
 /**
- * Smart short-link redirect HTML — PURE builder tests (DB-free, network-free).
+ * Android intent:// builder — PURE tests (DB-free, network-free, Express-free).
  *
  * Imports ONLY the dependency-free `smartRedirect.ts`, matching the pure-import
- * pattern of whatsappFormat.test.ts. Pins the no-app fallback behaviour:
- *   - App-eligible link (appPath present) → Play Store fallback.
- *   - Non-app custom link (appPath null)  → website target (NOT the Play Store).
+ * pattern of whatsappFormat.test.ts. The UA branching + 302 lives in the Express
+ * handler (routes/link.ts); here we pin the exact intent string the handler puts
+ * in the Location header, and that a non-app link yields no intent (caller then
+ * redirects to the website instead of the Play Store).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { smartRedirectHtml, PLAY_STORE_URL, ANDROID_PACKAGE, APP_SCHEME } from '../services/smartRedirect';
+import {
+  buildAndroidIntentUrl,
+  ANDROID_PACKAGE,
+  APP_SCHEME,
+  MARKET_FALLBACK_URL,
+} from '../services/smartRedirect';
 
-test('app-eligible link: intent:// targets the app package AND no-app fallback is the Play Store', () => {
-  const html = smartRedirectHtml('https://4astore.com/product/5', '/product/5');
-  // intent var is the app deep-link, not null.
-  assert.ok(html.includes(`package=${ANDROID_PACKAGE}`), 'intent must carry the app package');
-  assert.ok(html.includes('intent://'), 'app-eligible link must build an intent:// URL');
-  assert.ok(!/var intent = null;/.test(html), 'intent must NOT be null for an app-eligible link');
-  // Uses the app's CUSTOM scheme (not https) so an uninstalled device cannot
-  // fall through to the website — it honours the Play Store fallback instead.
-  assert.ok(html.includes(`scheme=${APP_SCHEME}`), `intent must use the custom scheme=${APP_SCHEME}`);
-  assert.ok(!/scheme=https;/.test(html), 'intent must NOT use scheme=https (it would open the website, not the Play Store)');
-  assert.ok(html.includes('intent://product/5#Intent'), 'intent host is the scheme path without a leading slash');
-  // Fallback goes to the Play Store URL.
-  assert.ok(html.includes(PLAY_STORE_URL), 'play var must be the Play Store listing URL');
-  assert.ok(
-    html.includes('play.google.com/store/apps/details?id=com.store4a.app'),
-    'Play Store fallback URL must be present'
+test('app-eligible link: builds the exact intent:// with custom scheme, package, and market:// fallback', () => {
+  const intent = buildAndroidIntentUrl('/product/3');
+  // The full documented shape for product 3.
+  assert.equal(
+    intent,
+    'intent://product/3#Intent;scheme=fourastore;package=com.store4a.app;' +
+      'S.browser_fallback_url=market%3A%2F%2Fdetails%3Fid%3Dcom.store4a.app;end'
   );
-  assert.ok(html.includes('location.replace(play)'), 'no-app timer safety net must replace with the Play Store');
-  // The intent:// carries S.browser_fallback_url=<Play Store> — Chrome's official,
-  // reliable no-app fallback (navigates to the Play Store itself when the app is
-  // absent, no JS race). This replaced the old meta-refresh + bare-timer approach.
+  // Component assertions (robust to constant changes).
+  assert.ok(intent!.startsWith('intent://product/3#Intent'), 'intent host is the path without a leading slash');
+  assert.ok(intent!.includes(`scheme=${APP_SCHEME}`), `intent must use the custom scheme=${APP_SCHEME}`);
+  assert.ok(!/scheme=https;/.test(intent!), 'intent must NOT use scheme=https (it would open the website, not the Store)');
+  assert.ok(intent!.includes(`package=${ANDROID_PACKAGE}`), 'intent must carry the app package');
+  // The no-app fallback is the market:// Play Store deep-link, URL-encoded.
   assert.ok(
-    html.includes(`S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)}`),
-    'intent must embed the Play Store as browser_fallback_url'
+    intent!.includes(`S.browser_fallback_url=${encodeURIComponent(MARKET_FALLBACK_URL)}`),
+    'intent must embed the encoded market:// Play Store fallback'
   );
-  // A JS safety-net timer still backs older webviews that ignore the fallback.
-  assert.ok(/setTimeout\(/.test(html) && html.includes('location.replace(play)'), 'safety-net timer to Play Store present');
-  // The intent is fired via a real anchor click (reliable fallback), not window.location.href.
-  assert.ok(html.includes('a.click()'), 'intent must be fired via an anchor click');
-  // There must be NO 0-second meta refresh (it would fire before the intent runs
-  // and send every Android visitor to the website instead of the app/Play Store).
-  assert.ok(!/http-equiv="refresh"/.test(html), 'must NOT have a meta refresh (it defeats the intent)');
+  assert.ok(intent!.endsWith(';end'), 'intent must terminate with ;end');
 });
 
-test('non-app custom link: intent is null and the fallback is the website, never the Play Store', () => {
-  const html = smartRedirectHtml('https://4astore.com/some-custom', null);
-  assert.ok(/var intent = null;/.test(html), 'non-app link must have a null intent var');
-  assert.ok(html.includes('location.replace(target)'), 'non-app branch must replace with the website target');
-  // intent is null, so `/Android/ && intent` is false at runtime → the else branch
-  // (location.replace(target), the website) runs and the Play Store timer is never armed.
-  assert.ok(!html.includes('intent://'), 'non-app link must not build an intent:// URL');
-  assert.ok(html.includes('location.replace(play)'), 'the play-fallback code is present but gated behind a null intent');
+test('app-eligible link: no meta-refresh / JS page artefacts (the 302 replaced them)', () => {
+  const intent = buildAndroidIntentUrl('/product/5');
+  assert.ok(!/http-equiv="refresh"/.test(intent!), 'no meta refresh — the builder emits only the intent URL');
+  assert.ok(!/<a |a\.click\(\)|setTimeout\(|location\.replace/.test(intent!), 'no JS page artefacts in the intent');
 });
 
-test('<noscript> points at the escaped website target and there is no meta refresh', () => {
-  const html = smartRedirectHtml('https://4astore.com/page/about?a=1&b=2', null);
-  // escapeHtml turns & into &amp; in the HTML attribute/anchor context.
-  // The <noscript> link is the JS-less fallback (the meta refresh was removed so
-  // it no longer pre-empts the intent:// on Android).
-  assert.ok(html.includes('href="https://4astore.com/page/about?a=1&amp;b=2"'));
-  assert.ok(!/http-equiv="refresh"/.test(html), 'no meta refresh — it would defeat the Android intent');
+test('non-app custom link: builder returns null so the caller redirects to the website, never the Store', () => {
+  assert.equal(buildAndroidIntentUrl(null), null);
 });

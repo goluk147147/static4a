@@ -9,9 +9,10 @@
 //   - Social crawler UA → return the per-product OG HTML from the ONE source of
 //     truth (services/ogShare.ts) so WhatsApp/Facebook/etc. render the product
 //     image + title. OG logic is NEVER forked here.
-//   - Human UA → a smart-redirect HTML page: on Android, attempt the installed
-//     app via the autoVerify App Link / custom scheme and fall back to the Play
-//     Store after ~1.2s; everywhere else go straight to the website target.
+//   - Human UA → a 302 redirect (Chrome-documented server-redirect pattern):
+//     on an app-eligible Android device, Location is the intent:// URL (opens the
+//     installed app, or Chrome honours the embedded market:// Play Store fallback
+//     when the app is absent); everywhere else Location is the website target.
 //
 // A missing code returns a friendly 404 page (not JSON) because a human may be
 // following a broken/expired link in a browser.
@@ -27,9 +28,9 @@ import {
   escapeHtml,
   type OgResult,
 } from '../services/ogShare';
-// Smart-redirect HTML + Android constants live in a dependency-free module so a unit
-// test can import the builder without pulling in prisma/Express. Behaviour unchanged.
-import { smartRedirectHtml } from '../services/smartRedirect';
+// Android intent:// builder + constants live in a dependency-free module so a unit
+// test can import the builder without pulling in prisma/Express.
+import { buildAndroidIntentUrl } from '../services/smartRedirect';
 
 const router = Router();
 
@@ -109,7 +110,17 @@ router.get('/:code', async (req: Request, res: Response) => {
     // fall through to the smart-redirect page below.
   }
 
-  return res.status(200).send(smartRedirectHtml(target, appPath));
+  // Human path — 302 redirect (Chrome's reliable server-redirect pattern; a
+  // top-level navigation to an intent:// URL beats any JS click/timer, which is
+  // why the prior HTML-page attempts landed uninstalled Android on the website).
+  //   - App-eligible Android → Location is the intent:// URL. Chrome opens the
+  //     installed app, or honours the embedded market:// Play Store fallback when
+  //     the app is absent.
+  //   - iOS → website target (Universal Links open the app automatically when
+  //     installed). Desktop / non-app custom links → website target.
+  const userAgent = req.get('user-agent') || '';
+  const intentUrl = /Android/i.test(userAgent) ? buildAndroidIntentUrl(appPath) : null;
+  return res.redirect(302, intentUrl ?? target);
 });
 
 export default router;
