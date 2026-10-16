@@ -23,6 +23,13 @@ import { escapeHtml } from './ogShare';
 // pathPrefix /product). The ONE place the smart redirect needs them.
 export const ANDROID_PACKAGE = 'com.store4a.app';
 export const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
+// The app's CUSTOM URL scheme (mobile/app.config.ts → `scheme: 'fourastore'`).
+// The intent uses this (NOT scheme=https) so that when the app is NOT installed,
+// Chrome has no web URL to fall through to and instead honours the embedded
+// S.browser_fallback_url (the Play Store). With scheme=https + host 4astore.com,
+// Chrome treated the intent as a normal web link and opened the website instead
+// of the Play Store on an uninstalled device — that was the bug.
+export const APP_SCHEME = 'fourastore';
 
 /**
  * Smart-redirect HTML for humans. `target` is the absolute website URL;
@@ -35,13 +42,16 @@ export function smartRedirectHtml(target: string, appPath: string | null): strin
   const safeTarget = escapeHtml(target);
   const targetJs = JSON.stringify(target);
   const playJs = JSON.stringify(PLAY_STORE_URL);
-  const host = SITE_ORIGIN.replace(/^https?:\/\//i, '');
-  // Android `intent://` with an EMBEDDED `S.browser_fallback_url`: this is the
-  // official, reliable Chrome mechanism. When the app IS installed Chrome opens
-  // it; when it is NOT, Chrome itself navigates to the fallback URL (the Play
-  // Store) — no JS timer, no race. We URL-encode the Play Store as the fallback.
+  // Build the intent with the app's CUSTOM scheme (fourastore://<path>) rather
+  // than scheme=https. Reason: with scheme=https + host 4astore.com, an
+  // uninstalled device let Chrome treat the intent as a plain web link and open
+  // the website, skipping the Play Store. A custom scheme has no web equivalent,
+  // so when the app is absent Chrome honours S.browser_fallback_url (Play Store);
+  // when the app is present, its `fourastore` scheme filter opens it. `appPath`
+  // starts with '/', which we strip so the host becomes e.g. product/3.
+  const schemePath = appPath ? appPath.replace(/^\//, '') : '';
   const intentUrl = appPath
-    ? `intent://${host}${appPath}#Intent;scheme=https;package=${ANDROID_PACKAGE};` +
+    ? `intent://${schemePath}#Intent;scheme=${APP_SCHEME};package=${ANDROID_PACKAGE};` +
       `S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)};end`
     : null;
   const intentJs = intentUrl ? JSON.stringify(intentUrl) : 'null';

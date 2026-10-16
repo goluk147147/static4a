@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { smartRedirectHtml, PLAY_STORE_URL, ANDROID_PACKAGE } from '../services/smartRedirect';
+import { smartRedirectHtml, PLAY_STORE_URL, ANDROID_PACKAGE, APP_SCHEME } from '../services/smartRedirect';
 
 test('app-eligible link: intent:// targets the app package AND no-app fallback is the Play Store', () => {
   const html = smartRedirectHtml('https://4astore.com/product/5', '/product/5');
@@ -16,6 +16,11 @@ test('app-eligible link: intent:// targets the app package AND no-app fallback i
   assert.ok(html.includes(`package=${ANDROID_PACKAGE}`), 'intent must carry the app package');
   assert.ok(html.includes('intent://'), 'app-eligible link must build an intent:// URL');
   assert.ok(!/var intent = null;/.test(html), 'intent must NOT be null for an app-eligible link');
+  // Uses the app's CUSTOM scheme (not https) so an uninstalled device cannot
+  // fall through to the website — it honours the Play Store fallback instead.
+  assert.ok(html.includes(`scheme=${APP_SCHEME}`), `intent must use the custom scheme=${APP_SCHEME}`);
+  assert.ok(!/scheme=https;/.test(html), 'intent must NOT use scheme=https (it would open the website, not the Play Store)');
+  assert.ok(html.includes('intent://product/5#Intent'), 'intent host is the scheme path without a leading slash');
   // Fallback goes to the Play Store URL.
   assert.ok(html.includes(PLAY_STORE_URL), 'play var must be the Play Store listing URL');
   assert.ok(
