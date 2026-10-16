@@ -3,6 +3,11 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { ok, fail } from '../utils/http';
 import { requireAuth, requireStaff } from '../auth/middleware';
+import {
+  sendWhatsAppTemplateMessage,
+  buildImageTextComponents,
+  sanitizeMsisdn,
+} from '../services/whatsappCloud';
 
 const router = Router();
 
@@ -113,6 +118,103 @@ router.get('/reach', async (req: Request, res: Response) => {
   });
 
   return ok(res, { reach });
+});
+
+// ---------------- WhatsApp Cloud API — LIVE paid-API send (server-side) ----------------
+// These two endpoints are the ADDITIONAL paid-API path. The free wa.me
+// click-to-share flow stays untouched and remains the default manual outreach.
+// The Meta access token NEVER reaches the browser: `sendWhatsAppTemplateMessage`
+// reads it fresh from the admin-only `settings.whatsapp_api` blob on every call.
+// Marketing TEMPLATE messages let us reach customers who have NOT saved our
+// number — the template must be PRE-APPROVED in Meta and any header image must
+// be a public HTTPS URL that Meta can fetch.
+
+const WA_MAX_BATCH = 500; // cap a single broadcast to a sane batch size
+const WA_DEFAULT_DELAY_MS = 1000; // delay between network sends (rate-limit)
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// POST /api/admin/marketing/whatsapp/test — send ONE template message.
+const whatsappTestBody = z.object({
+  recipientPhone: z.string().min(1),
+  templateName: z.string().min(1).max(512),
+  languageCode: z.string().min(1).max(12),
+  imageUrl: z.string().url().optional(),
+  bodyParams: z.array(z.string()).max(20).optional(),
+});
+
+router.post('/whatsapp/test', async (req: Request, res: Response) => {
+  const parsed = whatsappTestBody.safeParse(req.body);
+  if (!parsed.success) return fail(res, parsed.error.issues[0]?.message || 'Invalid request', 400);
+  const { recipientPhone, templateName, languageCode, imageUrl, bodyParams } = parsed.data;
+
+  const components = buildImageTextComponents({ imageUrl, bodyParams });
+  const result = await sendWhatsAppTemplateMessage({
+    recipientPhone,
+    templateName,
+    languageCode,
+    components,
+  });
+
+  if (!result.ok) {
+    const msg = result.code ? `${result.error} (code ${result.code})` : result.error || 'Send failed';
+    return fail(res, msg, 400);
+  }
+  return ok(res, { result });
+});
+
+// POST /api/admin/marketing/whatsapp/broadcast — send to many, rate-limited.
+const whatsappBroadcastBody = z.object({
+  templateName: z.string().min(1).max(512),
+  languageCode: z.string().min(1).max(12),
+  imageUrl: z.string().url().optional(),
+  bodyParams: z.array(z.string()).max(20).optional(),
+  recipients: z.array(z.string()).min(1),
+  delayMs: z.number().int().min(0).max(10000).optional(),
+});
+
+router.post('/whatsapp/broadcast', async (req: Request, res: Response) => {
+  const parsed = whatsappBroadcastBody.safeParse(req.body);
+  if (!parsed.success) return fail(res, parsed.error.issues[0]?.message || 'Invalid request', 400);
+  const { templateName, languageCode, imageUrl, bodyParams, recipients } = parsed.data;
+
+  if (recipients.length > WA_MAX_BATCH) {
+    return fail(res, `Too many recipients — max ${WA_MAX_BATCH} per batch`, 422);
+  }
+
+  const delayMs = parsed.data.delayMs ?? WA_DEFAULT_DELAY_MS;
+  const components = buildImageTextComponents({ imageUrl, bodyParams });
+
+  const results: Array<{ mobile: string; ok: boolean; error?: string }> = [];
+  for (let i = 0; i < recipients.length; i++) {
+    const raw = recipients[i];
+    const to = sanitizeMsisdn(raw);
+    if (!to) {
+      // Invalid numbers are skipped and counted as failed — never hit the network.
+      results.push({ mobile: raw, ok: false, error: 'Invalid number' });
+      continue;
+    }
+
+    const result = await sendWhatsAppTemplateMessage({
+      recipientPhone: to,
+      templateName,
+      languageCode,
+      components,
+    });
+    results.push({
+      mobile: to,
+      ok: result.ok,
+      error: result.ok ? undefined : result.code ? `${result.error} (code ${result.code})` : result.error,
+    });
+
+    // Rate-limit between NETWORK sends only (not after the last, not after skips).
+    if (delayMs > 0 && i < recipients.length - 1) await sleep(delayMs);
+  }
+
+  const total = results.length;
+  const sent = results.filter((r) => r.ok).length;
+  const failed = total - sent;
+  return ok(res, { total, sent, failed, results });
 });
 
 // ---------------- Dashboard (live data only) ----------------

@@ -276,6 +276,7 @@ const settingsSchema = z.object({
       baseUrl: z.string().trim().max(300),
       token: z.string().max(500),
       phoneNumberId: z.string().trim().max(120),
+      wabaId: z.string().trim().max(120),
       enabled: z.boolean(),
     })
     .partial()
@@ -931,7 +932,7 @@ router.get('/settings', requireAuth, requireStaff('settings'), async (_req: Requ
   // WhatsApp API config (PREP ONLY): stored as a JSON string in the raw
   // settings.whatsapp_api column. Tolerate null/garbage and fall back to the
   // OFF defaults (provider 'none', enabled false, empty token).
-  let whatsappApi = { provider: 'none', baseUrl: '', token: '', phoneNumberId: '', enabled: false };
+  let whatsappApi = { provider: 'none', baseUrl: '', token: '', phoneNumberId: '', wabaId: '', enabled: false };
   if (typeof s.whatsapp_api === 'string' && s.whatsapp_api.trim().length > 0) {
     try {
       const parsed = JSON.parse(s.whatsapp_api) as Record<string, unknown>;
@@ -940,6 +941,7 @@ router.get('/settings', requireAuth, requireStaff('settings'), async (_req: Requ
         baseUrl: typeof parsed.baseUrl === 'string' ? parsed.baseUrl : '',
         token: typeof parsed.token === 'string' ? parsed.token : '',
         phoneNumberId: typeof parsed.phoneNumberId === 'string' ? parsed.phoneNumberId : '',
+        wabaId: typeof parsed.wabaId === 'string' ? parsed.wabaId : '',
         enabled: !!parsed.enabled,
       };
     } catch {

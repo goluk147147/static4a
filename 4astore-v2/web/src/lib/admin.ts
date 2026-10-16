@@ -285,16 +285,20 @@ export async function teamAction(action: 'create' | 'update' | 'delete', body: R
 
 // ---- Settings ----
 /**
- * Provider-agnostic WhatsApp API config — PREP ONLY (not live).
+ * Provider-agnostic WhatsApp API config. For the Meta Cloud API this now powers
+ * a LIVE server-side send path (see sendWhatsAppTest / sendWhatsAppBroadcast).
  * Carried through the authenticated admin settings endpoint only; it is never
- * part of the public settings payload. The free wa.me flow (lib/whatsapp.ts)
- * stays the only active send path until lib/waSender.ts is wired.
+ * part of the public settings payload, and the token stays server-only (the
+ * backend reads it per send). The free wa.me flow (lib/whatsapp.ts) is untouched
+ * and remains the default manual share path.
  */
 export interface WhatsappApiConfig {
   provider: 'none' | 'cloud_api' | 'custom';
   baseUrl: string;
   token: string;
   phoneNumberId: string;
+  /** Meta WhatsApp Business Account id (optional; for reference / future template listing). */
+  wabaId?: string;
   enabled: boolean;
 }
 export interface AdminSettings {
@@ -312,6 +316,50 @@ export async function fetchAdminSettings() {
 }
 export async function saveAdminSettings(s: Partial<AdminSettings>) {
   return (await api.post('/admin/settings', s)).data;
+}
+
+// ---- WhatsApp Cloud API (LIVE, paid-API send path) ----
+// The access token is NEVER sent from the browser here — the Node backend reads
+// it from the admin-only settings blob. These calls only carry the template
+// name, language, optional public-https image URL, body params and recipients.
+/** Per-recipient result row returned by the broadcast endpoint. */
+export interface WhatsAppBroadcastResultRow {
+  mobile: string;
+  ok: boolean;
+  error?: string;
+}
+export interface WhatsAppBroadcastResult {
+  total: number;
+  sent: number;
+  failed: number;
+  results: WhatsAppBroadcastResultRow[];
+}
+/** POST /admin/marketing/whatsapp/test — send ONE Cloud API template message. */
+export async function sendWhatsAppTest(payload: {
+  recipientPhone: string;
+  templateName: string;
+  languageCode: string;
+  imageUrl?: string;
+  bodyParams?: string[];
+}): Promise<{ messageId?: string }> {
+  return (await api.post('/admin/marketing/whatsapp/test', payload)).data.result as { messageId?: string };
+}
+/** POST /admin/marketing/whatsapp/broadcast — rate-limited batch send. */
+export async function sendWhatsAppBroadcast(payload: {
+  templateName: string;
+  languageCode: string;
+  imageUrl?: string;
+  bodyParams?: string[];
+  recipients: string[];
+  delayMs?: number;
+}): Promise<WhatsAppBroadcastResult> {
+  const d = (await api.post('/admin/marketing/whatsapp/broadcast', payload)).data;
+  return {
+    total: Number(d.total) || 0,
+    sent: Number(d.sent) || 0,
+    failed: Number(d.failed) || 0,
+    results: (d.results as WhatsAppBroadcastResultRow[]) || [],
+  };
 }
 
 // ---- Owner master password (OWNER/superadmin only) ----
