@@ -33,34 +33,28 @@ export const APP_SCHEME = 'fourastore';
 // device (the https URL can be intercepted as a plain web link).
 export const MARKET_FALLBACK_URL = `market://details?id=${ANDROID_PACKAGE}`;
 
-// Public site host (the verified App Links host). The intent uses this host with
-// scheme=https so an installed app opens via its verified App Link, and an
-// uninstalled device cleanly hits the market:// fallback. A bare host-less
-// intent (intent://product/3) made Chrome show "site can't be reached".
-export const SITE_HOST = '4astore.com';
-
 /**
  * Build the Android intent:// URL for an App-Link-eligible target.
  *
  * `appPath` (e.g. `/product/5`) is present only for an app-eligible target.
- * Returns `null` for a non-app / custom link, signalling the caller to use the
- * website instead.
+ * Returns `null` for a non-app / custom link.
  *
- * Shape (Chrome intents syntax) — host + scheme=https so the verified App Link
- * resolves to the app when installed, and the embedded market:// fallback opens
- * the Play Store when it is not:
- *   intent://4astore.com/product/5#Intent;scheme=https;package=com.store4a.app;S.browser_fallback_url=<ENCODED market url>;end
+ * CRITICAL — uses the app's CUSTOM scheme (fourastore), NOT scheme=https.
+ * With scheme=https, when the app is absent Chrome treats the intent as an
+ * ordinary https URL and opens the website, IGNORING S.browser_fallback_url —
+ * that is exactly why uninstalled devices kept landing on the website. A custom
+ * scheme has no web equivalent, so Chrome has nothing to fall through to and
+ * honours the market:// fallback (Play Store). The custom scheme is a host-less
+ * deep link, so the path becomes the intent host (e.g. product/5):
+ *   intent://product/5#Intent;scheme=fourastore;package=com.store4a.app;S.browser_fallback_url=<ENCODED market url>;end
  *
- * This MUST be fired by an in-page top-level navigation (window.location.href in
- * the page the caller returns), NOT by an HTTP 302 Location header — Chrome does
- * not reliably resolve an intent:// delivered via a 302 (it showed
- * "site can't be reached").
+ * Fired by an in-page top-level navigation (window.location.href) — NOT a 302.
  */
 export function buildAndroidIntentUrl(appPath: string | null): string | null {
   if (!appPath) return null;
-  const path = appPath.startsWith('/') ? appPath : `/${appPath}`;
+  const schemePath = appPath.replace(/^\//, '');
   return (
-    `intent://${SITE_HOST}${path}#Intent;scheme=https;package=${ANDROID_PACKAGE};` +
+    `intent://${schemePath}#Intent;scheme=${APP_SCHEME};package=${ANDROID_PACKAGE};` +
     `S.browser_fallback_url=${encodeURIComponent(MARKET_FALLBACK_URL)};end`
   );
 }
