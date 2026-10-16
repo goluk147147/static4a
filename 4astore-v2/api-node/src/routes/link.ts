@@ -30,7 +30,7 @@ import {
 } from '../services/ogShare';
 // Android intent:// builder + constants live in a dependency-free module so a unit
 // test can import the builder without pulling in prisma/Express.
-import { buildAndroidIntentUrl } from '../services/smartRedirect';
+import { buildAndroidIntentUrl, androidIntentPage } from '../services/smartRedirect';
 
 const router = Router();
 
@@ -110,17 +110,22 @@ router.get('/:code', async (req: Request, res: Response) => {
     // fall through to the smart-redirect page below.
   }
 
-  // Human path — 302 redirect (Chrome's reliable server-redirect pattern; a
-  // top-level navigation to an intent:// URL beats any JS click/timer, which is
-  // why the prior HTML-page attempts landed uninstalled Android on the website).
-  //   - App-eligible Android → Location is the intent:// URL. Chrome opens the
-  //     installed app, or honours the embedded market:// Play Store fallback when
-  //     the app is absent.
+  // Human path.
+  //   - App-eligible ANDROID → return a tiny HTML page that fires the intel://
+  //     via an IN-PAGE top-level navigation (window.location.href). This is the
+  //     reliable firing path: Chrome opens the installed app via the verified
+  //     App Link, or honours the embedded market:// Play Store fallback when the
+  //     app is absent. We do NOT 302 to intent:// — Chrome does not reliably
+  //     resolve an intent delivered via a Location header ("site can't be
+  //     reached"), which is why the 302 attempt failed on real devices.
   //   - iOS → website target (Universal Links open the app automatically when
   //     installed). Desktop / non-app custom links → website target.
   const userAgent = req.get('user-agent') || '';
   const intentUrl = /Android/i.test(userAgent) ? buildAndroidIntentUrl(appPath) : null;
-  return res.redirect(302, intentUrl ?? target);
+  if (intentUrl) {
+    return res.status(200).send(androidIntentPage(intentUrl, target));
+  }
+  return res.redirect(302, target);
 });
 
 export default router;

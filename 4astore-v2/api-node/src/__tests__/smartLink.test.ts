@@ -16,20 +16,18 @@ import {
   MARKET_FALLBACK_URL,
 } from '../services/smartRedirect';
 
-test('app-eligible link: builds the exact intent:// with custom scheme, package, and market:// fallback', () => {
+import { androidIntentPage } from '../services/smartRedirect';
+
+test('app-eligible link: builds the exact intent:// with host, https scheme, package, and market:// fallback', () => {
   const intent = buildAndroidIntentUrl('/product/3');
-  // The full documented shape for product 3.
   assert.equal(
     intent,
-    'intent://product/3#Intent;scheme=fourastore;package=com.store4a.app;' +
+    'intent://4astore.com/product/3#Intent;scheme=https;package=com.store4a.app;' +
       'S.browser_fallback_url=market%3A%2F%2Fdetails%3Fid%3Dcom.store4a.app;end'
   );
-  // Component assertions (robust to constant changes).
-  assert.ok(intent!.startsWith('intent://product/3#Intent'), 'intent host is the path without a leading slash');
-  assert.ok(intent!.includes(`scheme=${APP_SCHEME}`), `intent must use the custom scheme=${APP_SCHEME}`);
-  assert.ok(!/scheme=https;/.test(intent!), 'intent must NOT use scheme=https (it would open the website, not the Store)');
+  assert.ok(intent!.startsWith('intent://4astore.com/product/3#Intent'), 'intent carries host + path');
+  assert.ok(intent!.includes('scheme=https'), 'intent uses scheme=https so the verified App Link opens the installed app');
   assert.ok(intent!.includes(`package=${ANDROID_PACKAGE}`), 'intent must carry the app package');
-  // The no-app fallback is the market:// Play Store deep-link, URL-encoded.
   assert.ok(
     intent!.includes(`S.browser_fallback_url=${encodeURIComponent(MARKET_FALLBACK_URL)}`),
     'intent must embed the encoded market:// Play Store fallback'
@@ -37,12 +35,20 @@ test('app-eligible link: builds the exact intent:// with custom scheme, package,
   assert.ok(intent!.endsWith(';end'), 'intent must terminate with ;end');
 });
 
-test('app-eligible link: no meta-refresh / JS page artefacts (the 302 replaced them)', () => {
-  const intent = buildAndroidIntentUrl('/product/5');
-  assert.ok(!/http-equiv="refresh"/.test(intent!), 'no meta refresh — the builder emits only the intent URL');
-  assert.ok(!/<a |a\.click\(\)|setTimeout\(|location\.replace/.test(intent!), 'no JS page artefacts in the intent');
-});
-
 test('non-app custom link: builder returns null so the caller redirects to the website, never the Store', () => {
   assert.equal(buildAndroidIntentUrl(null), null);
+});
+
+test('androidIntentPage fires the intent via an in-page top-level navigation (not a 302 or anchor/timer)', () => {
+  const intent = buildAndroidIntentUrl('/product/3')!;
+  const html = androidIntentPage(intent, 'https://4astore.com/product/3');
+  // The intent is fired by window.location.href inside the page (the reliable path).
+  assert.ok(html.includes('window.location.href = '), 'page must fire the intent via window.location.href');
+  assert.ok(html.includes(intent), 'page must embed the exact intent URL');
+  // The script sits at the end of body (document ready); no flaky patterns.
+  assert.ok(html.indexOf('<script>') > html.indexOf('<body>'), 'script is in the body, after it opens');
+  assert.ok(!/http-equiv="refresh"/.test(html), 'no meta refresh (it would pre-empt the intent)');
+  assert.ok(!/a\.click\(\)|setTimeout\(|visibilitychange/.test(html), 'no flaky anchor/timer/visibility logic');
+  // JS-less clients get a website link.
+  assert.ok(html.includes('href="https://4astore.com/product/3"'), 'noscript/website fallback link present');
 });
