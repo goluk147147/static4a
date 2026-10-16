@@ -31,19 +31,20 @@ test('PLAY_STORE_URL is the plain https listing for the package', () => {
   assert.ok(PLAY_STORE_URL.startsWith('https://play.google.com/'), 'plain https Play URL');
 });
 
-test('appOrStorePage: tries the app scheme then falls back to the Play Store', () => {
+test('appOrStorePage: fires the app scheme via a hidden iframe, then falls back to the Play Store', () => {
   const html = appOrStorePage('fourastore://product/3');
-  // Fires the app deep link.
+  // Fires the app deep link through a hidden iframe (silent failure if no app).
   assert.ok(html.includes('fourastore://product/3'), 'page must attempt the app deep link');
-  assert.ok(html.includes('window.location.href = app'), 'app open attempt present');
+  assert.ok(html.includes("createElement('iframe')"), 'app scheme fired via a hidden iframe (not top navigation)');
+  assert.ok(html.includes('ifr.src = app'), 'iframe src is the app deep link');
   // Falls back to the plain https Play Store after a delay, only if still visible.
   assert.ok(html.includes(PLAY_STORE_URL), 'page must embed the Play Store URL');
   assert.ok(/setTimeout\(/.test(html), 'delayed fallback present');
+  assert.ok(html.includes('window.location.href = play'), 'fallback navigates to the Play Store');
   assert.ok(html.includes('document.hidden'), 'fallback is skipped when the app opened (tab hidden)');
   // Script is in the body (document ready); no flaky intent/meta-refresh.
   assert.ok(html.indexOf('<script>') > html.indexOf('<body'), 'script after body opens');
   assert.ok(!/http-equiv="refresh"/.test(html), 'no meta refresh');
   assert.ok(!/intent:\/\//.test(html), 'no intent:// (uses custom scheme + https Play URL)');
-  // JS-less clients get a Play Store link.
   assert.ok(html.includes('noscript'), 'noscript fallback present');
 });

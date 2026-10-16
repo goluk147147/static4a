@@ -66,25 +66,38 @@ export function appOrStorePage(appDeepLink: string, playUrl: string = PLAY_STORE
 </head>
 <body style="font-family:system-ui,Arial,sans-serif;text-align:center;padding:40px 16px;color:#222">
 <p>Opening 4A Store…</p>
-<p><a href="${safePlay}">Get the 4A Store app →</a></p>
+<p><a id="store" href="${safePlay}">Get the 4A Store app →</a></p>
 <noscript><p><a href="${safePlay}">Download the 4A Store app</a></p></noscript>
 <script>
 (function () {
   var app = ${deepJs};
   var play = ${playJs};
   var jumped = false;
-  // If the app opens, the page is backgrounded → visibilitychange(hidden) fires.
-  // We mark that so the timer does NOT bounce the user to the Play Store.
-  function onHide(){ if (document.hidden) jumped = true; }
-  document.addEventListener('visibilitychange', onHide);
+  // If the app actually opens, the page is backgrounded; mark that so we do NOT
+  // then bounce the user to the Play Store when they return.
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) jumped = true; });
   window.addEventListener('pagehide', function(){ jumped = true; });
-  window.addEventListener('blur', function(){ jumped = true; });
-  // Try to open the app via its custom scheme.
-  try { window.location.href = app; } catch (e) {}
-  // App not installed → still here & visible after the delay → Play Store.
+
+  // Try to open the app via its custom scheme using a HIDDEN IFRAME. Firing the
+  // scheme through an iframe (not window.location) means that if the app is NOT
+  // installed, the attempt fails SILENTLY — the top page does not navigate to an
+  // error and does not change URL — so our Play Store timer reliably runs.
+  // If the app IS installed, Android opens it and the page is backgrounded.
+  function openApp() {
+    try {
+      var ifr = document.createElement('iframe');
+      ifr.style.display = 'none';
+      ifr.src = app;
+      document.body.appendChild(ifr);
+    } catch (e) {}
+  }
+  openApp();
+
+  // App not installed → still here & visible → go to the Play Store (plain https,
+  // always resolvable). If the app opened, jumped/hidden is true → skip.
   setTimeout(function () {
     if (!jumped && !document.hidden) { window.location.href = play; }
-  }, 1200);
+  }, 1500);
 })();
 </script>
 </body>
