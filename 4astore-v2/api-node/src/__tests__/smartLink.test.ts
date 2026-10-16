@@ -36,7 +36,9 @@ test('app-eligible link: intent:// targets the app package AND no-app fallback i
     'intent must embed the Play Store as browser_fallback_url'
   );
   // A JS safety-net timer still backs older webviews that ignore the fallback.
-  assert.ok(/setTimeout\(function \(\) \{ if \(!fired\) location\.replace\(play\); \}, 1500\)/.test(html), 'safety-net timer present');
+  assert.ok(/setTimeout\(/.test(html) && html.includes('location.replace(play)'), 'safety-net timer to Play Store present');
+  // The intent is fired via a real anchor click (reliable fallback), not window.location.href.
+  assert.ok(html.includes('a.click()'), 'intent must be fired via an anchor click');
   // There must be NO 0-second meta refresh (it would fire before the intent runs
   // and send every Android visitor to the website instead of the app/Play Store).
   assert.ok(!/http-equiv="refresh"/.test(html), 'must NOT have a meta refresh (it defeats the intent)');

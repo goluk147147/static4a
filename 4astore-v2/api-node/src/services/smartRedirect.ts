@@ -67,6 +67,13 @@ export function smartRedirectHtml(target: string, appPath: string | null): strin
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Redirecting… — 4A Store</title>
 <meta name="robots" content="noindex,nofollow">
+</head>
+<body>
+<p>Redirecting to <a href="${safeTarget}">4A Store</a>…</p>
+<noscript><p>Click here to continue: <a href="${safeTarget}">4A Store</a></p></noscript>
+<!-- Script lives at the END of <body> so document.body exists when it runs
+     (the Android branch creates + clicks an anchor; a head-script would hit a
+     null document.body, throw, and fall through to the website). -->
 <script>
 (function () {
   var target = ${targetJs};
@@ -74,16 +81,22 @@ export function smartRedirectHtml(target: string, appPath: string | null): strin
   var intent = ${intentJs};
   try {
     if (/Android/i.test(navigator.userAgent) && intent) {
-      // App-eligible on Android: open the app via the intent; the embedded
-      // browser_fallback_url makes Chrome itself send an uninstalled visitor to
-      // the Play Store. A safety-net timer backs older webviews that ignore the
-      // fallback; cleared if the app actually opens (page gets hidden).
-      var fired = false;
-      var fallback = setTimeout(function () { if (!fired) location.replace(play); }, 1500);
-      document.addEventListener('visibilitychange', function () {
-        if (document.hidden) { fired = true; clearTimeout(fallback); }
-      });
-      window.location.href = intent;
+      // App-eligible on Android. Fire the intent via a REAL anchor click (not
+      // window.location.href): Chrome honours the embedded browser_fallback_url
+      // reliably on a genuine link activation, sending an UNINSTALLED visitor to
+      // the Play Store. When the app IS installed, the same click opens it.
+      var a = document.createElement('a');
+      a.setAttribute('href', intent);
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      // Safety net for old webviews that neither open the app nor honour the
+      // fallback: if we're still here and visible after a moment, go to the Play
+      // Store (NOT the website). If the app opened, the tab is backgrounded and
+      // document.hidden is true, so we leave the user in the app.
+      setTimeout(function () {
+        if (!document.hidden) location.replace(play);
+      }, 1500);
     } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && intent) {
       // iOS: Universal Links open the app automatically when installed,
       // otherwise the website target is correct.
@@ -97,10 +110,6 @@ export function smartRedirectHtml(target: string, appPath: string | null): strin
   }
 })();
 </script>
-</head>
-<body>
-<p>Redirecting to <a href="${safeTarget}">4A Store</a>…</p>
-<noscript><p>Click here to continue: <a href="${safeTarget}">4A Store</a></p></noscript>
 </body>
 </html>`;
 }
