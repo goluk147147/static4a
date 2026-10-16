@@ -87,6 +87,10 @@ app.use('/api/img-proxy', imgProxyRouter);
 app.use('/api/pages', pagesRouter);
 app.use('/api/og', ogRouter); // social share HTML + compressed OG images (crawler-rewritten in nginx)
 app.use('/api/link', linkRouter); // universal short-link redirect (crawler OG + human smart-redirect); Apache /link proxies here
+// Also mount at the bare /link path: in production Cloudflare forwards /link/<code>
+// straight to this Node app (NOT rewritten to /api/link), so the short link must
+// resolve here too. Same router, same behaviour (crawler OG vs human smart-redirect).
+app.use('/link', linkRouter);
 app.use('/api', seoRouter); // /api/sitemap.xml + /api/robots.txt (crawler infra — never flag-gated)
 // Public banner images only (payment screenshots stay private in uploads/screenshots).
 app.use(
