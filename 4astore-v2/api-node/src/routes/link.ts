@@ -30,7 +30,7 @@ import {
 } from '../services/ogShare';
 // Android intent:// builder + constants live in a dependency-free module so a unit
 // test can import the builder without pulling in prisma/Express.
-import { buildAndroidIntentUrl, androidIntentPage } from '../services/smartRedirect';
+import { buildAppDeepLink, appOrStorePage } from '../services/smartRedirect';
 
 const router = Router();
 
@@ -111,19 +111,18 @@ router.get('/:code', async (req: Request, res: Response) => {
   }
 
   // Human path.
-  //   - App-eligible ANDROID → return a tiny HTML page that fires the intel://
-  //     via an IN-PAGE top-level navigation (window.location.href). This is the
-  //     reliable firing path: Chrome opens the installed app via the verified
-  //     App Link, or honours the embedded market:// Play Store fallback when the
-  //     app is absent. We do NOT 302 to intent:// — Chrome does not reliably
-  //     resolve an intent delivered via a Location header ("site can't be
-  //     reached"), which is why the 302 attempt failed on real devices.
+  //   - App-eligible ANDROID → tiny HTML page that first tries the app via its
+  //     custom scheme (fourastore://<path>); if the app is NOT installed the page
+  //     stays visible and, after a short delay, redirects to the Play Store
+  //     (plain https Play URL). App installed → opens the app, page backgrounds,
+  //     timer skips. This avoids the intent:// pitfalls (website fall-through /
+  //     "site can't be reached") seen on real Chrome.
   //   - iOS → website target (Universal Links open the app automatically when
   //     installed). Desktop / non-app custom links → website target.
   const userAgent = req.get('user-agent') || '';
-  const intentUrl = /Android/i.test(userAgent) ? buildAndroidIntentUrl(appPath) : null;
-  if (intentUrl) {
-    return res.status(200).send(androidIntentPage(intentUrl, target));
+  const appDeepLink = /Android/i.test(userAgent) ? buildAppDeepLink(appPath) : null;
+  if (appDeepLink) {
+    return res.status(200).send(appOrStorePage(appDeepLink));
   }
   return res.redirect(302, target);
 });
