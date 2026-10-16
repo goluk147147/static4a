@@ -35,14 +35,21 @@ export function smartRedirectHtml(target: string, appPath: string | null): strin
   const safeTarget = escapeHtml(target);
   const targetJs = JSON.stringify(target);
   const playJs = JSON.stringify(PLAY_STORE_URL);
-  // intent:// URL opens the verified app and, when the app is absent, lets the
-  // page's setTimeout fall back to the Play Store.
-  const intentJs = appPath
-    ? JSON.stringify(
-        `intent://${SITE_ORIGIN.replace(/^https?:\/\//i, '')}${appPath}#Intent;scheme=https;package=${ANDROID_PACKAGE};end`
-      )
-    : 'null';
+  const host = SITE_ORIGIN.replace(/^https?:\/\//i, '');
+  // Android `intent://` with an EMBEDDED `S.browser_fallback_url`: this is the
+  // official, reliable Chrome mechanism. When the app IS installed Chrome opens
+  // it; when it is NOT, Chrome itself navigates to the fallback URL (the Play
+  // Store) — no JS timer, no race. We URL-encode the Play Store as the fallback.
+  const intentUrl = appPath
+    ? `intent://${host}${appPath}#Intent;scheme=https;package=${ANDROID_PACKAGE};` +
+      `S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)};end`
+    : null;
+  const intentJs = intentUrl ? JSON.stringify(intentUrl) : 'null';
 
+  // IMPORTANT: there is intentionally NO <meta http-equiv="refresh"> here. A
+  // 0-second meta refresh fires BEFORE the JS runs and would send every Android
+  // visitor straight to the website, so the app/Play-Store intent never happens.
+  // JS-less clients fall back via the <noscript> link below instead.
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -50,7 +57,6 @@ export function smartRedirectHtml(target: string, appPath: string | null): strin
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Redirecting… — 4A Store</title>
 <meta name="robots" content="noindex,nofollow">
-<meta http-equiv="refresh" content="0; url=${safeTarget}">
 <script>
 (function () {
   var target = ${targetJs};
@@ -58,18 +64,22 @@ export function smartRedirectHtml(target: string, appPath: string | null): strin
   var intent = ${intentJs};
   try {
     if (/Android/i.test(navigator.userAgent) && intent) {
-      // App-eligible link: try to open the installed app; if it ISN'T installed the
-      // timeout fires and we land on the PLAY STORE (not the website).
-      var fallback = setTimeout(function () { location.replace(play); }, 1200);
-      // If the app opens, the page is backgrounded and the timeout is paused;
-      // on return to the browser we still want the site, so clear on hide.
-      window.addEventListener('pagehide', function () { clearTimeout(fallback); });
+      // App-eligible on Android: open the app via the intent; the embedded
+      // browser_fallback_url makes Chrome itself send an uninstalled visitor to
+      // the Play Store. A safety-net timer backs older webviews that ignore the
+      // fallback; cleared if the app actually opens (page gets hidden).
+      var fired = false;
+      var fallback = setTimeout(function () { if (!fired) location.replace(play); }, 1500);
       document.addEventListener('visibilitychange', function () {
-        if (document.hidden) clearTimeout(fallback);
+        if (document.hidden) { fired = true; clearTimeout(fallback); }
       });
       window.location.href = intent;
+    } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && intent) {
+      // iOS: Universal Links open the app automatically when installed,
+      // otherwise the website target is correct.
+      location.replace(target);
     } else {
-      // Non-app custom link (or non-Android): go straight to the website target.
+      // Non-app custom link (or desktop): go straight to the website target.
       location.replace(target);
     }
   } catch (e) {

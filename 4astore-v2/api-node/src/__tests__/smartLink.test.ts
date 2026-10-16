@@ -22,9 +22,19 @@ test('app-eligible link: intent:// targets the app package AND no-app fallback i
     html.includes('play.google.com/store/apps/details?id=com.store4a.app'),
     'Play Store fallback URL must be present'
   );
-  assert.ok(html.includes('location.replace(play)'), 'no-app timer must replace with the Play Store');
-  // Still ~1200ms.
-  assert.ok(/setTimeout\(function \(\) \{ location\.replace\(play\); \}, 1200\)/.test(html), 'fallback stays ~1200ms');
+  assert.ok(html.includes('location.replace(play)'), 'no-app timer safety net must replace with the Play Store');
+  // The intent:// carries S.browser_fallback_url=<Play Store> — Chrome's official,
+  // reliable no-app fallback (navigates to the Play Store itself when the app is
+  // absent, no JS race). This replaced the old meta-refresh + bare-timer approach.
+  assert.ok(
+    html.includes(`S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)}`),
+    'intent must embed the Play Store as browser_fallback_url'
+  );
+  // A JS safety-net timer still backs older webviews that ignore the fallback.
+  assert.ok(/setTimeout\(function \(\) \{ if \(!fired\) location\.replace\(play\); \}, 1500\)/.test(html), 'safety-net timer present');
+  // There must be NO 0-second meta refresh (it would fire before the intent runs
+  // and send every Android visitor to the website instead of the app/Play Store).
+  assert.ok(!/http-equiv="refresh"/.test(html), 'must NOT have a meta refresh (it defeats the intent)');
 });
 
 test('non-app custom link: intent is null and the fallback is the website, never the Play Store', () => {
@@ -37,9 +47,11 @@ test('non-app custom link: intent is null and the fallback is the website, never
   assert.ok(html.includes('location.replace(play)'), 'the play-fallback code is present but gated behind a null intent');
 });
 
-test('<meta refresh> and <noscript> both point at the escaped website target', () => {
+test('<noscript> points at the escaped website target and there is no meta refresh', () => {
   const html = smartRedirectHtml('https://4astore.com/page/about?a=1&b=2', null);
   // escapeHtml turns & into &amp; in the HTML attribute/anchor context.
-  assert.ok(html.includes('<meta http-equiv="refresh" content="0; url=https://4astore.com/page/about?a=1&amp;b=2">'));
+  // The <noscript> link is the JS-less fallback (the meta refresh was removed so
+  // it no longer pre-empts the intent:// on Android).
   assert.ok(html.includes('href="https://4astore.com/page/about?a=1&amp;b=2"'));
+  assert.ok(!/http-equiv="refresh"/.test(html), 'no meta refresh — it would defeat the Android intent');
 });
