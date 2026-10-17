@@ -375,6 +375,9 @@ export function usePosDashboard(enabled = true) {
     enabled,
     staleTime: 30_000,
     retry: false,
+    // Never let a dashboard-widget error (e.g. a 403 for staff without the
+    // 'dashboard' permission) bubble up and break the shared admin dashboard.
+    throwOnError: false,
     queryFn: async () => {
       const { data } = await api.get('/admin/pos/dashboard');
       const { success, ...rest } = data as { success: boolean } & PosDashboard;

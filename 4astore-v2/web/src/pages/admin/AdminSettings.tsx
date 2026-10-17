@@ -29,7 +29,7 @@ const SUBS = [
   { key: 'seo', label: '🔎 SEO' },
   { key: 'cache', label: '🔄 Cache / Update' },
   { key: 'appupdate', label: '📲 App Update' },
-  { key: 'data', label: '💾 Data' },
+  { key: 'data', label: '💾 Data', ownerOnly: true },
 ] as const;
 type SubKey = (typeof SUBS)[number]['key'];
 
@@ -1169,7 +1169,7 @@ export default function AdminSettings() {
         {sub === 'seo' && <SeoSettings />}
         {sub === 'cache' && <CacheSettings />}
         {sub === 'appupdate' && <AppUpdateSettings />}
-        {sub === 'data' && <DataSettings />}
+        {sub === 'data' && isOwner && <DataSettings />}
       </div>
     </>
   );
