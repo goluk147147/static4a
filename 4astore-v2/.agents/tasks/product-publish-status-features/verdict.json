@@ -1,0 +1,12 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "4astore-v2 (branch product-publish-status)",
+      "detail": "Stale base: the branch's merge-base (15ed0da) predates the ShortLink OG feature that now exists on main, so `git diff main` shows og_image/og_title, ensureShortLinkOgColumns, shortlinkOg.test.ts and ogShare.ts being deleted. Verified these are NOT branch changes \u2014 diffing merge-base..HEAD for those paths is empty and the branch's two commits touch only the 11 publish-status files. Merging without rebasing would silently revert the OG feature.",
+      "fix": "Rebase the branch onto current main before merging so the diff reflects only the publish-status changes and the ShortLink OG feature is preserved."
+    }
+  ],
+  "summary": "The product publish/unpublish feature is correct and complete: runtime status column (no migrate, default 'published', wired into boot), new products default to draft, server-authoritative 422 publish guard, public catalog filters to published only, catalog-leak test green (3/3) and unedited with status kept out of PUBLIC_PRODUCT_SELECT, and the admin can see/flip status via GET /api/admin/products and the row button. No unrelated POS/SEO/marketing/OG code is changed by the branch itself; the only note is a stale-base artifact that should be resolved by rebasing before merge."
+}

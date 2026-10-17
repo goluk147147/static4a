@@ -1,0 +1,27 @@
+{
+  "project_type": "4astore-v2 full-stack e-commerce: Node/Express + TypeScript + Prisma + MySQL backend (api-node), React 18 + Vite + TanStack Query admin/storefront SPA (web). App lives under the 4astore-v2/ subfolder of the repo.",
+  "language": "TypeScript",
+  "build_system": "Backend: tsc (api-node/tsconfig.json). Frontend: Vite + tsc -b (web). Each package has its own package.json; dependencies must be installed per package with npm install before build/test. The worktree had no node_modules initially — npm install was run in api-node (done); web may also need npm install before its build.",
+  "test_framework": "Backend: node:test via `node --import ./src/__tests__/register.mjs --test`. The key guard is src/__tests__/catalog-leak.test.ts. Frontend: NO unit tests — type-check/build (tsc -b + vite build) is the verification.",
+  "build_command": "api-node: `npm run build` (tsc -p tsconfig.json). web: `npm run build` (node scripts/generate-sitemap.mjs && tsc -b && vite build).",
+  "test_command": "api-node: `npm test` (runs src/__tests__/**/*.test.ts). Single file: `node --import ./src/__tests__/register.mjs --test \"src/__tests__/catalog-leak.test.ts\"`.",
+  "verification_instructions": "1) In api-node run `npm install` (if not already) then `npm run build` and `npm test` — all tests pass, catalog-leak.test.ts green with NO edits to it. 2) In web run `npm install` (if not already) then `npm run build` — type-check + production build succeed. Baseline: after `npm install` in api-node the full test suite passes (confirmed during planning).",
+  "snapshot_or_generated_files": "web build runs scripts/generate-sitemap.mjs (writes a sitemap) as part of `npm run build`; it is part of the normal build and not a checked-in snapshot to hand-edit. null otherwise.",
+  "environment_constraints": "Windows + PowerShell. ABSOLUTE paths only — all work is in the worktree c:\\xampp\\htdocs\\static4a\\.worktrees\\product-publish-status\\4astore-v2\\...; relative paths would land in the parent workspace. NO prisma migrate / db push — use the runtime ensure*Column raw-SQL pattern only. Do not touch unrelated POS/SEO/marketing code.",
+  "contribution_requirements": "ADD-only / no-migrate DB convention: new columns are added at runtime by idempotent ensure*Column() functions (information_schema guard + swallow MySQL duplicate-column error 1060, and duplicate-index 1061 for indexes) wired into server.ts boot, and documented (mirrored) on the Prisma model for reference. The Prisma client is NOT regenerated in the worktree, so new columns are written as plain properties in create/update { data } objects (exactly like max_qty_per_order/featured). Existing live rows must stay visible (column default 'published'). Keep the public leakage test green. Match existing style: bilingual Hindi/English toasts and emoji labels are normal.",
+  "key_patterns": "Runtime column: ensureProductMaxQtyColumn() in services/dataImport.ts is the exact template (information_schema COUNT guard, ALTER TABLE products ADD COLUMN, catch + swallow /1060|Duplicate column/). Index add: the statistics-guarded CREATE INDEX loop in ensureProductInventoryColumns() (swallow /1061|Duplicate key name/). Public projection: PUBLIC_PRODUCT_SELECT (routes/catalogSelect.ts) is a true-only allow-list shared by both public endpoints; FORBIDDEN_PUBLIC_PRODUCT_FIELDS lists owner-only fields the leakage test asserts absent. Admin product save: router.post('/products') in routes/admin.ts parses productSchema (zod), builds a `data` object, calls prisma.product.create/update, then bumpCatalogVersion(). Admin auth: requireAuth + requireStaff('products'); the web api client sends the access_token cookie automatically. Client normalization: normalizeProduct() in web/src/lib/queries.ts coerces DECIMAL strings to numbers.",
+  "relevant_files": [
+    "api-node/prisma/schema.prisma (model Product ~line 112; add status + @@index near max_qty_per_order)",
+    "api-node/src/services/dataImport.ts (ensureProductMaxQtyColumn ~line 613 is the template; add ensureProductStatusColumn)",
+    "api-node/src/server.ts (boot block calls ensure* functions; import list from ./services/dataImport)",
+    "api-node/src/routes/admin.ts (productSchema ~line 72; router.post('/products') ~line 96; add GET /products admin list + publish guard + status write)",
+    "api-node/src/routes/catalog.ts (GET /products findMany ~line 74; GET /products/:id findUnique ~line 80; add status filter)",
+    "api-node/src/routes/catalogSelect.ts (PUBLIC_PRODUCT_SELECT — do NOT add status here)",
+    "api-node/src/__tests__/catalog-leak.test.ts (must stay green with no edits)",
+    "web/src/types.ts (interface Product — add status)",
+    "web/src/lib/admin.ts (saveProduct exists; add fetchAdminProducts)",
+    "web/src/lib/queries.ts (useProducts + normalizeProduct; add useAdminProducts)",
+    "web/src/pages/admin/AdminProducts.tsx (FormState, toForm, save(), products table, stock-badge — add status badge + Publish/Unpublish button, switch to useAdminProducts)"
+  ],
+  "directory_structure": "4astore-v2/api-node/src/{routes,services,auth,__tests__} + prisma/schema.prisma — Express API. 4astore-v2/web/src/{pages/admin,lib,types.ts,store,components} — React SPA. .agents/tasks holds plan + these FEAT artifacts (outside both package build roots)."
+}

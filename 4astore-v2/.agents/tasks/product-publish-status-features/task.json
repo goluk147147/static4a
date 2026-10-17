@@ -1,0 +1,7 @@
+{
+  "task_id": "product-publish-status",
+  "task_description": "Add a product publish/unpublish status to the 4astore-v2 e-commerce app. Products get a status of draft|published. New products default to draft and are hidden from the storefront; the public catalog returns only published products. The admin UI gets a per-row Publish/Unpublish button and a status badge. Publishing is blocked (server-authoritative, HTTP 422) when required fields (name, price>0, category, image) are missing. Follows the repo's ADD-only / no-migrate runtime-column convention (ensure*Column raw SQL), mirrors max_qty_per_order. The public leakage test must stay green.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
