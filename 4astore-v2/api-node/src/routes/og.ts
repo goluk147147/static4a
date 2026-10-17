@@ -18,6 +18,7 @@ import {
   buildProductShareHtml,
   buildPageShareHtml,
   buildCategoryShareHtml,
+  loadSeoConfig,
   absoluteImageUrl,
   CATEGORY_SLUG_RE,
   PAGE_SLUG_RE,
@@ -27,6 +28,23 @@ const router = Router();
 
 // Re-export the shared origins so existing importers of this module keep working.
 export { SITE_ORIGIN, API_ORIGIN };
+
+// GET /api/og/image/default — branded 4A Store logo card used as the global default
+// OG image (cfg.defaultOgImage). Mirrors /image/page/:slug via getOrRenderOg with a
+// null imageUrl so custom short links never show a blank/404 preview. Public crawler
+// endpoint — no auth.
+router.get('/image/default', async (_req: Request, res: Response) => {
+  const cfg = await loadSeoConfig();
+  const img = await getOrRenderOg('default', {
+    title: cfg.business.name || '4A Store',
+    subtitle: '4A Store',
+    imageUrl: null, // logo card
+  });
+  res.setHeader('Content-Type', img.contentType);
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.setHeader('Content-Length', String(img.buffer.length));
+  return res.end(img.buffer);
+});
 
 // GET /api/og/image/product/:id — generate/serve the compressed share image.
 router.get('/image/product/:id', async (req: Request, res: Response) => {

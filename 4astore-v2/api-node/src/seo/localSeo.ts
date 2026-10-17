@@ -5,7 +5,7 @@
 // 4A Store is a single local kirana/grocery shop serving a handful of villages in Bihar,
 // so the defaults are deliberately hyper-local (areaServed, pincode, keyword seeds).
 
-import { SITE_ORIGIN } from './origin';
+import { SITE_ORIGIN, API_ORIGIN } from './origin';
 
 // -------------------- Local constants --------------------
 export const LOCAL = {
@@ -76,7 +76,7 @@ export function defaultSeoConfig(settingsRow?: SettingsRow | null): SeoConfig {
     titleTemplate: `%s | ${LOCAL.storeName}`,
     defaultDescription,
     defaultKeywords: [...LOCAL.keywordSeeds, ...LOCAL.areaServed, LOCAL.storeName].join(', '),
-    defaultOgImage: `${SITE_ORIGIN}/assets/og-default.png`,
+    defaultOgImage: `${API_ORIGIN}/og/image/default`,
     robotsExtra: '',
     defaultLang: 'hi',
     social: { whatsapp: '', instagram: '', facebook: '' },
