@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
+import { fetchAdminProducts } from './admin';
 import type { Product, Category, StoreConfig, Settings } from '../types';
 
 // MySQL DECIMAL columns arrive as strings ("200.00"); convert once so price math
@@ -27,6 +28,20 @@ export function useProducts() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     queryFn: async () => ((await api.get('/products')).data.products as Product[]).map(normalizeProduct),
+  });
+}
+
+// Admin product list (GET /api/admin/products): the ONLY source that includes DRAFTS, so the admin
+// table can see and publish them. Separate cache key from the public ['products'] list. staleTime 0 +
+// refetch on focus so freshly-saved status flips show immediately. normalizeProduct keeps price/mrp/
+// max_qty numeric (status passes through the ...p spread).
+export function useAdminProducts() {
+  return useQuery({
+    queryKey: ['admin-products'],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    queryFn: async () => (await fetchAdminProducts()).map(normalizeProduct),
   });
 }
 

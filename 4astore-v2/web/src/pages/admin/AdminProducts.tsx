@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useProducts, useCategories } from '../../lib/queries';
+import { useAdminProducts, useCategories } from '../../lib/queries';
 import { saveProduct, deleteProduct } from '../../lib/admin';
 import { compressToMaxBytes, dataUriBytes } from '../../lib/checkout';
 import { apiError } from '../../lib/api';
@@ -17,6 +17,7 @@ interface FormState {
   mrp: string; price: string; discount: string; inStock: boolean; featured: boolean;
   maxQtyPerOrder: string;
   image: string; description: string; features: string;
+  status: 'draft' | 'published';
 }
 
 const toForm = (p?: Partial<Product>, keepId = true): FormState => ({
@@ -27,12 +28,14 @@ const toForm = (p?: Partial<Product>, keepId = true): FormState => ({
   maxQtyPerOrder: p?.max_qty_per_order != null ? String(p.max_qty_per_order) : '',
   image: p?.image || '', description: p?.description || '',
   features: Array.isArray(p?.features) ? p!.features!.join('\n') : '',
+  // Editing an existing row keeps its current status; a brand-new add is defaulted to draft by the server.
+  status: (p?.status as 'draft' | 'published') || 'published',
 });
 
 // Port of the original renderProductsTab() / openProductModal() / saveProduct().
 export default function AdminProducts() {
   const qc = useQueryClient();
-  const { data: prods = [], isLoading } = useProducts();
+  const { data: prods = [], isLoading } = useAdminProducts();
   const categories = useCategories().data ?? [];
   const [term, setTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -100,6 +103,7 @@ export default function AdminProducts() {
       featured: f.featured,
       // Blank = unlimited (null); a positive number sets the per-order cap.
       maxQtyPerOrder: f.maxQtyPerOrder.trim() === '' ? null : parseFloat(f.maxQtyPerOrder),
+      status: f.status,
     };
     setSaving(true);
     try {
@@ -111,6 +115,37 @@ export default function AdminProducts() {
       showToast(apiError(e) || 'Failed to save product', 'error');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Per-row Publish / Unpublish. Publishing runs a client-side required-field check that mirrors the
+  // server guard (missingPublishFields) so the user gets instant bilingual feedback without a round-trip;
+  // the server still has the final say and a 422 is surfaced via apiError. The posted payload carries
+  // name/price/category/image because the server re-checks them on the SAME request.
+  async function setStatus(p: Product, next: 'draft' | 'published') {
+    if (next === 'published') {
+      const missing: string[] = [];
+      if (!p.name || !p.name.trim()) missing.push('name / naam');
+      if (!(Number(p.price) > 0)) missing.push('price / keemat');
+      if (!p.category || !p.category.trim()) missing.push('category / category');
+      if (!p.image || !p.image.trim()) missing.push('image / photo');
+      if (missing.length) {
+        showToast('Publish ke liye ye zaroori hain / Required to publish: ' + missing.join(', '), 'error');
+        return;
+      }
+    }
+    try {
+      await saveProduct('update', {
+        id: p.id, name: p.name, price: p.price, mrp: p.mrp, category: p.category, image: p.image, status: next,
+      });
+      showToast(
+        next === 'published' ? '🚀 Product publish ho gaya / Published' : '⏸ Product unpublish ho gaya / Draft',
+        'success',
+      );
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+      qc.invalidateQueries({ queryKey: ['products'] });
+    } catch (e) {
+      showToast(apiError(e) || 'Status change failed', 'error');
     }
   }
 
@@ -154,7 +189,7 @@ export default function AdminProducts() {
       <div style={{ overflowX: 'auto' }}>
         <table className="admin-table">
           <thead>
-            <tr><th>ID</th><th>Image</th><th>Name</th><th>Category</th><th>MRP</th><th>Price</th><th>Disc</th><th>Features</th><th>Stock</th><th>Action</th></tr>
+            <tr><th>ID</th><th>Image</th><th>Name</th><th>Category</th><th>MRP</th><th>Price</th><th>Disc</th><th>Features</th><th>Stock</th><th>Status</th><th>Action</th></tr>
           </thead>
           <tbody>
             {rows.length ? rows.map((p) => {
@@ -170,7 +205,11 @@ export default function AdminProducts() {
                   <td>{p.discount || 0}%</td>
                   <td>{feat ? `${feat} ✨` : '-'}</td>
                   <td><span className={`stock-badge ${p.in_stock ? 'stock-in' : 'stock-out'}`}>{p.in_stock ? 'In Stock' : 'Out'}</span></td>
+                  <td><span className={`stock-badge ${p.status === 'published' ? 'stock-in' : 'stock-out'}`}>{p.status === 'published' ? 'Published' : 'Draft'}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
+                    {p.status === 'published'
+                      ? <button type="button" onClick={() => setStatus(p, 'draft')} title="Unpublish (hide from storefront)" style={{ padding: '5px 10px', background: 'var(--gray)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, marginRight: 4 }}>⏸ Unpublish</button>
+                      : <button type="button" onClick={() => setStatus(p, 'published')} title="Publish (show on storefront)" style={{ padding: '5px 10px', background: '#2e7d32', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, marginRight: 4 }}>🚀 Publish</button>}
                     <button type="button" onClick={() => setModal({ mode: 'edit', form: toForm(p) })} title="Edit" style={{ padding: '5px 10px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, marginRight: 4 }}>✏️ Edit</button>
                     <button type="button" onClick={() => setModal({ mode: 'copy', form: toForm(p, false) })} title="Copy as new product (change size/price)" style={{ padding: '5px 10px', background: '#0891b2', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, marginRight: 4 }}>📋 Copy</button>
                     <button type="button" onClick={() => remove(p)} title="Delete" aria-label={`Delete ${p.name}`} style={{ padding: '5px 10px', background: '#e53935', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11 }}>🗑️</button>
@@ -178,7 +217,7 @@ export default function AdminProducts() {
                 </tr>
               );
             }) : (
-              <tr><td colSpan={10} style={{ textAlign: 'center', padding: 30, color: 'var(--gray)' }}>No matching products.</td></tr>
+              <tr><td colSpan={11} style={{ textAlign: 'center', padding: 30, color: 'var(--gray)' }}>No matching products.</td></tr>
             )}
           </tbody>
         </table>
@@ -228,6 +267,13 @@ export default function AdminProducts() {
               <select id="pf_featured" value={modal.form.featured ? '1' : '0'} onChange={(e) => set('featured', e.target.value === '1')}>
                 <option value="0">No</option>
                 <option value="1">⭐ Yes — daily video me dikhao</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="pf_status">Status (storefront par dikhe?)</label>
+              <select id="pf_status" value={modal.form.status} onChange={(e) => set('status', e.target.value as 'draft' | 'published')}>
+                <option value="draft">📝 Draft — abhi hide</option>
+                <option value="published">🚀 Published — storefront par live</option>
               </select>
             </div>
             <div className="full">

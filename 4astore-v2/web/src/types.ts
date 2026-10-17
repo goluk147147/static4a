@@ -12,6 +12,8 @@ export interface Product {
   features?: string[];
   in_stock: boolean;
   featured?: boolean; // daily "Aaj ka Special" video picks these first
+  // Admin publish/unpublish state. The public catalog returns only published rows, so storefront reads may treat an absent status as published.
+  status?: 'draft' | 'published';
   // Stock unit from the public catalog ("pcs", "kg", ...). Drives weight-vs-pcs
   // messaging for the per-order purchase cap.
   unit?: string;

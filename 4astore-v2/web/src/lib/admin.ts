@@ -12,6 +12,10 @@ export async function deleteOrder(orderId: string) {
 }
 
 // ---- Products ----
+/** GET /api/admin/products — admin source of truth (the ONLY endpoint that lists drafts; includes status). */
+export async function fetchAdminProducts(): Promise<import('../types').Product[]> {
+  return (await api.get('/admin/products')).data.products as import('../types').Product[];
+}
 export async function saveProduct(action: 'add' | 'update', product: Record<string, unknown>) {
   return (await api.post('/admin/products', { action, product })).data;
 }
