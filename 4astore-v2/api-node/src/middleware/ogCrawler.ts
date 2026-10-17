@@ -127,6 +127,38 @@ export async function ogCrawlHandler(req: Request, res: Response): Promise<void>
   res.status(200).send(result.html);
 }
 
+// Clean path-segment crawler endpoints. These are the RELIABLE Apache proxy targets:
+// the vhost include proxies  /product/:id → /api/og-crawl/product/:id  with a plain [P,L]
+// (NO query string, NO env var, NO header trick) — exactly like the proven-working /link
+// rule. A RewriteRule [P] whose target carries an embedded ?query= with slashes, OR an
+// E=…/RequestHeader env-var dance, both produced an Apache 500; a clean path never does.
+// The entity key arrives as a normal route param, so there is nothing for Apache to mangle.
+function sendOgResult(res: Response, result: OgResult, spaPath: string): void {
+  if ('notFound' in result) {
+    res.redirect(302, spaDestination(spaPath));
+    return;
+  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Vary', 'User-Agent');
+  res.status(200).send(result.html);
+}
+
+export async function ogCrawlProductHandler(req: Request, res: Response): Promise<void> {
+  const id = req.params.id;
+  sendOgResult(res, await buildProductShareHtml(id), `/product/${id}`);
+}
+
+export async function ogCrawlPageHandler(req: Request, res: Response): Promise<void> {
+  const slug = req.params.slug;
+  sendOgResult(res, await buildPageShareHtml(slug), `/page/${slug}`);
+}
+
+export async function ogCrawlCategoryHandler(req: Request, res: Response): Promise<void> {
+  const slug = req.params.slug;
+  sendOgResult(res, await buildCategoryShareHtml(slug), `/category/${slug}`);
+}
+
 // Optional in-process guard: if a bare public path ever reaches Node directly AND the UA is a
 // crawler, serve the OG HTML here too. Mounted before the SPA/API routes. For normal /api
 // traffic and humans it is a transparent no-op (calls next()).

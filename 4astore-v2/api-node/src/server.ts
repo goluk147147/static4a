@@ -30,7 +30,7 @@ import posImportRouter from './routes/pos-import';
 import posRouter from './routes/pos';
 import cartRouter from './routes/cart';
 import { requireAuth } from './auth/middleware';
-import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
+import { ogCrawlHandler, ogCrawlerMiddleware, ogCrawlProductHandler, ogCrawlPageHandler, ogCrawlCategoryHandler } from './middleware/ogCrawler';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
@@ -59,6 +59,11 @@ app.get('/api/health', (_req, res) => res.json({ success: true, service: '4astor
 // user-agents on /product/:id , /page/:slug , /category/:slug , /products?category=… to this
 // endpoint, which rebuilds the OG HTML from the ONE source of truth (services/ogShare.ts).
 app.get('/api/og-crawl', ogCrawlHandler);
+// Clean path-segment crawler targets — the RELIABLE Apache proxy shape (plain [P,L], no
+// query string / env var / header). Apache proxies /product/:id → /api/og-crawl/product/:id.
+app.get('/api/og-crawl/product/:id', ogCrawlProductHandler);
+app.get('/api/og-crawl/page/:slug', ogCrawlPageHandler);
+app.get('/api/og-crawl/category/:slug', ogCrawlCategoryHandler);
 // Transparent in-process guard for a bare public path that somehow reaches Node with a
 // crawler UA — a no-op for /api traffic and all human requests.
 app.use(ogCrawlerMiddleware);
