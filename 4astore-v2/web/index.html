@@ -48,6 +48,24 @@
       ]
     }
     </script>
+    <!-- WebSite JSON-LD with a sitelinks searchbox SearchAction. Target resolves to the SPA's real
+         search route (/products?search=…), so Google's searchbox leads to a working results page. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "4A Store",
+      "url": "https://4astore.com/",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://4astore.com/products?search={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
     <!-- Original 4AStore stylesheet (exact look) -->
     <link rel="stylesheet" href="/legacy/css/style.css" />
   </head>
@@ -61,9 +79,16 @@
         <h1>4A Store — Online Grocery Delivery in Chandargarh</h1>
         <p>4A Store aapka local kirana store hai. Fresh fruits, vegetables aur daily essentials ki
           fast home delivery Chandargarh, Nabinagar aur aas-paas (PIN 824301), Aurangabad, Bihar me.</p>
+        <p>Ye ek online grocery store hai jahan se aap kirana store online, general store ka saman,
+          aur daily essentials ghar baithe order kar sakte hain. Fruits &amp; vegetables delivery,
+          atta, dal, oil aur ghee — sab kuchh best price par, Chandargarh, Nabinagar aur Aurangabad,
+          Bihar me fast local home delivery ke saath.</p>
         <nav>
           <ul>
             <li><a href="/products">Browse all products</a></li>
+            <li><a href="/products?search=fruits">Fresh fruits &amp; vegetables</a></li>
+            <li><a href="/products?search=atta">Atta, dal &amp; oil</a></li>
+            <li><a href="/products?search=snacks">Daily essentials &amp; snacks</a></li>
             <li><a href="/page/help-support">Help &amp; Support</a></li>
             <li><a href="/page/privacy-policy">Privacy Policy</a></li>
             <li><a href="/page/terms">Terms &amp; Conditions</a></li>

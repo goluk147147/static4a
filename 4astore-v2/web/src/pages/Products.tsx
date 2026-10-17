@@ -163,7 +163,7 @@ export default function Products() {
       };
     }
     return {
-      title: 'All Products - Shop Groceries Online',
+      title: 'All Products — Online Grocery & Kirana Store',
       description: `Browse all products at 4A Store — fresh fruits, vegetables, snacks, oil, ghee, atta, dal & daily essentials at best prices. Fast home delivery in ${area}, PIN 824301.`,
       canonical: buildCanonical('/products'),
       h1: 'All Products',
