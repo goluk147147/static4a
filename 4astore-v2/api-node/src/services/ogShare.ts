@@ -135,6 +135,42 @@ export type OgResult = { html: string } | { notFound: true };
 
 // -------------------- Per-entity builders (ONE source of truth) --------------------
 
+export interface CustomShareArgs {
+  code: string;
+  /** Where humans are redirected (already absolute). */
+  target: string;
+  /** Admin-set OG image for the custom link (empty/null → 4A Store default card). */
+  ogImage?: string | null;
+  /** Admin-set OG title for the custom link (empty/null → brand default). */
+  ogTitle?: string | null;
+  cfg: SeoConfig;
+}
+
+/**
+ * Build the crawler OG card for a CUSTOM (non-product/page/category) short link.
+ * Pure + DB-free (takes the already-loaded `cfg`) so it is unit-testable in the
+ * house style. The image rule guarantees a preview is NEVER blank:
+ *   - `absoluteImageUrl(ogImage)` is null when the admin left the image empty,
+ *     so it falls back to `cfg.defaultOgImage` (the 4A Store default logo card).
+ * Title falls back to the store name, then the brand wordmark literal.
+ */
+export function buildCustomShareHtml(args: CustomShareArgs): string {
+  const { code, target, ogImage, ogTitle, cfg } = args;
+  const title = (ogTitle && ogTitle.trim()) || cfg.business.name || '4A Store — Grocery in Minutes';
+  // Trim so a whitespace-only value is treated as empty (→ default card), not a
+  // broken "SITE_ORIGIN/   " URL. The service validator already stores null for
+  // empty, but keep the helper robust for any direct caller.
+  const img = ogImage && ogImage.trim() ? ogImage.trim() : null;
+  return shareHtml({
+    title,
+    description: cfg.defaultDescription,
+    image: absoluteImageUrl(img) || cfg.defaultOgImage,
+    url: `${SITE_ORIGIN}/link/${code}`,
+    redirect: target,
+    robots: 'noindex,nofollow',
+  });
+}
+
 export async function buildProductShareHtml(id: string): Promise<OgResult> {
   if (!/^\d+$/.test(id)) return { notFound: true };
   const product = await prisma.product.findUnique({ where: { id: BigInt(id) } }).catch(() => null);

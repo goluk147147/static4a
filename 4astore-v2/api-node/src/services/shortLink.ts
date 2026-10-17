@@ -89,12 +89,39 @@ export interface CreateCustomShortLinkInput {
   type?: string;
   code?: string;
   createdBy?: string | null;
+  /** Optional custom OG preview image (CUSTOM links only). Empty → null → 4A Store default card. */
+  ogImage?: string | null;
+  /** Optional custom OG preview title (CUSTOM links only). Empty → null → brand default. */
+  ogTitle?: string | null;
 }
 
 export interface CreateCustomShortLinkResult {
   code: string;
   target_url: string;
   type: string;
+  og_image: string | null;
+  og_title: string | null;
+}
+
+/**
+ * Validate/normalise a custom OG image URL. Empty/undefined → null (the OG card
+ * then falls back to the 4A Store default). A non-empty value must be an http(s)
+ * URL (so the crawler can fetch it) and fit the 1000-char column, else throws.
+ */
+export function normaliseOgImage(raw?: string | null): string | null {
+  const t = String(raw ?? '').trim();
+  if (!t) return null;
+  if (!/^https?:\/\//i.test(t) || t.length > 1000) {
+    throw new Error('Custom image must be an http(s) URL');
+  }
+  return t;
+}
+
+/** Trim a custom OG title; empty → null; clamp to the 255-char column. */
+export function normaliseOgTitle(raw?: string | null): string | null {
+  const t = String(raw ?? '').trim();
+  if (!t) return null;
+  return t.slice(0, 255);
 }
 
 /** Error thrown when a caller-supplied custom code is already taken (→ HTTP 409). */
@@ -118,6 +145,10 @@ export async function createCustomShortLink(
   const target_url = normaliseTarget(input.targetUrl);
   const type = (input.type || 'custom').slice(0, 16);
   const createdBy = input.createdBy ? String(input.createdBy).slice(0, 64) : null;
+  // Validate the optional OG overrides up front so a bad image URL surfaces before
+  // any DB write (and consistently across both the custom-code and auto branches).
+  const og_image = normaliseOgImage(input.ogImage);
+  const og_title = normaliseOgTitle(input.ogTitle);
 
   const custom = String(input.code || '').trim();
   if (custom) {
@@ -126,16 +157,16 @@ export async function createCustomShortLink(
     }
     const clash = await prisma.shortLink.findUnique({ where: { code: custom }, select: { id: true } });
     if (clash) throw new ShortCodeTakenError(custom);
-    await prisma.shortLink.create({ data: { code: custom, target_url, type, created_by: createdBy } });
-    return { code: custom, target_url, type };
+    await prisma.shortLink.create({ data: { code: custom, target_url, type, created_by: createdBy, og_image, og_title } });
+    return { code: custom, target_url, type, og_image, og_title };
   }
 
   // Auto-generate a code, retrying on the rare UNIQUE collision.
   for (let attempt = 0; attempt < 8; attempt++) {
     const code = generateCode();
     try {
-      await prisma.shortLink.create({ data: { code, target_url, type, created_by: createdBy } });
-      return { code, target_url, type };
+      await prisma.shortLink.create({ data: { code, target_url, type, created_by: createdBy, og_image, og_title } });
+      return { code, target_url, type, og_image, og_title };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (!/unique|duplicate|P2002/i.test(msg)) throw e;

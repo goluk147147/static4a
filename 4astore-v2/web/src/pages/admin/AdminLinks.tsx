@@ -38,6 +38,8 @@ export default function AdminLinks() {
 
   const [targetUrl, setTargetUrl] = useState('');
   const [customCode, setCustomCode] = useState('');
+  const [customImage, setCustomImage] = useState('');
+  const [previewTitle, setPreviewTitle] = useState('');
   const [busy, setBusy] = useState(false);
 
   const links = q.data ?? [];
@@ -48,11 +50,18 @@ export default function AdminLinks() {
     if (!target) { showToast('Target URL zaroori hai / enter a URL', 'error'); return; }
     setBusy(true);
     try {
-      await createShortLink({ targetUrl: target, code: customCode.trim() || undefined });
+      await createShortLink({
+        targetUrl: target,
+        code: customCode.trim() || undefined,
+        ogImage: customImage.trim() || undefined,
+        ogTitle: previewTitle.trim() || undefined,
+      });
       await qc.invalidateQueries({ queryKey: ['admin-links'] });
       showToast('✅ Short link ban gaya / link created', 'success');
       setTargetUrl('');
       setCustomCode('');
+      setCustomImage('');
+      setPreviewTitle('');
     } catch (err) {
       // 409 → duplicate custom code; surface the server message.
       showToast(apiError(err) || 'Could not create link', 'error');
@@ -94,6 +103,29 @@ export default function AdminLinks() {
           </div>
           <button type="submit" disabled={busy} style={btnPrimary}>{busy ? '⏳ Creating…' : 'Create'}</button>
         </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 10 }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <label style={lbl}>Custom image URL (optional) / कस्टम इमेज URL</label>
+            <input
+              value={customImage}
+              onChange={(e) => setCustomImage(e.target.value)}
+              style={inp}
+              placeholder="https://4astore.com/uploads/my-banner.jpg"
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <label style={lbl}>Preview title (optional) / प्रीव्यू टाइटल</label>
+            <input
+              value={previewTitle}
+              onChange={(e) => setPreviewTitle(e.target.value)}
+              style={inp}
+              placeholder="4A Store"
+            />
+          </div>
+        </div>
+        <p style={{ ...muted, marginTop: 8 }}>
+          WhatsApp par share karne par yeh image/title dikhega. Khaali chhodne par 4A Store ka logo aayega.
+        </p>
       </form>
 
       <div style={card}>

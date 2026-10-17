@@ -530,6 +530,41 @@ export async function ensureShortLinkTables(): Promise<void> {
 }
 
 /**
+ * Ensure the additive OG-preview override columns exist on `short_links`.
+ *
+ * `og_image` / `og_title` let an admin set a custom WhatsApp/social preview
+ * image + title for a CUSTOM short link (product links derive their preview from
+ * the product). Both are nullable so existing rows and all other link types are
+ * untouched; when empty the crawler OG card falls back to the 4A Store default
+ * logo card (routes/link.ts + services/ogShare.ts). Each ALTER is
+ * information_schema-guarded (add only when absent) and swallows the MySQL
+ * duplicate-column error (1060) so concurrent/repeat runs never crash. Uses
+ * $executeRawUnsafe — NO prisma migrate / db push. Mirrored on the Prisma
+ * `ShortLink` model and the manual prisma/short-links.sql.
+ */
+export async function ensureShortLinkOgColumns(): Promise<void> {
+  const columns: Array<{ name: string; ddl: string }> = [
+    { name: 'og_image', ddl: 'ADD COLUMN og_image VARCHAR(1000) NULL' },
+    { name: 'og_title', ddl: 'ADD COLUMN og_title VARCHAR(255) NULL' },
+  ];
+  for (const col of columns) {
+    const rows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+      `SELECT COUNT(*) AS c FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'short_links' AND column_name = ?`,
+      col.name
+    );
+    if (Number(rows?.[0]?.c ?? 0) > 0) continue;
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE short_links ${col.ddl}`);
+    } catch (e) {
+      // Swallow duplicate-column (1060) in case a concurrent run added it first.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/1060|Duplicate column/i.test(msg)) throw e;
+    }
+  }
+}
+
+/**
  * Ensure the additive POS inventory columns exist on the `products` table.
  *
  * Phase-1 POS/inventory foundation. One stock figure serves BOTH the online

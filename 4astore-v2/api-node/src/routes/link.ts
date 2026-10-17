@@ -25,6 +25,8 @@ import {
   buildProductShareHtml,
   buildPageShareHtml,
   buildCategoryShareHtml,
+  buildCustomShareHtml,
+  loadSeoConfig,
   escapeHtml,
   type OgResult,
 } from '../services/ogShare';
@@ -75,7 +77,7 @@ router.get('/:code', async (req: Request, res: Response) => {
   const row = await prisma.shortLink
     .findUnique({
       where: { code },
-      select: { target_url: true, type: true, product_id: true },
+      select: { target_url: true, type: true, product_id: true, og_image: true, og_title: true },
     })
     .catch(() => null);
 
@@ -106,8 +108,19 @@ router.get('/:code', async (req: Request, res: Response) => {
       res.setHeader('Cache-Control', 'public, max-age=3600');
       return res.status(200).send(og.html);
     }
-    // No OG card available (custom link, or product/page/category not found) →
-    // fall through to the smart-redirect page below.
+    // No per-entity OG card (custom link, or product/page/category not found) →
+    // build a CUSTOM-link OG card so the preview is NEVER blank. The image is the
+    // admin-set og_image when present, else the 4A Store default logo card.
+    const cfg = await loadSeoConfig();
+    const html = buildCustomShareHtml({
+      code,
+      target,
+      ogImage: row.og_image,
+      ogTitle: row.og_title,
+      cfg,
+    });
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.status(200).send(html);
   }
 
   // Human path.

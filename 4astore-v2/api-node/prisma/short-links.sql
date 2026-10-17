@@ -29,6 +29,14 @@
 --   created_by  VARCHAR(64)      admin username for custom links, NULL otherwise
 --   clicks      INT              hit counter, default 0
 --   created_at  DATETIME(3)      default CURRENT_TIMESTAMP(3)
+--   og_image    VARCHAR(1000)    custom-link OG preview image URL (NULL = use the
+--                                4A Store default logo card). CUSTOM links only.
+--   og_title    VARCHAR(255)     custom-link OG preview title (NULL = brand default)
+--
+-- NOTE: og_image / og_title are added at runtime by ensureShortLinkOgColumns()
+-- (services/dataImport.ts, information_schema-guarded ALTER). They are NOT part
+-- of the base CREATE below so this file stays safe to run on a live DB with an
+-- existing table; the ensure handles adding them idempotently.
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS short_links (

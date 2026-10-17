@@ -34,7 +34,7 @@ import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -131,6 +131,8 @@ app.listen(config.port, () => {
   ensureMarketingTables().catch((e) => console.error('[seed] marketing tables failed', e));
   // Universal short_links table (idempotent, no-migrate raw SQL).
   ensureShortLinkTables().catch((e) => console.error('[seed] short link tables failed', e));
+  // Custom-link OG preview override columns on short_links (idempotent, no-migrate raw SQL).
+  ensureShortLinkOgColumns().catch((e) => console.error('[seed] short link og columns failed', e));
   // POS/inventory foundation (idempotent, no-migrate raw SQL) — additive products
   // inventory columns, POS settings toggles, and the six POS tables.
   ensureProductInventoryColumns().catch((e) => console.error('[seed] product inventory columns failed', e));

@@ -28,7 +28,7 @@ router.get('/', async (req: Request, res: Response) => {
   const rows = await prisma.shortLink.findMany({
     orderBy: { id: 'desc' },
     take: limit,
-    select: { code: true, target_url: true, type: true, clicks: true, created_at: true },
+    select: { code: true, target_url: true, type: true, clicks: true, created_at: true, og_image: true, og_title: true },
   });
   return ok(res, { links: rows });
 });
@@ -40,6 +40,11 @@ const createSchema = z.object({
     .string()
     .regex(/^[A-Za-z0-9]{1,16}$/, 'Custom code must be 1–16 letters or digits')
     .optional(),
+  // Optional OG preview overrides (CUSTOM links only). Empty strings are allowed;
+  // the service validator enforces the http(s) rule and converts empty → null, so
+  // a bad image URL surfaces here as a 422 via the catch below.
+  ogImage: z.string().max(1000).optional(),
+  ogTitle: z.string().max(255).optional(),
 });
 
 // POST /api/admin/links — create a short link for ANY url. A duplicate custom

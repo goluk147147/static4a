@@ -260,14 +260,22 @@ export interface ShortLink {
   type: string;
   clicks: number;
   created_at: string;
+  /** Custom-link OG preview image URL (null → 4A Store default logo card). Custom links only. */
+  og_image?: string | null;
+  /** Custom-link OG preview title (null → brand default). Custom links only. */
+  og_title?: string | null;
 }
 
 /** GET /api/admin/links — newest-first short links. */
 export async function fetchShortLinks(): Promise<ShortLink[]> {
   return (await api.get('/admin/links')).data.links as ShortLink[];
 }
-/** POST /api/admin/links — create a short link for ANY url; 409 on duplicate custom code. */
-export async function createShortLink(input: { targetUrl: string; type?: string; code?: string }) {
+/**
+ * POST /api/admin/links — create a short link for ANY url; 409 on duplicate
+ * custom code. `ogImage` / `ogTitle` are the optional WhatsApp/social preview
+ * overrides for CUSTOM links (empty → 4A Store default card on the server).
+ */
+export async function createShortLink(input: { targetUrl: string; type?: string; code?: string; ogImage?: string; ogTitle?: string }) {
   return (await api.post('/admin/links', input)).data;
 }
 /** GET /api/products/:id/short-link — resolve (minting on demand) a product's short code. */

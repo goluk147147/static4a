@@ -470,6 +470,11 @@ model ShortLink {
   created_by String?  @db.VarChar(64)
   clicks     Int      @default(0)
   created_at DateTime @default(now()) @db.DateTime(3)
+  // Custom-link OG preview overrides (custom links only). Added at runtime via
+  // ensureShortLinkOgColumns() (services/dataImport.ts) — do NOT run prisma
+  // migrate / db push. Manual equivalent: prisma/short-links.sql.
+  og_image   String?  @db.VarChar(1000)
+  og_title   String?  @db.VarChar(255)
 
   @@index([product_id], map: "idx_short_links_product")
   @@map("short_links")
