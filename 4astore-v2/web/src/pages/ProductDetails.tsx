@@ -29,6 +29,13 @@ export default function ProductDetails() {
   const product = products.find((p) => String(p.id) === id);
   const { add, items, setQty } = useCart();
 
+  // Share state. These hooks MUST be declared before any early return below so
+  // the hook order stays identical across renders (loading → loaded). Declaring
+  // them after the `isLoading`/`!product` returns caused React error #310
+  // ("rendered more hooks than during the previous render") and crashed the PDP.
+  const [sharing, setSharing] = useState(false);
+  const [waShareUrl, setWaShareUrl] = useState<string | null>(null);
+
   if (productsQ.isLoading) {
     return <div className="container" style={{ padding: 16 }}><div className="product-detail"><SkeletonDetail /></div></div>;
   }
@@ -62,8 +69,7 @@ export default function ProductDetails() {
   // Share the product's SHORT link (/link/<code>) so crawlers get the OG preview
   // via FEAT-001's redirect route. Fall back to the canonical /product/:id when
   // no short code can be minted. navigator.share when available, else WhatsApp + Copy.
-  const [sharing, setSharing] = useState(false);
-  const [waShareUrl, setWaShareUrl] = useState<string | null>(null);
+  // (sharing/waShareUrl state declared above, before the early returns.)
   const supportsShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   async function resolveShareUrl(): Promise<string> {
