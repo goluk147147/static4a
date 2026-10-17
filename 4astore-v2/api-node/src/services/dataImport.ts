@@ -662,6 +662,52 @@ export async function ensureProductMaxQtyColumn(): Promise<void> {
 }
 
 /**
+ * Ensure the additive `status` column exists on the `products` table.
+ *
+ * Admin publish/unpublish status (draft | published). A 'draft' product is
+ * hidden from the public catalog (routes/catalog.ts filters `status: 'published'`)
+ * while the admin can still see it via GET /api/admin/products; 'published' makes
+ * it live. The column is NOT NULL DEFAULT 'published' so every EXISTING live row
+ * stays visible immediately after the add (no backfill needed).
+ *
+ * Kept standalone (mirrors ensureProductMaxQtyColumn) so this feature's files
+ * stay self-contained and it can be reviewed/reverted independently. Both the
+ * column add and the lookup index are information_schema-guarded (added only
+ * when absent) and swallow the MySQL duplicate errors (1060 for the column,
+ * 1061 for the index) so concurrent/repeat runs never crash. Uses
+ * $executeRawUnsafe — NO prisma migrate / db push. Mirrored on the Prisma
+ * `Product` model.
+ */
+export async function ensureProductStatusColumn(): Promise<void> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'products' AND column_name = 'status'`
+  );
+  const present = Number(rows?.[0]?.c ?? 0) > 0;
+  if (!present) {
+    try {
+      await prisma.$executeRawUnsafe("ALTER TABLE products ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'published'");
+    } catch (e) {
+      // Swallow duplicate-column (1060) in case a concurrent run added it first.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/1060|Duplicate column/i.test(msg)) throw e;
+    }
+  }
+  // Non-unique lookup index (guarded against duplicate-index 1061).
+  const idxRows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+    `SELECT COUNT(*) AS c FROM information_schema.statistics
+      WHERE table_schema = DATABASE() AND table_name = 'products' AND index_name = 'idx_products_status'`
+  );
+  if (Number(idxRows?.[0]?.c ?? 0) > 0) return;
+  try {
+    await prisma.$executeRawUnsafe('CREATE INDEX idx_products_status ON products (status)');
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/1061|Duplicate key name/i.test(msg)) throw e;
+  }
+}
+
+/**
  * Ensure the POS-wide toggle columns exist on the `settings` table and seed a
  * default store_address when blank. `settings` is a raw-SQL table (not a Prisma
  * model) — consistent with the repo. Mirrors ensureMasterPasswordColumn(): each

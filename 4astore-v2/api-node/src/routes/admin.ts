@@ -5,6 +5,7 @@ import path from 'path';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { ok, fail } from '../utils/http';
+import { PUBLIC_PRODUCT_SELECT } from './catalogSelect';
 import bcrypt from 'bcryptjs';
 import { requireAuth, requireStaff, hasPermission } from '../auth/middleware';
 import { qtyLimitMessage } from '../utils/qtyLimit';
@@ -39,6 +40,21 @@ function parseMaxQty(v: unknown): number | null | false {
   if (n === 0) return null; // treat 0/blank as "no limit"
   if (n < 0) return false;
   return Math.round(n * 1000) / 1000;
+}
+
+/**
+ * Server-authoritative publish guard. A product may only go 'published' when it
+ * has the minimum shopper-facing fields filled: a name, a positive selling
+ * price, a category, and an image. Returns the list of human-readable
+ * missing/invalid required fields (empty when the product is OK to publish).
+ */
+function missingPublishFields(d: { name?: string; price?: number; category?: string; image?: string }): string[] {
+  const missing: string[] = [];
+  if (!d.name || d.name.trim() === '') missing.push('name / naam');
+  if (!(typeof d.price === 'number' && d.price > 0)) missing.push('price / keemat');
+  if (!d.category || d.category.trim() === '') missing.push('category / category');
+  if (!d.image || d.image.trim() === '') missing.push('image / photo');
+  return missing;
 }
 
 /**
@@ -82,6 +98,10 @@ const productSchema = z.object({
   features: z.array(z.string()).optional().default([]),
   inStock: z.boolean().optional().default(true),
   featured: z.boolean().optional().default(false), // daily "Aaj ka Special" video
+  // Admin publish/unpublish status. 'draft' hides the product from the public
+  // catalog; 'published' makes it live. Optional — the add path defaults to
+  // 'draft' and an omitted value on update leaves the column unchanged.
+  status: z.enum(['draft', 'published']).optional(),
   // Optional per-order purchase cap (Zepto/Blinkit style). number | string | null:
   // blank/null/0 clears it (NULL = unlimited); a positive value sets the cap.
   // Validated + normalized by parseMaxQty() before the write.
@@ -112,6 +132,18 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
     // parseMaxQty returns false for an invalid (negative/non-finite) value.
     const maxQty = parseMaxQty(p.maxQtyPerOrder);
     if (maxQty === false) return fail(res, 'Max quantity per order must be a positive number', 422);
+    // Resolve the effective publish status. On 'add' a product defaults to
+    // 'draft' (admin publishes explicitly). On 'update' status is only set when
+    // the admin sent one — an omitted value leaves the existing column unchanged.
+    const effectiveStatus = action === 'add' ? (p.status ?? 'draft') : p.status;
+    // Server-authoritative publish guard: never write status 'published' while a
+    // required shopper-facing field is missing/invalid.
+    if (effectiveStatus === 'published') {
+      const missing = missingPublishFields({ name: p.name, price: p.price, category: p.category, image: p.image });
+      if (missing.length > 0) {
+        return fail(res, 'Publish ke liye ye zaroori hain / Required to publish: ' + missing.join(', '), 422);
+      }
+    }
     const data = {
       name: p.name,
       brand: p.brand,
@@ -137,7 +169,11 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
     // empty-string clear is distinguishable from a truly absent field.
     const rawSeo = (req.body?.product || {}) as Record<string, unknown>;
     const seoOverrides = seoOverrideFlags({ title: rawSeo.seoTitle, description: rawSeo.seoDescription, keywords: rawSeo.seoKeywords });
-    const dataWithOverrides = { ...data, seo_overrides: seoOverrides };
+    // Only write `status` when we have a resolved value: always on 'add' (defaults
+    // to 'draft'), and on 'update' only when the admin sent one (omitted leaves the
+    // column unchanged). Built conditionally so an absent status is a no-op.
+    const statusData = effectiveStatus !== undefined ? { status: effectiveStatus } : {};
+    const dataWithOverrides = { ...data, ...statusData, seo_overrides: seoOverrides };
     const actor = req.user?.username || 'admin';
 
     if (action === 'add') {
@@ -167,6 +203,20 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
   }
 
   return fail(res, 'Invalid action', 400);
+});
+
+// GET /api/admin/products — the admin's source of truth for the product list. This
+// is the ONLY endpoint that lists drafts (the public catalog hides status != 'published'),
+// so the admin UI can see and publish them. Staff-gated (requireStaff('products')) and
+// never cached (no-store). The select mirrors the public projection PLUS status so the
+// UI can show the publish/unpublish state; PUBLIC_PRODUCT_SELECT itself stays unchanged.
+router.get('/products', requireAuth, requireStaff('products'), async (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const products = await prisma.product.findMany({
+    orderBy: { id: 'asc' },
+    select: { ...PUBLIC_PRODUCT_SELECT, status: true },
+  });
+  return ok(res, { products });
 });
 
 // ---------------- Categories ----------------

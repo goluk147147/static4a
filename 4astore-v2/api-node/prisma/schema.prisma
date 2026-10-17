@@ -160,6 +160,11 @@ model Product {
   // field IS public (the storefront needs it to show "Max N" and disable +),
   // so it is added to PUBLIC_PRODUCT_SELECT. Do NOT run prisma migrate/db push.
   max_qty_per_order    Decimal? @db.Decimal(10, 3)
+  // Admin publish/unpublish status. Added at runtime by ensureProductStatusColumn()
+  // (raw ALTER, no migrate). 'draft' hides a product from the public catalog;
+  // 'published' makes it live. The column default 'published' keeps existing live
+  // rows visible after the add. Do NOT run prisma migrate/db push.
+  status      String   @default("published") @db.VarChar(16)
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -167,6 +172,7 @@ model Product {
   @@index([in_stock], map: "idx_products_instock")
   @@index([sku], map: "idx_products_sku")
   @@index([barcode], map: "idx_products_barcode")
+  @@index([status], map: "idx_products_status")
   @@map("products")
 }
 

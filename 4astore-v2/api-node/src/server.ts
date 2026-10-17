@@ -34,7 +34,7 @@ import { ogCrawlHandler, ogCrawlerMiddleware } from './middleware/ogCrawler';
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensureProductStatusColumn, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -138,6 +138,8 @@ app.listen(config.port, () => {
   ensureProductInventoryColumns().catch((e) => console.error('[seed] product inventory columns failed', e));
   // Per-product max-quantity-per-order cap column (public hint; idempotent, no-migrate raw SQL).
   ensureProductMaxQtyColumn().catch((e) => console.error('[seed] max_qty_per_order column failed', e));
+  // Admin publish/unpublish status column (draft hides from public catalog; idempotent, no-migrate raw SQL).
+  ensureProductStatusColumn().catch((e) => console.error('[seed] status column failed', e));
   ensurePosSettingsColumns().catch((e) => console.error('[seed] pos settings columns failed', e));
   ensurePosTables().catch((e) => console.error('[seed] pos tables failed', e));
   // Owner "master password" column on settings (idempotent, no-migrate raw SQL).

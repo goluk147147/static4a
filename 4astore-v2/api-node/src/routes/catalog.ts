@@ -74,14 +74,14 @@ function serveCatalogConditional(req: Request, res: Response, version: number): 
 router.get('/products', async (req: Request, res: Response) => {
   const version = await catalogVersion();
   if (serveCatalogConditional(req, res, version)) return;
-  const products = await prisma.product.findMany({ orderBy: { id: 'asc' }, select: PUBLIC_PRODUCT_SELECT });
+  const products = await prisma.product.findMany({ where: { status: 'published' }, orderBy: { id: 'asc' }, select: PUBLIC_PRODUCT_SELECT });
   return ok(res, { products });
 });
 
 // GET /api/products/:id
 router.get('/products/:id', async (req: Request, res: Response) => {
   const product = await prisma.product
-    .findUnique({ where: { id: BigInt(req.params.id) }, select: PUBLIC_PRODUCT_SELECT })
+    .findFirst({ where: { id: BigInt(req.params.id), status: 'published' }, select: PUBLIC_PRODUCT_SELECT })
     .catch(() => null);
   if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
   return ok(res, { product });
