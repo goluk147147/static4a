@@ -282,6 +282,14 @@ export async function fetchShortLinks(): Promise<ShortLink[]> {
 export async function createShortLink(input: { targetUrl: string; type?: string; code?: string; ogImage?: string; ogTitle?: string }) {
   return (await api.post('/admin/links', input)).data;
 }
+/**
+ * PATCH /api/admin/links/:code — edit an existing link's custom OG preview
+ * (image/title) ONLY; target_url/type stay immutable. 404 on an unknown code,
+ * 422 on a bad image URL (empty → 4A Store default card on the server).
+ */
+export async function updateShortLink(code: string, input: { ogImage?: string; ogTitle?: string }) {
+  return (await api.patch(`/admin/links/${code}`, input)).data;
+}
 /** GET /api/products/:id/short-link — resolve (minting on demand) a product's short code. */
 export async function fetchProductShortLink(id: number): Promise<string | null> {
   return (await api.get(`/products/${id}/short-link`)).data.code as string | null;

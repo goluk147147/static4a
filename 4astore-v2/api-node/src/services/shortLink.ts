@@ -132,6 +132,14 @@ export class ShortCodeTakenError extends Error {
   }
 }
 
+/** Error thrown when an edit targets a code that does not exist (→ HTTP 404). */
+export class ShortLinkNotFoundError extends Error {
+  constructor(code: string) {
+    super(`Short link "${code}" was not found`);
+    this.name = 'ShortLinkNotFoundError';
+  }
+}
+
 /**
  * Create a short link for ANY url (admin-created). An optional custom `code` is
  * validated (base62, ≤16) and checked for uniqueness — a clash throws
@@ -173,4 +181,35 @@ export async function createCustomShortLink(
     }
   }
   throw new Error('Could not generate a unique short code, please retry');
+}
+
+/**
+ * Edit an existing short link's custom OG preview overrides (image/title) ONLY.
+ * target_url/type are immutable so every existing redirect keeps working. The
+ * OG overrides are validated/normalised through the SAME normaliseOgImage/
+ * normaliseOgTitle validators used on create (empty → null → 4A Store default
+ * card). Throws a clear Error on a bad code, ShortLinkNotFoundError when the row
+ * is missing (→ route 404), and the image validator's Error on a bad image URL
+ * (→ route 422). Returns the CreateCustomShortLinkResult shape.
+ */
+export async function updateCustomShortLink(
+  code: string,
+  input: { ogImage?: string | null; ogTitle?: string | null }
+): Promise<CreateCustomShortLinkResult> {
+  const trimmed = String(code || '').trim();
+  if (!/^[A-Za-z0-9]{1,16}$/.test(trimmed)) {
+    throw new Error('Custom code must be 1–16 letters or digits');
+  }
+  // Validate the OG overrides up front (a bad image URL throws before any DB read).
+  const og_image = normaliseOgImage(input.ogImage);
+  const og_title = normaliseOgTitle(input.ogTitle);
+
+  const row = await prisma.shortLink.findUnique({
+    where: { code: trimmed },
+    select: { target_url: true, type: true },
+  });
+  if (!row) throw new ShortLinkNotFoundError(trimmed);
+
+  await prisma.shortLink.update({ where: { code: trimmed }, data: { og_image, og_title } });
+  return { code: trimmed, target_url: row.target_url, type: row.type, og_image, og_title };
 }

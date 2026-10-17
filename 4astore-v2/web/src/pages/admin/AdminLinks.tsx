@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchShortLinks, createShortLink, ShortLink } from '../../lib/admin';
+import { fetchShortLinks, createShortLink, updateShortLink, ShortLink } from '../../lib/admin';
 import { apiError } from '../../lib/api';
 import { showToast } from '../../store/toast';
 
@@ -42,7 +42,39 @@ export default function AdminLinks() {
   const [previewTitle, setPreviewTitle] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // Inline per-row edit state — scoped to og_image/og_title only.
+  const [editCode, setEditCode] = useState<string | null>(null);
+  const [editImage, setEditImage] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
+
   const links = q.data ?? [];
+
+  function startEdit(l: ShortLink) {
+    setEditCode(l.code);
+    setEditImage(l.og_image || '');
+    setEditTitle(l.og_title || '');
+  }
+
+  function cancelEdit() {
+    setEditCode(null);
+    setEditImage('');
+    setEditTitle('');
+  }
+
+  async function saveEdit(code: string) {
+    setEditBusy(true);
+    try {
+      await updateShortLink(code, { ogImage: editImage.trim(), ogTitle: editTitle.trim() });
+      await qc.invalidateQueries({ queryKey: ['admin-links'] });
+      showToast('✅ Updated / अपडेट हो gaya', 'success');
+      cancelEdit();
+    } catch (err) {
+      showToast(apiError(err) || 'Could not update', 'error');
+    } finally {
+      setEditBusy(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -138,6 +170,7 @@ export default function AdminLinks() {
                 <th>Code</th>
                 <th>Target / लक्ष्य</th>
                 <th>Type</th>
+                <th>Preview / प्रीव्यू</th>
                 <th>Clicks</th>
                 <th>Created</th>
                 <th>Actions</th>
@@ -149,17 +182,57 @@ export default function AdminLinks() {
                   <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{l.code}</td>
                   <td style={{ fontSize: 12, maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.target_url}>{l.target_url}</td>
                   <td style={{ fontSize: 12 }}>{l.type}</td>
+                  <td style={{ fontSize: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {l.og_image
+                        ? <img src={l.og_image} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                        : <span style={muted}>4A Store logo (default)</span>}
+                      <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {l.og_title || <span style={muted}>—</span>}
+                      </span>
+                    </div>
+                  </td>
                   <td style={{ fontSize: 12 }}>{l.clicks}</td>
                   <td style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{fmtDateTime(l.created_at)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button type="button" onClick={() => copyText(shortUrl(l.code))} style={btnGhost}>📋 Copy</button>
                       <a href={shortUrl(l.code)} target="_blank" rel="noopener noreferrer" style={{ ...btnGhost, textDecoration: 'none' }}>↗ Open</a>
+                      <button type="button" onClick={() => startEdit(l)} style={btnGhost}>✏️ Edit / संपादित करें</button>
                     </div>
                   </td>
                 </tr>
-              )) : (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--gray)' }}>
+              )).concat(
+                editCode
+                  ? (() => {
+                      const editing = links.find((l) => l.code === editCode);
+                      if (!editing) return [];
+                      return [
+                        <tr key={`${editCode}-editor`}>
+                          <td colSpan={7} style={{ background: '#f8fafc' }}>
+                            <div style={{ display: 'grid', gap: 10, padding: '4px 2px' }}>
+                              <strong style={cardTitle}>✏️ Edit preview / प्रीव्यू संपादित करें — <code>{editing.code}</code></strong>
+                              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                                <div style={{ flex: 1, minWidth: 220 }}>
+                                  <label style={lbl}>Custom image URL (optional) / कस्टम इमेज URL</label>
+                                  <input value={editImage} onChange={(e) => setEditImage(e.target.value)} style={inp} placeholder="https://4astore.com/uploads/my-banner.jpg" />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 220 }}>
+                                  <label style={lbl}>Preview title (optional) / प्रीव्यू टाइटल</label>
+                                  <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={inp} placeholder="4A Store" />
+                                </div>
+                                <button type="button" disabled={editBusy} onClick={() => saveEdit(editing.code)} style={btnPrimary}>{editBusy ? '⏳ Saving…' : '💾 Save / सेव करें'}</button>
+                                <button type="button" disabled={editBusy} onClick={cancelEdit} style={btnGhost}>Cancel / रद्द करें</button>
+                              </div>
+                              <p style={muted}>Khaali chhodne par 4A Store ka logo aayega / leave empty for the 4A Store default card.</p>
+                            </div>
+                          </td>
+                        </tr>,
+                      ];
+                    })()
+                  : [],
+              ) : (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24, color: 'var(--gray)' }}>
                   {q.isLoading ? 'Loading…' : 'Koi link nahi / no links yet.'}
                 </td></tr>
               )}

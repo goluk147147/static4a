@@ -19,7 +19,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildCustomShareHtml, type CustomShareArgs } from '../services/ogShare';
-import { normaliseOgImage, normaliseOgTitle } from '../services/shortLink';
+import {
+  normaliseOgImage,
+  normaliseOgTitle,
+  updateCustomShortLink,
+  ShortLinkNotFoundError,
+} from '../services/shortLink';
 
 // Minimal SeoConfig stub satisfying only the fields buildCustomShareHtml reads.
 const cfg = {
@@ -72,4 +77,27 @@ test('normaliseOgTitle: trims, empty → null, clamps to 255', () => {
   assert.equal(normaliseOgTitle('   '), null);
   assert.equal(normaliseOgTitle('  Diwali Sale  '), 'Diwali Sale');
   assert.equal(normaliseOgTitle('x'.repeat(300))?.length, 255);
+});
+
+// --- updateCustomShortLink input guards (PURE: these reject BEFORE any DB read) ---
+// A bad code and a bad image URL must throw before touching prisma, so they are
+// safe to assert in a DB-free test. ShortLinkNotFoundError is also exported so
+// the route can map an unknown code to 404.
+
+test('updateCustomShortLink: a malformed code throws before any DB access', async () => {
+  await assert.rejects(() => updateCustomShortLink('bad code!', {}), /1–16 letters or digits/);
+  await assert.rejects(() => updateCustomShortLink('', {}), /1–16 letters or digits/);
+  await assert.rejects(() => updateCustomShortLink('x'.repeat(17), {}), /1–16 letters or digits/);
+});
+
+test('updateCustomShortLink: an invalid image URL throws (→ route 422) before any DB access', async () => {
+  await assert.rejects(() => updateCustomShortLink('abc123', { ogImage: '/uploads/a.jpg' }), /http\(s\) URL/);
+  await assert.rejects(() => updateCustomShortLink('abc123', { ogImage: 'javascript:alert(1)' }), /http\(s\) URL/);
+});
+
+test('ShortLinkNotFoundError is a distinct Error the route maps to 404', () => {
+  const err = new ShortLinkNotFoundError('abc123');
+  assert.ok(err instanceof Error);
+  assert.equal(err.name, 'ShortLinkNotFoundError');
+  assert.match(err.message, /abc123/);
 });
