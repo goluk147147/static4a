@@ -40,6 +40,14 @@ const WA_OTP_TEMPLATE_LANG = (process.env.WHATSAPP_OTP_TEMPLATE_LANG || 'en').tr
 export interface DeliverSignupOtpInput {
   email?: string;
   mobile?: string;
+  /**
+   * Optional FCM token of the CURRENT device (the guest token the shipped app
+   * already registers via POST /api/push/register). When present it is unioned
+   * with the mobile's user tokens for the FCM attempt so the signup OTP can
+   * reach this very device without a new .aab. Absent in a plain browser; the
+   * email-only / mobile-only (no deviceToken) behavior is unchanged.
+   */
+  deviceToken?: string;
 }
 
 export interface DeliverSignupOtpResult {
@@ -95,13 +103,18 @@ async function tryWhatsApp(mobile: string, otp: string): Promise<boolean> {
   }
 }
 
-/** Try FCM push to the signup mobile's existing device tokens. Never throws. */
-async function tryFcm(mobile: string, otp: string): Promise<boolean> {
+/**
+ * Try FCM push to an explicit list of device tokens. Never throws.
+ *
+ * SAME-DEVICE PUSH IS WEAK VERIFICATION: when `deviceToken` is the current
+ * device's own guest token, the code arrives on the SAME device that is signing
+ * up, so this proves possession of the device, not of the mobile number. It is a
+ * CONVENIENCE channel, gated by the admin `otp_channels` policy, and the mobile
+ * fallback below still applies when no token delivers — signup never breaks.
+ */
+async function tryFcm(tokens: string[], otp: string): Promise<boolean> {
+  if (!tokens.length) return false; // no device token at all → not delivered
   try {
-    const user = await prisma.user.findUnique({ where: { mobile } }).catch(() => null);
-    if (!user) return false; // brand-new signup: no user row yet → no tokens
-    const tokens = await tokensForUser(user.id).catch(() => [] as string[]);
-    if (!tokens.length) return false;
     const sent = await sendToTokens(tokens, {
       title: '🔐 4A Store verification code',
       body: `Your 4A Store signup code is ${otp}. It expires in 10 minutes.`,
@@ -148,9 +161,20 @@ export async function deliverSignupOtp(input: DeliverSignupOtpInput): Promise<De
     data: { email: otpKey, otp, purpose: 'signup', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
   });
 
+  // Build the FCM candidate tokens ONCE: the current device's own (guest) token
+  // when a non-empty one was supplied, unioned with the mobile's user tokens
+  // (looked up once; tolerate no row). De-duplicated and truthy-filtered. With no
+  // deviceToken and no user row this is empty, so the FCM attempt behaves exactly
+  // as before (not delivered → fallback). Same-device push is weak verification;
+  // see tryFcm — it stays a policy-gated convenience with the fallback intact.
+  const deviceToken = input.deviceToken?.trim() || '';
+  const user = await prisma.user.findUnique({ where: { mobile } }).catch(() => null);
+  const userTokens = user ? await tokensForUser(user.id).catch(() => [] as string[]) : [];
+  const fcmTokens = [...new Set([deviceToken, ...userTokens].filter(Boolean))];
+
   const policy = await readOtpChannelPolicy();
   for (const channel of resolveMobileChannelOrder(policy)) {
-    const delivered = channel === 'whatsapp' ? await tryWhatsApp(mobile, otp) : await tryFcm(mobile, otp);
+    const delivered = channel === 'whatsapp' ? await tryWhatsApp(mobile, otp) : await tryFcm(fcmTokens, otp);
     if (delivered) return { otpKey, delivered: true, channel, fallbackOtp: undefined };
   }
 

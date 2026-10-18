@@ -13,6 +13,11 @@ const sendSchema = z
   .object({
     email: z.string().email().optional(),
     mobile: z.string().regex(/^[6-9]\d{9}$/).optional(),
+    // Optional current-device (guest) FCM token so the mobile-path OTP can be
+    // pushed to THIS device's own registered token. Omitted today in a plain
+    // browser; threaded through unchanged when present. The email-or-mobile
+    // refine below is unaffected by it.
+    deviceToken: z.string().min(1).max(4096).optional(),
   })
   .refine((v) => !!v.email || !!v.mobile, { message: 'Email or mobile required' });
 
@@ -22,9 +27,9 @@ const sendSchema = z
 router.post('/send', async (req: Request, res: Response) => {
   const parsed = sendSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 'Valid email or 10-digit mobile required', 422);
-  const { email, mobile } = parsed.data;
+  const { email, mobile, deviceToken } = parsed.data;
 
-  const result = await deliverSignupOtp({ email, mobile });
+  const result = await deliverSignupOtp({ email, mobile, deviceToken });
 
   // The frontend already auto-fills from `data.devOtp`, so we return the
   // fallback OTP in that same field (email: dev-only; mobile: whenever no real

@@ -82,7 +82,16 @@ export default function Login() {
     setBusy(true); setError('');
     try {
       // Send whichever identifier the user has: email if given, else mobile.
-      const payload = emailFilled ? { email: email.trim() } : { mobile: mobile.trim() };
+      // MOBILE branch: thread an optional deviceToken ONLY if a device FCM push
+      // token is readily available on the client. A plain browser exposes none
+      // today, so we omit it and never block/delay the request on token lookup.
+      // Native same-device FCM delivery would need a future app change to expose
+      // the WebView's FCM token here; until then the shipped app's guest-token
+      // registration + the backend fallback already satisfy the requirement, so
+      // we do NOT invent a window bridge the app does not have.
+      const payload = emailFilled
+        ? { email: email.trim() }
+        : { mobile: mobile.trim() };
       const { data } = await api.post('/otp/send', payload);
       setOtpSent(true);
       // Auto-fill from devOtp: email dev convenience, AND the mobile fallback OTP
