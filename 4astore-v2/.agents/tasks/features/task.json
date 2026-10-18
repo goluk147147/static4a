@@ -1,0 +1,7 @@
+{
+  "task_id": "task-fcm-signup-order-weight",
+  "task_description": "Two independent 4A Store changes, no new Android .aab and no DB migration: (1) deliver the signup OTP to the current device's own guest FCM token by threading an optional deviceToken through POST /api/otp/send -> deliverSignupOtp -> tryFcm (verify the already-complete WhatsApp OTP wiring + admin OTP-channel/WhatsApp UI); (2) capture and display per-item weight/unit (e.g. 'mircha 250g', 'jharu 3 pcs') everywhere an order is shown: customer order view, admin order view, PDF invoice, and the WhatsApp order message.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
