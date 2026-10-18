@@ -125,9 +125,20 @@ router.post('/phones', requireAuth, requireOwner, async (req: Request, res: Resp
   // If a matching user already exists, update their role/permissions immediately
   // so access is granted/updated without waiting for a fresh login.
   const userRole = role === 'owner' ? 'owner' : 'admin';
-  await prisma.user
+  const updatedUser = await prisma.user
     .update({ where: { mobile }, data: { role: userRole, permissions } })
     .catch(() => null); // no matching user yet — seeded on their first POS login
+
+  // Revoke the granted user's existing refresh tokens so their already-issued
+  // (stale) access token cannot be silently refreshed back into the OLD claims.
+  // Mirrors the revoke-on-demote pattern in DELETE /phones/:mobile — here it
+  // forces a clean re-auth that picks up the new role/permissions, so a grant
+  // takes effect without manual DB surgery. Only runs when a user row existed.
+  if (updatedUser) {
+    await prisma.refreshToken
+      .updateMany({ where: { user_id: updatedUser.id, revoked: false }, data: { revoked: true } })
+      .catch(() => null);
+  }
 
   return ok(res, { message: `Authorised ${mobile} as ${role}.`, mobile, role, permissions });
 });

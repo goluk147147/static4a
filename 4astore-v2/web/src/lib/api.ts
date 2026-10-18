@@ -26,7 +26,14 @@ api.interceptors.request.use((cfg) => {
   return cfg;
 });
 
-// On 401, try one silent refresh, then replay the original request.
+// On 401 OR 403, try one silent refresh, then replay the original request.
+// A 403 is included because a just-granted team member keeps a stale access
+// token (old role/permissions) while the admin SPA stays open: the grant writes
+// the new claims to the DB, but requireStaff reads the token, so every
+// /api/admin/* call 403s until the 15-min token expires. Refreshing on 403
+// re-mints claims from the DB (/users/refresh -> toClaims) so the grant takes
+// effect immediately; if the refresh token was revoked server-side on the grant
+// the refresh 401s and the 403 falls through to the login screen (clean re-auth).
 let refreshing: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -55,7 +62,7 @@ api.interceptors.response.use(
     const original = error.config as AxiosRequestConfig & { _retried?: boolean };
     const status = error.response?.status;
     const url = original?.url || '';
-    if (status === 401 && !original._retried && !url.includes('/users/refresh') && !url.includes('/users/login')) {
+    if ((status === 401 || status === 403) && !original._retried && !url.includes('/users/refresh') && !url.includes('/users/login')) {
       original._retried = true;
       const token = await refreshAccessToken();
       if (token) {

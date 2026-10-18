@@ -534,6 +534,11 @@ router.post('/assignRole', requireAuth, async (req: Request, res: Response) => {
       backend_rider: role === 'rider',
     },
   });
+  // Revoke the user's existing refresh tokens so a stale access token (old
+  // role/permissions) can't be silently refreshed back into the OLD claims.
+  // The next request re-authenticates and picks up the new grant immediately,
+  // matching the revoke-on-demote pattern used by /team delete.
+  await prisma.refreshToken.updateMany({ where: { user_id: updated.id, revoked: false }, data: { revoked: true } });
   const { password, ...safe } = updated;
   void password;
   return ok(res, { message: `Role '${role}' assigned to ${mobile}`, user: safe });
@@ -806,7 +811,11 @@ router.post('/team', requireAuth, requireStaff('team'), async (req: Request, res
       where: { id: BigInt(id) },
       data: { name, permissions, ...(password ? { password: bcrypt.hashSync(password, 10) } : {}) },
     });
-    if (password) await prisma.refreshToken.updateMany({ where: { user_id: u.id }, data: { revoked: true } });
+    // Always revoke refresh tokens on a permissions update (not only on a
+    // password change). The member's stale access token still carries the OLD
+    // permissions, so without this the changed grant wouldn't take effect until
+    // the 15-min token expired. Revoking forces a clean re-auth with new claims.
+    await prisma.refreshToken.updateMany({ where: { user_id: u.id, revoked: false }, data: { revoked: true } });
     return ok(res, { message: 'Permissions updated', admin: strip(u) });
   }
 
