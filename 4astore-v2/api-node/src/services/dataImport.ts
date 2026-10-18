@@ -754,6 +754,30 @@ export async function ensureProductSeoColumns(): Promise<void> {
 }
 
 /**
+ * Ensure the products.image column is MEDIUMTEXT (not TEXT).
+ *
+ * The admin UI stores product images as base64 data-URI STRINGS. A ~50 KB-binary
+ * image becomes a ~67 KB string (base64 +33% + the data: prefix), which overflows
+ * a MySQL TEXT column (64 KB) and makes prisma.product.update() fail with
+ * "value too long for column: image". MEDIUMTEXT (16 MB) holds it comfortably.
+ *
+ * Type-guarded (not presence-guarded): the column already exists, so we read its
+ * current DATA_TYPE from information_schema and only ALTER while it is still 'text',
+ * making re-runs a no-op. Mirrors the other ensure* helpers: $executeRawUnsafe,
+ * NO prisma migrate / db push. Mirrored on the Prisma Product model (@db.MediumText).
+ */
+export async function ensureProductImageColumnType(): Promise<void> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ t: string }>>(
+    `SELECT DATA_TYPE AS t FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'products' AND column_name = 'image'`
+  );
+  const type = String(rows?.[0]?.t ?? '').toLowerCase();
+  // Already MEDIUMTEXT/LONGTEXT (or the row is absent) → nothing to do.
+  if (type !== 'text') return;
+  await prisma.$executeRawUnsafe('ALTER TABLE products MODIFY image MEDIUMTEXT NULL');
+}
+
+/**
  * Ensure the POS-wide toggle columns exist on the `settings` table and seed a
  * default store_address when blank. `settings` is a raw-SQL table (not a Prisma
  * model) — consistent with the repo. Mirrors ensureMasterPasswordColumn(): each

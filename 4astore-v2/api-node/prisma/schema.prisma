@@ -118,7 +118,7 @@ model Product {
   mrp         Decimal  @default(0) @db.Decimal(10, 2)
   price       Decimal  @default(0) @db.Decimal(10, 2)
   discount    Int      @default(0)
-  image       String?  @db.Text
+  image       String?  @db.MediumText
   description String?  @db.Text
   features    Json?
   seo_title       String? @db.VarChar(255)

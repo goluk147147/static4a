@@ -120,13 +120,14 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
     const parsed = productSchema.safeParse(req.body.product);
     if (!parsed.success) return fail(res, 'Product name and a valid selling price are required', 422);
     const p = parsed.data;
-    // Oversize guard: a product image data-URI must be client-compressed to <= 50 KB. Reject a
-    // decoded payload over ~60 KB (small headroom) so a bypassed/raw upload can't bloat the DB.
-    // A non-`data:` image (http/https URL) is left untouched.
+    // Oversize guard: a product image data-URI is stored as a base64 STRING, so validate the
+    // STORED string's byte length (what the column actually holds) — not the decoded binary.
+    // The UI compresses to <= 50 KB binary, which is ~67 KB as a base64 data-URI string; reject
+    // above 75 KB (headroom over that worst case, still well under the MEDIUMTEXT column cap).
+    // A non-`data:` image (http/https URL) is a reference, not a payload — left untouched.
     if (p.image.startsWith('data:')) {
-      const m = /^data:[^;,]*;base64,([A-Za-z0-9+/=]+)$/.exec(p.image);
-      const decoded = m ? Buffer.from(m[1], 'base64').length : p.image.length;
-      if (decoded > 61440) return fail(res, 'Product image is too large — it must be compressed to under 50 KB before saving', 400);
+      const stored = Buffer.byteLength(p.image, 'utf8');
+      if (stored > 76800) return fail(res, 'Product image is too large — it must be compressed to under 50 KB before saving / Image bahut badi hai — save karne se pehle 50 KB se chhoti karein', 400);
     }
     // Per-order purchase cap: blank/null/0 => NULL (unlimited); a positive number sets it.
     // parseMaxQty returns false for an invalid (negative/non-finite) value.

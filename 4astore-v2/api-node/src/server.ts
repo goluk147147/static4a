@@ -34,7 +34,7 @@ import { ogCrawlHandler, ogCrawlerMiddleware, ogCrawlProductHandler, ogCrawlPage
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensureProductStatusColumn, ensureProductSeoColumns, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensureProductStatusColumn, ensureProductSeoColumns, ensureProductImageColumnType, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -150,6 +150,9 @@ app.listen(config.port, () => {
   // DB they are missing and every update throws Prisma P2022 (the symptom behind the false 404).
   // Idempotent, no-migrate raw SQL.
   ensureProductSeoColumns().catch((e) => console.error('[seed] product seo columns failed', e));
+  // Widen products.image TEXT -> MEDIUMTEXT so a base64 data-URI image (<=50 KB binary
+  // = ~67 KB string) no longer overflows the 64 KB TEXT limit (idempotent, no-migrate raw SQL).
+  ensureProductImageColumnType().catch((e) => console.error('[seed] product image column type failed', e));
   ensurePosSettingsColumns().catch((e) => console.error('[seed] pos settings columns failed', e));
   ensurePosTables().catch((e) => console.error('[seed] pos tables failed', e));
   // Owner "master password" column on settings (idempotent, no-migrate raw SQL).
