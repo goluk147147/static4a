@@ -708,6 +708,52 @@ export async function ensureProductStatusColumn(): Promise<void> {
 }
 
 /**
+ * Ensure the per-product SEO columns the product write path depends on exist on
+ * the `products` table.
+ *
+ * The admin product add/update write ALWAYS includes `seo_overrides` (plus
+ * `seo_title` / `seo_description` / `seo_keywords` / `og_image`). On the live DB
+ * these columns are created ONLY by the manual script prisma/seo-auto.sql — unlike
+ * every other runtime-added products column (max_qty_per_order, status, inventory)
+ * which is auto-ensured at startup. If seo-auto.sql was never run, the column is
+ * missing and `prisma.product.update({ data: { seo_overrides: ... } })` throws
+ * Prisma P2022 (Unknown column) — which the old blanket catch turned into a false
+ * 404 "Product not found". This ensure fixes that root cause deterministically,
+ * matching the existing runtime-ensure convention.
+ *
+ * Mirrors ensureProductMaxQtyColumn()/ensureProductStatusColumn() exactly: each
+ * column is information_schema-guarded (added only when absent) and swallows the
+ * MySQL duplicate-column error (1060) so concurrent/repeat runs never crash. Uses
+ * $executeRawUnsafe — NO prisma migrate / db push. Column types mirror the subset
+ * of prisma/seo-auto.sql that the product write path reads/writes.
+ */
+export async function ensureProductSeoColumns(): Promise<void> {
+  const columns: Array<{ name: string; ddl: string }> = [
+    { name: 'seo_overrides', ddl: 'ADD COLUMN seo_overrides JSON NULL' },
+    { name: 'seo_auto_json', ddl: 'ADD COLUMN seo_auto_json JSON NULL' },
+    { name: 'seo_title', ddl: 'ADD COLUMN seo_title VARCHAR(255) NULL' },
+    { name: 'seo_description', ddl: 'ADD COLUMN seo_description TEXT NULL' },
+    { name: 'seo_keywords', ddl: 'ADD COLUMN seo_keywords VARCHAR(500) NULL' },
+    { name: 'og_image', ddl: 'ADD COLUMN og_image VARCHAR(500) NULL' },
+  ];
+  for (const col of columns) {
+    const rows = await prisma.$queryRawUnsafe<Array<{ c: bigint | number }>>(
+      `SELECT COUNT(*) AS c FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'products' AND column_name = ?`,
+      col.name
+    );
+    if (Number(rows?.[0]?.c ?? 0) > 0) continue;
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE products ${col.ddl}`);
+    } catch (e) {
+      // Swallow duplicate-column (1060) in case a concurrent run added it first.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/1060|Duplicate column/i.test(msg)) throw e;
+    }
+  }
+}
+
+/**
  * Ensure the POS-wide toggle columns exist on the `settings` table and seed a
  * default store_address when blank. `settings` is a raw-SQL table (not a Prisma
  * model) — consistent with the repo. Mirrors ensureMasterPasswordColumn(): each

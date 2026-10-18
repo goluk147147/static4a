@@ -187,8 +187,20 @@ router.post('/products', requireAuth, requireStaff('products'), async (req: Requ
     }
     const id = Number(req.body.product?.id || req.body.id || 0);
     if (!id) return fail(res, 'Product id is required', 422);
-    const product = await prisma.product.update({ where: { id: BigInt(id) }, data: dataWithOverrides }).catch(() => null);
-    if (!product) return fail(res, 'Product not found', 404);
+    // Do NOT swallow the update error into a generic 404 (the old `.catch(() => null)` masked
+    // every Prisma failure — missing SEO column, bad value, connection/pool — as a misleading
+    // "Product not found"). Mirror the /orders/status handler: only a genuinely missing row is a
+    // 404 (Prisma P2025); any other error is logged server-side and surfaced truthfully (500 +
+    // real message) so admins see the actual cause.
+    let product;
+    try {
+      product = await prisma.product.update({ where: { id: BigInt(id) }, data: dataWithOverrides });
+    } catch (e) {
+      if ((e as { code?: string })?.code === 'P2025') return fail(res, 'Product not found', 404);
+      // eslint-disable-next-line no-console
+      console.error('[admin] product update failed', e);
+      return fail(res, `Product update failed: ${(e as Error)?.message || 'database error'}`, 500);
+    }
     bumpCatalogVersion();
     void runProductSeo(Number(product.id), { actor }).catch(() => undefined);
     return ok(res, { message: 'Product updated', product });
