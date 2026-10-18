@@ -47,9 +47,9 @@ function StoreSettings() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ['admin-settings'], queryFn: fetchAdminSettings });
   // StoreSettings edits every field EXCEPT masterPasswordSet (read-only status
-  // owned by the Master Password tab) and whatsappApi (owned by the Marketing
-  // Auto-send tab), so omit them from the editable state map.
-  const [s, setS] = useState<Record<Exclude<keyof SettingsT, 'masterPasswordSet' | 'whatsappApi'>, string | boolean> | null>(null);
+  // owned by the Master Password tab), whatsappApi and otpChannels (both owned
+  // by the Marketing Auto-send tab), so omit them from the editable state map.
+  const [s, setS] = useState<Record<Exclude<keyof SettingsT, 'masterPasswordSet' | 'whatsappApi' | 'otpChannels'>, string | boolean> | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ function StoreSettings() {
   }, [data]);
 
   if (isLoading || !s) return <p style={{ color: 'var(--gray)' }}>Loading settings...</p>;
-  type StoreKey = Exclude<keyof SettingsT, 'masterPasswordSet' | 'whatsappApi'>;
+  type StoreKey = Exclude<keyof SettingsT, 'masterPasswordSet' | 'whatsappApi' | 'otpChannels'>;
   const set = (k: StoreKey, v: string | boolean) => setS((c) => (c ? { ...c, [k]: v } : c));
   const str = (k: StoreKey) => String(s[k] ?? '');
 

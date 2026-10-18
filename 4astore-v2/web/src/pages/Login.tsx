@@ -73,12 +73,21 @@ export default function Login() {
     } catch (err) { setError(apiError(err)); } finally { setBusy(false); }
   }
 
+  // 10-digit Indian mobile check — mirrors the backend /^[6-9]\d{9}$/ guard so a
+  // rural user with no email can request the OTP by mobile alone.
+  const mobileValid = /^[6-9]\d{9}$/.test(mobile.trim());
+  const emailFilled = email.trim().length > 0;
+
   async function sendOtp() {
     setBusy(true); setError('');
     try {
-      const { data } = await api.post('/otp/send', { email });
+      // Send whichever identifier the user has: email if given, else mobile.
+      const payload = emailFilled ? { email: email.trim() } : { mobile: mobile.trim() };
+      const { data } = await api.post('/otp/send', payload);
       setOtpSent(true);
-      if (data.devOtp) setOtp(String(data.devOtp)); // dev convenience
+      // Auto-fill from devOtp: email dev convenience, AND the mobile fallback OTP
+      // the backend returns when no real channel delivered — so the user moves on.
+      if (data.devOtp) setOtp(String(data.devOtp));
     } catch (err) { setError(apiError(err)); } finally { setBusy(false); }
   }
 
@@ -86,7 +95,9 @@ export default function Login() {
     e.preventDefault();
     setBusy(true); setError('');
     try {
-      await register({ name, mobile, username: regUser, email, password, otp });
+      // Email is optional (rural mobile-only signup): omit it when blank so the
+      // backend's now-optional email schema + mobile OTP key path is used.
+      await register({ name, mobile, username: regUser, otp, password, ...(email.trim() ? { email: email.trim() } : {}) });
       navigate(next);
     } catch (err) { setError(apiError(err)); } finally { setBusy(false); }
   }
@@ -229,13 +240,14 @@ export default function Login() {
             <div className="field"><label>Username</label><input value={regUser} onChange={(e) => setRegUser(e.target.value)} required /></div>
             <div className="field"><label>Password (4+ chars)</label><PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required /></div>
             <div className="field">
-              <label>Email</label>
+              <label>Email (optional) / ईमेल (वैकल्पिक)</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                <button type="button" className="btn btn-outline" onClick={sendOtp} disabled={busy || !email}>{otpSent ? 'Resend' : 'Send OTP'}</button>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <button type="button" className="btn btn-outline" onClick={sendOtp} disabled={busy || (!emailFilled && !mobileValid)}>{otpSent ? 'Resend' : 'Send OTP'}</button>
               </div>
+              <span className="muted" style={{ fontSize: 12 }}>Email nahi hai? Mobile par OTP paayein. / No email? Get the OTP on your mobile.</span>
             </div>
-            {otpSent && <div className="field"><label>Email OTP</label><input value={otp} onChange={(e) => setOtp(e.target.value)} required /></div>}
+            {otpSent && <div className="field"><label>OTP</label><input value={otp} onChange={(e) => setOtp(e.target.value)} required /></div>}
             <button className="btn btn-block" disabled={busy || !otpSent}>{busy ? 'Please wait…' : 'Create Account'}</button>
             <p className="muted" style={{ marginTop: 12, textAlign: 'center' }}>Already have an account? <a onClick={() => switchMode('login')} style={{ color: 'var(--primary)', cursor: 'pointer' }}>Login</a></p>
           </form>

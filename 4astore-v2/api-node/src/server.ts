@@ -34,7 +34,7 @@ import { ogCrawlHandler, ogCrawlerMiddleware, ogCrawlProductHandler, ogCrawlPage
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensureProductStatusColumn, ensureProductSeoColumns, ensureProductImageColumnType, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensureProductStatusColumn, ensureProductSeoColumns, ensureProductImageColumnType, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn, ensureOtpChannelsColumn } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -160,6 +160,10 @@ app.listen(config.port, () => {
   // WhatsApp API config column on settings — PREP ONLY, read/written via admin
   // settings endpoint; never exposed publicly (idempotent, no-migrate raw SQL).
   ensureWhatsappApiColumn().catch((e) => console.error('[seed] whatsapp_api column failed', e));
+  // Signup OTP delivery-channel policy column on settings — admin-only; drives
+  // the mobile-only signup OTP fallback (WhatsApp/FCM/both); never exposed
+  // publicly (idempotent, no-migrate raw SQL).
+  ensureOtpChannelsColumn().catch((e) => console.error('[seed] otp_channels column failed', e));
 
   // app_version.catalog_version column — drives storefront/admin catalog freshness
   // (ETag on /products + /categories). Without it the ETag never changes and all

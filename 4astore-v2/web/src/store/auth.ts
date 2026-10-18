@@ -11,7 +11,8 @@ interface AuthState {
     name: string;
     mobile: string;
     username: string;
-    email: string;
+    // Optional: a rural user may sign up by mobile alone (OTP via WhatsApp/FCM/fallback).
+    email?: string;
     password: string;
     otp: string;
   }) => Promise<void>;

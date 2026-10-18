@@ -16,6 +16,7 @@ import { mergeSeoConfig, type SettingsRow } from '../seo/localSeo';
 import { slugify } from '../utils/slug';
 import { runProductSeo, runCategorySeo } from '../seo/persist';
 import { createShortLinkForProduct } from '../services/shortLink';
+import { parseOtpChannels } from '../services/otpChannelPolicy';
 
 const router = Router();
 
@@ -344,6 +345,16 @@ const settingsSchema = z.object({
     })
     .partial()
     .optional(),
+  // Signup OTP delivery channels — admin-only. Persisted as a JSON string in the
+  // raw settings.otp_channels column; never exposed on the public GET /api/settings.
+  otpChannels: z
+    .object({
+      whatsapp: z.boolean(),
+      fcm: z.boolean(),
+      mode: z.enum(['whatsapp', 'fcm', 'both']),
+    })
+    .partial()
+    .optional(),
 });
 
 const bool01 = (v: boolean | undefined) => (v === undefined ? null : v ? 1 : 0);
@@ -364,7 +375,8 @@ router.post('/settings', requireAuth, requireStaff('settings'), async (req: Requ
        upi_name=COALESCE(?,upi_name), hide_mrp=COALESCE(?,hide_mrp), store_phone=COALESCE(?,store_phone),
        store_address=COALESCE(?,store_address), store_latitude=COALESCE(?,store_latitude),
        store_longitude=COALESCE(?,store_longitude), serviceable_villages=COALESCE(?,serviceable_villages),
-       whatsapp_api=COALESCE(?,whatsapp_api)
+       whatsapp_api=COALESCE(?,whatsapp_api),
+       otp_channels=COALESCE(?,otp_channels)
      WHERE id=1`,
     s.storeEmail ?? null,
     s.deliveryCharge ?? null,
@@ -381,7 +393,8 @@ router.post('/settings', requireAuth, requireStaff('settings'), async (req: Requ
     s.storeLatitude ?? null,
     s.storeLongitude ?? null,
     s.serviceableVillages ?? null,
-    s.whatsappApi ? JSON.stringify(s.whatsappApi) : null
+    s.whatsappApi ? JSON.stringify(s.whatsappApi) : null,
+    s.otpChannels ? JSON.stringify(s.otpChannels) : null
   );
   return ok(res, { message: 'Settings saved' });
 });
@@ -1034,6 +1047,9 @@ router.get('/settings', requireAuth, requireStaff('settings'), async (_req: Requ
       masterPasswordSet: !!(s.master_password_hash && String(s.master_password_hash).length > 0),
       // WhatsApp API config (PREP ONLY) — admin-only; never on public /api/settings.
       whatsappApi,
+      // Signup OTP delivery channels — admin-only; never on public /api/settings.
+      // Tolerant parse falls back to the FCM-only default when absent/garbage.
+      otpChannels: parseOtpChannels(s.otp_channels ?? null),
     },
   });
 });

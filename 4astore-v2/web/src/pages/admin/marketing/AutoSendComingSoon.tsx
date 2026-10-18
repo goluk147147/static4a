@@ -22,6 +22,7 @@ import {
   sendWhatsAppTest,
   sendWhatsAppBroadcast,
   type WhatsappApiConfig,
+  type OtpChannels,
   type ReachCustomer,
   type WhatsAppBroadcastResult,
 } from '../../../lib/admin';
@@ -211,6 +212,8 @@ export default function AutoSendComingSoon() {
         </div>
       </div>
 
+      <OtpChannelCard />
+
       <SendTestCard liveReady={liveReady} />
 
       <WhatsAppCampaign liveReady={liveReady} />
@@ -218,6 +221,72 @@ export default function AutoSendComingSoon() {
       <p style={{ ...muted, fontSize: 11, textAlign: 'center' }}>
         Paid official API path. Free wa.me Broadcast Helper alag tab me waise ka waise hai. link opened ≠ sent.
       </p>
+    </div>
+  );
+}
+
+/* ---------- Signup OTP delivery channel (WhatsApp / FCM / Both) ---------- */
+
+// Owner switch for how a MOBILE-only signup OTP is delivered. `mode` is the
+// single source of truth; the backend derives the whatsapp/fcm booleans from it.
+// Whichever channel is chosen, signup NEVER breaks — if nothing can deliver
+// (no approved WhatsApp template, no device token for a brand-new mobile) the
+// backend returns a fallback code that auto-fills on the signup screen.
+const OTP_MODE_DEFAULT: OtpChannels['mode'] = 'fcm';
+
+function OtpChannelCard() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['admin-settings'], queryFn: fetchAdminSettings });
+  const [mode, setMode] = useState<OtpChannels['mode']>(OTP_MODE_DEFAULT);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (data?.otpChannels?.mode) setMode(data.otpChannels.mode);
+  }, [data]);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await saveAdminSettings({
+        // Derive booleans from the authoritative mode (backend does the same).
+        otpChannels: { mode, whatsapp: mode !== 'fcm', fcm: mode !== 'whatsapp' },
+      });
+      showToast('OTP channel saved / OTP चैनल सेव हो गया', 'success');
+      qc.invalidateQueries({ queryKey: ['admin-settings'] });
+    } catch (e) {
+      showToast(apiError(e) || 'Failed to save OTP channel', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={card}>
+      <strong style={cardTitle}>🔐 Signup OTP channel / साइनअप OTP चैनल</strong>
+      <p style={{ ...muted, margin: '6px 0 10px', lineHeight: 1.5 }}>
+        Mobile-only signup par OTP kaise bheja jaye chunein. Agar koi channel deliver na kar paaye to code
+        apne-aap signup screen par bhar jaata hai — <strong>user kabhi atakta nahi</strong>. Choose how a
+        mobile-only signup OTP is delivered; if a channel cannot deliver, the code auto-fills so signup never breaks.
+      </p>
+      <div style={{ display: 'grid', gap: 12 }}>
+        <label style={field}>
+          <span style={lbl}>Delivery channel / डिलीवरी चैनल</span>
+          <select style={inp} value={mode} onChange={(e) => setMode(e.target.value as OtpChannels['mode'])}>
+            <option value="fcm">FCM push (free) / FCM पुश (फ्री)</option>
+            <option value="whatsapp">WhatsApp / व्हाट्सऐप</option>
+            <option value="both">Both — WhatsApp then FCM / दोनों — पहले WhatsApp फिर FCM</option>
+          </select>
+          <span style={{ ...muted, fontSize: 11 }}>
+            WhatsApp ke liye Meta me approved OTP template zaroori hai; na ho to flow apne-aap fallback par chala
+            jaata hai. WhatsApp needs a Meta-approved OTP template; without one the flow safely falls back.
+          </span>
+        </label>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button style={btnPrimary} onClick={save} disabled={busy}>
+            {busy ? 'Saving…' : '💾 Save OTP channel'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

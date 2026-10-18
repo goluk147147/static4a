@@ -321,6 +321,16 @@ export interface WhatsappApiConfig {
   wabaId?: string;
   enabled: boolean;
 }
+/**
+ * Signup OTP delivery-channel policy (admin-only). `mode` is the owner-facing
+ * switch; the booleans are derived from it server-side. Controls which channel
+ * is attempted for a MOBILE-only signup OTP before the graceful fallback.
+ */
+export interface OtpChannels {
+  whatsapp: boolean;
+  fcm: boolean;
+  mode: 'whatsapp' | 'fcm' | 'both';
+}
 export interface AdminSettings {
   storeEmail: string; deliveryCharge: number; freeDeliveryAbove: number; upiId: string; upiName: string;
   hideMrp: boolean; storePhone: string; storeAddress: string; storeLatitude: number | null; storeLongitude: number | null;
@@ -330,6 +340,8 @@ export interface AdminSettings {
   masterPasswordSet?: boolean;
   /** WhatsApp API config (PREP ONLY) — admin-only, never on the public settings. */
   whatsappApi?: WhatsappApiConfig;
+  /** Signup OTP delivery channels — admin-only, never on the public settings. */
+  otpChannels?: OtpChannels;
 }
 export async function fetchAdminSettings() {
   return (await api.get('/admin/settings')).data.settings as AdminSettings;

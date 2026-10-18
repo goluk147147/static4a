@@ -32,26 +32,34 @@ const GOOGLE_ANDROID_CLIENT_ID =
 const googleClient = new OAuth2Client();
 
 // ---------- POST /api/users/register ----------
+// `email` is OPTIONAL: a rural user may sign up by MOBILE alone. The signup OTP
+// is verified against the email key when an email was given, otherwise against
+// the 'mobile:<mobile>' key written by the multi-channel resolver (mirrors the
+// 'pos:<mobile>' convention in routes/pos-auth.ts). Mobile stays required.
 const registerSchema = z.object({
   name: z.string().min(1),
   mobile: z.string().regex(/^[6-9]\d{9}$/),
   username: z.string().min(3).max(32),
-  email: z.string().email(),
+  email: z.string().email().optional(),
   password: z.string().min(4),
   otp: z.string().min(4),
 });
 
 router.post('/register', async (req: Request, res: Response) => {
   const parsed = registerSchema.safeParse(req.body);
-  if (!parsed.success) return fail(res, 'Enter a name, valid 10-digit mobile, username, email and 4+ char password', 422);
+  if (!parsed.success) return fail(res, 'Enter a name, valid 10-digit mobile, username and 4+ char password', 422);
   const { name, mobile, username, email, password, otp } = parsed.data;
 
-  // Verify email OTP.
+  // The OTP is keyed by email (lowercased) when an email was supplied — EXACTLY
+  // as before — otherwise by 'mobile:<mobile>' for a mobile-only signup.
+  const otpKey = email ? email.toLowerCase() : `mobile:${mobile}`;
   const otpRow = await prisma.emailOtp.findFirst({
-    where: { email: email.toLowerCase(), purpose: 'signup', consumed: false, expires_at: { gt: new Date() } },
+    where: { email: otpKey, purpose: 'signup', consumed: false, expires_at: { gt: new Date() } },
     orderBy: { id: 'desc' },
   });
-  if (!otpRow || otpRow.otp !== otp) return fail(res, 'Verify your email before creating an account.', 403);
+  if (!otpRow || otpRow.otp !== otp) {
+    return fail(res, email ? 'Verify your email before creating an account.' : 'Verify your mobile before creating an account.', 403);
+  }
 
   const dupUser = await prisma.user.findFirst({
     where: { OR: [{ username: username.toLowerCase() }, { mobile }] },
@@ -65,8 +73,8 @@ router.post('/register', async (req: Request, res: Response) => {
       name,
       mobile,
       username: username.toLowerCase(),
-      recovery_email: email.toLowerCase(),
-      recovery_email_verified: true,
+      // Only record a verified recovery email when the user actually provided one.
+      ...(email ? { recovery_email: email.toLowerCase(), recovery_email_verified: true } : {}),
       password: bcrypt.hashSync(password, 10),
       role: 'customer',
       registered_at: new Date(),
