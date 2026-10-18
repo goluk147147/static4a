@@ -65,7 +65,7 @@ async function findActivePhone(mobile: string): Promise<AdminPhoneRow | null> {
 }
 
 /** Normalise a stored admin_phones.permissions value to a clean string[] of allowed keys. */
-function normalizePerms(raw: unknown): string[] {
+export function normalizePerms(raw: unknown): string[] {
   let arr: unknown = raw;
   if (typeof raw === 'string') {
     try {
