@@ -1,5 +1,6 @@
 // Port of the original order-history.html A4 invoice (jsPDF, same layout).
 import type { MyOrder } from './queries';
+import { orderItemSuffix } from './orderItemLabel';
 
 interface AndroidBridge {
   saveBase64File?: (data: string, name: string, mime: string) => void;
@@ -77,7 +78,11 @@ export async function downloadInvoice(order: MyOrder, storePhone = '8210874123',
 
   doc.setFont('helvetica', 'normal');
   for (const item of order.items) {
-    const nameLines = doc.splitTextToSize(String(item.name), right - left - 230);
+    // Append the pack-size suffix (e.g. '250g' / '3 pcs') so the buyer can tell what was ordered.
+    // orderItemSuffix returns '' for old orders with no weight/unit, so the name is drawn alone.
+    const suffix = orderItemSuffix(item);
+    const itemText = suffix ? `${item.name} (${suffix})` : String(item.name);
+    const nameLines = doc.splitTextToSize(itemText, right - left - 230);
     const rowH = Math.max(18, nameLines.length * 12 + 6);
     doc.text(nameLines, left + 8, y + 13);
     doc.text(String(item.quantity), right - 200, y + 13, { align: 'right' });

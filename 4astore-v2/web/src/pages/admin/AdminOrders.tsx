@@ -8,6 +8,7 @@ import { downloadInvoice } from '../../lib/invoice';
 import { showToast } from '../../store/toast';
 import { showConfirm } from '../../store/confirm';
 import { useAdminOrders, AdminOrderFull, formatDate, ADMIN_ORDERS_KEY } from './adminData';
+import { orderItemLabel } from '../../lib/orderItemLabel';
 import AdminModal from './AdminModal';
 
 // Original status <select> options (plus any other status the order already has).
@@ -76,7 +77,7 @@ function OrderDetail({ order, onClose }: { order: AdminOrderFull; onClose: () =>
       <h4 style={{ marginTop: 16, marginBottom: 8 }}>📦 Items</h4>
       {order.items.map((item, i) => (
         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0f0f0', fontSize: 14 }}>
-          <span>{item.name} × {item.quantity}</span>
+          <span>{orderItemLabel(item)} × {item.quantity}</span>
           <span>₹{item.price * item.quantity}</span>
         </div>
       ))}

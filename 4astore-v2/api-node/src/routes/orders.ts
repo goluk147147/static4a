@@ -94,6 +94,9 @@ const itemSchema = z.object({
   id: z.number(),
   name: z.string(),
   weight: z.string().optional().default(''),
+  // Additively captured onto the order line (JSON column, no migration) so the item's pack size
+  // (e.g. '3 pcs') can be shown everywhere an order is displayed. Old orders simply have ''.
+  unit: z.string().optional().default(''),
   price: z.number(),
   quantity: z.number().min(1).max(999),
 });

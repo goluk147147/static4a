@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../store/auth';
 import { useMyOrders, useSettings, MyOrder } from '../lib/queries';
 import { downloadInvoice } from '../lib/invoice';
+import { orderItemLabel } from '../lib/orderItemLabel';
 import { showToast } from '../store/toast';
 
 // Original app.js getStatusClass()
@@ -83,7 +84,7 @@ export default function Orders() {
           <div className="order-items-list">
             {order.items.map((item, i) => (
               <div key={`${item.id ?? item.name}-${i}`} className="o-item">
-                <span>{item.name} × {item.quantity}</span>
+                <span>{orderItemLabel(item)} × {item.quantity}</span>
                 <span>₹{item.price * item.quantity}</span>
               </div>
             ))}

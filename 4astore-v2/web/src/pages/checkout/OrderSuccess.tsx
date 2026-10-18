@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { showToast } from '../../store/toast';
 import { speakHindi } from '../../lib/checkout';
+import { orderItemSuffix } from '../../lib/orderItemLabel';
 
 export interface PlacedOrder {
   orderId: string;
   customer: { name: string; mobile: string; address: string; city: string; pincode: string };
-  items: { name: string; quantity: number }[];
+  items: { name: string; quantity: number; weight?: string; unit?: string }[];
   totalAmount: number;
   deliveryAddress: string;
 }
@@ -20,7 +21,15 @@ export default function OrderSuccess({ order, storePhone }: { order: PlacedOrder
   }, []);
 
   function sendOrderWhatsApp() {
-    const itemsList = order.items.map((item, i) => `${i + 1}. ${item.name} × ${item.quantity}`).join('\n');
+    const itemsList = order.items
+      .map((item, i) => {
+        // Show the pack size next to the name (e.g. 'Mircha 250g', 'Jharu 3 pcs') so the store knows
+        // exactly what was ordered. orderItemSuffix returns '' for old lines => bare name.
+        const suffix = orderItemSuffix(item);
+        const label = suffix ? `${item.name} ${suffix}` : item.name;
+        return `${i + 1}. ${label} × ${item.quantity}`;
+      })
+      .join('\n');
     const itemCount = order.items.reduce((n, item) => n + Number(item.quantity || 0), 0);
     const msg =
       `*🛒 New Order – 4astore*\n\n` +

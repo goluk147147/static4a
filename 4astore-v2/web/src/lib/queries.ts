@@ -73,7 +73,7 @@ export interface MyOrder {
   total_amount: number;
   payment_method: string;
   customer: { name?: string; mobile?: string; address?: string; city?: string; pincode?: string };
-  items: { id?: number; name: string; weight?: string; price: number; quantity: number }[];
+  items: { id?: number; name: string; weight?: string; unit?: string; price: number; quantity: number }[];
 }
 
 /** DECIMAL money fields arrive as strings; JSON columns may be missing. */
