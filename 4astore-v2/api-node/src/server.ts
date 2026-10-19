@@ -80,7 +80,7 @@ app.use('/api/tracking', trackingRouter);
 app.use('/api/push', pushRouter);
 app.use('/api/admin', adminNotificationsRouter); // GET /api/admin/notifications (own auth: staff + "ads")
 app.use('/api/admin/videos', videosRouter); // before /api/admin (own auth: staff + "ads")
-app.use('/api/admin', adminDataRouter); // owner-only /data/* (import, reset, status) — specific paths first
+app.use('/api/admin/data', adminDataRouter); // owner-only data tools (import, reset, status) — specific path before generic /api/admin
 app.use('/api/admin/seo-auto', requireAuth, seoAdminRouter); // staff-gated SEO engine — specific path before generic /api/admin
 app.use('/api/admin/marketing', marketingRouter); // Marketing Center (staff + "ads") — specific path before generic /api/admin
 app.use('/api/admin/links', adminLinksRouter); // short-link admin (staff + "ads") — specific path before generic /api/admin

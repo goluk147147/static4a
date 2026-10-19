@@ -1,5 +1,13 @@
 /**
- * Owner-only DB tools (mounted under /api/admin):
+ * Owner-only DB tools. MOUNTED AT /api/admin/data (see server.ts) — NOT at the
+ * generic /api/admin prefix. This matters: `router.use(requireAuth, requireOwner)`
+ * below runs on EVERY request this router receives, regardless of sub-path. If
+ * this router is mounted at the bare /api/admin prefix, that owner gate fires on
+ * ALL /api/admin/* calls (products, users, stats, pos…) BEFORE the generic
+ * adminRouter's requireStaff gate is reached, so every non-owner admin gets a
+ * bogus 403 "Owner access required". Keeping it on the specific /api/admin/data
+ * prefix scopes the owner gate to the data tools only.
+ *
  *   POST /api/admin/data/import  → idempotent import of root data/*.json (shared with the CLI)
  *   POST /api/admin/data/reset   → FACTORY RESET (destructive) + re-seed default owner
  *   GET  /api/admin/data/status  → row counts + ownerExists
@@ -20,7 +28,7 @@ const router = Router();
 router.use(requireAuth, requireOwner);
 
 // ---------- POST /api/admin/data/import ----------
-router.post('/data/import', async (_req: Request, res: Response) => {
+router.post('/import', async (_req: Request, res: Response) => {
   try {
     const summary = await runImport();
     return ok(res, { summary });
@@ -32,7 +40,7 @@ router.post('/data/import', async (_req: Request, res: Response) => {
 // ---------- POST /api/admin/data/reset ----------
 const resetSchema = z.object({ confirm: z.literal('RESET') });
 
-router.post('/data/reset', async (req: Request, res: Response) => {
+router.post('/reset', async (req: Request, res: Response) => {
   const parsed = resetSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 'Type RESET to confirm', 422);
 
@@ -81,7 +89,7 @@ router.post('/data/reset', async (req: Request, res: Response) => {
 });
 
 // ---------- GET /api/admin/data/status ----------
-router.get('/data/status', async (_req: Request, res: Response) => {
+router.get('/status', async (_req: Request, res: Response) => {
   const [users, products, categories, orders, owners] = await Promise.all([
     prisma.user.count(),
     prisma.product.count(),
