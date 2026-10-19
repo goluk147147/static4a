@@ -309,11 +309,16 @@ router.post('/forgot-password/send', async (req: Request, res: Response) => {
     await prisma.emailOtp.create({
       data: { email: target.toLowerCase(), otp, purpose: 'reset', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
     });
-    await sendMail(
+    const sent = await sendMail(
       target,
       '4A Store password reset code',
       `Your 4A Store password reset code is ${otp}. It expires in 10 minutes. If you did not request this, ignore this email.`
-    ).catch(() => null);
+    );
+    // Enumeration-safety: this endpoint is deliberately generic — surfacing a
+    // delivery failure here would reveal that a matching account exists (only a
+    // real account triggers a send). So the HTTP response shape stays unchanged;
+    // we only log for ops visibility.
+    if (!sent.ok) console.warn('[forgot-password] mail send failed (not surfaced to keep enumeration-safety)');
   }
   // Always generic (enumeration-safe) — never reveal whether the account/email exists.
   return ok(res, { message: RESET_GENERIC });
@@ -387,7 +392,8 @@ router.post('/recovery-email/send', requireAuth, async (req: Request, res: Respo
   await prisma.emailOtp.create({
     data: { email, otp, purpose: 'recovery', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
   });
-  await sendMail(email, '4A Store recovery email code', `Your 4A Store verification code is ${otp}. It expires in 10 minutes.`).catch(() => null);
+  const sent = await sendMail(email, '4A Store recovery email code', `Your 4A Store verification code is ${otp}. It expires in 10 minutes.`);
+  if (!sent.ok) return fail(res, "We couldn't send the verification code by email right now. Please try again shortly or contact support.", 503);
   return ok(res, { message: 'Code sent', devOtp: config.env !== 'production' ? otp : undefined });
 });
 
@@ -433,7 +439,8 @@ router.post('/mobile/send', requireAuth, async (req: Request, res: Response) => 
   await prisma.emailOtp.create({
     data: { email: target.toLowerCase(), otp, purpose: 'set_mobile', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
   });
-  await sendMail(target, '4A Store mobile verification code', `Your 4A Store code is ${otp}. It expires in 10 minutes.`).catch(() => null);
+  const sent = await sendMail(target, '4A Store mobile verification code', `Your 4A Store code is ${otp}. It expires in 10 minutes.`);
+  if (!sent.ok) return fail(res, "We couldn't send your verification code by email right now. Please try again shortly or contact support.", 503);
   return ok(res, { message: 'Code sent', devOtp: config.env !== 'production' ? otp : undefined });
 });
 

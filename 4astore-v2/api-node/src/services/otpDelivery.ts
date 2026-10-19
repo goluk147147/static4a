@@ -12,7 +12,8 @@
  *     (mirrors routes/pos-auth.ts, which stores 'pos:<mobile>' for pos_login).
  *
  * Delivery channels (building blocks reused as-is, never reinvented):
- *   - EMAIL : utils/mailer.sendMail (best-effort, never throws) — unchanged path.
+ *   - EMAIL : utils/mailer.sendMail (never throws; now REPORTS delivery via its
+ *     MailResult, which feeds the `delivered` flag for the email branch).
  *   - WhatsApp: services/whatsappCloud.sendWhatsAppTemplateMessage — needs a
  *     Meta PRE-APPROVED template; when none is configured it returns { ok:false }
  *     and we fall through (never throw).
@@ -137,22 +138,32 @@ export async function deliverSignupOtp(input: DeliverSignupOtpInput): Promise<De
   const mobile = input.mobile?.trim() || '';
   const otp = generateOtp();
 
-  // ---- EMAIL path (unchanged behavior) --------------------------------------
-  // Keeps byte-for-byte the behavior of routes/otp.ts: store under the lowercased
-  // email key, best-effort email send (sendMail never throws / never reports
-  // delivery), and only leak the OTP as devOtp OUTSIDE production.
+  // ---- EMAIL path -----------------------------------------------------------
+  // Store under the lowercased email key and attempt an email send. sendMail now
+  // REPORTS delivery (never throws), so we feed its real result into the
+  // `delivered` flag instead of optimistically claiming delivery. On a FAILED
+  // send the OTP is returned as a fallback so an email-signup user is not
+  // stranded (see the fallbackOtp note below); on a SUCCESSFUL send nothing is
+  // leaked in production.
   if (email) {
     const otpKey = email;
     await prisma.emailOtp.create({
       data: { email: otpKey, otp, purpose: 'signup', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
     });
-    await sendMail(
+    const sent = await sendMail(
       email,
       'Your 4A Store verification code',
       `Your 4A Store OTP is ${otp}. It expires in 10 minutes.`
-    ).catch(() => null);
-    const fallbackOtp = process.env.NODE_ENV !== 'production' ? otp : undefined;
-    return { otpKey, delivered: true, channel: 'email', fallbackOtp };
+    );
+    // "User never stuck" fallback (mirrors the MOBILE path below): when the email
+    // actually DELIVERED we never leak the OTP (fallbackOtp stays undefined except
+    // the long-standing dev-only convenience). But when NO real channel delivered
+    // — i.e. the SMTP send failed (sent.ok === false) — we return the OTP to the
+    // client as fallbackOtp so an email-signup user is NOT stranded when outbound
+    // mail is down (the exact production incident this guards). This fires ONLY on
+    // a failed send; once SMTP works again, delivered=true and no OTP is exposed.
+    const fallbackOtp = sent.ok ? (process.env.NODE_ENV !== 'production' ? otp : undefined) : otp;
+    return { otpKey, delivered: sent.ok, channel: sent.ok ? 'email' : null, fallbackOtp };
   }
 
   // ---- MOBILE path (multi-channel with graceful fallback) -------------------

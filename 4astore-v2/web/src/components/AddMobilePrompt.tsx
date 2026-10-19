@@ -41,7 +41,9 @@ export default function AddMobilePrompt({ message }: { message?: string }) {
       if (data.devOtp) setOtp(String(data.devOtp));
       setStatus({ text: 'Code sent to your email. Check inbox and spam. / कोड आपकी ईमेल पर भेजा गया।', color: '#087a3d' });
     } catch (e) {
-      setStatus({ text: apiError(e) || 'Could not send code. Try again.', color: '#b42318' });
+      // A delivery failure now returns 503 from the server — surface its message
+      // and STAY on the send step (setSent stays false, so no "enter code" step).
+      setStatus({ text: apiError(e) || 'Code bhej nahi paaye — thodi der baad try karein ya support se sampark karein. / Could not send the code. Please try again shortly or contact support.', color: '#b42318' });
     } finally {
       setBusy(false);
     }
