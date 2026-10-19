@@ -241,7 +241,9 @@ export interface Settings {
 export interface User {
   id: number;
   name: string;
-  mobile: string;
+  // Google sign-in accounts start with no mobile (API returns null until the user
+  // adds and verifies one via the email-OTP flow). Only a real [6-9]\d{9} gates checkout.
+  mobile: string | null;
   username: string;
   role: string;
   permissions?: string[];

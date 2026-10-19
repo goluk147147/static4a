@@ -27,6 +27,10 @@ function DeliveryCell({ user, onSave }: { user: AdminUserRow; onSave: (mobile: s
   const current = user.custom_delivery ?? '';
   const [val, setVal] = useState(String(current));
   useEffect(() => setVal(String(user.custom_delivery ?? '')), [user.custom_delivery]);
+  // Delivery fee is keyed by mobile (usersAction setDelivery). A null-mobile Google account
+  // can't be keyed, so show a disabled em-dash instead of calling onSave with an empty key.
+  if (!user.mobile) return <td style={{ color: 'var(--gray)' }}>—</td>;
+  const mobile = user.mobile; // non-null here; bound for the onSave closures
   return (
     <td style={{ whiteSpace: 'nowrap' }}>
       <input type="number" min={0} placeholder="Global" value={val} onChange={(e) => setVal(e.target.value)} aria-label={`Delivery fee for ${user.name}`}
@@ -34,9 +38,9 @@ function DeliveryCell({ user, onSave }: { user: AdminUserRow; onSave: (mobile: s
       <button type="button" title="Set delivery fee" onClick={() => {
         const v = val.trim();
         if (v === '' || Number.isNaN(Number(v))) return showToast('Enter a valid amount (0 for free)', 'error');
-        onSave(user.mobile, Number(v));
+        onSave(mobile, Number(v));
       }} style={{ ...btn('var(--primary)'), padding: '4px 8px', borderRadius: 5 }}>✔</button>{' '}
-      <button type="button" title="Use global fee" onClick={() => onSave(user.mobile, null)} style={{ ...btn('#888'), padding: '4px 8px', borderRadius: 5 }}>↺</button>
+      <button type="button" title="Use global fee" onClick={() => onSave(mobile, null)} style={{ ...btn('#888'), padding: '4px 8px', borderRadius: 5 }}>↺</button>
     </td>
   );
 }
@@ -317,14 +321,14 @@ export default function AdminUsers() {
           </thead>
           <tbody>
             {pageUsers.length ? pageUsers.map((u) => {
-              const st = stats.get(u.mobile) || { count: 0, spent: 0 };
+              const st = stats.get(u.mobile ?? '') || { count: 0, spent: 0 };
               const days = u.last_login ? Math.floor((now - new Date(u.last_login).getTime()) / DAY) : 999;
               return (
                 <tr key={u.id}>
                   <td>{u.id}</td>
                   <td><strong>{u.name}</strong></td>
                   <td>{u.username || '-'}</td>
-                  <td><a href={`tel:${u.mobile}`}>{u.mobile}</a></td>
+                  <td>{u.mobile && MOBILE_RE.test(u.mobile) ? <a href={`tel:${u.mobile}`}>{u.mobile}</a> : <span style={{ color: 'var(--gray)' }}>—</span>}</td>
                   <td>{u.role === 'rider' ? 'Delivery Boy' : 'Customer'}</td>
                   {/* Passwords are hashed in v2, so they can only be reset, never shown. */}
                   <td style={{ fontFamily: 'monospace', fontSize: 11 }}>Hidden - edit to reset</td>
@@ -336,7 +340,7 @@ export default function AdminUsers() {
                   <DeliveryCell user={u} onSave={saveDelivery} />
                   <td style={{ whiteSpace: 'nowrap' }}>
                     <button type="button" onClick={() => setModal({ kind: 'edit', user: u })} title="Edit user" aria-label={`Edit ${u.name}`} style={btn('#0891b2')}>✏️</button>{' '}
-                    <button type="button" onClick={() => setModal({ kind: 'order', name: u.name, mobile: u.mobile })} title="Add order" style={btn('#2e7d32')}>➕ Order</button>{' '}
+                    <button type="button" onClick={() => setModal({ kind: 'order', name: u.name, mobile: u.mobile ?? '' })} title="Add order" style={btn('#2e7d32')}>➕ Order</button>{' '}
                     <button type="button" onClick={() => deleteUser(u)} title="Delete user" aria-label={`Delete ${u.name}`} style={btn('#e53935')}>🗑️</button>
                   </td>
                 </tr>

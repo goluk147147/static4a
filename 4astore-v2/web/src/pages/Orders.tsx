@@ -24,7 +24,7 @@ export default function Orders() {
   const { user, ready } = useAuth();
   const navigate = useNavigate();
   const settings = useSettings().data;
-  const { data: orders, isLoading, isError } = useMyOrders(user?.mobile);
+  const { data: orders, isLoading, isError } = useMyOrders(!!user);
 
   useEffect(() => {
     if (ready && !user) navigate('/login?next=/orders');

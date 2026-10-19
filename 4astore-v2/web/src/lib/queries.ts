@@ -89,13 +89,17 @@ export function normalizeOrder<T extends MyOrder>(o: T): T {
   };
 }
 
-/** Logged-in customer's own orders. */
-export function useMyOrders(mobile: string | undefined) {
+/**
+ * Logged-in customer's own orders via GET /orders/mine (owner-by-id). This works for
+ * null-mobile Google accounts too, since the server scopes by the JWT user_id (plus the
+ * legacy customer-mobile JSON-path only when the viewer has a real mobile). `enabled` is
+ * driven by !!user so logged-out users never fire the request.
+ */
+export function useMyOrders(enabled: boolean) {
   return useQuery({
-    queryKey: ['orders', mobile],
-    enabled: !!mobile,
-    queryFn: async () =>
-      ((await api.get(`/orders?mobile=${encodeURIComponent(mobile!)}`)).data.orders as MyOrder[]).map(normalizeOrder),
+    queryKey: ['orders', 'mine'],
+    enabled,
+    queryFn: async () => ((await api.get('/orders/mine')).data.orders as MyOrder[]).map(normalizeOrder),
   });
 }
 

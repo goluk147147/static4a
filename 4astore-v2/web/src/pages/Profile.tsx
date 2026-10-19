@@ -20,7 +20,7 @@ export default function Profile() {
   const cartCount = useCart((s) => s.count());
   const clearCart = useCart((s) => s.clear);
   const navigate = useNavigate();
-  const { data: orders = [] } = useMyOrders(user?.mobile);
+  const { data: orders = [] } = useMyOrders(!!user);
   const pagesQ = usePages();
 
   // ---- recovery email (original loadRecoveryEmail / send / verify) ----

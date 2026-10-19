@@ -16,6 +16,8 @@ import {
 import type { SavedAddress, Settings } from '../../types';
 import PaymentModal from './PaymentModal';
 import { productImageSrc, onProductImageError } from '../../lib/productImage';
+import { hasRealMobile } from '../../lib/mobileGate';
+import AddMobilePrompt from '../../components/AddMobilePrompt';
 import Portal from '../../components/Portal';
 import OrderSuccess, { PlacedOrder } from './OrderSuccess';
 import './checkout.css';
@@ -330,6 +332,13 @@ export default function Checkout() {
 
   /** Original proceedToPayment(): validate, verify village, 18+ check, save address, open UPI modal. */
   async function proceedToPayment() {
+    // Checkout gate: the ACCOUNT must have a verified mobile (API also enforces this with a 403).
+    // Null-mobile Google accounts add+verify one via the AddMobilePrompt rendered below.
+    if (!hasRealMobile(user)) {
+      showToast('Apna mobile number add aur verify karein — order place karne ke liye zaroori hai. / Add and verify your mobile number to place an order.', 'error');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     setErrors(new Set());
     const cleanMobile = mobile.replace(/\D+/g, '');
 
@@ -495,6 +504,11 @@ export default function Checkout() {
     <div className="checkout-page">
       <Helmet><title>Checkout - 4A Store</title></Helmet>
       <h2 style={{ marginBottom: 20 }}>📝 Checkout / ऑर्डर विवरण</h2>
+
+      {/* Checkout requires a verified account mobile. Null-mobile users add+verify here; it self-hides otherwise. */}
+      {ready && user && !hasRealMobile(user) && (
+        <AddMobilePrompt message="Apna mobile number add aur verify karein — order place karne ke liye zaroori hai. / Add and verify your mobile number to place an order." />
+      )}
 
       <div className="checkout-form">
         <h3>🏠 Delivery Details / डिलीवरी का विवरण</h3>

@@ -18,7 +18,8 @@ export interface AdminOrderFull extends MyOrder {
 export interface AdminUserRow {
   id: number;
   name: string;
-  mobile: string;
+  // Nullable: Google sign-in accounts have no mobile until they verify one (API returns null).
+  mobile: string | null;
   username: string;
   role: string;
   permissions?: string[] | null;

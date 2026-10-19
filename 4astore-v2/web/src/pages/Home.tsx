@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { useConfig, useCategories, useProducts, useSettings } from '../lib/queries';
 import ProductCard from '../components/ProductCard';
 import AnnouncementPopup from '../components/AnnouncementPopup';
+import AddMobilePrompt from '../components/AddMobilePrompt';
 import { SkeletonBanner, SkeletonAds, SkeletonCategories, SkeletonCards } from '../components/Skeleton';
 import { legacyToRoute, fillDeliveryPlaceholders } from '../lib/links';
 import { isFeatureOn } from '../lib/features';
@@ -62,6 +63,9 @@ export default function Home() {
         ))}
       </Helmet>
       {socialProofOn && <AnnouncementPopup />}
+
+      {/* Logged-in users with no verified mobile (e.g. fresh Google sign-in) see this; it self-hides for everyone else. */}
+      <AddMobilePrompt />
 
       {/* Hero Slider */}
       <section className="hero-slider">
