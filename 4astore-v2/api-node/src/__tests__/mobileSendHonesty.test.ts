@@ -1,17 +1,18 @@
 /**
- * SEND-endpoint honesty contract (OTP delivery honesty — Option B).
+ * SEND-endpoint honesty / failsafe contract (OTP delivery — R1 + Option B).
  *
  * The worktree has no reachable database, so the full HTTP round-trip of
  * POST /api/users/mobile/send cannot run here. Following the same
  * source-assertion technique as posBilling.test.ts, this file reads
- * routes/users.ts and pins the load-bearing lines that make the delivery
- * failure HONEST:
- *   - a FAILED send (sendMail → { ok:false }) returns HTTP 503 with the
- *     support-contact message, NOT a false 200 'Code sent';
- *   - a SUCCESSFUL send keeps the 200 'Code sent' response;
- *   - devOtp stays guarded behind config.env !== 'production';
- *   - the auth-gated recovery-email/send gets the SAME honest 503;
- *   - forgot-password/send KEEPS its generic-200 enumeration-safe shape.
+ * routes/users.ts and pins the load-bearing lines:
+ *   - R1: /users/mobile/send NO LONGER hard-503s — it routes through the
+ *     multi-channel deliverSetMobileOtp (EMAIL → FCM → fallbackOtp) and returns
+ *     the fallback OTP as devOtp so a Google user is never trapped behind the
+ *     checkout gate when email is down;
+ *   - the auth-gated recovery-email/send KEEPS its honest 503 (optional profile
+ *     hardening, not an access gate);
+ *   - forgot-password/send KEEPS its generic-200 enumeration-safe shape;
+ *   - exactly ONE 503 remains in the file (recovery-email/send only).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,27 +21,25 @@ import { join } from 'node:path';
 
 const USERS_ROUTE_SRC = readFileSync(join(process.cwd(), 'src', 'routes', 'users.ts'), 'utf8');
 
-test('mobile/send maps a failed send to 503 with the support message', () => {
-  // The send result is captured (no .catch — sendMail no longer throws) and a
-  // failed delivery returns 503 instead of a false 200.
+test('mobile/send routes through multi-channel deliverSetMobileOtp (no email-only trap)', () => {
   assert.match(
     USERS_ROUTE_SRC,
-    /const sent = await sendMail\(target, '4A Store mobile verification code'/,
-    'mobile/send must capture the sendMail result'
-  );
-  assert.match(
-    USERS_ROUTE_SRC,
-    /if \(!sent\.ok\) return fail\(res, "We couldn't send your verification code by email right now\. Please try again shortly or contact support\.", 503\);/,
-    'mobile/send must return 503 with the support message on a failed send'
+    /const result = await deliverSetMobileOtp\(\{ otpKey: target\.toLowerCase\(\), userId: user\.id \}\);/,
+    'mobile/send must call deliverSetMobileOtp with the email-target key (verify-match preserved)'
   );
 });
 
-test('mobile/send keeps 200 Code sent on success with devOtp guarded off-production', () => {
-  // The success 200 and the production-guarded devOtp must be preserved.
+test('mobile/send never hard-503s — returns the fallback OTP as devOtp instead', () => {
+  // No 503 dead-end in the mobile/send handler anymore.
+  assert.doesNotMatch(
+    USERS_ROUTE_SRC,
+    /We couldn't send your verification code by email right now/,
+    'mobile/send must no longer carry the email-only 503 message'
+  );
   assert.match(
     USERS_ROUTE_SRC,
-    /return ok\(res, \{ message: 'Code sent', devOtp: config\.env !== 'production' \? otp : undefined \}\);/,
-    'success path must keep 200 Code sent and only leak devOtp off-production'
+    /return ok\(res, \{ message: 'Code sent', devOtp: result\.fallbackOtp \}\);/,
+    'mobile/send must return the fallback OTP so the client auto-fills it (never a 503 dead-end)'
   );
 });
 
@@ -69,8 +68,8 @@ test('forgot-password/send stays enumeration-safe (generic 200, no delivery stat
     /\[forgot-password\] mail send failed \(not surfaced to keep enumeration-safety\)/,
     'forgot-password must only log a failed send, never surface a status'
   );
-  // It must NOT return a 503 anywhere in the forgot-password handler path: the
-  // only 503s in this file belong to mobile/send and recovery-email/send.
+  // Exactly ONE 503 remains in this file now: recovery-email/send. R1 removed the
+  // mobile/send 503 dead-end (it now returns a fallback OTP instead).
   const count503 = (USERS_ROUTE_SRC.match(/, 503\)/g) || []).length;
-  assert.equal(count503, 2, 'exactly two 503 returns: mobile/send and recovery-email/send');
+  assert.equal(count503, 1, 'exactly one 503 return remains: recovery-email/send (mobile/send no longer 503s)');
 });

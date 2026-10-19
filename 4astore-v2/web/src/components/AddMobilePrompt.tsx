@@ -37,7 +37,9 @@ export default function AddMobilePrompt({ message }: { message?: string }) {
     try {
       const { data } = await api.post('/users/mobile/send', {});
       setSent(true);
-      // devOtp is only present off-production (no live mail server).
+      // Auto-fill the fallback OTP the backend returns when no real channel
+      // delivered (email down / no FCM device) — so a Google user can clear the
+      // checkout gate during a mail outage. Absent once a real channel delivers.
       if (data.devOtp) setOtp(String(data.devOtp));
       setStatus({ text: 'Code sent to your email. Check inbox and spam. / कोड आपकी ईमेल पर भेजा गया।', color: '#087a3d' });
     } catch (e) {

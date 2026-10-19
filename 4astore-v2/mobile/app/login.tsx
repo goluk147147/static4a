@@ -62,12 +62,16 @@ export default function Login() {
     setBusy(true);
     setError('');
     try {
-      await api.post('/otp/send', { email: email.trim() });
+      // Thread the lead's NAME so the backend persists it as an unverified lead
+      // the instant a code is requested (lead capture is paramount). Additive.
+      const { data } = await api.post('/otp/send', { email: email.trim(), ...(name.trim() ? { name: name.trim() } : {}) });
       setOtpSent(true);
       setOtp('');
-      // Email OTP is never auto-filled: the user reads it from their email and types it.
-      // (The server's `devOtp` is for backend testing only; we deliberately ignore it so
-      //  the field is never pre-filled with a static/leaked code on a real build.)
+      // Mirror web: auto-fill the fallback OTP the backend returns ONLY when no
+      // real channel delivered (SMTP down / no channel), so an Android user is
+      // never stuck mid-signup during a mail outage. When mail works in prod the
+      // server omits devOtp, so nothing is pre-filled — no behaviour change.
+      if (data?.devOtp) setOtp(String(data.devOtp));
     } catch (e) {
       setError(apiError(e));
     } finally {
@@ -137,7 +141,10 @@ export default function Login() {
   // done(). With no web client ID provisioned the button stays on its "setup pending" toast.
   async function startGoogle() {
     if (!GOOGLE_WEB_CLIENT_ID) {
-      showToast('Google login setup pending — admin se contact karein. / Google login setup pending — please contact admin.', 'info');
+      // No Google client provisioned → don't dead-end: drop the user on the
+      // register tab so the lead is still captured via mobile/email signup.
+      switchMode('register');
+      showToast('Google login unavailable — continue with mobile/email. / Google उपलब्ध नहीं — मोबाइल/ईमेल से जारी रखें।', 'info');
       return;
     }
     setBusy(true);
@@ -148,16 +155,20 @@ export default function Login() {
       if (isSuccessResponse(res)) {
         const idToken = res.data.idToken;
         if (!idToken) {
-          showToast('Google login failed — token missing. / Google login viphal — token nahi mila.', 'error');
+          showToast('Google login failed — continue with mobile/email. / मोबाइल/ईमेल से जारी रखें।', 'error');
+          switchMode('register');
           return;
         }
         const user = await socialLogin(idToken);
         done(user);
       }
     } catch (e) {
-      // User dismissed the native sheet — not an error, no toast.
+      // User dismissed the native sheet — not an error, no toast, no redirect.
       if ((e as { code?: string })?.code === statusCodes.SIGN_IN_CANCELLED) return;
+      // A real Google outage/failure: surface it AND route to the register tab so
+      // the lead is never lost (parity with web R4). "Lead is paramount."
       showToast(apiError(e), 'error');
+      switchMode('register');
     } finally {
       setBusy(false);
     }

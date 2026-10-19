@@ -28,6 +28,7 @@ import { sendMail } from '../utils/mailer';
 import { sendWhatsAppTemplateMessage, buildImageTextComponents } from './whatsappCloud';
 import { sendToTokens, tokensForUser } from './push';
 import { parseOtpChannels, resolveMobileChannelOrder } from './otpChannelPolicy';
+import { upsertUnverifiedLead } from './leadUpsert';
 
 /**
  * Meta OTP template coordinates. A signup OTP template must be PRE-APPROVED in
@@ -49,6 +50,14 @@ export interface DeliverSignupOtpInput {
    * email-only / mobile-only (no deviceToken) behavior is unchanged.
    */
   deviceToken?: string;
+  /**
+   * Optional lead NAME. When present it is persisted (with the email/mobile)
+   * as an UNVERIFIED lead BEFORE any channel sends, so the lead's name+contact
+   * is captured the instant a code is requested — honouring "lead is paramount"
+   * even when the user abandons at the OTP step. Absent → the lead is still
+   * upserted on the identifier(s), just without a name backfill.
+   */
+  name?: string;
 }
 
 export interface DeliverSignupOtpResult {
@@ -138,6 +147,13 @@ export async function deliverSignupOtp(input: DeliverSignupOtpInput): Promise<De
   const mobile = input.mobile?.trim() || '';
   const otp = generateOtp();
 
+  // LEAD CAPTURE (paramount): persist the lead's NAME + contact as an UNVERIFIED
+  // row (last_login IS NULL) BEFORE any channel sends, so the lead survives even
+  // if the user abandons at the OTP step or every delivery channel fails. This is
+  // best-effort / non-fatal — upsertUnverifiedLead never throws, so a lead-write
+  // hiccup can never block OTP delivery below. register later flips it to verified.
+  await upsertUnverifiedLead({ name: input.name, email, mobile });
+
   // ---- EMAIL path -----------------------------------------------------------
   // Store under the lowercased email key and attempt an email send. sendMail now
   // REPORTS delivery (never throws), so we feed its real result into the
@@ -200,4 +216,75 @@ export async function deliverSignupOtp(input: DeliverSignupOtpInput): Promise<De
   // deliver, that channel wins first and this fallback never fires). This gate
   // ONLY triggers when nothing above delivered.
   return { otpKey, delivered: false, channel: null, fallbackOtp: otp };
+}
+
+export interface DeliverSetMobileOtpInput {
+  /**
+   * The email_otps.email KEY the OTP is stored under — the SAME key
+   * /users/mobile/verify reads today (the user's recovery_email || email,
+   * lowercased). R1 keeps verify UNCHANGED, so the key must NOT switch to a
+   * 'mobile:<n>' scheme — multi-channel + fallback are layered on top of this
+   * unchanged key/purpose.
+   */
+  otpKey: string;
+  /** The user whose device tokens are the FCM fallback target. */
+  userId: bigint | number;
+}
+
+export interface DeliverSetMobileOtpResult {
+  delivered: boolean;
+  channel: 'email' | 'fcm' | null;
+  /**
+   * The OTP returned to the client so the frontend can AUTO-FILL it. Present
+   * whenever NO real channel delivered — INCLUDING production — exactly mirroring
+   * the blessed mobile-signup tradeoff, so a Google user with email down can
+   * still verify a mobile and clear the checkout gate. Undefined once a real
+   * channel delivered (no leak when mail works).
+   */
+  fallbackOtp?: string;
+}
+
+/**
+ * Set-mobile OTP delivery for /users/mobile/send (R1).
+ *
+ * Removes the email-ONLY hard-503 trap that stranded Google users behind the
+ * checkout gate when SMTP is down. It writes the OTP under the SAME key/purpose
+ * verify already reads (`otpKey`, purpose='set_mobile') — verify is untouched —
+ * then attempts delivery EMAIL first (a working mailbox still proves possession),
+ * then FCM to the user's device tokens, and finally returns the OTP as
+ * `fallbackOtp` (production included) when no real channel delivered so the user
+ * is NEVER trapped. Email stays ONE channel but is never the sole path and never
+ * hard-503s. NEVER throws out of a delivery failure.
+ *
+ * SECURITY TRADEOFF (product decision, same as deliverSignupOtp's mobile path):
+ * exposing the OTP to the client on non-delivery defeats possession-proof of the
+ * mailbox, but is the accepted "user never stuck" tradeoff. It fires ONLY when no
+ * real channel delivered; once SMTP/FCM work again the fallback never fires.
+ */
+export async function deliverSetMobileOtp(input: DeliverSetMobileOtpInput): Promise<DeliverSetMobileOtpResult> {
+  const otpKey = input.otpKey.trim().toLowerCase();
+  const otp = generateOtp();
+
+  // Store under the SAME key + purpose verify expects (unchanged lookup).
+  await prisma.emailOtp.create({
+    data: { email: otpKey, otp, purpose: 'set_mobile', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
+  });
+
+  // Channel 1 — EMAIL (first, so a working mailbox still gets it). The otpKey IS
+  // the user's recovery/primary email, so it is a valid send target.
+  const sent = await sendMail(
+    otpKey,
+    '4A Store mobile verification code',
+    `Your 4A Store code is ${otp}. It expires in 10 minutes.`
+  );
+  if (sent.ok) return { delivered: true, channel: 'email', fallbackOtp: undefined };
+
+  // Channel 2 — FCM to the user's registered devices (reaches a Google user's
+  // phone even when email is down). No tokens / nothing sent → fall through.
+  const userTokens = await tokensForUser(input.userId).catch(() => [] as string[]);
+  if (await tryFcm(userTokens, otp)) return { delivered: true, channel: 'fcm', fallbackOtp: undefined };
+
+  // Channel 3 — fallback: expose the OTP so the client auto-fills it and the user
+  // can clear the checkout gate even with every real channel down (prod included).
+  return { delivered: false, channel: null, fallbackOtp: otp };
 }

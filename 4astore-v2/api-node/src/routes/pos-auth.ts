@@ -106,15 +106,20 @@ router.post(
     // Deliver by push to the owner's already-registered devices (best-effort).
     // If the number maps to a staff user with devices they get the code in-tray.
     const staffTokens = await tokensForStaff('pos').catch(() => [] as string[]);
-    if (staffTokens.length) {
-      await sendToTokens(staffTokens, {
-        title: '🔐 4A Store POS login code',
-        body: `Your POS login code is ${otp}. It expires in 10 minutes.`,
-        data: { type: 'pos_login_otp' },
-      }).catch(() => 0);
-    }
+    const delivered = staffTokens.length
+      ? await sendToTokens(staffTokens, {
+          title: '🔐 4A Store POS login code',
+          body: `Your POS login code is ${otp}. It expires in 10 minutes.`,
+          data: { type: 'pos_login_otp' },
+        }).catch(() => 0)
+      : 0;
 
-    const devOtp = config.env !== 'production' ? otp : undefined;
+    // R6: never a production dead-end. When the push reached NO device (no staff
+    // token, or FCM delivered 0), expose the OTP as devOtp IN PRODUCTION too so
+    // the owner can still read the code and log in. This fires ONLY after the
+    // active-allowlist check above passed, so an unauthorised number never gets a
+    // code; rate-limit + enumeration-safety + no-downgrade all stay intact.
+    const devOtp = config.env !== 'production' || delivered < 1 ? otp : undefined;
     return ok(res, { message: SEND_GENERIC, devOtp });
   }
 );

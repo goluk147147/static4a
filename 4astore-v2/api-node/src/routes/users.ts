@@ -18,6 +18,7 @@ import {
   ACCESS_COOKIE,
 } from '../auth/session';
 import { sendMail } from '../utils/mailer';
+import { deliverSetMobileOtp } from '../services/otpDelivery';
 
 const router = Router();
 
@@ -61,26 +62,64 @@ router.post('/register', async (req: Request, res: Response) => {
     return fail(res, email ? 'Verify your email before creating an account.' : 'Verify your mobile before creating an account.', 403);
   }
 
+  // LEAD CAPTURE (R2): a row for this identity may already exist as an UNVERIFIED
+  // lead (created at otp/send time with last_login IS NULL — see leadUpsert.ts).
+  // Look it up by the SAME identifiers (email lowercased / recovery_email /
+  // mobile) so we COMPLETE that lead rather than create a duplicate. Never delete
+  // the lead on failure.
+  const emailLower = email ? email.toLowerCase() : '';
+  const lead = await prisma.user.findFirst({
+    where: {
+      OR: [
+        ...(emailLower ? [{ email: emailLower }, { recovery_email: emailLower }] : []),
+        { mobile },
+      ],
+    },
+  });
+
+  // Uniqueness guards — UNCHANGED in spirit: reject a username/mobile that
+  // belongs to a DIFFERENT user id. When the only match is the lead row for the
+  // SAME identity being completed, that is NOT a dup (we complete it below).
   const dupUser = await prisma.user.findFirst({
     where: { OR: [{ username: username.toLowerCase() }, { mobile }] },
   });
-  if (dupUser) {
+  if (dupUser && (!lead || dupUser.id !== lead.id)) {
     return fail(res, dupUser.mobile === mobile ? 'Mobile number already registered' : 'Username already taken', 409);
   }
 
-  const user = await prisma.user.create({
-    data: {
-      name,
-      mobile,
-      username: username.toLowerCase(),
-      // Only record a verified recovery email when the user actually provided one.
-      ...(email ? { recovery_email: email.toLowerCase(), recovery_email_verified: true } : {}),
-      password: bcrypt.hashSync(password, 10),
-      role: 'customer',
-      registered_at: new Date(),
-      last_login: new Date(),
-    },
-  });
+  let user;
+  if (lead) {
+    // Flip the existing unverified lead to VERIFIED: set last_login (the verified
+    // signal), and fill in the real name/username/password/recovery_email the
+    // user just submitted. Preserves the lead row (no duplicate, no delete).
+    user = await prisma.user.update({
+      where: { id: lead.id },
+      data: {
+        name,
+        mobile,
+        username: username.toLowerCase(),
+        ...(email ? { recovery_email: email.toLowerCase(), recovery_email_verified: true } : {}),
+        password: bcrypt.hashSync(password, 10),
+        role: 'customer',
+        last_login: new Date(),
+      },
+    });
+  } else {
+    // No pre-existing lead (e.g. an OTP issued before this change) → create fresh.
+    user = await prisma.user.create({
+      data: {
+        name,
+        mobile,
+        username: username.toLowerCase(),
+        // Only record a verified recovery email when the user actually provided one.
+        ...(email ? { recovery_email: email.toLowerCase(), recovery_email_verified: true } : {}),
+        password: bcrypt.hashSync(password, 10),
+        role: 'customer',
+        registered_at: new Date(),
+        last_login: new Date(),
+      },
+    });
+  }
   await prisma.emailOtp.update({ where: { id: otpRow.id }, data: { consumed: true } });
 
   const { accessToken, refreshToken } = await issueTokens(res, user, isMobileClient(req) ? 'mobile-app' : undefined);
@@ -427,21 +466,27 @@ router.post('/recovery-email/verify', requireAuth, async (req: Request, res: Res
 // their recovery/primary email. Modeled on recovery-email/send+verify; uses
 // purpose='set_mobile' (NOT the signup OTP path).
 
-// POST /api/users/mobile/send → emails a 6-digit code (10 min) to recovery/primary email
+// POST /api/users/mobile/send → sends a 6-digit set_mobile code via multi-channel
+// delivery (EMAIL → FCM → fallbackOtp). R1: this NO LONGER hard-503s when SMTP is
+// down — it falls back to FCM and finally returns the OTP as devOtp so a Google
+// user can ALWAYS verify a mobile and clear the checkout gate even with email
+// down. The OTP is stored under the SAME key/purpose /mobile/verify reads
+// (recovery/primary email, purpose='set_mobile') so verify is UNCHANGED.
 router.post('/mobile/send', requireAuth, async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: BigInt(req.user!.sub) } });
   if (!user) return fail(res, 'User not found', 404);
 
   const target = user.recovery_email || user.email;
+  // The email target is still required ONLY to key the OTP the SAME way verify
+  // reads it (verify-match wins — see R1 decision). It is NOT a delivery gate:
+  // when mail is down the multi-channel helper falls back to FCM / the devOtp
+  // fallback below, so this is not an email dead-end.
   if (!target) return fail(res, 'Add a recovery email first to receive the code.', 400);
 
-  const otp = String(Math.floor(100000 + Math.random() * 900000));
-  await prisma.emailOtp.create({
-    data: { email: target.toLowerCase(), otp, purpose: 'set_mobile', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
-  });
-  const sent = await sendMail(target, '4A Store mobile verification code', `Your 4A Store code is ${otp}. It expires in 10 minutes.`);
-  if (!sent.ok) return fail(res, "We couldn't send your verification code by email right now. Please try again shortly or contact support.", 503);
-  return ok(res, { message: 'Code sent', devOtp: config.env !== 'production' ? otp : undefined });
+  const result = await deliverSetMobileOtp({ otpKey: target.toLowerCase(), userId: user.id });
+  // Never a hard 503: on non-delivery the fallback OTP is returned so the client
+  // auto-fills it (same documented tradeoff as signup, production included).
+  return ok(res, { message: 'Code sent', devOtp: result.fallbackOtp });
 });
 
 const mobileVerifySchema = z.object({

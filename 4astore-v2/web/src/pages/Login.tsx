@@ -14,10 +14,13 @@ declare global {
   }
 }
 
-// Optional social-login credentials (default '' when unset). Build-safe: with
-// an empty Google client ID the button no-ops with a "setup pending" toast —
-// no script load, no OAuth.
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+// Google web client ID. Documented in-code DEFAULT so the GIS button works even
+// when VITE_GOOGLE_CLIENT_ID is unset in the build (the confirmed root cause of
+// "web Google login is down"). This is the exact web client id the server already
+// lists in its verifyIdToken audience (GOOGLE_WEB_CLIENT_ID in routes/users.ts) —
+// a client ID is NOT a secret. An env var still overrides it when present.
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID || '707085023016-etp7au34rg3cd5eks6cdu0cs0vkj1svn.apps.googleusercontent.com';
 const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID || '';
 const INSTAGRAM_APP_ID = import.meta.env.VITE_INSTAGRAM_APP_ID || '';
 
@@ -89,9 +92,13 @@ export default function Login() {
       // the WebView's FCM token here; until then the shipped app's guest-token
       // registration + the backend fallback already satisfy the requirement, so
       // we do NOT invent a window bridge the app does not have.
-      const payload = emailFilled
-        ? { email: email.trim() }
-        : { mobile: mobile.trim() };
+      // Thread the lead's NAME so the backend persists it as an unverified lead
+      // the instant a code is requested (lead capture is paramount). Additive +
+      // safe when the name field is still blank.
+      const payload = {
+        ...(name.trim() ? { name: name.trim() } : {}),
+        ...(emailFilled ? { email: email.trim() } : { mobile: mobile.trim() }),
+      };
       const { data } = await api.post('/otp/send', payload);
       setOtpSent(true);
       // Auto-fill from devOtp: email dev convenience, AND the mobile fallback OTP
@@ -190,18 +197,26 @@ export default function Login() {
       useAuth.getState().setUser(data.user);
       navigate(next);
     } catch (err) {
+      // Google login failed (token/verify error). Don't dead-end the user:
+      // surface the error AND drop them onto the register tab so the lead is
+      // never lost — they can continue with mobile/email (which has the OTP
+      // fallback). "Lead is paramount."
       showToast(apiError(err), 'error');
+      switchMode('register');
+      showToast('Google login failed — continue with mobile/email. / मोबाइल/ईमेल से जारी रखें।', 'info');
     }
   }
 
   // 'Continue with Google' click. If GIS is configured + ready, open the GIS
-  // prompt; otherwise keep the gated "setup pending" toast.
+  // prompt; otherwise fall through to the register tab instead of a dead-end
+  // toast, so a Google outage still captures the lead via mobile/email signup.
   function onGoogleClick() {
     if (GOOGLE_CLIENT_ID && gisReady && window.google?.accounts?.id) {
       window.google.accounts.id.prompt();
       return;
     }
-    showToast('Google login setup pending — admin se contact karein. / Google login setup pending — please contact admin.', 'info');
+    switchMode('register');
+    showToast('Google login unavailable — continue with mobile/email. / Google उपलब्ध नहीं — मोबाइल/ईमेल से जारी रखें।', 'info');
   }
 
   return (

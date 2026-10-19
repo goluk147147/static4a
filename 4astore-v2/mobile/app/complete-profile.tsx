@@ -26,11 +26,14 @@ export default function CompleteProfile() {
     setBusy(true);
     setError('');
     try {
-      await api.post('/users/mobile/send', {});
+      const { data } = await api.post('/users/mobile/send', {});
       setOtpSent(true);
       setOtp('');
-      // Email OTP is never auto-filled — the user reads it from their email and types it
-      // (same policy as login.tsx; the server's devOtp is ignored on real builds).
+      // Mirror web AddMobilePrompt: auto-fill the fallback OTP the backend returns
+      // when no real channel delivered (email down / no FCM device), so a Google
+      // user can still verify a mobile and clear the checkout gate during a mail
+      // outage. When email works the server omits devOtp → nothing is pre-filled.
+      if (data?.devOtp) setOtp(String(data.devOtp));
     } catch (e) {
       setError(apiError(e));
     } finally {
