@@ -22,7 +22,7 @@ datasource db {
 model User {
   id                     BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
   name                   String   @db.VarChar(120)
-  mobile                 String   @unique @db.VarChar(15)
+  mobile                 String?  @unique @db.VarChar(15)
   username               String   @unique @db.VarChar(64)
   email                  String?  @db.VarChar(190)
   recovery_email         String?  @db.VarChar(190)

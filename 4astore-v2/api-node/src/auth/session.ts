@@ -30,7 +30,7 @@ export function cookieOpts(maxAgeMs: number) {
 export function toClaims(user: {
   id: bigint;
   role: string;
-  mobile: string;
+  mobile: string | null;
   username: string;
   name: string;
   permissions: unknown;
@@ -40,7 +40,7 @@ export function toClaims(user: {
   return {
     sub: Number(user.id),
     role: user.role,
-    mobile: user.mobile,
+    mobile: user.mobile ?? '',
     username: user.username,
     name: user.name,
     permissions: perms,

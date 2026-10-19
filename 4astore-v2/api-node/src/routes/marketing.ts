@@ -14,8 +14,10 @@ const router = Router();
 // Every Marketing Center route is staff-gated on the "ads" permission.
 router.use(requireAuth, requireStaff('ads'));
 
-// App-wide "real mobile" regex: drops Google placeholder mobiles (`g…`) and any
-// non 10-digit Indian number, so every reachable row is WhatsApp-reachable.
+// App-wide "real mobile" regex: drops NULL account mobiles and legacy Google
+// placeholder mobiles (`g…`) plus any non 10-digit Indian number, so every
+// reachable row is WhatsApp-reachable. (Same rule as auth/mobileGate.isRealMobile;
+// kept inline here because every call site already String()-coerces first.)
 const REAL_MOBILE = /^[6-9]\d{9}$/;
 
 // ---------------- Marketing: customer reach list (read-only) ----------------

@@ -34,7 +34,7 @@ import { ogCrawlHandler, ogCrawlerMiddleware, ogCrawlProductHandler, ogCrawlPage
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensureProductStatusColumn, ensureProductSeoColumns, ensureProductImageColumnType, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn, ensureOtpChannelsColumn } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensureProductStatusColumn, ensureProductSeoColumns, ensureProductImageColumnType, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn, ensureOtpChannelsColumn, ensureUserMobileNullable, backfillGooglePlaceholderMobiles } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -169,6 +169,12 @@ app.listen(config.port, () => {
   // (ETag on /products + /categories). Without it the ETag never changes and all
   // clients are served stale cached data forever. (idempotent, no-migrate raw SQL).
   ensureCatalogVersionColumn().catch((e) => console.error('[seed] catalog_version column failed', e));
+  // Make users.mobile NULLable (Google sign-in stores NULL, not a `g<sub>`
+  // placeholder) THEN null any legacy `g<digits>` placeholder rows. Chained so
+  // the backfill only ever runs after the widen (idempotent, no-migrate raw SQL).
+  ensureUserMobileNullable()
+    .then(() => backfillGooglePlaceholderMobiles())
+    .catch((e) => console.error('[seed] user mobile nullable/backfill failed', e));
   startReminderJob();
   startVideoScheduler();
   startSeoAuditJob(); // 15-min SEO audit sweep + queue recovery (recoverSeoQueue runs inside)

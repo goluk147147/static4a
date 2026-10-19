@@ -810,6 +810,57 @@ export async function ensureProductImageColumnType(): Promise<void> {
 }
 
 /**
+ * Ensure the users.mobile column is NULLable (keeping its UNIQUE index).
+ *
+ * Google sign-in no longer mints a synthetic `g<sub>` placeholder mobile — a
+ * brand-new Google user is created with mobile = NULL and sets a real number
+ * later via the EMAIL-OTP /users/mobile/verify flow. For that NULL to be
+ * storable the column must drop its NOT NULL constraint.
+ *
+ * State-guarded (not presence-guarded): the column already exists, so we read
+ * IS_NULLABLE from information_schema and only MODIFY while it is still 'NO',
+ * making re-runs a no-op. This is a MODIFY, not an ADD, so there is NO 1060
+ * duplicate-column case to swallow — any error is a real failure and propagates.
+ * Mirrors ensureProductImageColumnType: $executeRawUnsafe, NO prisma migrate /
+ * db push. Mirrored on the Prisma User model (mobile String?). Manual
+ * equivalent: prisma/user-mobile-nullable.sql.
+ */
+export async function ensureUserMobileNullable(): Promise<void> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ is_nullable: string }>>(
+    `SELECT IS_NULLABLE AS is_nullable FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'mobile'`
+  );
+  const nullable = String(rows?.[0]?.is_nullable ?? '').toUpperCase();
+  // Already nullable → nothing to do.
+  if (nullable === 'YES') return;
+  await prisma.$executeRawUnsafe(
+    'ALTER TABLE users MODIFY mobile VARCHAR(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL'
+  );
+}
+
+/**
+ * One-time backfill: NULL out every legacy Google placeholder mobile.
+ *
+ * Older Google sign-ins stored a synthetic `g<digits>` value (e.g. the Google
+ * `sub`) in users.mobile. Those are not real, reachable numbers, so they are
+ * reset to NULL and the account is prompted to add a real mobile. The
+ * `^g[0-9]+$` pattern can NEVER match a real Indian 6-9 number, so no genuine
+ * mobile is ever touched. MUST run only AFTER ensureUserMobileNullable() has
+ * widened the column (writing NULL into a NOT NULL column would error).
+ * Idempotent: after the first run no `g<digits>` rows remain. Manual
+ * equivalent: prisma/user-mobile-nullable.sql.
+ */
+export async function backfillGooglePlaceholderMobiles(): Promise<void> {
+  const affected = await prisma.$executeRawUnsafe(
+    "UPDATE users SET mobile = NULL WHERE mobile REGEXP '^g[0-9]+$'"
+  );
+  if (Number(affected) > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[seed] nulled ${Number(affected)} legacy Google placeholder mobile(s)`);
+  }
+}
+
+/**
  * Ensure the POS-wide toggle columns exist on the `settings` table and seed a
  * default store_address when blank. `settings` is a raw-SQL table (not a Prisma
  * model) — consistent with the repo. Mirrors ensureMasterPasswordColumn(): each

@@ -8,6 +8,7 @@ import { ok, fail } from '../utils/http';
 import { requireAuth } from '../auth/middleware';
 import { serviceableVillage, currentLocationServiceable } from '../utils/serviceability';
 import { notifyStaffNewOrder } from '../services/push';
+import { isRealMobile } from '../auth/mobileGate';
 
 const router = Router();
 
@@ -89,6 +90,31 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/orders/mine — the logged-in customer's own orders, owned by account id.
+// Identity is the JWT sub (user_id), NEVER the mobile. Registered ABOVE '/:orderId'
+// so "mine" is not captured as an :orderId param. When the viewer has a real
+// account mobile we ALSO match the legacy `customer -> '$.mobile'` JSON-path so
+// orders placed before user_id was stamped (or with their own number) still show;
+// a NULL/placeholder-mobile account lists strictly by user_id.
+router.get('/mine', requireAuth, async (req: Request, res: Response) => {
+  const viewer = req.user!;
+  if (!viewer.sub) return fail(res, 'Login required', 401);
+  const where = isRealMobile(viewer.mobile)
+    ? {
+        OR: [
+          { user_id: BigInt(viewer.sub) },
+          { customer: { path: '$.mobile', equals: viewer.mobile } },
+        ],
+      }
+    : { user_id: BigInt(viewer.sub) };
+  try {
+    const orders = await prisma.order.findMany({ where, orderBy: { id: 'desc' } });
+    return ok(res, { orders });
+  } catch {
+    return fail(res, 'Could not load orders', 500);
+  }
+});
+
 // POST /api/orders — place an order (customer).
 const itemSchema = z.object({
   id: z.number(),
@@ -145,6 +171,11 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   const parsed = saveSchema.safeParse(req.body);
   if (!parsed.success) return fail(res, 'Invalid order data', 422);
   const o = parsed.data.order;
+  // Authoritative checkout gate: the ACCOUNT must have a real, reachable mobile
+  // before any order (pending or confirm) is placed. A Google sign-in starts with
+  // a NULL account mobile and must verify a real number via /users/mobile/verify.
+  const me = await prisma.user.findUnique({ where: { id: BigInt(req.user!.sub) } });
+  if (!me || !isRealMobile(me.mobile)) return fail(res, 'Add and verify your mobile number before placing an order.', 403);
   const c = o.customer;
 
   // Two-phase lifecycle. A 'pending' phase (Proceed tapped, not yet paid) creates the lead with
@@ -164,7 +195,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   // Ownership is the logged-in account (user_id = JWT sub), NOT the delivery phone.
   // customer.mobile is the receiver's phone from the address form and may legitimately
   // differ from the account mobile (saved address for family, Google users whose account
-  // mobile is a `g<digits>` placeholder, a JWT minted before /users/mobile/verify).
+  // mobile was still NULL, a JWT minted before /users/mobile/verify).
   // Comparing them blocked valid orders with "Order owner mismatch".
   // Guard instead against re-saving (upserting) an orderId that belongs to someone else.
   if (o.orderId) {

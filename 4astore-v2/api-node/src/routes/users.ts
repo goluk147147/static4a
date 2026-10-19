@@ -155,22 +155,23 @@ type GooglePayload = TokenPayload;
 
 /**
  * Create a brand-new local user from a verified Google payload. Derives a
- * unique username + a non-colliding mobile placeholder (prefixed 'g' so it can
- * never match the /^[6-9]\d{9}$/ register regex). Retries on Prisma P2002
- * (unique constraint) by re-suffixing both so it never crashes under a race.
+ * unique username and stores mobile = NULL — a Google sign-in has no real
+ * mobile at creation (the user adds one later via the EMAIL-OTP
+ * /users/mobile/verify flow). No synthetic `g<sub>` placeholder is minted.
+ * Retries on Prisma P2002 (unique constraint) by re-suffixing the USERNAME only
+ * so it never crashes under a race; mobile stays NULL (MySQL permits many NULLs
+ * under a UNIQUE index, so NULL never collides).
  */
 async function createGoogleUser(p: GooglePayload) {
   const email = p.email as string;
   let base = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
   if (base.length < 3) base = (base + 'usr').slice(0, 3) || 'usr';
-  const mobileBase = ('g' + String(p.sub || '').replace(/\D/g, '')).slice(0, 15);
   const password = bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10);
 
   let lastErr: unknown = null;
   for (let i = 0; i < 5; i++) {
     const suffix = i === 0 ? '' : String(i);
     const username = (base + suffix).slice(0, 64);
-    const mobile = (mobileBase + suffix).slice(0, 15);
     try {
       return await prisma.user.create({
         data: {
@@ -179,7 +180,7 @@ async function createGoogleUser(p: GooglePayload) {
           recovery_email: email,
           recovery_email_verified: true,
           username,
-          mobile,
+          mobile: null,
           password,
           role: 'customer',
           registered_at: new Date(),
@@ -187,7 +188,8 @@ async function createGoogleUser(p: GooglePayload) {
         },
       });
     } catch (err) {
-      // P2002 = unique constraint violation → re-suffix username/mobile and retry.
+      // P2002 = unique constraint violation → re-suffix the USERNAME and retry
+      // (mobile is NULL and never collides).
       if (err && typeof err === 'object' && (err as { code?: string }).code === 'P2002') {
         lastErr = err;
         continue;
