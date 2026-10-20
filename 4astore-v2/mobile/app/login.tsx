@@ -6,6 +6,7 @@ import StoreHeader from '../src/components/StoreHeader';
 import { AnimatedGradient, Button, Card, Field, GradientButton, PasswordField, Screen, styles as ui } from '../src/components/ui';
 import { useAuth, isOrderStaff, isRider } from '../src/store/auth';
 import { api, apiError } from '../src/api';
+import { buildSignupOtpPayload, isValidMobile } from '../src/signupOtp';
 import { registerForPush } from '../src/push';
 import { showToast } from '../src/store/ui';
 import { GOOGLE_WEB_CLIENT_ID } from '../src/config';
@@ -62,9 +63,13 @@ export default function Login() {
     setBusy(true);
     setError('');
     try {
-      // Thread the lead's NAME so the backend persists it as an unverified lead
-      // the instant a code is requested (lead capture is paramount). Additive.
-      const { data } = await api.post('/otp/send', { email: email.trim(), ...(name.trim() ? { name: name.trim() } : {}) });
+      // MOBILE-FIRST signup: a rural user usually has NO email, and SMTP is down,
+      // so we send the MOBILE as the identifier when no email was given. The body
+      // carries the SAME identifier /register verifies against (email when given,
+      // else mobile — see src/signupOtp.ts) so the /otp/send and /register keys
+      // never mismatch. The lead's NAME is threaded so the backend persists it as
+      // an unverified lead the instant a code is requested (lead is paramount).
+      const { data } = await api.post('/otp/send', buildSignupOtpPayload({ email, mobile, name }));
       setOtpSent(true);
       setOtp('');
       // Mirror web: auto-fill the fallback OTP the backend returns ONLY when no
@@ -225,15 +230,34 @@ export default function Login() {
               <Field label="Mobile (10-digit)" value={mobile} onChangeText={(t) => setMobile(t.replace(/\D/g, ''))} keyboardType="phone-pad" maxLength={10} />
               <Field label="Username" value={regUser} onChangeText={setRegUser} autoCapitalize="none" />
               <PasswordField label="Password (4+ chars)" value={password} onChangeText={setPassword} />
-              <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-              <Button title={otpSent ? 'Resend OTP' : 'Send OTP'} outline onPress={sendOtp} disabled={busy || !email} style={{ marginBottom: space.md }} />
+              <Field label="Email (optional)" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+              {/* Enable 'Send OTP' as soon as a VALID 10-digit mobile is present — a
+                  mobile-only user (no email, the norm) must be able to request a code.
+                  Email still works too; the identifier is chosen in buildSignupOtpPayload. */}
+              <Button title={otpSent ? 'Resend OTP' : 'Send OTP'} outline onPress={sendOtp} disabled={busy || !isValidMobile(mobile)} style={{ marginBottom: space.md }} />
               {otpSent && (
                 <>
-                  <Text style={[ui.muted, { marginBottom: 6 }]}>📧 OTP aapke email par bheja gaya hai. Email check karke 6 ankon ka code daalein.</Text>
-                  <Field label="Email OTP" value={otp} onChangeText={(t) => setOtp(t.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} textContentType="oneTimeCode" autoComplete="sms-otp" />
+                  {/* When the user gave NO email the code travelled the mobile path, where
+                      the server auto-fills the fallback code into the field — so tell them
+                      it's set, not to "check their email" they never gave. */}
+                  <Text style={[ui.muted, { marginBottom: 6 }]}>
+                    {email.trim()
+                      ? '📧 OTP aapke email par bheja gaya hai. Email check karke 6 ankon ka code daalein.'
+                      : '✅ Aapka verification code set ho gaya — Create Account dabayein. / Your verification code is set — tap Create Account.'}
+                  </Text>
+                  <Field label="OTP" value={otp} onChangeText={(t) => setOtp(t.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={6} textContentType="oneTimeCode" autoComplete="sms-otp" />
                 </>
               )}
-              <GradientButton title={busy ? 'Please wait…' : 'Create Account'} onPress={doRegister} loading={busy} disabled={!otpSent} style={{ marginTop: space.sm }} />
+              {/* Guard the Create Account button so the user gets inline-disabled feedback
+                  instead of a server 422: the backend registerSchema requires name + valid
+                  10-digit mobile + username + password, plus a sent OTP. */}
+              <GradientButton
+                title={busy ? 'Please wait…' : 'Create Account'}
+                onPress={doRegister}
+                loading={busy}
+                disabled={!otpSent || !name.trim() || !isValidMobile(mobile) || !regUser.trim() || !password}
+                style={{ marginTop: space.sm }}
+              />
               <Pressable onPress={() => switchMode('login')} style={styles.switchLink} accessibilityRole="button">
                 <Text style={ui.muted}>Already have an account? <Text style={styles.linkStrong}>Login</Text></Text>
               </Pressable>
