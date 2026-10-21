@@ -29,6 +29,7 @@ export const ADMIN_TABS = [
   { path: 'pages', key: 'settings', icon: '📄', label: 'Pages', title: '📄 Pages (Privacy, Terms, Help…)' },
   { path: 'team', key: 'team', icon: '🔐', label: 'Team Access', title: '🔐 Team Access' },
   { path: 'notify', key: 'ads', icon: '🔔', label: 'Push Notifications', title: '🔔 Push Notifications' },
+  { path: 'email', key: 'ads', icon: '✉️', label: 'Send Email', title: '✉️ Send Email' },
   { path: 'marketing', key: 'ads', icon: '📣', label: 'Marketing', title: '📣 Marketing (WhatsApp)' },
   { path: 'links', key: 'ads', icon: '🔗', label: 'Short Links', title: '🔗 Short Links' },
   // POS / in-store counter (design §3–§8). The canAdmin(role,perms,key) filter

@@ -22,6 +22,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminBanners from './pages/admin/AdminBanners';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminNotify from './pages/admin/AdminNotify';
+import AdminEmail from './pages/admin/AdminEmail';
 import AdminMarketing from './pages/admin/AdminMarketing';
 import AdminLinks from './pages/admin/AdminLinks';
 import AdminPending from './pages/admin/AdminPending';
@@ -83,6 +84,7 @@ export default function App() {
         <Route path="team" element={<AdminTeam />} />
         <Route path="pages" element={<AdminPages />} />
         <Route path="notify" element={<AdminNotify />} />
+        <Route path="email" element={<AdminEmail />} />
         <Route path="marketing" element={<AdminMarketing />} />
         <Route path="links" element={<AdminLinks />} />
         <Route path="pos" element={<AdminPos />} />

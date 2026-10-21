@@ -110,3 +110,55 @@ export function renderOtpEmail(input: OtpEmailInput): { text: string; html: stri
 
   return renderBrandedEmail({ heading: input.title, bodyHtml, bodyText: input.note });
 }
+
+export interface BroadcastEmailInput {
+  /** The admin-entered subject/heading shown under the logo. */
+  title: string;
+  /** The admin-entered message body; newlines are preserved as <br> in HTML. */
+  description: string;
+  /**
+   * Optional absolute http(s) image URL (PNG/JPG). A `data:`/relative/empty
+   * value is ignored so emails never embed an unreachable or inline image —
+   * the caller (server) is responsible for absolutizing before passing it in.
+   */
+  imageUrl?: string;
+  /** Optional absolute unsubscribe URL embedded in the HTML + text footer. */
+  unsubscribeUrl?: string;
+}
+
+/**
+ * Build the branded admin broadcast email (title + description + optional image)
+ * reusing the SAME logo header/footer/brand wrapper as every other 4A Store
+ * email. Returns BOTH the HTML and the plain-text fallback so the caller can
+ * pass them straight to sendMail. The image is embedded ONLY when `imageUrl` is
+ * a non-empty absolute http(s) URL (never a `data:` URI). When `unsubscribeUrl`
+ * is given, a small opt-out line is appended to both the HTML and the text.
+ */
+export function renderBroadcastEmail(input: BroadcastEmailInput): { text: string; html: string } {
+  const title = esc(input.title);
+  // Preserve the admin's line breaks: escape each line, join with <br>.
+  const descHtml = esc(input.description).replace(/\r\n|\r|\n/g, '<br>');
+
+  const img = (input.imageUrl || '').trim();
+  const useImage = /^https?:\/\//i.test(img);
+  const unsub = (input.unsubscribeUrl || '').trim();
+
+  const imageHtml = useImage
+    ? `<img src="${img}" alt="${title}" width="100%" style="display:block;border:0;outline:none;text-decoration:none;max-width:100%;height:auto;border-radius:8px;margin:0 0 20px 0;">`
+    : '';
+
+  const bodyHtml =
+    imageHtml +
+    `<p style="margin:0;font-size:15px;line-height:1.6;color:#333333;">${descHtml}</p>` +
+    (unsub
+      ? `<p style="margin:24px 0 0 0;font-size:12px;line-height:1.5;color:#999999;">` +
+        `If you no longer wish to receive these emails, ` +
+        `<a href="${unsub}" style="color:#999999;text-decoration:underline;">unsubscribe here</a>.` +
+        `</p>`
+      : '');
+
+  let bodyText = `${input.title}\n\n${input.description}`;
+  if (unsub) bodyText += `\n\nUnsubscribe: ${unsub}`;
+
+  return renderBrandedEmail({ heading: input.title, bodyHtml, bodyText });
+}

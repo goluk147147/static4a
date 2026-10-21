@@ -33,6 +33,44 @@ const GOOGLE_ANDROID_CLIENT_ID =
   process.env.GOOGLE_ANDROID_CLIENT_ID || '707085023016-pc4gc5271kquti6recqo9juor3p44dn9.apps.googleusercontent.com';
 const googleClient = new OAuth2Client();
 
+// ---------- GET /api/users/unsubscribe?u=<userId> ----------
+// Public, no auth. Flips ONLY users.marketing_opt_out=true for the given id so
+// the unsubscribe link embedded in broadcast emails works from any email client
+// (one GET, no login). Returns a tiny branded HTML confirmation. Never leaks
+// whether the id exists: a missing/invalid id and a not-found row both render
+// the same generic success page (a bad id just shows a small 400 page).
+function unsubscribePage(message: string, status: number): { status: number; html: string } {
+  const html =
+    `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">` +
+    `<meta name="viewport" content="width=device-width, initial-scale=1">` +
+    `<title>4A Store</title></head>` +
+    `<body style="margin:0;padding:40px 16px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;">` +
+    `<div style="max-width:420px;margin:0 auto;background:#fff;border:1px solid #eee;border-radius:12px;padding:28px 24px;text-align:center;">` +
+    `<div style="background:#ff7a00;border-radius:8px;padding:14px;margin:-28px -24px 20px -24px;">` +
+    `<img src="https://4astore.com/legacy/images/logo.png" alt="4A Store" width="110" style="display:inline-block;border:0;height:auto;max-width:110px;"></div>` +
+    `<p style="font-size:15px;line-height:1.6;color:#333;margin:0;">${message}</p>` +
+    `</div></body></html>`;
+  return { status, html };
+}
+
+router.get('/unsubscribe', async (req: Request, res: Response) => {
+  const u = Number(req.query.u);
+  if (!Number.isInteger(u) || u <= 0) {
+    const page = unsubscribePage('Invalid unsubscribe link.', 400);
+    return res.status(page.status).type('html').send(page.html);
+  }
+  // Treat a missing row (P2025) the same as success so we never reveal whether
+  // the id exists. Only marketing_opt_out is touched — nothing else is exposed.
+  await prisma.user
+    .update({ where: { id: BigInt(u) }, data: { marketing_opt_out: true } })
+    .catch(() => null);
+  const page = unsubscribePage(
+    "You've been unsubscribed from 4A Store marketing emails. You'll still get important order updates.",
+    200,
+  );
+  return res.status(page.status).type('html').send(page.html);
+});
+
 // ---------- POST /api/users/register ----------
 // `email` is OPTIONAL: a rural user may sign up by MOBILE alone. The signup OTP
 // is verified against the email key when an email was given, otherwise against

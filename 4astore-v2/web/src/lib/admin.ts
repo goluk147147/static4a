@@ -468,6 +468,31 @@ export async function sendBroadcast(target: string, title: string, body: string,
   return (await api.post('/push/send', { target, title, body, link, image, productId })).data;
 }
 
+// ---- Email broadcast ----
+// POST /api/admin/email/broadcast — branded email (title + description + image)
+// to every real-email customer. Returns an honest sent/failed/total summary
+// (never errors on an SMTP outage; a run where every send fails is sent:0).
+export interface EmailBroadcastResult {
+  sent: number;
+  failed: number;
+  total: number;
+  message?: string;
+}
+export async function sendEmailBroadcast(payload: {
+  title: string;
+  description: string;
+  imageUrl?: string;
+  target: 'all' | 'customers';
+}): Promise<EmailBroadcastResult> {
+  const d = (await api.post('/admin/email/broadcast', payload)).data;
+  return {
+    sent: Number(d.sent) || 0,
+    failed: Number(d.failed) || 0,
+    total: Number(d.total) || 0,
+    message: d.message,
+  };
+}
+
 // ---- Notification history (GET /api/admin/notifications) ----
 export interface AdminNotification {
   id: number;

@@ -11,7 +11,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderOtpEmail, renderBrandedEmail, EMAIL_LOGO_URL } from '../utils/emailTemplate';
+import { renderOtpEmail, renderBrandedEmail, renderBroadcastEmail, EMAIL_LOGO_URL } from '../utils/emailTemplate';
 
 test('renderOtpEmail embeds the PNG logo URL (never the .svg)', () => {
   const { html } = renderOtpEmail({ title: 'Verify your email', otp: '123456', note: 'Your 4A Store OTP is 123456.' });
@@ -42,4 +42,45 @@ test('renderBrandedEmail returns the plain-text body as the text fallback', () =
   });
   assert.equal(text, 'Body plain text', 'text must be the bodyText fallback');
   assert.ok(html.includes('Body') && html.includes('Hello'), 'html must contain the heading and body');
+});
+
+/* ---------- renderBroadcastEmail (admin email broadcast) ---------- */
+
+test('renderBroadcastEmail HTML contains title, description, image URL and the PNG logo (not svg)', () => {
+  const { html } = renderBroadcastEmail({
+    title: 'Diwali Dhamaka',
+    description: 'Flat 20% off on everything today!',
+    imageUrl: 'https://4astore.com/api/uploads/banners/sale.png',
+  });
+  assert.ok(html.includes('Diwali Dhamaka'), 'html must contain the title');
+  assert.ok(html.includes('Flat 20% off on everything today!'), 'html must contain the description');
+  assert.ok(html.includes('https://4astore.com/api/uploads/banners/sale.png'), 'html must embed the image URL');
+  assert.ok(html.includes('<img'), 'html must include an image tag for the banner');
+  assert.ok(html.includes('https://4astore.com/legacy/images/logo.png'), 'html must reference the PNG logo');
+  assert.ok(!html.includes('logo.svg'), 'html must NOT reference the SVG logo');
+});
+
+test('renderBroadcastEmail text fallback contains the title and description', () => {
+  const { text } = renderBroadcastEmail({ title: 'Big Sale', description: 'Up to 50% off.' });
+  assert.ok(text.includes('Big Sale'), 'text fallback must contain the title');
+  assert.ok(text.includes('Up to 50% off.'), 'text fallback must contain the description');
+});
+
+test('renderBroadcastEmail embeds the unsubscribe link in BOTH html and text when given', () => {
+  const unsubscribeUrl = 'https://4astore.com/api/users/unsubscribe?u=42';
+  const { html, text } = renderBroadcastEmail({
+    title: 'Hello',
+    description: 'A message.',
+    unsubscribeUrl,
+  });
+  assert.ok(html.includes(unsubscribeUrl), 'html must contain the unsubscribe URL');
+  assert.ok(text.includes(unsubscribeUrl), 'text fallback must contain the unsubscribe URL');
+});
+
+test('renderBroadcastEmail never embeds a data: or empty image as an <img src>', () => {
+  const dataUri = renderBroadcastEmail({ title: 'T', description: 'D', imageUrl: 'data:image/png;base64,AAAA' });
+  assert.ok(!dataUri.html.includes('<img src="data:'), 'must not embed a data: URI image');
+  const none = renderBroadcastEmail({ title: 'T', description: 'D', imageUrl: '' });
+  // The logo <img> is always present, but there must be no body banner image.
+  assert.ok(!none.html.includes('alt="T"'), 'empty imageUrl must not render a banner image');
 });

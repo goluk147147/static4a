@@ -17,6 +17,10 @@ import { slugify } from '../utils/slug';
 import { runProductSeo, runCategorySeo } from '../seo/persist';
 import { createShortLinkForProduct } from '../services/shortLink';
 import { parseOtpChannels } from '../services/otpChannelPolicy';
+import { sendMail } from '../utils/mailer';
+import { renderBroadcastEmail } from '../utils/emailTemplate';
+import { selectEmailRecipients, absolutizeImageUrl } from '../services/emailBroadcast';
+import { SITE_ORIGIN, API_ORIGIN } from '../seo/origin';
 
 const router = Router();
 
@@ -442,6 +446,70 @@ router.post('/banners/upload', requireAuth, requireStaff('banners'), async (req:
   const name = `banner_${stamp}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
   await fs.promises.writeFile(path.join(BANNER_DIR, name), buf);
   return ok(res, { url: `/api/uploads/banners/${name}` });
+});
+
+// ---------------- Email broadcast ----------------
+// POST /api/admin/email/broadcast — admin composes a TITLE + DESCRIPTION +
+// optional IMAGE and emails it, branded, to every real-email customer. Guarded
+// on the same 'ads' permission as Push/Marketing. Audience is tiny (~20), so a
+// simple sequential loop with a small delay is used (no batching). SMTP failure
+// NEVER 500s: a run where every send fails returns 200 with sent:0 — an honest
+// summary — so a mail outage degrades gracefully instead of erroring the UI.
+const emailBroadcastSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  description: z.string().trim().min(1).max(5000),
+  imageUrl: z.string().trim().max(500).optional(),
+  target: z.enum(['all', 'customers']).default('all'),
+});
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+router.post('/email/broadcast', requireAuth, requireStaff('ads'), async (req: Request, res: Response) => {
+  const parsed = emailBroadcastSchema.safeParse(req.body || {});
+  if (!parsed.success) return fail(res, 'Title (1–160) and description (1–5000) are required', 422);
+  const { title, description, imageUrl, target } = parsed.data;
+
+  // Load candidate users; selection (real email, opt-out, segment, de-dupe) is a
+  // pure function so it is unit-tested without a DB. BigInt id → Number for the
+  // per-recipient unsubscribe link.
+  const rows = await prisma.user.findMany({
+    select: { id: true, email: true, recovery_email: true, role: true, marketing_opt_out: true },
+  });
+  const users = rows.map((u) => ({
+    id: Number(u.id),
+    email: u.email,
+    recovery_email: u.recovery_email,
+    role: u.role,
+    marketing_opt_out: u.marketing_opt_out,
+  }));
+  const recipients = selectEmailRecipients(users, target);
+
+  const absImg = absolutizeImageUrl(imageUrl, SITE_ORIGIN, API_ORIGIN);
+
+  let sent = 0;
+  let failed = 0;
+  for (const r of recipients) {
+    const unsubscribeUrl = `${API_ORIGIN}/users/unsubscribe?u=${r.id}`;
+    const { text, html } = renderBroadcastEmail({ title, description, imageUrl: absImg, unsubscribeUrl });
+    try {
+      const result = await sendMail(r.email, title, text, html);
+      if (result.ok) sent += 1;
+      else failed += 1;
+    } catch {
+      // sendMail is documented never to throw, but belt-and-suspenders: one bad
+      // send must never abort the whole broadcast.
+      failed += 1;
+    }
+    // Tiny delay to stay gentle on the SMTP relay (audience is ~20, no batching).
+    await sleep(150);
+  }
+
+  const total = recipients.length;
+  const message =
+    total === 0
+      ? 'No eligible recipients (no customers with a real email, or all opted out).'
+      : `Email sent to ${sent} of ${total} recipient(s)${failed ? `, ${failed} failed` : ''}.`;
+  return ok(res, { sent, failed, total, message });
 });
 
 // ---------------- Announcement ----------------
