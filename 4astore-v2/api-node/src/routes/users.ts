@@ -18,6 +18,7 @@ import {
   ACCESS_COOKIE,
 } from '../auth/session';
 import { sendMail } from '../utils/mailer';
+import { renderOtpEmail } from '../utils/emailTemplate';
 import { deliverSetMobileOtp } from '../services/otpDelivery';
 
 const router = Router();
@@ -348,10 +349,16 @@ router.post('/forgot-password/send', async (req: Request, res: Response) => {
     await prisma.emailOtp.create({
       data: { email: target.toLowerCase(), otp, purpose: 'reset', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
     });
+    const mail = renderOtpEmail({
+      title: 'Reset your password',
+      otp,
+      note: `Your 4A Store password reset code is ${otp}. It expires in 10 minutes. If you did not request this, ignore this email.`,
+    });
     const sent = await sendMail(
       target,
       '4A Store password reset code',
-      `Your 4A Store password reset code is ${otp}. It expires in 10 minutes. If you did not request this, ignore this email.`
+      mail.text,
+      mail.html
     );
     // Enumeration-safety: this endpoint is deliberately generic — surfacing a
     // delivery failure here would reveal that a matching account exists (only a
@@ -431,7 +438,12 @@ router.post('/recovery-email/send', requireAuth, async (req: Request, res: Respo
   await prisma.emailOtp.create({
     data: { email, otp, purpose: 'recovery', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
   });
-  const sent = await sendMail(email, '4A Store recovery email code', `Your 4A Store verification code is ${otp}. It expires in 10 minutes.`);
+  const recoveryMail = renderOtpEmail({
+    title: 'Verify your recovery email',
+    otp,
+    note: `Your 4A Store verification code is ${otp}. It expires in 10 minutes.`,
+  });
+  const sent = await sendMail(email, '4A Store recovery email code', recoveryMail.text, recoveryMail.html);
   if (!sent.ok) return fail(res, "We couldn't send the verification code by email right now. Please try again shortly or contact support.", 503);
   return ok(res, { message: 'Code sent', devOtp: config.env !== 'production' ? otp : undefined });
 });

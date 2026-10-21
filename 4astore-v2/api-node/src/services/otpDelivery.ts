@@ -25,6 +25,7 @@
  * ------------------------------------------------------------------ */
 import { prisma } from '../db';
 import { sendMail } from '../utils/mailer';
+import { renderOtpEmail } from '../utils/emailTemplate';
 import { sendWhatsAppTemplateMessage, buildImageTextComponents } from './whatsappCloud';
 import { sendToTokens, tokensForUser } from './push';
 import { parseOtpChannels, resolveMobileChannelOrder } from './otpChannelPolicy';
@@ -166,10 +167,17 @@ export async function deliverSignupOtp(input: DeliverSignupOtpInput): Promise<De
     await prisma.emailOtp.create({
       data: { email: otpKey, otp, purpose: 'signup', expires_at: new Date(Date.now() + 10 * 60 * 1000) },
     });
+    // Branded HTML (logo + OTP) with the SAME plain-text body as the fallback.
+    const mail = renderOtpEmail({
+      title: 'Verify your email',
+      otp,
+      note: `Your 4A Store OTP is ${otp}. It expires in 10 minutes.`,
+    });
     const sent = await sendMail(
       email,
       'Your 4A Store verification code',
-      `Your 4A Store OTP is ${otp}. It expires in 10 minutes.`
+      mail.text,
+      mail.html
     );
     // "User never stuck" fallback (mirrors the MOBILE path below): when the email
     // actually DELIVERED we never leak the OTP (fallbackOtp stays undefined except
@@ -272,10 +280,16 @@ export async function deliverSetMobileOtp(input: DeliverSetMobileOtpInput): Prom
 
   // Channel 1 — EMAIL (first, so a working mailbox still gets it). The otpKey IS
   // the user's recovery/primary email, so it is a valid send target.
+  const mail = renderOtpEmail({
+    title: 'Verify your mobile number',
+    otp,
+    note: `Your 4A Store code is ${otp}. It expires in 10 minutes.`,
+  });
   const sent = await sendMail(
     otpKey,
     '4A Store mobile verification code',
-    `Your 4A Store code is ${otp}. It expires in 10 minutes.`
+    mail.text,
+    mail.html
   );
   if (sent.ok) return { delivered: true, channel: 'email', fallbackOtp: undefined };
 
