@@ -482,7 +482,8 @@ export async function sendEmailBroadcast(payload: {
   title: string;
   description: string;
   imageUrl?: string;
-  target: 'all' | 'customers';
+  target: 'all' | 'customers' | 'selected';
+  userIds?: number[];
 }): Promise<EmailBroadcastResult> {
   const d = (await api.post('/admin/email/broadcast', payload)).data;
   return {
@@ -491,6 +492,42 @@ export async function sendEmailBroadcast(payload: {
     total: Number(d.total) || 0,
     message: d.message,
   };
+}
+
+// GET /api/admin/email/recipients?q= — email-only user search for the
+// "Specific users" multi-select. The endpoint returns ONLY users that HAVE a
+// real email, so the UI inherently shows only emailable users.
+export interface SearchedEmailRecipient {
+  id: number;
+  name: string;
+  email: string;
+  mobile: string;
+}
+export async function searchEmailRecipients(q: string): Promise<SearchedEmailRecipient[]> {
+  const res = (await api.get('/admin/email/recipients', { params: { q } })).data;
+  return (res.recipients as SearchedEmailRecipient[]) || [];
+}
+
+// GET /api/admin/email/history — recent email broadcasts, newest-first, each
+// with the per-recipient delivery list (sent/failed).
+export interface EmailBroadcastRecipient {
+  email: string;
+  name: string;
+  status: 'sent' | 'failed';
+}
+export interface EmailBroadcastRecord {
+  id: number;
+  title: string;
+  target: string;
+  sent: number;
+  failed: number;
+  total: number;
+  createdAt: string;
+  recipients: EmailBroadcastRecipient[];
+}
+export async function fetchEmailHistory(params: { limit?: number } = {}): Promise<EmailBroadcastRecord[]> {
+  const res = (await api.get('/admin/email/history', { params })).data;
+  return (res.broadcasts as EmailBroadcastRecord[]) || [];
 }
 
 // ---- Notification history (GET /api/admin/notifications) ----

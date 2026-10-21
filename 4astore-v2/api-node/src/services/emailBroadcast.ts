@@ -10,8 +10,10 @@
 /** The minimal shape the selector reads off a user row (DB-agnostic). */
 export interface BroadcastUser {
   id: number;
+  name?: string | null;
   email?: string | null;
   recovery_email?: string | null;
+  mobile?: string | null;
   role?: string | null;
   marketing_opt_out?: boolean | null;
 }
@@ -20,6 +22,21 @@ export interface BroadcastUser {
 export interface EmailRecipient {
   id: number;
   email: string;
+  /** Display name (best-effort), carried through to the per-recipient sent record. */
+  name?: string | null;
+}
+
+/**
+ * A searched recipient surfaced in the admin multi-select — a user that HAS a
+ * real email (users without one are never returned). `email` is the RESOLVED
+ * email (see pickRealEmail), `name`/`mobile` are display helpers (empty string
+ * when the DB value is null).
+ */
+export interface SearchedRecipient {
+  id: number;
+  name: string;
+  email: string;
+  mobile: string;
 }
 
 /** Who the broadcast targets. 'customers' == only role 'customer'. */
@@ -64,7 +81,65 @@ export function selectEmailRecipients(users: BroadcastUser[], target: BroadcastT
     const key = email.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ id: u.id, email });
+    out.push({ id: u.id, email, name: u.name ?? null });
+  }
+  return out;
+}
+
+/**
+ * Pure email-only user search for the admin multi-select. Returns up to `limit`
+ * NON-STAFF users that HAVE a real email (see pickRealEmail), matching `q`
+ * (case-insensitive "contains") against the name, the RESOLVED email, or the
+ * mobile. An empty `q` returns the first `limit` eligible users. De-duplicated
+ * by lowercased email (first user wins). CRITICAL: a user without a real email
+ * is NEVER returned — this is the single source of truth shared with the send
+ * paths (same pickRealEmail + STAFF_ROLES as selectEmailRecipients).
+ */
+export function searchEmailRecipients(users: BroadcastUser[], q: string, limit = 30): SearchedRecipient[] {
+  const needle = (q || '').trim().toLowerCase();
+  const seen = new Set<string>();
+  const out: SearchedRecipient[] = [];
+  for (const u of users) {
+    const role = (u.role || 'customer').trim();
+    if (STAFF_ROLES.has(role)) continue;
+    const email = pickRealEmail(u);
+    if (!email) continue;
+    const key = email.toLowerCase();
+    if (seen.has(key)) continue;
+    const name = (u.name || '').trim();
+    const mobile = (u.mobile || '').trim();
+    if (needle !== '') {
+      const hay = `${name}\u0000${email}\u0000${mobile}`.toLowerCase();
+      if (!hay.includes(needle)) continue;
+    }
+    seen.add(key);
+    out.push({ id: u.id, name, email, mobile });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+/**
+ * Resolve an explicit list of user ids to send-ready recipients. Keeps ONLY the
+ * given ids that have a real email (see pickRealEmail) AND are not
+ * marketing_opt_out, de-duplicated by lowercased email (first match wins, in the
+ * order the users appear). Uses the SAME real-email + opt-out rule as
+ * selectEmailRecipients so 'selected' sends agree with 'all'/'customers'. An id
+ * without a real email is silently dropped (never sent to).
+ */
+export function selectRecipientsByIds(users: BroadcastUser[], ids: number[]): EmailRecipient[] {
+  const wanted = new Set(ids.map((n) => Number(n)));
+  const seen = new Set<string>();
+  const out: EmailRecipient[] = [];
+  for (const u of users) {
+    if (!wanted.has(Number(u.id))) continue;
+    if (u.marketing_opt_out === true) continue;
+    const email = pickRealEmail(u);
+    if (!email) continue;
+    const key = email.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ id: u.id, email, name: u.name ?? null });
   }
   return out;
 }

@@ -34,7 +34,7 @@ import { ogCrawlHandler, ogCrawlerMiddleware, ogCrawlProductHandler, ogCrawlPage
 import { startVideoScheduler } from './services/videoScheduler';
 import { startReminderJob } from './services/reminderJob';
 import { startSeoAuditJob } from './services/seoAuditJob';
-import { seedDefaultOwner, ensureNotificationTables, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensureProductStatusColumn, ensureProductSeoColumns, ensureProductImageColumnType, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn, ensureOtpChannelsColumn, ensureUserMobileNullable, backfillGooglePlaceholderMobiles } from './services/dataImport';
+import { seedDefaultOwner, ensureNotificationTables, ensureEmailBroadcastTable, ensureMasterPasswordColumn, ensureMarketingTables, ensureShortLinkTables, ensureShortLinkOgColumns, ensureProductInventoryColumns, ensureProductMaxQtyColumn, ensureProductStatusColumn, ensureProductSeoColumns, ensureProductImageColumnType, ensurePosSettingsColumns, ensurePosTables, ensureCatalogVersionColumn, ensureWhatsappApiColumn, ensureOtpChannelsColumn, ensureUserMobileNullable, backfillGooglePlaceholderMobiles } from './services/dataImport';
 import { timing } from './middleware/timing';
 
 const app = express();
@@ -132,6 +132,8 @@ app.listen(config.port, () => {
   seedDefaultOwner().catch((e) => console.error('[seed] owner failed', e));
   // Notification history tables (idempotent, no-migrate raw SQL).
   ensureNotificationTables().catch((e) => console.error('[seed] notification tables failed', e));
+  // Email broadcast history table (idempotent, no-migrate raw SQL).
+  ensureEmailBroadcastTable().catch((e) => console.error('[seed] email_broadcasts table failed', e));
   // Marketing Center tables + users.marketing_opt_out column (idempotent, no-migrate raw SQL).
   ensureMarketingTables().catch((e) => console.error('[seed] marketing tables failed', e));
   // Universal short_links table (idempotent, no-migrate raw SQL).

@@ -343,6 +343,35 @@ export async function ensureNotificationTables(): Promise<void> {
 }
 
 /**
+ * Ensure the email-broadcast history table exists. Follows the repo's no-migrate
+ * convention: idempotent `CREATE TABLE IF NOT EXISTS` via $executeRawUnsafe
+ * (InnoDB utf8mb4), with column types mirroring the Prisma EmailBroadcast model
+ * in schema.prisma. One row per admin email broadcast, with the per-recipient
+ * delivery outcomes stored in the `recipients` JSON column
+ * ([{ email, name, status: 'sent' | 'failed' }]). Safe to re-run; NO prisma
+ * migrate / db push. Called at startup beside ensureNotificationTables().
+ */
+export async function ensureEmailBroadcastTable(): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS email_broadcasts (
+       id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       title       VARCHAR(255) NOT NULL,
+       description TEXT         NOT NULL,
+       image_url   VARCHAR(500) NULL,
+       target      VARCHAR(20)  NOT NULL,
+       sent        INT          NOT NULL DEFAULT 0,
+       failed      INT          NOT NULL DEFAULT 0,
+       total       INT          NOT NULL DEFAULT 0,
+       recipients  JSON         NULL,
+       sent_by     VARCHAR(64)  NULL,
+       created_at  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+       PRIMARY KEY (id),
+       INDEX idx_email_broadcasts_created (created_at)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+}
+
+/**
  * Ensure the Marketing Center tables + the additive users.marketing_opt_out
  * column exist. Follows the repo's no-migrate convention: idempotent
  * `CREATE TABLE IF NOT EXISTS` via $executeRawUnsafe (InnoDB utf8mb4) with
